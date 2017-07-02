@@ -43,7 +43,7 @@ filetype plugin indent on     " required!
 set t_Co=256  " make use of 256 terminal colors
 " let g:airline_theme='papercolor'
 " color summerfruit256
-colorscheme gruvbox
+silent! colorscheme gruvbox
 set background=dark
 
 let g:airline_powerline_fonts = 1
