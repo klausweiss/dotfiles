@@ -18,6 +18,24 @@
         ~/.zshrc: zsh/zshrc
 
 - shell:
+        - 
+            command: 
+                '_GIT_FILLED_FIELDS=$(cat ~/.gitconfig | grep -e "\(name\|email\) =\W*\w\+" | wc -l) &&
+                 _GIT_ALREADY_SETUP=$(( $_GIT_FILLED_FIELDS == 2 )) &&
+                 (( $_GIT_ALREADY_SETUP != 1 )) && (
+                    echo "Enter your full name (for git identifaction):" &&
+                    read _USER_FULLNAME &&
+                    echo "Enter your email address (for git identification):" &&
+                    read _USER_EMAIL &&
+                    cat git/gitconfig |
+                        sed "/name =\W*$/  s/name.*$/name = "$_USER_FULLNAME"/" |
+                        sed "/email =\W*$/ s/email.*$/email = "$_USER_EMAIL"/" >
+                        ~/.gitconfig
+                 ) || (
+                     echo "git already setup"
+                 )'
+            stdin: true
+            stdout: true
         - [git submodule update --init --recursive --depth 1 || git submodule update --recursive --depth 1, Updating submodules]
         - [mkdir ~/doc/desktop -p && mkdir ~/tmp -p && mkdir ~/doc/music -p && mkdir ~/doc/images -p && mkdir ~/.templates -p && mkdir ~/doc/shared -p && mkdir ~/doc/videos -p, Creating dirs for user-dirs]
         - [xdg-user-dirs-update && (xdg-user-dirs-gtk-update || echo), Updating user-dirs]
