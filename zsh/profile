@@ -1,0 +1,7 @@
+# PATH
+path+=($HOME'/.local/bin')
+export PATH="/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+
+# START KEYCHAIN
+/usr/bin/keychain --clear $HOME/.ssh/id_rsa_nopasswd >/dev/null 2>&1
+# END KEYCHAIN

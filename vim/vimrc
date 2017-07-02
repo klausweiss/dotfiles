@@ -1,0 +1,145 @@
+set nocompatible               " be iMproved
+filetype off                   " required!
+set rtp+=~/.vim/bundle/Vundle.vim
+call vundle#rc()
+
+"""""""""""
+" PLUGINS "
+"""""""""""
+
+""" python
+" Plugin 'python-rope/ropevim'
+Plugin 'nvie/vim-flake8'
+" Plugin 'davidhalter/jedi-vim'
+" Plugin 'jmcantrell/vim-virtualenv'
+" Plugin 'tell-k/vim-autopep8'
+""" themes
+Plugin 'vim-airline/vim-airline'
+Plugin 'vim-airline/vim-airline-themes'
+Plugin 'morhetz/gruvbox'
+Plugin 'summerfruit256.vim'
+""" usability
+Plugin 'ervandew/supertab'
+Plugin 'scrooloose/nerdtree'
+Plugin 'jistr/vim-nerdtree-tabs'
+Plugin 'ctrlpvim/ctrlp.vim'
+Plugin 'tComment'
+Plugin 'tpope/vim-fugitive'
+Plugin 'grep.vim'
+" Plugin 'wesQ3/vim-windowswap'
+""" frontend
+Plugin 'mattn/emmet-vim'
+" Plugin 'vim-coffee-script'
+" other languages
+" Plugin 'derekwyatt/vim-scala'
+" Plugin 'arrufat/vala.vim'
+
+filetype plugin indent on     " required! 
+
+"""""""""
+" THEME "
+"""""""""
+
+set t_Co=256  " make use of 256 terminal colors
+" let g:airline_theme='papercolor'
+" color summerfruit256
+colorscheme gruvbox
+set background=dark
+
+let g:airline_powerline_fonts = 1
+
+" autoindent
+set autoindent
+
+" relative line numbers
+" set rnu
+
+" syntax highlighting
+syntax on
+
+" smartcase
+set ignorecase
+set smartcase
+
+" true color in nvim
+" let $NVIM_TUI_ENABLE_TRUE_COLOR=1
+
+" tabs=spaces
+set tabstop=4
+set softtabstop=0
+set expandtab 
+set shiftwidth=4
+set smarttab
+
+au BufRead,BufNewFile *.py,*pyw set shiftwidth=4
+au BufRead,BufNewFile *.py,*.pyw set expandtab
+au BufRead,BufNewFile *.py,*.pyw match BadWhitespace /\s\+$/
+au BufNewFile *.py,*.pyw set fileformat=unix
+" HTML -> tab = 2 spaces
+autocmd Filetype html setlocal ts=2 sts=2 sw=2
+autocmd Filetype javascript setlocal ts=2 sts=2 sw=2
+
+highlight BadWhitespace ctermbg=red guibg=red
+
+
+" keyboard shortcuts
+nnoremap <A-j> :m .+1<CR>==
+nnoremap <A-k> :m .-2<CR>==
+inoremap <A-j> <Esc>:m .+1<CR>==gi
+inoremap <A-k> <Esc>:m .-2<CR>==gi
+vnoremap <A-j> :m '>+1<CR>gv=gv
+vnoremap <A-k> :m '<-2<CR>gv=gv
+
+" Tab navigation like Firefox.
+nnoremap th  :tabfirst<CR>
+nnoremap tj  :tabnext<CR>
+nnoremap tk  :tabprev<CR>
+nnoremap tl  :tablast<CR>
+nnoremap tt  :tabedit<Space>
+nnoremap tn  :tabnext<Space>
+nnoremap tm  :tabm<Space>
+nnoremap td  :tabclose<CR>
+nnoremap tn :tabnew<CR>
+
+
+"split navigations
+nnoremap <C-J> <C-W><C-J>
+nnoremap <C-K> <C-W><C-K>
+nnoremap <C-L> <C-W><C-L>
+nnoremap <C-H> <C-W><C-H>
+
+" clipboard
+vnoremap <C-S-c> "+y
+nnoremap <C-S-c> "+yy
+
+" system clipboard
+set clipboard=unnamed
+
+" fold by indent
+set fdm=indent
+
+" NERDTree at startup
+let g:nerdtree_tabs_open_on_console_startup=2
+
+" NERDTree ignore files
+let NERDTreeIgnore = ['\.pyc$', '^__pycache__$']
+
+" NERDTree focus toggle
+noremap <C-\> :NERDTreeFocusToggle<CR>
+" NERDTree toggle
+noremap <A-\> :NERDTreeToggle<CR>
+
+
+" autopep8 disable diff popup
+let g:autopep8_disable_show_diff=1
+" autopep8 120 instead 80 as max line length
+let g:autopep8_max_line_length=119
+
+" Fix 001B in prompt (nvim v0.2+)
+let $NVIM_TUI_ENABLE_CURSOR_SHAPE = 0
+
+" transparent background
+"hi Normal          ctermfg=252 ctermbg=none
+
+" ctrlp ignore paths
+let g:ctrlp_custom_ignore = 'node_modules\|bower_components\|.git'
