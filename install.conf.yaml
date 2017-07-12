@@ -63,3 +63,7 @@
       stdin: true
       stdout: true
     - [ls ~/.dotfiles/icons/*Papirus* || ln -s ~/.dotfiles/icons/.repositories/papirus-icon-theme/*Papirus* ~/.dotfiles/icons/, Installing Papirus icons]
+    - command:
+        '[ -d ~/.emacs.d ] ||
+         git clone https://github.com/syl20bnr/spacemacs ~/.emacs.d'
+      stdout: true
