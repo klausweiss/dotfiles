@@ -34,6 +34,7 @@
          )'
       stdin: true
       stdout: true
+      description: Configuring git name and e-mail address
     - [git submodule update --init --recursive --depth 1 || git submodule update --recursive --depth 1, Updating submodules]
 
     # offline actions
@@ -49,6 +50,7 @@
         ", Installing packages]
     - command:
         'vim +PluginInstall +qall'
+      description: Installing vim plugins
       stdout: true
     - ["[ -d ~/.oh-my-zsh ] || git clone git://github.com/robbyrussell/oh-my-zsh.git ~/.oh-my-zsh", Installing oh-my-zsh]
     - command:
@@ -62,8 +64,10 @@
          )'
       stdin: true
       stdout: true
+      description: Setting zsh as a default shell
     - [ls ~/.dotfiles/icons/*Papirus* || ln -s ~/.dotfiles/icons/.repositories/papirus-icon-theme/*Papirus* ~/.dotfiles/icons/, Installing Papirus icons]
     - command:
         '[ -d ~/.emacs.d ] ||
          git clone https://github.com/syl20bnr/spacemacs ~/.emacs.d'
       stdout: true
+      description: Installing spacemacs
