@@ -95,3 +95,5 @@ alias l='ls -l'
 alias vi='vim'
 # alias vim='nvim'
 alias python='python3'
+
+alias use_kiex='test -s "$HOME/.kiex/scripts/kiex" && source "$HOME/.kiex/scripts/kiex"'
