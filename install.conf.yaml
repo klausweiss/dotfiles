@@ -47,6 +47,7 @@
                           zsh
                           synapse
                           emacs24
+                          xsel
         ", Installing packages]
     - command:
         'vim +PluginInstall +qall'
