@@ -13,6 +13,7 @@
     ~/.ghci: ghci/ghcirc
     ~/.profile: zsh/profile
     ~/.ptpython/config.py: ptpython/ptpython_config.py
+    ~/.tmux.conf: tmux/tmux.conf
     ~/.vim: vim/vim
     ~/.vimrc: vim/vimrc
     ~/.zshrc: zsh/zshrc
