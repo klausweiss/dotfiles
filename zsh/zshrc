@@ -98,3 +98,4 @@ alias python='python3'
 alias copy='xsel -ib'
 
 alias use_kiex='test -s "$HOME/.kiex/scripts/kiex" && source "$HOME/.kiex/scripts/kiex"'
+
