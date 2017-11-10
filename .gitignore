@@ -1,2 +1,3 @@
 vim/vim/bundle/*
 !vim/vim/bundle/Vundle.vim
+themes/Arc*

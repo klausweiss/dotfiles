@@ -14,6 +14,7 @@
     ~/.profile: zsh/profile
     ~/.ptpython/config.py: ptpython/ptpython_config.py
     ~/.spacemacs: spacemacs/init.el
+    ~/.themes: themes
     ~/.tmux.conf: tmux/tmux.conf
     ~/.vim: vim/vim
     ~/.vimrc: vim/vimrc
@@ -69,6 +70,10 @@
       stdout: true
       description: Setting zsh as a default shell
     - [ls ~/.dotfiles/icons/*Papirus* || ln -s ~/.dotfiles/icons/.repositories/papirus-icon-theme/*Papirus* ~/.dotfiles/icons/, Installing Papirus icons]
+    - ["cd ~/.dotfiles/themes/.repositories/arc-theme &&
+        ./autogen.sh --prefix=$HOME/.dotfiles --datarootdir=$HOME/.dotfiles &&
+        make install &&
+        cd ~/.dotfiles", Installing Arc-theme]
     - command:
         '[ -d ~/.emacs.d ] ||
          git clone https://github.com/syl20bnr/spacemacs ~/.emacs.d'

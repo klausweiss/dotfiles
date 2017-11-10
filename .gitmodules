@@ -7,3 +7,6 @@
 [submodule "icons/.repositories/papirus-icon-theme"]
 	path = icons/.repositories/papirus-icon-theme
 	url = https://github.com/PapirusDevelopmentTeam/papirus-icon-theme.git
+[submodule "themes/.repositories/arc-theme"]
+	path = themes/.repositories/arc-theme
+	url = https://github.com/horst3180/arc-theme.git

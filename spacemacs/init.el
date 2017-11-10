@@ -51,7 +51,7 @@ values."
      syntax-checking
      version-control
      games
-     ;; themes-megapack
+     themes-megapack
      vim-powerline
      )
    ;; List of additional packages that will be installed without being
@@ -61,11 +61,20 @@ values."
    dotspacemacs-additional-packages '
    (spaceline-all-the-icons
     rainbow-mode
+    py-autopep8
     )
    ;; A list of packages that cannot be updated.
    dotspacemacs-frozen-packages '()
    ;; A list of packages that will not be installed and loaded.
-   dotspacemacs-excluded-packages '()
+   dotspacemacs-excluded-packages '(
+                                    ;; themes from themes-megapack
+                                    firebelly-theme
+                                    niflheim-theme
+                                    pastels-on-dark-theme
+                                    tronesque-theme
+                                    ;; another packages
+                                    exec-path-from-shell ;; (slow startup time)
+                                    )
    ;; Defines the behaviour of Spacemacs when installing packages.
    ;; Possible values are `used-only', `used-but-keep-unused' and `all'.
    ;; `used-only' installs only explicitly used packages and uninstall any
@@ -133,9 +142,9 @@ values."
    ;; List of themes, the first of the list is loaded when spacemacs starts.
    ;; Press <SPC> T n to cycle to the next theme in the list (works great
    ;; with 2 themes variants, one dark and one light)
-   dotspacemacs-themes '(birds-of-paradise-plus
-                         gruvbox
+   dotspacemacs-themes '(gruvbox
                          darktooth
+                         birds-of-paradise-plus
                          jbeans
                          spacemacs-dark
                          tao-yin
@@ -370,6 +379,12 @@ you should place your code here."
     (require 'anaconda-mode)
     (define-key anaconda-mode-map (kbd "<C-tab>") 'anaconda-mode-complete))
 
+  ;; autopep8
+  (require 'py-autopep8)
+  (add-hook 'anaconda-mode-hook 'py-autopep8-enable-on-save)
+
+  ;; always follow symbolic links
+  (setq vc-follow-symlinks 2)
 )
 
 ;; Do not write anything past this comment. This is where Emacs will
