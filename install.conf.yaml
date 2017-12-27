@@ -55,6 +55,7 @@
                           synapse
                           emacs24
                           xsel
+                          fluxgui
         ", Installing packages]
     - command:
         'vim +PluginInstall +qall'
