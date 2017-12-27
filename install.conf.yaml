@@ -13,11 +13,14 @@
     ~/.ghci: ghci/ghcirc
     ~/.profile: zsh/profile
     ~/.ptpython/config.py: ptpython/ptpython_config.py
+    ~/.config/rofi/config.rasi: rofi/gruvbox.rasi
     ~/.spacemacs: spacemacs/init.el
     ~/.themes: themes
     ~/.tmux.conf: tmux/tmux.conf
     ~/.vim: vim/vim
     ~/.vimrc: vim/vimrc
+    ~/.Xresources: Xresources/Xresources
+    ~/.Xresources.d/rofi.conf: rofi/Xresources.conf
     ~/.zshrc: zsh/zshrc
 
 - shell:
@@ -44,6 +47,7 @@
     - [mkdir ~/doc/desktop -p && mkdir ~/tmp -p && mkdir ~/doc/music -p && mkdir ~/doc/images -p && mkdir ~/.templates -p && mkdir ~/doc/shared -p && mkdir ~/doc/videos -p, Creating dirs for user-dirs]
     - [xdg-user-dirs-update && (xdg-user-dirs-gtk-update || echo), Updating user-dirs]
     - [ls ~/.ssh/*.pub || (ssh-keygen -t rsa -f $HOME/.ssh/id_rsa && ssh-keygen -t rsa -f $HOME/.ssh/id_rsa_nopasswd -N ""), Generating ssh keys]
+    - [xrdb -load ~/.Xresources, Loading Xresources config]
 
     # actions requiring the Internet
     - ["sudo apt install vim
