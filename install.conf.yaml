@@ -22,6 +22,7 @@
     ~/.Xresources: Xresources/Xresources
     ~/.Xresources.d/rofi.conf: rofi/Xresources.conf
     ~/.zshrc: zsh/zshrc
+    ~/.zprofile: zsh/profile
 
 - shell:
     - command: 
@@ -56,6 +57,7 @@
                           emacs24
                           xsel
                           fluxgui
+                          keychain
         ", Installing packages]
     - command:
         'vim +PluginInstall +qall'

@@ -1,7 +1,18 @@
-# PATH
-path+=($HOME'/.local/bin')
-export PATH="/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+# vi: set ft=sh :
 
-# START KEYCHAIN
+# ########################################
+# PATH
+# ########################################
+export PATH="$HOME/.local/bin:"$PATH
+
+# ########################################
+# virtualenvwrapper
+# ########################################
+export WORKON_HOME=$HOME/.virtualenvs
+export PROJECT_HOME=$HOME/Devel
+export VIRTUALENVWRAPPER_SCRIPT=/usr/local/bin/virtualenvwrapper.sh
+
+# ########################################
+# keychain
+# ########################################
 /usr/bin/keychain --clear $HOME/.ssh/id_rsa_nopasswd >/dev/null 2>&1
-# END KEYCHAIN
