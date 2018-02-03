@@ -52,12 +52,10 @@
 
     # actions requiring the Internet
     - ["sudo apt install vim
-                          zsh
-                          synapse
-                          emacs24
-                          xsel
-                          fluxgui
-                          keychain
+                         zsh
+                         emacs25
+                         xsel
+                         keychain
         ", Installing packages]
     - command:
         'vim +PluginInstall +qall'

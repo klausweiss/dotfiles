@@ -7,32 +7,15 @@ call vundle#rc()
 " PLUGINS "
 """""""""""
 
-""" python
-" Plugin 'python-rope/ropevim'
-Plugin 'nvie/vim-flake8'
-" Plugin 'davidhalter/jedi-vim'
-" Plugin 'jmcantrell/vim-virtualenv'
-" Plugin 'tell-k/vim-autopep8'
 """ themes
 Plugin 'vim-airline/vim-airline'
 Plugin 'vim-airline/vim-airline-themes'
 Plugin 'morhetz/gruvbox'
-Plugin 'summerfruit256.vim'
 """ usability
-Plugin 'ervandew/supertab'
 Plugin 'scrooloose/nerdtree'
 Plugin 'jistr/vim-nerdtree-tabs'
 Plugin 'ctrlpvim/ctrlp.vim'
 Plugin 'tComment'
-Plugin 'tpope/vim-fugitive'
-Plugin 'grep.vim'
-" Plugin 'wesQ3/vim-windowswap'
-""" frontend
-Plugin 'mattn/emmet-vim'
-" Plugin 'vim-coffee-script'
-" other languages
-" Plugin 'derekwyatt/vim-scala'
-" Plugin 'arrufat/vala.vim'
 
 filetype plugin indent on     " required! 
 
@@ -41,8 +24,6 @@ filetype plugin indent on     " required!
 """""""""
 
 set t_Co=256  " make use of 256 terminal colors
-" let g:airline_theme='papercolor'
-" color summerfruit256
 silent! colorscheme gruvbox
 set background=dark
 
@@ -51,18 +32,12 @@ let g:airline_powerline_fonts = 1
 " autoindent
 set autoindent
 
-" relative line numbers
-" set rnu
-
 " syntax highlighting
 syntax on
 
 " smartcase
 set ignorecase
 set smartcase
-
-" true color in nvim
-" let $NVIM_TUI_ENABLE_TRUE_COLOR=1
 
 " tabs=spaces
 set tabstop=4
@@ -117,6 +92,7 @@ set clipboard=unnamed
 
 " fold by indent
 set fdm=indent
+set nofoldenable
 
 " NERDTree at startup
 let g:nerdtree_tabs_open_on_console_startup=2
@@ -137,9 +113,6 @@ let g:autopep8_max_line_length=119
 
 " Fix 001B in prompt (nvim v0.2+)
 let $NVIM_TUI_ENABLE_CURSOR_SHAPE = 0
-
-" transparent background
-"hi Normal          ctermfg=252 ctermbg=none
 
 " ctrlp ignore paths
 let g:ctrlp_custom_ignore = 'node_modules\|bower_components\|.git'
