@@ -11,9 +11,8 @@
     ~/.icons: icons
     ~/.fonts: fonts
     ~/.ghci: ghci/ghcirc
-    ~/.profile: zsh/profile
     ~/.ptpython/config.py: ptpython/ptpython_config.py
-    ~/.config/rofi/config.rasi: rofi/gruvbox.rasi
+    ~/.config/rofi/rofi-theme.rasi: rofi/rofi-theme.rasi
     ~/.spacemacs: spacemacs/init.el
     ~/.themes: themes
     ~/.tmux.conf: tmux/tmux.conf
@@ -22,7 +21,7 @@
     ~/.Xresources: Xresources/Xresources
     ~/.Xresources.d/rofi.conf: rofi/Xresources.conf
     ~/.zshrc: zsh/zshrc
-    ~/.zprofile: zsh/profile
+    ~/.zshenv: zsh/env
 
 - shell:
     - command: 

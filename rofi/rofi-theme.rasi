@@ -1,15 +1,12 @@
-/*********************************************************
- *  Rofi color theme
- *
- *  Based on the Gruvbox color scheme for Vim by morhetz
- *  https://github.com/morhetz/gruvbox
- *
- *  File: gruvbox*dark*hard.theme
- *  Desc: Gruvbox dark (hard contrast) color theme for Rofi
- *  Author: bardisty <b@bah.im>
- *  Source: https://github.com/bardisty/gruvbox*rofi
- *  Modified: Sat Oct 22 2016 03:12:10 PDT *0700
- **********************************************************/
+configuration {
+    display-combi: "";
+    display-run: "+";
+    display-drun: "+";
+    display-window: "@";
+    sidebar-mode: false;
+    lines: 10;
+    width: 70;
+}
 
 * {
     selected-normal-foreground:  rgba ( 251, 241, 199, 100 % );
@@ -44,8 +41,9 @@
 }
 #window {
     background-color: @background;
-    border:           1;
     padding:          5;
+    location:         north;
+    width:            100%;
 }
 #mainbox {
     border:  0;
@@ -61,15 +59,15 @@
 }
 #listview {
     fixed-height: 0;
-    border:       2px dash 0px 0px ;
+    border:       2px solid 0px 0px ;
     border-color: @separatorcolor;
     spacing:      2px ;
     scrollbar:    true;
-    padding:      2px 0px 0px ;
+    padding:      7px 0px 0px ;
 }
 #element {
     border:  0;
-    padding: 1px ;
+    padding: 7px 10px;
 }
 #element.normal.normal {
     background-color: @normal-background;
@@ -134,8 +132,19 @@
     spacing:    0;
     text-color: @normal-foreground;
 }
+
 #prompt {
-    spacing:    0;
-    text-color: @normal-foreground;
+    spacing:        0;
+    text-color:     @normal-foreground;
+    margin:         0 0 0 300px;
+    padding: 14px 4px 10px;
 }
 
+#entry {
+	spacing: 0;
+	text-color: @normal-foreground;
+	background-color: #555555;
+	padding: 8px 10px;
+	margin: 6px 300px 3px 0;
+	border-radius: 2px;
+}
