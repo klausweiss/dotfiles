@@ -1,3 +1,2 @@
-vim/vim/bundle/*
-!vim/vim/bundle/Vundle.vim
+vim/vim/vimplug
 themes/Arc*

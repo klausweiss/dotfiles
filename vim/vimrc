@@ -1,23 +1,19 @@
-set nocompatible               " be iMproved
-filetype off                   " required!
-set rtp+=~/.vim/bundle/Vundle.vim
-call vundle#rc()
-
 """""""""""
 " PLUGINS "
 """""""""""
+call plug#begin('~/.vim/vimplug')
 
 """ themes
-Plugin 'vim-airline/vim-airline'
-Plugin 'vim-airline/vim-airline-themes'
-Plugin 'morhetz/gruvbox'
+Plug 'vim-airline/vim-airline'
+Plug 'vim-airline/vim-airline-themes'
+Plug 'morhetz/gruvbox'
 """ usability
-Plugin 'scrooloose/nerdtree'
-Plugin 'jistr/vim-nerdtree-tabs'
-Plugin 'ctrlpvim/ctrlp.vim'
-Plugin 'tComment'
+Plug 'scrooloose/nerdtree', { 'on': ['NERDTreeFocusToggle', 'NERDTreeToggle'] }
+Plug 'jistr/vim-nerdtree-tabs', { 'on': ['NERDTreeFocusToggle', 'NERDTreeToggle'] }
+Plug 'ctrlpvim/ctrlp.vim'
+Plug 'vim-scripts/tComment'
 
-filetype plugin indent on     " required! 
+call plug#end()
 
 """""""""
 " THEME "
