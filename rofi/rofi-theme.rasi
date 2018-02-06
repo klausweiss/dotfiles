@@ -9,142 +9,157 @@ configuration {
 }
 
 * {
-    selected-normal-foreground:  rgba ( 251, 241, 199, 100 % );
-    foreground:                  rgba ( 235, 219, 178, 100 % );
+    selected-normal-foreground:  rgba ( 255, 255, 255, 100 % );
+    foreground:                  rgba ( 193, 193, 193, 100 % );
     normal-foreground:           @foreground;
-    alternate-normal-background: rgba ( 40, 40, 40, 100 % );
+    alternate-normal-background: rgba ( 39, 50, 56, 100 % );
     red:                         rgba ( 220, 50, 47, 100 % );
-    selected-urgent-foreground:  rgba ( 29, 32, 33, 100 % );
+    selected-urgent-foreground:  rgba ( 255, 24, 68, 100 % );
     blue:                        rgba ( 38, 139, 210, 100 % );
-    urgent-foreground:           rgba ( 29, 32, 33, 100 % );
-    alternate-urgent-background: rgba ( 204, 36, 29, 100 % );
-    active-foreground:           rgba ( 29, 32, 33, 100 % );
+    urgent-foreground:           rgba ( 255, 24, 68, 100 % );
+    alternate-urgent-background: rgba ( 39, 50, 56, 100 % );
+    active-foreground:           rgba ( 128, 203, 196, 100 % );
     lightbg:                     rgba ( 238, 232, 213, 100 % );
-    selected-active-foreground:  rgba ( 29, 32, 33, 100 % );
-    alternate-active-background: rgba ( 215, 153, 33, 100 % );
-    background:                  rgba ( 29, 32, 33, 100 % );
-    bordercolor:                 rgba ( 168, 153, 132, 100 % );
+    selected-active-foreground:  rgba ( 128, 203, 196, 100 % );
+    alternate-active-background: rgba ( 39, 50, 56, 100 % );
+    background:                  rgba ( 39, 50, 56, 100 % );
+    bordercolor:                 rgba ( 39, 50, 56, 100 % );
     alternate-normal-foreground: @foreground;
-    normal-background:           rgba ( 29, 32, 33, 100 % );
+    normal-background:           rgba ( 39, 50, 56, 100 % );
     lightfg:                     rgba ( 88, 104, 117, 100 % );
-    selected-normal-background:  rgba ( 80, 73, 69, 100 % );
+    selected-normal-background:  rgba ( 57, 66, 73, 100 % );
     border-color:                @foreground;
     spacing:                     2;
-    separatorcolor:              rgba ( 168, 153, 132, 100 % );
-    urgent-background:           rgba ( 204, 36, 29, 100 % );
-    selected-urgent-background:  rgba ( 251, 73, 52, 100 % );
+    separatorcolor:              rgba ( 30, 37, 41, 100 % );
+    urgent-background:           rgba ( 39, 50, 56, 100 % );
+    selected-urgent-background:  rgba ( 57, 66, 73, 100 % );
     alternate-urgent-foreground: @urgent-foreground;
     background-color:            rgba ( 0, 0, 0, 0 % );
     alternate-active-foreground: @active-foreground;
-    active-background:           rgba ( 215, 153, 33, 100 % );
-    selected-active-background:  rgba ( 250, 189, 47, 100 % );
+    active-background:           rgba ( 39, 50, 56, 100 % );
+    selected-active-background:  rgba ( 57, 66, 73, 100 % );
 }
+
 #window {
     background-color: @background;
-    padding:          5;
-    location:         north;
-    width:            100%;
+    border-color:     @alternate-normal-background;
+    location:         west;
+    width:            20%;
+    height:           100%;
+    border:           0 solid 4px 0 0;
+    padding:          0 2px;
 }
+
 #mainbox {
     border:  0;
     padding: 0;
 }
+
 #message {
-    border:       1px dash 0px 0px ;
+    border:       1px dash 0px 0px;
     border-color: @separatorcolor;
-    padding:      1px ;
+    padding:      1px;
 }
+
 #textbox {
     text-color: @foreground;
 }
+
 #listview {
     fixed-height: 0;
-    border:       2px solid 0px 0px ;
+    border:       2px solid 0px 0px;
     border-color: @separatorcolor;
-    spacing:      2px ;
-    scrollbar:    true;
-    padding:      7px 0px 0px ;
+    spacing:      2px;
+    scrollbar:    false;
+    padding:      7px 0px 0px;
 }
+
 #element {
     border:  0;
     padding: 7px 10px;
 }
+
 #element.normal.normal {
     background-color: @normal-background;
     text-color:       @normal-foreground;
 }
+
 #element.normal.urgent {
     background-color: @urgent-background;
     text-color:       @urgent-foreground;
 }
+
 #element.normal.active {
     background-color: @active-background;
     text-color:       @active-foreground;
 }
+
 #element.selected.normal {
     background-color: @selected-normal-background;
     text-color:       @selected-normal-foreground;
 }
+
 #element.selected.urgent {
     background-color: @selected-urgent-background;
     text-color:       @selected-urgent-foreground;
 }
+
 #element.selected.active {
     background-color: @selected-active-background;
     text-color:       @selected-active-foreground;
 }
+
 #element.alternate.normal {
     background-color: @alternate-normal-background;
     text-color:       @alternate-normal-foreground;
 }
+
 #element.alternate.urgent {
     background-color: @alternate-urgent-background;
     text-color:       @alternate-urgent-foreground;
 }
+
 #element.alternate.active {
     background-color: @alternate-active-background;
     text-color:       @alternate-active-foreground;
 }
+
 #scrollbar {
-    width:        4px ;
+    width:        4px;
     border:       0;
-    handle-width: 8px ;
+    handle-width: 8px;
     padding:      0;
 }
+
 #sidebar {
-    border:       2px dash 0px 0px ;
+    border:       2px dash 0px 0px;
     border-color: @separatorcolor;
 }
+
 #button.selected {
     background-color: @selected-normal-background;
     text-color:       @selected-normal-foreground;
 }
+
 #inputbar {
     spacing:    0;
     text-color: @normal-foreground;
-    padding:    1px ;
 }
+
 #case-indicator {
-    spacing:    0;
-    text-color: @normal-foreground;
-}
-#entry {
     spacing:    0;
     text-color: @normal-foreground;
 }
 
 #prompt {
+	  padding: 8px 10px;
     spacing:        0;
     text-color:     @normal-foreground;
-    margin:         0 0 0 300px;
-    padding: 14px 4px 10px;
 }
 
 #entry {
 	spacing: 0;
-	text-color: @normal-foreground;
-	background-color: #555555;
+	text-color: @selected-normal-foreground;
+  margin: 0 -10px 0 0;
 	padding: 8px 10px;
-	margin: 6px 300px 3px 0;
-	border-radius: 2px;
 }
