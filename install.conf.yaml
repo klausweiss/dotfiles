@@ -25,19 +25,22 @@
 
 - shell:
     - command: 
-        '_GIT_FILLED_FIELDS=$(cat ~/.gitconfig | grep -e "\(name\|email\) =\W*\w\+" | wc -l) &&
-         [[ $_GIT_FILLED_FIELDS != 2 ]] && (
+        'setup_git () {
            echo "Enter your full name (for git identifaction):" &&
-           read _USER_FULLNAME &&
+           read USER_FULLNAME &&
            echo "Enter your email address (for git identification):" &&
-           read _USER_EMAIL &&
+           read USER_EMAIL &&
            cat git/gitconfig |
-               sed "/name =\W*$/  s/name.*$/name = "$_USER_FULLNAME"/" |
-               sed "/email =\W*$/ s/email.*$/email = "$_USER_EMAIL"/" >
-               ~/.gitconfig
-         ) || (
-             echo "git already setup"
-         )'
+               sed "/name =\W*$/  s/name.*$/name = "$USER_FULLNAME"/" |
+               sed "/email =\W*$/ s/email.*$/email = "$USER_EMAIL"/" >
+               $HOME/.gitconfig;
+        } &&
+        GIT_FILLED_FIELDS=$(test -f $HOME/.gitconfig && cat $HOME/.gitconfig | grep -e "\(name\|email\) = \w\+" | wc -l || echo 0) &&
+        if [ $GIT_FILLED_FIELDS = 2 ]; then
+            echo "git already set up";
+        else
+            setup_git;
+        fi'
       stdin: true
       stdout: true
       description: Configuring git name and e-mail address
@@ -62,14 +65,10 @@
       stdout: true
     - ["[ -d ~/.oh-my-zsh ] || git clone git://github.com/robbyrussell/oh-my-zsh.git ~/.oh-my-zsh", Installing oh-my-zsh]
     - command:
-        '_ZSH_ALREADY_SET=$(echo $SHELL | grep zsh | wc -l) &&
-         [[ $_ZSH_ALREADY_SET != 1 ]] && (
-          echo "** changing default shell to zsh **" &&
+        'if [ `echo $SHELL | grep zsh | wc -l` = 0 ]; then
           echo "password:" &&
-          chsh -s $(which zsh)
-         ) || (
-          echo "zsh already set as a shell"
-         )'
+          chsh -s /bin/zsh;
+        fi'
       stdin: true
       stdout: true
       description: Setting zsh as a default shell
