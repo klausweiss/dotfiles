@@ -8,8 +8,8 @@ Plug 'vim-airline/vim-airline'
 Plug 'vim-airline/vim-airline-themes'
 Plug 'morhetz/gruvbox'
 """ usability
-Plug 'scrooloose/nerdtree', { 'on': ['NERDTreeFocusToggle', 'NERDTreeToggle'] }
-Plug 'jistr/vim-nerdtree-tabs', { 'on': ['NERDTreeFocusToggle', 'NERDTreeToggle'] }
+Plug 'scrooloose/nerdtree'
+Plug 'jistr/vim-nerdtree-tabs'
 Plug 'ctrlpvim/ctrlp.vim'
 Plug 'vim-scripts/tComment'
 
