@@ -9,6 +9,7 @@
 - link:
     ~/.config/user-dirs.dirs: config/user-dirs
     ~/.icons: icons
+    ~/.config/fish: fish
     ~/.fonts: fonts
     ~/.ghci: ghci/ghcirc
     ~/.ptpython/config.py: ptpython/ptpython_config.py
@@ -20,8 +21,6 @@
     ~/.vimrc: vim/vimrc
     ~/.Xresources: Xresources/Xresources
     ~/.Xresources.d/rofi.conf: rofi/Xresources.conf
-    ~/.zshrc: zsh/zshrc
-    ~/.zshenv: zsh/env
 
 - shell:
     - command: 
@@ -54,7 +53,7 @@
 
     # actions requiring the Internet
     - ["sudo apt install vim
-                         zsh
+                         fish
                          emacs25
                          xsel
                          keychain
@@ -63,15 +62,6 @@
         'vim +PlugInstall +qall'
       description: Installing vim plugins
       stdout: true
-    - ["[ -d ~/.oh-my-zsh ] || git clone git://github.com/robbyrussell/oh-my-zsh.git ~/.oh-my-zsh", Installing oh-my-zsh]
-    - command:
-        'if [ `echo $SHELL | grep zsh | wc -l` = 0 ]; then
-          echo "password:" &&
-          chsh -s /bin/zsh;
-        fi'
-      stdin: true
-      stdout: true
-      description: Setting zsh as a default shell
     - [ls ~/.dotfiles/icons/*Papirus* || ln -s ~/.dotfiles/icons/.repositories/papirus-icon-theme/*Papirus* ~/.dotfiles/icons/, Installing Papirus icons]
     - ["cd ~/.dotfiles/themes/.repositories/arc-theme &&
         ./autogen.sh --prefix=$HOME/.dotfiles --datarootdir=$HOME/.dotfiles &&
