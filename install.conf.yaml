@@ -11,6 +11,7 @@
     ~/.icons: icons
     ~/.config/fish: fish
     ~/.fonts: fonts
+    ~/.fonts.conf: fonts/fonts.conf
     ~/.ghci: ghci/ghcirc
     ~/.ptpython/config.py: ptpython/ptpython_config.py
     ~/.config/rofi/rofi-theme.rasi: rofi/rofi-theme.rasi
@@ -57,6 +58,7 @@
                          emacs25
                          xsel
                          keychain
+                         redshift
         ", Installing packages]
     - command:
         'vim +PlugInstall +qall'
