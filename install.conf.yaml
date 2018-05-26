@@ -8,15 +8,11 @@
 
 - link:
     ~/.config/user-dirs.dirs: config/user-dirs
-    ~/.icons: icons
     ~/.config/fish: fish
     ~/.fonts: fonts
-    ~/.fonts.conf: fonts/fonts.conf
     ~/.ghci: ghci/ghcirc
-    ~/.ptpython/config.py: ptpython/ptpython_config.py
     ~/.config/rofi/rofi-theme.rasi: rofi/rofi-theme.rasi
     ~/.spacemacs: spacemacs/init.el
-    ~/.themes: themes
     ~/.tmux.conf: tmux/tmux.conf
     ~/.vim: vim/vim
     ~/.vimrc: vim/vimrc
@@ -53,24 +49,7 @@
     - [xrdb -load ~/.Xresources, Loading Xresources config]
 
     # actions requiring the Internet
-    - ["sudo apt install vim
-                         fish
-                         emacs25
-                         xsel
-                         keychain
-                         redshift
-        ", Installing packages]
     - command:
         'vim +PlugInstall +qall'
       description: Installing vim plugins
       stdout: true
-    - [ls ~/.dotfiles/icons/*Papirus* || ln -s ~/.dotfiles/icons/.repositories/papirus-icon-theme/*Papirus* ~/.dotfiles/icons/, Installing Papirus icons]
-    - ["cd ~/.dotfiles/themes/.repositories/arc-theme &&
-        ./autogen.sh --prefix=$HOME/.dotfiles --datarootdir=$HOME/.dotfiles &&
-        make install &&
-        cd ~/.dotfiles", Installing Arc-theme]
-    - command:
-        '[ -d ~/.emacs.d ] ||
-         git clone https://github.com/syl20bnr/spacemacs ~/.emacs.d'
-      stdout: true
-      description: Installing spacemacs
