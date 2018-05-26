@@ -28,8 +28,7 @@
     - [git submodule update --init --recursive --depth 1 || git submodule update --recursive --depth 1, Updating submodules]
 
     # offline actions
-    - [mkdir ~/doc/desktop -p && mkdir ~/tmp -p && mkdir ~/doc/music -p && mkdir ~/doc/images -p && mkdir ~/.templates -p && mkdir ~/doc/shared -p && mkdir ~/doc/videos -p, Creating dirs for user-dirs]
-    - [xdg-user-dirs-update && (xdg-user-dirs-gtk-update || echo), Updating user-dirs]
+    - [./_meta/scripts/user-dirs.sh, Creating user-dirs]
     - [ls ~/.ssh/*.pub || (ssh-keygen -t rsa -f $HOME/.ssh/id_rsa && ssh-keygen -t rsa -f $HOME/.ssh/id_rsa_nopasswd -N ""), Generating ssh keys]
     - [xrdb -load ~/.Xresources, Loading Xresources config]
 
