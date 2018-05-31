@@ -1,0 +1,5 @@
+- shell:
+    - [ "sudo dnf install vim
+                          emacs
+                          synapse
+        ", Installing packages]

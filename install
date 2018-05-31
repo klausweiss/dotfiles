@@ -14,5 +14,26 @@ INSTALL_PROFILES="${BASE_DIR}/${META_DIR}/scripts/install-profiles.sh"
 
 "${BASE_DIR}/${META_DIR}/${DOTBOT_DIR}/${DOTBOT_BIN}" -q -d "${BASE_DIR}" -c "${BASE_DIR}/${META_DIR}/${CONFIG_FILENAME}"
 
+if [ -n ${@} ]; then
+    SYSTEM=$(uname)
+    if [[ $SYSTEM == Linux ]]; then
+        DISTRO="$(${BASE_DIR}/${META_DIR}/functions/detect-distro)"
+        PROFILES="${DISTRO}"
+
+        PROFILES+=" linux"
+
+        set +e
+        (xset q >/dev/null 2>/dev/null)
+        XORG_RUNNING=$?
+        set -e
+        if [ $XORG_RUNNING -eq 0 ]; then
+            PROFILES+=" xorg"
+        fi
+    else
+        echo $SYSTEM not supported!
+    fi
+else
+    PROFILES=${@}
+fi
 
 $INSTALL_PROFILES $PROFILES
