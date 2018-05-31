@@ -2,7 +2,7 @@
 
 set -e
 
-CONFIG="install.conf.yaml"
+CONFIG=".meta/install.conf.yaml"
 DOTBOT_DIR=".meta/dotbot"
 
 DOTBOT_BIN="bin/dotbot"
