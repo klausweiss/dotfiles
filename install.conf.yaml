@@ -22,14 +22,14 @@
 
 - shell:
     - command: 
-        '_meta/scripts/setup-git.sh'
+        '.meta/scripts/setup-git.sh'
       stdin: true
       stdout: true
       description: Configuring git name and e-mail address
     - [git submodule update --init --recursive --depth 1 || git submodule update --recursive --depth 1, Updating submodules]
 
     # offline actions
-    - [./_meta/scripts/user-dirs.sh, Creating user-dirs]
+    - [./.meta/scripts/user-dirs.sh, Creating user-dirs]
     - [ls ~/.ssh/*.pub || (ssh-keygen -t rsa -f $HOME/.ssh/id_rsa && ssh-keygen -t rsa -f $HOME/.ssh/id_rsa_nopasswd -N ""), Generating ssh keys]
     - [xrdb -I"$HOME/.Xresources.d" -load ~/.Xresources, Loading Xresources config]
 
