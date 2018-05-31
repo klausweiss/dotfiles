@@ -4,37 +4,9 @@
         relink: true
         force: true
 
-- clean: ['~', '~/.config']
-
-- link:
-    ~/.config/user-dirs.dirs: config/user-dirs
-    ~/.config/fish: fish
-    ~/.fonts: fonts
-    ~/.ghci: ghci/ghcirc
-    ~/.config/rofi/rofi-theme.rasi: rofi/rofi-theme.rasi
-    ~/.spacemacs: spacemacs/init.el
-    ~/.tmux.conf: tmux/tmux.conf
-    ~/.vim: vim/vim
-    ~/.vimrc: vim/vimrc
-    ~/.Xresources: Xresources/Xresources
-    ~/.Xresources.d/rofi.conf: rofi/Xresources.conf
-    ~/.Xresources.d/xterm.conf: xterm/Xresources.conf
+- clean: ['~', '~/.config', '~/.Xresources.d']
 
 - shell:
-    - command: 
-        '.meta/scripts/setup-git.sh'
-      stdin: true
-      stdout: true
-      description: Configuring git name and e-mail address
-    - [git submodule update --init --recursive --depth 1 || git submodule update --recursive --depth 1, Updating submodules]
-
-    # offline actions
-    - [./.meta/scripts/user-dirs.sh, Creating user-dirs]
-    - [ls ~/.ssh/*.pub || (ssh-keygen -t rsa -f $HOME/.ssh/id_rsa && ssh-keygen -t rsa -f $HOME/.ssh/id_rsa_nopasswd -N ""), Generating ssh keys]
-    - [xrdb -I"$HOME" -load ~/.Xresources, Loading Xresources config]
-
-    # actions requiring the Internet
-    - command:
-        'vim +PlugInstall +qall'
-      description: Installing vim plugins
-      stdout: true
+    - command: bash -c "git submodule update --init --recursive --depth 1 ||
+                        git submodule update --recursive --depth 1"
+      description: Updating submodules
