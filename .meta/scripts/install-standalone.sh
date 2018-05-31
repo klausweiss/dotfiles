@@ -14,7 +14,7 @@ BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 CONFIGS=${@}
 
 for config in ${CONFIGS}; do
-    echo -e "\nConfigure $config"
+    echo -e "Configure $config"
     configContent="$(<"${BASE_DIR}/${config}/${CONFIG_FILENAME}")"
-    "${BASE_DIR}/${META_DIR}/${DOTBOT_DIR}/${DOTBOT_BIN}" -d "${BASE_DIR}" -c <(echo -e "$configContent")
+    "${BASE_DIR}/${META_DIR}/${DOTBOT_DIR}/${DOTBOT_BIN}" -q -d "${BASE_DIR}" -c <(echo -e "$configContent")
 done
