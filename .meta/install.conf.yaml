@@ -31,7 +31,7 @@
     # offline actions
     - [./.meta/scripts/user-dirs.sh, Creating user-dirs]
     - [ls ~/.ssh/*.pub || (ssh-keygen -t rsa -f $HOME/.ssh/id_rsa && ssh-keygen -t rsa -f $HOME/.ssh/id_rsa_nopasswd -N ""), Generating ssh keys]
-    - [xrdb -I"$HOME/.Xresources.d" -load ~/.Xresources, Loading Xresources config]
+    - [xrdb -I"$HOME" -load ~/.Xresources, Loading Xresources config]
 
     # actions requiring the Internet
     - command:
