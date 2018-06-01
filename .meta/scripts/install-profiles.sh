@@ -24,5 +24,5 @@ done
 for config in ${CONFIGS}; do
     echo -e "Configure $config"
     configContent="$(<"${BASE_DIR}/${config}/${CONFIG_FILENAME}")"
-    "${BASE_DIR}/${META_DIR}/${DOTBOT_DIR}/${DOTBOT_BIN}" -q -d "${BASE_DIR}" -c <(echo -e "$configContent")
+    "${BASE_DIR}/${META_DIR}/${DOTBOT_DIR}/${DOTBOT_BIN}" -d "${BASE_DIR}" -c <(echo -e "$configContent")
 done
