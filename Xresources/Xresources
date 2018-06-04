@@ -1,4 +1,3 @@
-#include "xterm.conf"
-#include "rofi.conf"
+#include ".Xresources.d/xterm.conf"
 
 *TkTheme: clam

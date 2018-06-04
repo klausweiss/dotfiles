@@ -2,15 +2,38 @@
 
 set -e
 
-CONFIG=".meta/install.conf.yaml"
-DOTBOT_DIR=".meta/dotbot"
+CONFIG_FILENAME="install.conf.yaml"
 
+BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+META_DIR=".meta"
+
+DOTBOT_DIR="dotbot"
 DOTBOT_BIN="bin/dotbot"
-BASEDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-SHELL=`which bash`
+INSTALL_PROFILES="${BASE_DIR}/${META_DIR}/scripts/install-profiles.sh"
 
-cd "${BASEDIR}"
-git submodule update --init --recursive "${DOTBOT_DIR}"
+"${BASE_DIR}/${META_DIR}/${DOTBOT_DIR}/${DOTBOT_BIN}" -d "${BASE_DIR}" -c "${BASE_DIR}/${META_DIR}/${CONFIG_FILENAME}"
 
-"${BASEDIR}/${DOTBOT_DIR}/${DOTBOT_BIN}" -d "${BASEDIR}" -c "${CONFIG}" "${@}"
+if [ -n ${@} ]; then
+    SYSTEM=$(uname)
+    if [[ $SYSTEM == Linux ]]; then
+        DISTRO="$(${BASE_DIR}/${META_DIR}/functions/detect-distro)"
+        PROFILES="${DISTRO}"
+
+        PROFILES+=" linux"
+
+        set +e
+        (xset q >/dev/null 2>/dev/null)
+        XORG_RUNNING=$?
+        set -e
+        if [ $XORG_RUNNING -eq 0 ]; then
+            PROFILES+=" xorg"
+        fi
+    else
+        echo $SYSTEM not supported!
+    fi
+else
+    PROFILES=${@}
+fi
+
+$INSTALL_PROFILES $PROFILES

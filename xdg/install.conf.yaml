@@ -1,0 +1,5 @@
+- link:
+    ~/.config/user-dirs.dirs: xdg/user-dirs
+
+- shell:
+    - [./.meta/scripts/user-dirs.sh, Creating user-dirs]

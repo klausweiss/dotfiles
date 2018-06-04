@@ -1,0 +1,6 @@
+- shell:
+    - command: 
+        '.meta/scripts/setup-git.sh'
+      stdin: true
+      stdout: true
+      description: Configuring git name and e-mail address

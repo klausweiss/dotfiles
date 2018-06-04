@@ -1,0 +1,5 @@
+- link:
+    ~/.Xresources: Xresources/Xresources
+
+- shell:
+    - [xrdb -I"$HOME" -load ~/.Xresources, Loading Xresources config]
