@@ -1,5 +1,6 @@
 - shell:
-    - [ "sudo dnf install vim
+    - [ "sudo dnf install awesome
                           emacs
                           synapse
+                          vim
         ", Installing packages]
