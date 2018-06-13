@@ -57,7 +57,8 @@ local function for_each_screen(s)
     s.mytasklist, -- Middle widget
     { -- Right widgets
       layout = wibox.layout.fixed.horizontal,
-      wibar.keyboardlayout,
+      -- wibar.keyboardlayout,
+      wibar.volumebar,
       wibox.widget.systray(),
       wibar.textclock,
       s.mylayoutbox,

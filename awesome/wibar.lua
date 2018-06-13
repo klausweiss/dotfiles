@@ -4,12 +4,12 @@ local wibox = require("wibox")
 
 local menu = require("menu")
 
+local volumebar = require("widgets.volumebar")
 -- Keyboard map indicator and switcher
 local keyboardlayout = awful.widget.keyboardlayout()
-
--- {{{ Wibar
 -- Create a textclock widget
 local textclock = wibox.widget.textclock()
+
 
 -- Create a wibox for each screen and add it
 local taglist_buttons = gears.table.join(
@@ -59,5 +59,6 @@ return {
   keyboardlayout = keyboardlayout,
   textclock = textclock,
   taglist_buttons = taglist_buttons,
-  tasklist_buttons = tasklist_buttons
+  tasklist_buttons = tasklist_buttons,
+  volumebar = volumebar
 }
