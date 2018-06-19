@@ -70,7 +70,6 @@ set nofoldenable
 " python: spaces settings
 au BufRead,BufNewFile *.py,*pyw set shiftwidth=4
 au BufRead,BufNewFile *.py,*.pyw set expandtab
-au BufRead,BufNewFile *.py,*.pyw match BadWhitespace /\s\+$/
 au BufNewFile *.py,*.pyw set fileformat=unix
 
 """""""""""""""""""
