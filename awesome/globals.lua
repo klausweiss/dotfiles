@@ -9,6 +9,9 @@ beautiful.init(gears.filesystem.get_themes_dir() .. "zenburn/theme.lua")
 terminal = "xterm"
 editor = os.getenv("EDITOR") or "vi"
 editor_cmd = terminal .. " -e " .. editor
+file_manager = terminal .. " -e " .. "ranger"
+internet_browser = "firefox"
+mail_client = "thunderbird"
 
 -- Default modkey.
 -- Usually, Mod4 is the key with a logo between Control and Alt.
