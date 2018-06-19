@@ -12,6 +12,10 @@ DOTBOT_BIN="bin/dotbot"
 
 INSTALL_PROFILES="${BASE_DIR}/${META_DIR}/scripts/install-profiles.sh"
 
+# checkout dotbot and its dependencies
+cd $BASE_DIR
+git submodule update --init --recursive
+
 "${BASE_DIR}/${META_DIR}/${DOTBOT_DIR}/${DOTBOT_BIN}" -d "${BASE_DIR}" -c "${BASE_DIR}/${META_DIR}/${CONFIG_FILENAME}"
 
 if [ $# -eq 0 ]; then

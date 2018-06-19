@@ -58,6 +58,7 @@ local function for_each_screen(s)
     { -- Right widgets
       layout = wibox.layout.fixed.horizontal,
       -- wibar.keyboardlayout,
+      wibar.battery_widget,
       wibar.volumebar,
       wibox.widget.systray(),
       wibar.textclock,

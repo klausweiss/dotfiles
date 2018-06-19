@@ -5,6 +5,7 @@ local wibox = require("wibox")
 local menu = require("menu")
 
 local volumebar = require("widgets.volumebar")
+local battery_widget = require("widgets.battery-widget") {}
 -- Keyboard map indicator and switcher
 local keyboardlayout = awful.widget.keyboardlayout()
 -- Create a textclock widget
@@ -60,5 +61,6 @@ return {
   textclock = textclock,
   taglist_buttons = taglist_buttons,
   tasklist_buttons = tasklist_buttons,
-  volumebar = volumebar
+  volumebar = volumebar,
+  battery_widget = battery_widget
 }
