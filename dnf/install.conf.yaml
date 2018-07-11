@@ -1,5 +1,6 @@
 - shell:
-    - [ "sudo dnf install awesome
+    - [ "sudo dnf install -y
+                          awesome
                           emacs
                           synapse
                           vim
