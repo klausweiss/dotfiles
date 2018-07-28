@@ -45,7 +45,10 @@ noremap <A-\> :NERDTreeToggle<CR>
 " EDITOR "
 """"""""""
 set autoindent
-"
+
+" line numbers
+set nu
+
 " syntax highlighting
 syntax on
 
