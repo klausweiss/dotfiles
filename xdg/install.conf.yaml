@@ -1,5 +1,6 @@
 - link:
     ~/.config/user-dirs.dirs: xdg/user-dirs
+    ~/.xinitrc: xdg/xinitrc
 
 - shell:
     - [./.meta/scripts/user-dirs.sh, Creating user-dirs]
