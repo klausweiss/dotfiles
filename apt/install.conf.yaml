@@ -1,0 +1,11 @@
+- shell:
+    - [ "sudo apt install -y
+                          awesome
+                          fish
+                          redshift
+                          slock
+                          synapse
+                          tmux
+                          vim
+                          xterm
+        ", Installing packages]
