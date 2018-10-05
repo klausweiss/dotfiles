@@ -3,5 +3,7 @@
 setxkbmap -option grp:caps_switch
 setxkbmap -option caps:super
 
+xrdb -I"$HOME" -load ~/.Xresources
+
 redshift &
 nm-applet &
