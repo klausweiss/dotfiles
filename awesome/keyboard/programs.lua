@@ -11,6 +11,12 @@ local globalkeys = gears.table.join(
     {description = "open a mail client", group = "launcher"}),
   awful.key({ modkey, "Shift"   }, "b", function () awful.spawn(internet_browser) end,
     {description = "open an internet browser", group = "launcher"}),
+-- Hardware
+  awful.key({                   }, "XF86MonBrightnessUp", function () awful.spawn("light -A 8") end,
+    {description = "monitor brightness up", group = "hardware"}),
+  awful.key({                   }, "XF86MonBrightnessDown", function () awful.spawn("light -U 8") end,
+    {description = "monitor brightness down", group = "hardware"}),
+-- Awesome
   awful.key({ modkey, "Shift"   }, "r", awesome.restart,
     {description = "reload awesome", group = "awesome"}),
   awful.key({ modkey, "Shift"   }, "q", awesome.quit,
