@@ -7,3 +7,4 @@ xrdb -I"$HOME" -load ~/.Xresources
 
 redshift &
 nm-applet &
+setxkbmap pl
