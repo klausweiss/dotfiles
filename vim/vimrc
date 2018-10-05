@@ -38,8 +38,8 @@ nnoremap td  :tabclose<CR>
 nnoremap tn :tabnew<CR> 
 
 " NERDTree
-noremap <C-\> :NERDTreeFocusToggle<CR>
-noremap <A-\> :NERDTreeToggle<CR>
+noremap <F1> :NERDTreeFocusToggle<CR>
+noremap <F2> :NERDTreeToggle<CR>
 
 """"""""""
 " EDITOR "
