@@ -1,2 +1,7 @@
 - link:
     ~/.spacemacs: spacemacs/init.el
+
+- shell:
+    - command: emacs --batch -l ~/.emacs.d/init.el
+      description: Installing emacs plugins
+      stdout: true
