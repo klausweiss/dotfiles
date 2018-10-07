@@ -83,7 +83,7 @@ theme.layout_fullscreen             = themedir .. "/icons/fullscreen.png"
 theme.layout_magnifier              = themedir .. "/icons/magnifier.png"
 theme.layout_floating               = themedir .. "/icons/floating.png"
 
-theme.tasklist_disable_icon         = true
+theme.tasklist_disable_icon         = false
 theme.tasklist_floating             = ""
 theme.tasklist_maximized_horizontal = ""
 theme.tasklist_maximized_vertical   = ""
