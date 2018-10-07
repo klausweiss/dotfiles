@@ -36,10 +36,9 @@ nnoremap tn  :tabnext<Space>
 nnoremap tm  :tabm<Space>
 nnoremap td  :tabclose<CR>
 nnoremap tn :tabnew<CR> 
-
 " NERDTree
-noremap <F1> :NERDTreeFocusToggle<CR>
-noremap <F2> :NERDTreeToggle<CR>
+noremap <F1> :NERDTreeToggle<CR>
+noremap <F2> :NERDTreeFocusToggle<CR>
 
 """"""""""
 " EDITOR "
