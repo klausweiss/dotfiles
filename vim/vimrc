@@ -53,6 +53,11 @@ nnoremap tn :tabnew<CR>
 noremap <F1> :NERDTreeToggle<CR>
 noremap <F2> :NERDTreeFocusToggle<CR>
 
+"""""""""""""
+" INTERFACE "
+"""""""""""""
+set wildmenu
+
 """"""""""
 " EDITOR "
 """"""""""
