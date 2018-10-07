@@ -2,9 +2,9 @@ local gears = require("gears")
 local awful = require("awful")
 
 local globalkeys = gears.table.join(
-    awful.key({ modkey,           }, "Left",   awful.tag.viewprev,
+    awful.key({ modkey, control   }, "Left",   awful.tag.viewprev,
               {description = "view previous", group = "tag"}),
-    awful.key({ modkey,           }, "Right",  awful.tag.viewnext,
+    awful.key({ modkey, control   }, "Right",  awful.tag.viewnext,
               {description = "view next", group = "tag"})
 )
 
@@ -14,7 +14,7 @@ local globalkeys = gears.table.join(
 for i = 1, 9 do
     globalkeys = gears.table.join(globalkeys,
         -- View tag only.
-        awful.key({ modkey }, "#" .. i + 9,
+        awful.key({ capslock }, "#" .. i + 9,
                   function ()
                         local screen = awful.screen.focused()
                         local tag = screen.tags[i]

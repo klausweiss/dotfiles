@@ -19,4 +19,9 @@ mail_client = "thunderbird"
 -- If you do not like this or do not have such a key,
 -- I suggest you to remap Mod4 to another key using xmodmap or other tools.
 -- However, you can use another modifier like Mod1, but it may interact with others.
-modkey = "Mod4"
+super = "Mod4"
+alt = "Mod1"
+control = "Control"
+
+modkey = alt
+capslock = control

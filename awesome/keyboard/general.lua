@@ -17,11 +17,22 @@ local special_keys = gears.table.join(
   awful.key({               }, "XF86AudioRaiseVolume",
     function ()
       awful.util.spawn("amixer sset Master 4%+")
-    end,    {description = "raise volume"}),
+    end,    {description = "raise volume", group = "hardware"}),
+
   awful.key({               }, "XF86AudioLowerVolume",
     function ()
       awful.util.spawn("amixer sset Master 4%-")
-    end,    {description = "lower volume"})
+    end,    {description = "lower volume", group = "hardware"}),
+
+  awful.key({                   }, "XF86MonBrightnessUp", 
+    function () 
+      awful.spawn("light -A 8") 
+    end, {description = "monitor brightness up", group = "hardware"}),
+
+  awful.key({                   }, "XF86MonBrightnessDown", 
+    function () 
+      awful.spawn("light -U 8") 
+    end, {description = "monitor brightness down", group = "hardware"})
 )
 
 local globalkeys = gears.table.join(
