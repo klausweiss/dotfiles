@@ -26,6 +26,19 @@ let g:airline_powerline_fonts = 1
 """"""""""""""""""""""
 " KEYBOARD SHORTCUTS "
 """"""""""""""""""""""
+
+" navigation
+nnoremap j h
+" use a instead
+nnoremap i k
+nnoremap k j
+nnoremap K J
+xnoremap j h
+" use a instead
+xnoremap i k
+xnoremap k j
+xnoremap K J
+
 " tab navigation
 nnoremap th  :tabfirst<CR>
 nnoremap tj  :tabnext<CR>
