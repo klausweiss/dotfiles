@@ -1,7 +1,7 @@
 #!/bin/bash
 
 setxkbmap -option grp:caps_switch
-setxkbmap -option caps:super
+setxkbmap -option caps:ctrl_modifier
 
 xrdb -I"$HOME" -load ~/.Xresources
 
