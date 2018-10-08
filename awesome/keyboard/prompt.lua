@@ -4,7 +4,7 @@ local menubar = require("menubar")
 
 -- Prompt
 local globalkeys = gears.table.join(
-  awful.key({ modkey }, "r", function () awful.screen.focused().mypromptbox:run() end,
+  awful.key({ capslock }, " ", function () awful.screen.focused().mypromptbox:run() end,
     {description = "run prompt", group = "launcher"}),
 
   -- awful.key({ modkey }, "x",
