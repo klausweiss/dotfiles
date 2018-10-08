@@ -3,7 +3,7 @@ local awful = require("awful")
 
 -- Standard program
 local globalkeys = gears.table.join(
-  awful.key({ modkey,           }, "Return", function () awful.spawn(terminal) end,
+  awful.key({ modkey, capslock  }, "Return", function () awful.spawn(terminal) end,
     {description = "open a terminal", group = "launcher"}),
   awful.key({ modkey, "Shift"   }, "e", function () awful.spawn(file_manager) end,
     {description = "open a file manager", group = "launcher"}),
