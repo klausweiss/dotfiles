@@ -9,7 +9,7 @@ local general_keys = gears.table.join(
             {description="show help", group="awesome"}),
   awful.key({ modkey,       }, "Escape", awful.tag.history.restore,
             {description = "go back", group = "tag"}),
-  awful.key({ modkey,       }, "w", function () menu.mainmenu:show() end,
+  awful.key({ modkey,       }, "F4", function () menu.mainmenu:show() end,
             {description = "show main menu", group = "awesome"})
 )
 
