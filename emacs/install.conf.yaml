@@ -1,5 +1,5 @@
 - link:
-    ~/.spacemacs: spacemacs/init.el
+    ~/.emacs.d: emacs
 
 - shell:
     - command: emacs --batch -l ~/.emacs.d/init.el
