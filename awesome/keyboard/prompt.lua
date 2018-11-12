@@ -4,8 +4,10 @@ local menubar = require("menubar")
 
 -- Prompt
 local globalkeys = gears.table.join(
-  awful.key({ capslock }, " ", function () awful.screen.focused().mypromptbox:run() end,
+  awful.key({ super }, " ", function () awful.screen.focused().mypromptbox:run() end,
     {description = "run prompt", group = "launcher"}),
+  awful.key({ capslock }, " ", function () awful.spawn("rofi -show run") end,
+    {description = "rofi run", group = "launcher"}),
 
   -- awful.key({ modkey }, "x",
   --   function ()
