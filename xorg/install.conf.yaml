@@ -1,5 +1,6 @@
 - link:
     ~/.config/user-dirs.dirs: xorg/user-dirs
+    ~/.config/wallpaper: xorg/wallpaper.png
     ~/.xinitrc: xorg/xinitrc
     ~/.Xresources: xorg/Xresources
 
