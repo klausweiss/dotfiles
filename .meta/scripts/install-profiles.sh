@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-set -e
-
 CONFIG_FILENAME="install.conf.yaml"
 
 META_DIR=".meta"
