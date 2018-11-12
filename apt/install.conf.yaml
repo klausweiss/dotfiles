@@ -7,6 +7,9 @@
                           slock
                           synapse
                           tmux
+			  uswsusp
                           vim
                           xterm
         ", Installing packages]
+    - ["sudo chmod +s /usr/sbin/s2ram",
+       "Allowing all users to use s2ram"]
