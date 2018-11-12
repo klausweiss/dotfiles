@@ -1,1 +1,0 @@
-/home/klaus/.config/fisherman/pyenv/functions/pyenv.fish
