@@ -1,7 +1,6 @@
 ### PATH
 set PATH ~/.pyenv/shims $PATH
 set PATH ~/.pyenv/bin   $PATH
-set PATH ~/.local/bin   $PATH
 
 ### ENV
 set TERM screen-256color
