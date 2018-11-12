@@ -1,0 +1,9 @@
+- link:
+    ~/.config/user-dirs.dirs: xorg/user-dirs
+    ~/.xinitrc: xorg/xinitrc
+    ~/.Xresources: xorg/Xresources
+
+- shell:
+    - [./.meta/scripts/user-dirs.sh, Creating user-dirs]
+    - [mkdir -p ~/.Xresources.d, Creating Xresources config dir]
+    - [xrdb -I"$HOME" -load ~/.Xresources, Loading Xresources config]

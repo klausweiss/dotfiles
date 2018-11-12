@@ -1,6 +1,0 @@
-- link:
-    ~/.Xresources: Xresources/Xresources
-
-- shell:
-    - [mkdir -p ~/.Xresources.d, Creating Xresources config dir]
-    - [xrdb -I"$HOME" -load ~/.Xresources, Loading Xresources config]
