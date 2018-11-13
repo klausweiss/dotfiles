@@ -1,10 +1,17 @@
 #!/bin/bash
 
+xrdb -I"$HOME" -load ~/.Xresources
+
+# set keyring variables
+if [ -n "$DESKTOP_SESSION" ];then
+    eval $(gnome-keyring-daemon --start)
+    export SSH_AUTH_SOCK
+fi
+
+setxkbmap pl
 setxkbmap -option shift:both_capslock
 setxkbmap -option caps:ctrl_modifier
 
-xrdb -I"$HOME" -load ~/.Xresources
-
+# startup applications
 redshift &
 nm-applet &
-setxkbmap pl
