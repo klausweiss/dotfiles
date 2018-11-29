@@ -2,6 +2,7 @@
     ~/.config/user-dirs.dirs: xorg/user-dirs
     ~/.config/wallpaper: xorg/wallpaper.png
     ~/.xinitrc: xorg/xinitrc
+    ~/.xmodmap: xorg/xmodmap
     ~/.Xresources: xorg/Xresources
 
 - shell:

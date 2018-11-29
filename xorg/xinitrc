@@ -11,6 +11,7 @@ fi
 setxkbmap pl
 setxkbmap -option shift:both_capslock
 setxkbmap -option caps:ctrl_modifier
+xmodmap ~/.xmodmap
 
 # startup applications
 redshift &

@@ -1,0 +1,6 @@
+keycode 133 = Mode_switch
+keycode 94 = BackSpace Delete
+keysym j = j J Left
+keysym l = l L Right Right lstroke Lstroke
+keysym i = i I Up
+keysym k = k K Down
