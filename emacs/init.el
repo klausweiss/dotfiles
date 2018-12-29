@@ -56,6 +56,16 @@
     (evil-define-key 'normal neotree-mode-map (kbd "H") 'neotree-hidden-file-toggle)
   )
 
+(use-package evil-visualstar
+  :commands (evil-visualstar/begin-search-forward
+	     evil-visualstar/begin-search-backward)
+  :init
+  (progn
+    (define-key evil-visual-state-map (kbd "*")
+      'evil-visualstar/begin-search-forward)
+    (define-key evil-visual-state-map (kbd "#")
+      'evil-visualstar/begin-search-backward)))
+
 (use-package evil-magit)
 
 (use-package helm
