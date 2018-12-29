@@ -1,0 +1,9 @@
+#!/bin/sh
+echo "Linking vim config file"
+ln -sT --interactive ~/.dotfiles/vim/vimrc ~/.vimrc
+
+echo "Linking vim config directory"
+ln -sT --interactive ~/.dotfiles/vim/vim ~/.vim
+
+echo "Installing vim plugins"
+vim +PlugInstall +qall

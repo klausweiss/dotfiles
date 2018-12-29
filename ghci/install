@@ -1,0 +1,3 @@
+#!/bin/sh
+echo "Linking ghci config"
+ln -sT --interactive ~/.dotfiles/ghci/ghcirc ~/.ghci

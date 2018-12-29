@@ -1,0 +1,3 @@
+#!/bin/sh
+echo "Linking awesome config dir"
+ln -sT --interactive ~/.dotfiles/awesome ~/.config/awesome

@@ -1,6 +1,0 @@
-- link:
-    ~/.config/fish: fish
-
-- shell:
-    - command: set -U fish_greeting
-      description: Disabling fish motd

@@ -1,7 +1,0 @@
-- link:
-    ~/.emacs.d: emacs
-
-- shell:
-    - command: emacs --batch -l ~/.emacs.d/init.el
-      description: Installing emacs plugins
-      stdout: true

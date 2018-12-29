@@ -1,43 +1,47 @@
 #!/usr/bin/env bash
-
 set -e
 
-CONFIG_FILENAME="install.conf.yaml"
-
 BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-META_DIR=".meta"
+PROFILES_DIR="${BASE_DIR}/.profiles"
 
-DOTBOT_DIR="dotbot"
-DOTBOT_BIN="bin/dotbot"
-
-INSTALL_PROFILES="${BASE_DIR}/${META_DIR}/scripts/install-profiles.sh"
-
-# checkout dotbot and its dependencies
-cd $BASE_DIR
-git submodule update --init --recursive
-
-"${BASE_DIR}/${META_DIR}/${DOTBOT_DIR}/${DOTBOT_BIN}" -d "${BASE_DIR}" -c "${BASE_DIR}/${META_DIR}/${CONFIG_FILENAME}"
-
-if [ $# -eq 0 ]; then
-    SYSTEM=$(uname)
-    if [[ $SYSTEM == Linux ]]; then
-        DISTRO="$(${BASE_DIR}/${META_DIR}/functions/detect-distro)"
-        PROFILES="${DISTRO}"
-
-        PROFILES+=" linux"
-
+function detect_distro { cat /etc/*release | sed -n "s/^NAME=//p" | sed "s/\"//g"; }
+function is_xorg_running {
         set +e
         (xset q >/dev/null 2>/dev/null)
         XORG_RUNNING=$?
         set -e
-        if [ $XORG_RUNNING -eq 0 ]; then
-            PROFILES+=" xorg"
+        if [ $XORG_RUNNING -eq 0 ]; then true; else false; fi
+}
+
+function install_config { echo "Configuring $1"; ${BASE_DIR}/$1/install; }
+function install_configs { for config in $@; do install_config $config; done; }
+function install_profile {
+    for config in `cat "${PROFILES_DIR}/$1"`; do
+        install_config $config
+    done
+}
+function install_profiles { for profile in $@; do install_profile $profile; done; }
+
+# checkout submodules
+cd $BASE_DIR
+git submodule update --init --recursive
+
+if [ $# -eq 0 ]; then
+    # automatically detect profiles to install
+    PROFILES=()
+    SYSTEM=$(uname)
+    if [[ $SYSTEM == Linux ]]; then
+        PROFILES+=("linux")
+        PROFILES+=(`detect_distro`)
+        if (is_xorg_running); then
+            PROFILES+=("xorg")
         fi
     else
         echo $SYSTEM not supported!
+        exit 1
     fi
-else
-    PROFILES=${@}
-fi
 
-$INSTALL_PROFILES $PROFILES
+    install_profiles ${PROFILES[@]}
+else
+    install_configs $@
+fi

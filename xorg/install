@@ -1,0 +1,51 @@
+#!/bin/bash
+
+function exec-if-exists {
+    COMMAND=$1
+    ARGS="${@:2}"
+    if [ -x "$(command -v $COMMAND)" ]; then
+        $COMMAND $ARGS
+    fi
+}
+
+function create-user-dirs {
+    DIRS="
+        $HOME/doc/desktop
+        $HOME/doc/docs
+        $HOME/doc/images
+        $HOME/doc/music
+        $HOME/doc/shared
+        $HOME/doc/videos
+        $HOME/src
+        $HOME/.templates
+        $HOME/tmp
+    "
+    for DIR in $DIRS; do
+        mkdir -p $DIR
+    done
+
+    exec-if-exists xdg-user-dirs-update
+    exec-if-exists xdg-user-dirs-gtk-update
+}
+
+
+echo "Linking user-dirs"
+ln -sT --interactive ~/.dotfiles/xorg/user-dirs ~/.config/user-dirs.dirs
+
+echo "Linking wallpaper"
+ln -sT --interactive ~/.dotfiles/xorg/wallpaper.png ~/.config/wallpaper
+
+echo "Linking .xinitrc"
+ln -sT --interactive ~/.dotfiles/xorg/xinitrc ~/.xinitrc
+
+echo "Linking Xresources"
+ln -sT --interactive ~/.dotfiles/xorg/xresource ~/.Xresources
+
+echo "Creating userdirs"
+create-user-dirs
+
+echo "Creating Xresources config dir"
+mkdir -p ~/.Xresources.d/
+
+echo "Loading Xresources config"
+xrdb -I"$HOME" -load ~/.Xresources

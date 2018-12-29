@@ -1,0 +1,3 @@
+#!/bin/sh
+echo "Linking fonts dir"
+ln -sT --interactive ~/.dotfiles/fonts ~/.fonts

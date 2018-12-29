@@ -1,0 +1,3 @@
+#!/bin/sh
+echo "Linking tmux config"
+ln -sT --interactive ~/.dotfiles/tmux/tmux.conf ~/.tmux.conf

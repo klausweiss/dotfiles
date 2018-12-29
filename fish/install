@@ -1,0 +1,6 @@
+#!/bin/sh
+echo "Linking fish config directory"
+ln -sT --interactive ~/.dotfiles/fish ~/.config/fish
+
+echo "Disabling fish motd"
+fish -c "set -U fish_greeting"

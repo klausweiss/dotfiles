@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DOTFILES_DIR=$(realpath `dirname $0`/../../)
+DOTFILES_DIR=$(realpath `dirname $0`/../)
 TEMPLATE_FILE=$DOTFILES_DIR/git/gitconfig
 DESIRED_PATH=$HOME/.gitconfig
 
@@ -16,7 +16,8 @@ setup-git() {
 
 GIT_FILLED_FIELDS=$(test -f $HOME/.gitconfig && cat $HOME/.gitconfig | grep -e "\(name\|email\) = \w\+" | wc -l || echo 0)
 if [ $GIT_FILLED_FIELDS = 2 ]; then
-    echo "git already set up";
+    echo "git already set up"
 else
+	echo "Setting up git"
     setup-git;
 fi
