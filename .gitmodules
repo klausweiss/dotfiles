@@ -1,3 +1,6 @@
 [submodule ".meta/dotbot"]
 	path = .meta/dotbot
 	url = https://github.com/anishathalye/dotbot.git
+[submodule "awesome/awesome-ez"]
+	path = awesome/awesome-ez
+	url = https://github.com/klausweiss/awesome-ez.git
