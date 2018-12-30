@@ -1,3 +1,3 @@
-[submodule "awesome/awesome-ez"]
-	path = awesome/awesome-ez
+[submodule "awesome/ez"]
+	path = awesome/ez
 	url = https://github.com/klausweiss/awesome-ez.git

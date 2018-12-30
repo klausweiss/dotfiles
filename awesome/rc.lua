@@ -4,7 +4,7 @@ local gears = require("gears")
 beautiful.init(gears.filesystem.get_themes_dir() .. "default/theme.lua") 
 
 
-local ez = require("awesome-ez") 
+local ez = require("ez")
 
 ez.layout.layouts = {
    tile,
