@@ -1,6 +1,15 @@
 #!/usr/bin/env bash
 set -e
 
+# check force
+ARGV=()
+FORCE=false
+for ARG in $@; do
+    if [[ $ARG == "-f" ]]; then FORCE=true;
+    else ARGV+=" $ARG"; fi
+    shift
+done
+
 BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROFILES_DIR="${BASE_DIR}/.profiles"
 
@@ -16,7 +25,11 @@ function is_xorg_running {
 function install_config {
     echo "Configuring $1"
     pushd $1
-    make install
+    if $FORCE; then
+        make install --always-make
+    else
+        make install
+    fi
     popd
 }
 function install_configs { for config in $@; do install_config $config; done; }
@@ -31,7 +44,7 @@ function install_profiles { for profile in $@; do install_profile $profile; done
 cd $BASE_DIR
 git submodule update --init --recursive
 
-if [ $# -eq 0 ]; then
+if [ ${#ARGV} -eq 0 ]; then
     # automatically detect profiles to install
     PROFILES=()
     SYSTEM=$(uname)
@@ -48,5 +61,5 @@ if [ $# -eq 0 ]; then
 
     install_profiles ${PROFILES[@]}
 else
-    install_configs $@
+    install_configs $ARGV
 fi
