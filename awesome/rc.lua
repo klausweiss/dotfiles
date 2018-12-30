@@ -77,12 +77,9 @@ ez.wibar.middle = {
    tasklist,
 }
 
-local volumebar  = require("widgets.volumebar")
-local batterybar = require("widgets.battery-widget")
-
 ez.wibar.right = {
-   function () return volumebar end,
-   batterybar,
+   require("widgets.volumebar"),
+   require("widgets.battery-widget"),
    tray,
    clock,
    layouts_switcher,

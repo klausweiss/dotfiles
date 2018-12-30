@@ -65,4 +65,4 @@ end)
 
 watch(request_command, 1, update_graphic, volumebar_widget)
 
-return volumebar_widget
+return function () return volumebar_widget end
