@@ -1,6 +1,0 @@
-#!/bin/sh
-echo "Linking emacs config directory"
-ln -sT --interactive ~/.dotfiles/emacs ~/.emacs.d
-
-echo "Installing emacs plugins"
-emacs --batch -l ~/.emacs.d/init.el

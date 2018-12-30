@@ -28,24 +28,4 @@ function create-user-dirs {
     exec-if-exists xdg-user-dirs-gtk-update
 }
 
-
-echo "Linking user-dirs"
-ln -sT --interactive ~/.dotfiles/xorg/user-dirs ~/.config/user-dirs.dirs
-
-echo "Linking wallpaper"
-ln -sT --interactive ~/.dotfiles/xorg/wallpaper.png ~/.config/wallpaper
-
-echo "Linking .xinitrc"
-ln -sT --interactive ~/.dotfiles/xorg/xinitrc ~/.xinitrc
-
-echo "Linking Xresources"
-ln -sT --interactive ~/.dotfiles/xorg/xresource ~/.Xresources
-
-echo "Creating userdirs"
 create-user-dirs
-
-echo "Creating Xresources config dir"
-mkdir -p ~/.Xresources.d/
-
-echo "Loading Xresources config"
-xrdb -I"$HOME" -load ~/.Xresources

@@ -1,3 +1,0 @@
-#!/bin/sh
-echo "Linking xterm config"
-ln -sT --interactive ~/.dotfiles/xterm/Xresources.conf ~/.Xresources.d/xterm.conf

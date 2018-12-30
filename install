@@ -13,7 +13,12 @@ function is_xorg_running {
         if [ $XORG_RUNNING -eq 0 ]; then true; else false; fi
 }
 
-function install_config { echo "Configuring $1"; ${BASE_DIR}/$1/install; }
+function install_config {
+    echo "Configuring $1"
+    pushd $1
+    make install
+    popd
+}
 function install_configs { for config in $@; do install_config $config; done; }
 function install_profile {
     for config in `cat "${PROFILES_DIR}/$1"`; do
