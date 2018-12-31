@@ -4,6 +4,7 @@ install-packages:
 	@echo "Installing packages"
 	@sudo apt install -y \
 		awesome \
+		emacs25 \
 		fish \
 		redshift \
 		rofi \
