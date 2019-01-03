@@ -1,3 +1,8 @@
+(use-package neotree
+  :config
+  (setq neo-theme (if (display-graphic-p) 'icons 'arrow)))
+
+
 (defun neotree-project-dir ()
   "Open NeoTree in the projectile root."
   (interactive)

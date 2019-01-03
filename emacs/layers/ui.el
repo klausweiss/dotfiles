@@ -1,6 +1,10 @@
+;; themes
 (use-package birds-of-paradise-plus-theme)
 (use-package gruvbox-theme)
 (use-package jbeans-theme)
+
+;; icons
+(use-package all-the-icons)
 
 (load-theme 'gruvbox t)
 
