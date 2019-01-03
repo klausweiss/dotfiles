@@ -7,6 +7,17 @@
 ;; icons
 (use-package all-the-icons)
 
+;; dashboard
+(use-package dashboard
+  :config
+  (dashboard-setup-startup-hook)
+  (setq dashboard-startup-banner 'logo)
+  (setq dashboard-items '((recents  . 3)
+			  (projects . 5)
+			  (agenda   . 5)
+			  ))
+  )
+
 (load-theme 'zerodark t)
 
 (global-linum-mode t)
