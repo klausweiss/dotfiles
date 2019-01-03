@@ -1,7 +1,6 @@
 ;; package rpositories
 (require 'package) 
-(add-to-list 'package-archives '("melpa" . "http://melpa.org/packages/"))
-(add-to-list 'package-archives '("melpa-stable" . "http://stable.melpa.org/packages/")) 
+(add-to-list 'package-archives '("melpa-stable" . "http://stable.melpa.org/packages/") t)
 (setq package-enable-at-startup nil)
 (package-initialize)
 
