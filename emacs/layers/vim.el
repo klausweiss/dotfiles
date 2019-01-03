@@ -10,7 +10,11 @@
 		;; magit
 		"gs" 'magit
 		;; projectile
-		"pp" 'helm-projectile-switch-project))
+		"pb" 'helm-projectile-switch-to-buffer
+		"pf" 'helm-projectile-find-file
+		"pp" 'helm-projectile-switch-project
+		"pt" 'neotree-project-dir
+		))
 
 (use-package evil-leader
   :after
