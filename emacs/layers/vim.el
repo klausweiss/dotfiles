@@ -1,8 +1,8 @@
 (setq evilkeys (list
 		"SPC" 'helm-M-x
 		;; buffers
+		"bb" 'helm-buffers-list
 		"bd" 'kill-this-buffer
-		"bl" 'helm-buffers-list
 		;; files
 		"ff"  'helm-find-files
 		"fed" 'find-config-file
