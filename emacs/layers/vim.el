@@ -38,17 +38,13 @@
     (evil-define-key 'normal neotree-mode-map (kbd "H") 'neotree-hidden-file-toggle)
   )
 
-(use-package evil-visualstar
+(use-package evil-multiedit
   :after
   (evil)
-  :commands (evil-visualstar/begin-search-forward
-	     evil-visualstar/begin-search-backward)
-  :init
-  (progn
-    (define-key evil-visual-state-map (kbd "*")
-      'evil-visualstar/begin-search-forward)
-    (define-key evil-visual-state-map (kbd "#")
-      'evil-visualstar/begin-search-backward)))
+  :config
+  (evil-global-set-key 'normal (kbd "R") 'evil-multiedit-match-all)
+  (evil-global-set-key 'visual (kbd "R") 'evil-multiedit-match-all)
+  )
 
 (use-package evil-magit
   :after
