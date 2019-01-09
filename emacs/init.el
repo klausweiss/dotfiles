@@ -14,3 +14,7 @@
 ;; packages
 (load "~/.emacs.d/load-directory.el")
 (load-directory "~/.emacs.d/layers")
+
+;; custom
+(setq custom-file "~/.emacs.d/custom.el")
+(load custom-file 'no-error)
