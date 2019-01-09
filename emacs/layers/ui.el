@@ -16,6 +16,9 @@
 			  (projects . 5)
 			  (agenda   . 5)
 			  ))
+  :bind (:map dashboard-mode-map
+	      ("C-c C-q" . 'dashboard-refresh-buffer)
+	      )
   )
 
 (load-theme 'zerodark t)
