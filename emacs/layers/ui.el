@@ -31,6 +31,10 @@
   (setq doom-modeline-github nil)
   )
 
+;; org
+(use-package org-bullets
+  :hook (org-mode . org-bullets-mode))
+
 (load-theme 'zerodark t)
 
 (global-linum-mode t)
