@@ -6,6 +6,8 @@ beautiful.init(gears.filesystem.get_themes_dir() .. "default/theme.lua")
 
 local ez = require("ez")
 
+ez.theme.wallpaper = "~/.config/wallpaper"
+
 ez.layout.layouts = {
    tile,
    max,
