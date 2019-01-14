@@ -28,7 +28,7 @@ ez.keyboard.global[{alt, shift, " "}] = prev_layout
 
 -- windows
 ez.keyboard.global[{alt,        tab}]   = focus_next_client
-ez.keyboard.global[{alt, shift, tab}]   = focus_prev_client
+ez.keyboard.global[{alt, shift, tab}]   = restore_and_focus_random_client
 ez.keyboard.client[{alt, shift, "f"}]   = toggle_fullscreen_client
 ez.keyboard.client[{alt, shift, "m"}]   = toggle_maximize_client
 ez.keyboard.client[{alt, "w"}]          = close_client
