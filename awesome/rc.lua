@@ -1,6 +1,6 @@
 local ez = require("ez")
 
-ez.theme.gaps = 2
+ez.theme.gaps = 3
 ez.theme.wallpaper = "~/.config/wallpaper"
 
 ez.layout.layouts = {
@@ -9,7 +9,15 @@ ez.layout.layouts = {
    floating,
 } 
 
-ez.tags.tags = {"1", "2", "3", "4", "5", "6", "7"}
+local tag_web  = " web"
+local tag_dev  = " dev"
+local tag_term = " term"
+local tag_im   = " im"
+local tag_5    = " 5"
+local tag_6    = " 6"
+local tag_mus  = " mus"
+
+ez.tags.tags = {tag_web, tag_dev, tag_term, tag_im, tag_5, tag_6, tag_mus}
 
 ez.mouse.desktop_wheel_down = show_prev_tag
 ez.mouse.desktop_wheel_up   = show_next_tag
