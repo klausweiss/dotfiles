@@ -97,5 +97,3 @@ ez.rules["Firefox"]    .tag = tag_web
 ez.rules["Fractal"]    .tag = tag_im
 ez.rules["Telegram"]   .tag = tag_im
 ez.rules["Thunderbird"].tag = tag_im
-
-ez.setup()
