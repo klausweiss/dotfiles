@@ -92,4 +92,10 @@ ez.wibar.right = {
 
 ez.client.focus_follow_mouse = true
 
+ez.rules["Emacs"]      .tag = tag_dev
+ez.rules["Firefox"]    .tag = tag_web
+ez.rules["Fractal"]    .tag = tag_im
+ez.rules["Telegram"]   .tag = tag_im
+ez.rules["Thunderbird"].tag = tag_im
+
 ez.setup()
