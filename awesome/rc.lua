@@ -64,7 +64,7 @@ local internet_browser = "firefox"
 local screen_lock      = "slock"
 ez.keyboard.global[{alt, ctrl, enter}] = run(terminal)
 ez.keyboard.global[{alt, shift, "e"}]  = run(file_manager)
-ez.keyboard.global[{alt, shift, "b"}]  = run(internet_browser)
+ez.keyboard.global[{alt, shift, "w"}]  = run(internet_browser)
 ez.keyboard.global[{alt, shift, "l"}]  = run(screen_lock)
 
 -- system
