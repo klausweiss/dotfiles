@@ -15,9 +15,9 @@ local tag_term = " term"
 local tag_im   = " im"
 local tag_5    = " 5"
 local tag_6    = " 6"
-local tag_mus  = " mus"
+local tag_7    = " 7"
 
-ez.tags.tags = {tag_web, tag_dev, tag_term, tag_im, tag_5, tag_6, tag_mus}
+ez.tags.tags = {tag_web, tag_dev, tag_term, tag_im, tag_5, tag_6, tag_7}
 
 ez.mouse.desktop_wheel_down = show_prev_tag
 ez.mouse.desktop_wheel_up   = show_next_tag
