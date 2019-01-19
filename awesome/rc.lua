@@ -91,6 +91,14 @@ ez.wibar.right = {
 }
 
 ez.client.focus_follow_mouse = true
+ez.client.titlebar.left = {
+   icon,
+}
+ez.client.titlebar.right = {
+   minimize,
+   maximize,
+   close,
+}
 
 ez.rules["Emacs"]      .tag = tag_dev
 ez.rules["Firefox"]    .tag = tag_web
