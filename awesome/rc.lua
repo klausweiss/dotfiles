@@ -61,10 +61,12 @@ ez.keyboard.tags[{alt, ctrl, shift}] = toggle_tag_on_focused_client
 local terminal         = "xterm"
 local file_manager     = "thunar"
 local internet_browser = "firefox"
+local mail_client      = "evolution"
 local screen_lock      = "slock"
 ez.keyboard.global[{alt, ctrl, enter}] = run(terminal)
 ez.keyboard.global[{alt, shift, "e"}]  = run(file_manager)
 ez.keyboard.global[{alt, shift, "w"}]  = run(internet_browser)
+ez.keyboard.global[{alt, shift, "m"}]  = run(mail_client)
 ez.keyboard.global[{alt, shift, "l"}]  = run(screen_lock)
 
 -- system
@@ -101,7 +103,7 @@ ez.client.titlebar.right = {
 }
 
 ez.rules["Emacs"]      .tag = tag_dev
+ez.rules["Evolution"]  .tag = tag_im
 ez.rules["Firefox"]    .tag = tag_web
 ez.rules["Fractal"]    .tag = tag_im
 ez.rules["Telegram"]   .tag = tag_im
-ez.rules["Thunderbird"].tag = tag_im
