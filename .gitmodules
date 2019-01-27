@@ -3,4 +3,4 @@
 	url = https://github.com/klausweiss/awesome-ez.git
 [submodule "awesome/obvious"]
 	path = awesome/obvious
-	url = https://github.com/klausweiss/obvious.git
+	url = https://github.com/hoelzro/obvious.git
