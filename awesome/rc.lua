@@ -85,7 +85,6 @@ ez.wibar.middle = {
 }
 
 ez.wibar.right = {
-   require("widgets.volumebar"),
    function (s) return require("obvious.volume_alsa")() end,
    require("obvious.battery"),
    tray,
