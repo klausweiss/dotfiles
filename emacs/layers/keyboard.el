@@ -11,7 +11,17 @@
 (global-set-key (kbd "<escape>") 'keyboard-escape-quit)
 
 ;; The following lines are always needed.  Choose your own keys.
-(global-set-key "\C-cl" 'org-store-link)
-(global-set-key "\C-ca" 'org-agenda)
-(global-set-key "\C-cc" 'org-capture)
-(global-set-key "\C-cb" 'org-switchb)
+(global-set-key (kbd "C-c l") 'org-store-link)
+(global-set-key (kbd "C-c a") 'org-agenda)
+(global-set-key (kbd "C-c c") 'org-capture)
+(global-set-key (kbd "C-c b") 'org-switchb)
+
+;; moving between windows
+(global-set-key (kbd "C-S-i") 'windmove-up)
+(global-set-key (kbd "C-S-l") 'windmove-right)
+(global-set-key (kbd "C-S-k") 'windmove-down)
+(global-set-key (kbd "C-S-j") 'windmove-left)
+
+;; splitting windows
+(global-set-key (kbd "C-=") 'split-window-below)
+(global-set-key (kbd "C-\\") 'split-window-right)
