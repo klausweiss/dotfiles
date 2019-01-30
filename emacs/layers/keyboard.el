@@ -22,6 +22,7 @@
 (global-set-key (kbd "C-S-k") 'windmove-down)
 (global-set-key (kbd "C-S-j") 'windmove-left)
 
-;; splitting windows
-(global-set-key (kbd "C-=") 'split-window-below)
-(global-set-key (kbd "C-\\") 'split-window-right)
+;; manipulating windows
+(global-set-key (kbd "C-+") 'split-window-below)
+(global-set-key (kbd "C-|") 'split-window-right)
+(global-set-key (kbd "C-)") 'delete-window)
