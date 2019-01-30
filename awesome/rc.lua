@@ -1,6 +1,6 @@
 local ez = require("ez")
 
-ez.theme.gaps = 3
+ez.theme.gaps = 4
 ez.theme.wallpaper = "~/.config/wallpaper"
 
 ez.layouts = {
