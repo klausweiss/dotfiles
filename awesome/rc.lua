@@ -32,6 +32,10 @@ ez.keyboard.global[{alt, shift, " "}] = prev_layout
 -- windows
 ez.keyboard.global[{alt,        tab}]   = focus_next_client
 ez.keyboard.global[{alt, shift, tab}]   = focus_prev_client
+ez.keyboard.global[{alt, ctrl,  "i"}]   = focus_up_client
+ez.keyboard.global[{alt, ctrl,  "l"}]   = focus_right_client
+ez.keyboard.global[{alt, ctrl,  "k"}]   = focus_down_client
+ez.keyboard.global[{alt, ctrl,  "j"}]   = focus_left_client
 ez.keyboard.client[{alt, shift, "f"}]   = toggle_fullscreen_client
 ez.keyboard.client[{alt, shift, "m"}]   = toggle_maximize_client
 ez.keyboard.client[{alt, "w"}]          = close_client
