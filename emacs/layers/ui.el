@@ -1,7 +1,8 @@
 ;; themes
 (use-package birds-of-paradise-plus-theme)
 (use-package gruvbox-theme)
-(use-package jbeans-theme)
+(use-package jbeans-theme
+  :pin melpa)
 (use-package zerodark-theme)
 
 ;; icons
