@@ -27,3 +27,11 @@
   (setq company-minimum-prefix-length 1)
   (setq company-dabbrev-downcase nil)
   )
+
+(use-package helm-company
+  :after (:all helm company)
+  :bind
+  (:map company-mode-map
+	("C-<tab>" . helm-company)
+	:map company-active-map
+	("C-<tab>" . helm-company)))
