@@ -1,4 +1,5 @@
 (use-package neotree
+  :pin melpa
   :config
   (setq neo-theme (if (display-graphic-p) 'icons 'arrow)))
 
