@@ -13,7 +13,7 @@
 
 ;; packages
 (load "~/.emacs.d/load-directory.el")
-(load-directory "~/.emacs.d/layers")
+(load-directory "~/.emacs.d/layers" t)
 
 ;; custom
 (setq custom-file "~/.emacs.d/custom.el")
