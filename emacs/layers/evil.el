@@ -3,6 +3,7 @@
 		;; buffers
 		"bb" 'helm-buffers-list
 		"bd" 'kill-this-buffer
+		"<tab>" 'mode-line-other-buffer
 		;; files
 		"ff"  'helm-find-files
 		"fed" 'find-config-file
