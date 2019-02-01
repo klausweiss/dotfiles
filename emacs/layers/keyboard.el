@@ -26,3 +26,7 @@
 (global-set-key (kbd "C-+") 'split-window-below)
 (global-set-key (kbd "C-|") 'split-window-right)
 (global-set-key (kbd "C-)") 'delete-window)
+
+;; errors
+(global-set-key (kbd "<f2>") 'next-error)
+(global-set-key (kbd "S-<f2>") 'previous-error)
