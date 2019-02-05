@@ -16,3 +16,5 @@ xmodmap ~/.xmodmap
 # startup applications
 redshift &
 nm-applet &
+
+source ~/.xinitrc.local
