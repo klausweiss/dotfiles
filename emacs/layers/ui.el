@@ -17,6 +17,8 @@
 			  (projects . 5)
 			  (agenda   . 5)
 			  ))
+  :custom-face
+  (widget-button ((t (:inherit link :underline nil :weight bold))))
   :bind (:map dashboard-mode-map
 	      ("C-c C-q" . 'dashboard-refresh-buffer)
 	      )
@@ -35,8 +37,6 @@
 ;; org
 (use-package org-bullets
   :hook (org-mode . org-bullets-mode))
-
-(load-theme 'zerodark t)
 
 (global-linum-mode t)
 (scroll-bar-mode -1)
