@@ -92,10 +92,16 @@ ez.wibar.middle = {
 }
 
 ez.wibar.right = {
-   function (s) return require("obvious.volume_alsa")() end,
-   require("obvious.battery"),
    tray,
-   clock,
+   text("       "),
+   function (s) return require("obvious.volume_alsa")() end,
+   text("       "),
+   require("obvious.battery"),
+   text("       "),
+   date,
+   text("       "),
+   time,
+   text("   "),
    layouts_switcher,
 }
 
