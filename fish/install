@@ -10,4 +10,4 @@ gprint "Linking fish config dir";
 symlink $HERE, "$HOME/.config/fish";
 
 gprint "Disabling fish motd";
-system "fish -c 'set -U fish_greeting'"
+ex "fish -c 'set -U fish_greeting'"

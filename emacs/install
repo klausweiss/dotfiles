@@ -10,4 +10,4 @@ gprint "Linking emacs config dir";
 symlink $HERE, "$HOME/.emacs.d";
 
 gprint "Installing emacs plugins";
-system "emacs --batch -l ~/.emacs.d/init.el"
+ex "emacs --batch -l ~/.emacs.d/init.el"

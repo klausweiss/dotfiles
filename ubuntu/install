@@ -17,7 +17,7 @@ my @packages =
       "vim",
       "xterm");
 my $packages = join(" ", @packages);
-system "sudo apt install -y $packages";
+ex "sudo apt install -y $packages";
 
 gprint "Allowing everyone to suspend to ram";
-system "sudo chmod +s /usr/sbin/s2ram";
+ex "sudo chmod +s /usr/sbin/s2ram";

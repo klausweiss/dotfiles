@@ -7,4 +7,4 @@ my $HERE = dir(__FILE__);
 
 
 gprint "Configuring git";
-system "$HERE/setup-gitconfig";
+ex "$HERE/setup-gitconfig";

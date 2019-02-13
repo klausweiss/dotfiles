@@ -19,10 +19,10 @@ gprint "Linking Xresources";
 symlink "$HERE/Xresources", "$HOME/.Xresources";
 
 gprint "Creating userdirs";
-system "./create-user-dirs";
+ex "./create-user-dirs";
 
 gprint "Creating Xresources config dir";
-system "mkdir -p $HOME/.Xresources.d";
+ex "mkdir -p $HOME/.Xresources.d";
 
 gprint "Loading Xresources config";
-system "xrdb -I$HOME -load $HOME/.Xresources";
+ex "xrdb -I$HOME -load $HOME/.Xresources";

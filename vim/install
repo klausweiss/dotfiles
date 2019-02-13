@@ -13,4 +13,4 @@ gprint "Linking vim config dir";
 symlink "$HERE/vim", "$HOME/.vim";
 
 gprint "Installing vim plugins"; 
-system "vim +PlugInstall +qall";
+ex "vim +PlugInstall +qall";
