@@ -1,28 +1,22 @@
 #!/usr/bin/env perl
+use FindBin;
+use lib "$FindBin::Bin/../.meta";
+use Dotfiles qw( :ALL );
 
-use File::Basename 'dirname';
-use Cwd 'realpath';
-use Term::ANSIColor qw(:constants);
-
-sub gprint {
-    print GREEN, @_, RESET, "\n";
-}
-
-my $thisdir = dirname(realpath(__FILE__));
-my $HOME = $ENV{"HOME"};
+my $HERE = dir(__FILE__);
 
 
 gprint "Linking user-dirs";
-symlink "$thisdir/user-dirs", "$HOME/.config/user-dirs.dirs";
+symlink "$HERE/user-dirs", "$HOME/.config/user-dirs.dirs";
 
 gprint "Linking wallpaper";
-symlink "$thisdir/wallpaper.png", "$HOME/.config/wallpaper";
+symlink "$HERE/wallpaper.png", "$HOME/.config/wallpaper";
 
 gprint "Linking .xinitrc";
-symlink "$thisdir/xinitrc", "$HOME/.xinitrc";
+symlink "$HERE/xinitrc", "$HOME/.xinitrc";
 
 gprint "Linking Xresources";
-symlink "$thisdir/Xresources", "$HOME/.Xresources";
+symlink "$HERE/Xresources", "$HOME/.Xresources";
 
 gprint "Creating userdirs";
 system "./create-user-dirs";

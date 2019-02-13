@@ -1,19 +1,13 @@
 #!/usr/bin/env perl
+use FindBin;
+use lib "$FindBin::Bin/../.meta";
+use Dotfiles qw( :ALL );
 
-use File::Basename 'dirname';
-use Cwd 'realpath';
-use Term::ANSIColor qw(:constants);
-
-sub gprint {
-    print GREEN, @_, RESET, "\n";
-}
-
-my $thisdir = dirname(realpath(__FILE__));
-my $HOME = $ENV{"HOME"};
+my $HERE = dir(__FILE__);
 
 
 gprint "Linking emacs config dir";
-symlink $thisdir, "$HOME/.emacs.d";
+symlink $HERE, "$HOME/.emacs.d";
 
 gprint "Installing emacs plugins";
 system "emacs --batch -l ~/.emacs.d/init.el"

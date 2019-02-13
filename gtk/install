@@ -1,19 +1,13 @@
 #!/usr/bin/env perl
+use FindBin;
+use lib "$FindBin::Bin/../.meta";
+use Dotfiles qw( :ALL );
 
-use File::Basename 'dirname';
-use Cwd 'realpath';
-use Term::ANSIColor qw(:constants);
-
-sub gprint {
-    print GREEN, @_, RESET, "\n";
-}
-
-my $thisdir = dirname(realpath(__FILE__));
-my $HOME = $ENV{"HOME"};
+my $HERE = dir(__FILE__);
 
 
 gprint "Linking gtk2 config";
-symlink "$thisdir/gtkrc-2.0", "$HOME/.gtkrc-2.0";
+symlink "$HERE/gtkrc-2.0", "$HOME/.gtkrc-2.0";
 
 gprint "Linking gtk3 config";
-symlink "$thisdir/gtk3-settings.ini", "$HOME/.config/gtk-3.0/settings.ini";
+symlink "$HERE/gtk3-settings.ini", "$HOME/.config/gtk-3.0/settings.ini";

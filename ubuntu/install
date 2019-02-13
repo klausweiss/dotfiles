@@ -1,10 +1,7 @@
 #!/usr/bin/env perl
-
-use Term::ANSIColor qw(:constants);
-
-sub gprint {
-    print GREEN, @_, RESET, "\n";
-}
+use FindBin;
+use lib "$FindBin::Bin/../.meta";
+use Dotfiles qw( :ALL );
 
 
 gprint "Installing packages";
