@@ -12,5 +12,8 @@ my $thisdir = dirname(realpath(__FILE__));
 my $HOME = $ENV{"HOME"};
 
 
-gprint "Configuring git";
-system "$thisdir/setup-gitconfig";
+gprint "Linking emacs config dir";
+symlink $thisdir, "$HOME/.emacs.d";
+
+gprint "Installing emacs plugins";
+system "emacs --batch -l ~/.emacs.d/init.el"

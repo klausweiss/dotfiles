@@ -12,5 +12,8 @@ my $thisdir = dirname(realpath(__FILE__));
 my $HOME = $ENV{"HOME"};
 
 
-gprint "Configuring git";
-system "$thisdir/setup-gitconfig";
+gprint "Linking gtk2 config";
+symlink "$thisdir/gtkrc-2.0", "$HOME/.gtkrc-2.0";
+
+gprint "Linking gtk3 config";
+symlink "$thisdir/gtk3-settings.ini", "$HOME/.config/gtk-3.0/settings.ini";

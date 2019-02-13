@@ -1,0 +1,34 @@
+#!/usr/bin/env perl
+
+use File::Basename 'dirname';
+use Cwd 'realpath';
+use Term::ANSIColor qw(:constants);
+
+sub gprint {
+    print GREEN, @_, RESET, "\n";
+}
+
+my $thisdir = dirname(realpath(__FILE__));
+my $HOME = $ENV{"HOME"};
+
+
+gprint "Linking user-dirs";
+symlink "$thisdir/user-dirs", "$HOME/.config/user-dirs.dirs";
+
+gprint "Linking wallpaper";
+symlink "$thisdir/wallpaper.png", "$HOME/.config/wallpaper";
+
+gprint "Linking .xinitrc";
+symlink "$thisdir/xinitrc", "$HOME/.xinitrc";
+
+gprint "Linking Xresources";
+symlink "$thisdir/Xresources", "$HOME/.Xresources";
+
+gprint "Creating userdirs";
+system "./create-user-dirs";
+
+gprint "Creating Xresources config dir";
+system "mkdir -p $HOME/.Xresources.d";
+
+gprint "Loading Xresources config";
+system "xrdb -I$HOME -load $HOME/.Xresources";

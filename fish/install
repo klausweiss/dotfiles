@@ -12,5 +12,8 @@ my $thisdir = dirname(realpath(__FILE__));
 my $HOME = $ENV{"HOME"};
 
 
-gprint "Configuring git";
-system "$thisdir/setup-gitconfig";
+gprint "Linking fish config dir";
+symlink $thisdir, "$HOME/.config/fish";
+
+gprint "Disabling fish motd";
+system "fish -c 'set -U fish_greeting'"

@@ -12,5 +12,11 @@ my $thisdir = dirname(realpath(__FILE__));
 my $HOME = $ENV{"HOME"};
 
 
-gprint "Configuring git";
-system "$thisdir/setup-gitconfig";
+gprint "Linking vim config";
+symlink "$thisdir/vimrc", "$HOME/.vimrc";
+
+gprint "Linking vim config dir";
+symlink "$thisdir/vim", "$HOME/.vim";
+
+gprint "Installing vim plugins"; 
+system "vim +PlugInstall +qall";

@@ -12,5 +12,5 @@ my $thisdir = dirname(realpath(__FILE__));
 my $HOME = $ENV{"HOME"};
 
 
-gprint "Configuring git";
-system "$thisdir/setup-gitconfig";
+gprint "Linking ghci config";
+symlink "$thisdir/ghcirc", "$HOME/.ghci";

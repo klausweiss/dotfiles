@@ -1,0 +1,26 @@
+#!/usr/bin/env perl
+
+use Term::ANSIColor qw(:constants);
+
+sub gprint {
+    print GREEN, @_, RESET, "\n";
+}
+
+
+gprint "Installing packages";
+my @packages = 
+    ( "awesome",
+      "emacs25",
+      "fish",
+      "redshift",
+      "rofi",
+      "slock",
+      "tmux",
+      "uswsusp",
+      "vim",
+      "xterm");
+my $packages = join(" ", @packages);
+system "sudo apt install -y $packages";
+
+gprint "Allowing everyone to suspend to ram";
+system "sudo chmod +s /usr/sbin/s2ram";
