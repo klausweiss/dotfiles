@@ -5,17 +5,20 @@ use Dotfiles qw( :ALL );
 
 
 gprint "Installing packages";
-my @packages = 
-    ( "awesome",
-      "emacs25",
-      "fish",
-      "redshift",
-      "rofi",
-      "slock",
-      "tmux",
-      "uswsusp",
-      "vim",
-      "xterm");
+my @packages = qw(
+
+    awesome
+    emacs25
+    fish
+    redshift
+    rofi
+    slock
+    tmux
+    uswsusp
+    vim
+    xterm
+
+);
 my $packages = join(" ", @packages);
 ex "sudo apt install -y $packages";
 
