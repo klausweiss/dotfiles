@@ -22,7 +22,7 @@ $HOME = $ENV{"HOME"};
 
 sub dir {
     my ($_filename, $dirname, $_suffix) = fileparse(realpath(shift));
-    return $dirname;
+    return substr($dirname, 0, -1);
 }
 
 sub gprint {
