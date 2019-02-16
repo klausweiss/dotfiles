@@ -109,9 +109,8 @@ ez.client.titlebar.left = {
    icon,
 }
 ez.client.titlebar.right = {
-   minimize,
-   maximize,
-   close,
+   floating, ontop, sticky,
+   minimize, maximize, close,
 }
 
 ez.rules["Emacs"]      .tag = tag_dev
