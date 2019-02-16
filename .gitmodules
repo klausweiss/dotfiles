@@ -1,6 +1,6 @@
-[submodule "awesome/ez"]
-	path = awesome/ez
-	url = https://github.com/klausweiss/awesome-ez.git
 [submodule "awesome/obvious"]
 	path = awesome/obvious
 	url = https://github.com/hoelzro/obvious.git
+[submodule "awesome/ez"]
+	path = awesome/ez
+	url = https://github.com/klausweiss/ez-awesome.git
