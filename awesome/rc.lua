@@ -93,15 +93,14 @@ ez.wibar.middle = {
 
 ez.wibar.right = {
    tray,
-   text("       "),
-   function (s) return require("obvious.volume_alsa")() end,
-   text("       "),
-   require("obvious.battery"),
-   text("       "),
+   function (_screen)
+      return common.mkwidget(common.texticon_box("", require("obvious.volume_alsa")()))
+   end,
+   function (_screen)
+      return common.mkwidget(common.texticon_box("", require("obvious.battery")()))
+   end,
    date,
-   text("       "),
    time,
-   text("   "),
    layouts_switcher,
 }
 
