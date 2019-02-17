@@ -8,3 +8,4 @@
     default = matching
 [alias]
     ignore = "!gi() { curl -L -s https://www.gitignore.io/api/$@ ;}; gi"
+    new = "!git init; touch .gitignore; git add .gitignore; git commit -m 'Initial commit'"
