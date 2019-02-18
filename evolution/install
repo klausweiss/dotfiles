@@ -1,0 +1,11 @@
+#!/usr/bin/env perl
+use FindBin;
+use lib "$FindBin::Bin/../.meta";
+use Dotfiles qw( :ALL );
+
+my $HERE = dir(__FILE__);
+
+
+gprint "Linking evolution shortcuts config";
+mkdir "$HOME/.config/evolution";
+symlink "$HERE/accels", "$HOME/.config/evolution/accels";
