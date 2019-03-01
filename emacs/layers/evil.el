@@ -37,6 +37,7 @@
     (evil-define-key 'normal neotree-mode-map (kbd "p") 'neotree-previous-line)
     (evil-define-key 'normal neotree-mode-map (kbd "A") 'neotree-stretch-toggle)
     (evil-define-key 'normal neotree-mode-map (kbd "H") 'neotree-hidden-file-toggle)
+    (define-key evil-motion-state-map (kbd "C-e") nil)
   )
 
 (use-package evil-multiedit

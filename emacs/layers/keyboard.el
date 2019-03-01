@@ -8,6 +8,12 @@
 	 )
   )
 
+(use-package expand-region
+  :bind (("C-e" . 'er/expand-region)
+	 ("C-S-e" . 'er/contract-region)
+	 )
+  )
+
 (global-set-key (kbd "<escape>") 'keyboard-escape-quit)
 
 ;; The following lines are always needed.  Choose your own keys.
