@@ -60,6 +60,9 @@ syntax on
 set ignorecase
 set smartcase
 
+" incremental highlight
+set incsearch
+
 " tabs=spaces
 set tabstop=4
 set softtabstop=0
