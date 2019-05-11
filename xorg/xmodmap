@@ -1,4 +1,3 @@
-keycode 133 = Mode_switch
 keysym j = j J Left
 keysym l = l L Right Right lstroke Lstroke
 keysym i = i I Up
