@@ -8,6 +8,7 @@
   (haskell-process-suggest-remove-import-lines t)
   (haskell-process-auto-import-loaded-modules t)
   (haskell-tags-on-save t)
+  (haskell-stylish-on-save t)
   :hook
   (haskell-mode . (lambda ()
 		    (set (make-local-variable 'company-backends)
