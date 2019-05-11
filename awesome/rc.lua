@@ -6,6 +6,7 @@ ez.theme.wallpaper = "~/.config/wallpaper"
 ez.layouts = {
    tile,
    max,
+   magnifier,
    floating,
 } 
 
