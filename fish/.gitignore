@@ -2,3 +2,4 @@ fish_history
 fishd.*
 fishfile
 conf.d/local*
+fish_variables
