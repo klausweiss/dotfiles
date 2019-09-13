@@ -20,8 +20,8 @@ local tag_7    = " 7"
 
 ez.tags = {tag_web, tag_dev, tag_term, tag_im, tag_5, tag_6, tag_7}
 
-ez.mouse.desktop_wheel_down = show_prev_tag
-ez.mouse.desktop_wheel_up   = show_next_tag
+ez.mouse.desktop_wheel_down = show_next_tag
+ez.mouse.desktop_wheel_up   = show_prev_tag
 ez.mouse.client_click              = focus_client
 ez.mouse.client_click[{alt}]       = move_client
 ez.mouse.client_right_click[{alt}] = resize_client
