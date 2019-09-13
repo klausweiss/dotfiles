@@ -78,8 +78,8 @@ ez.keyboard.global[{alt, shift, "x"}]  = run("emacs")
 -- system
 local screenshooter = "flameshot gui"
 ez.keyboard.global[{"Print"}]                 = run(screenshooter)
-ez.keyboard.global[{"XF86MonBrightnessUp"}]   = run("light -A 3")
-ez.keyboard.global[{"XF86MonBrightnessDown"}] = run("light -U 3")
+ez.keyboard.global[{"XF86MonBrightnessUp"}]   = run("light -A 4")
+ez.keyboard.global[{"XF86MonBrightnessDown"}] = run("light -U 4")
 ez.keyboard.global[{"XF86AudioRaiseVolume"}]  = run("amixer sset Master 4%+")
 ez.keyboard.global[{"XF86AudioLowerVolume"}]  = run("amixer sset Master 4%-")
 
