@@ -118,4 +118,6 @@ ez.rules["Emacs"]      .tag = tag_dev
 ez.rules["Evolution"]  .tag = tag_im
 ez.rules["Firefox"]    .tag = tag_web
 ez.rules["Fractal"]    .tag = tag_im
+ez.rules["Geary"]      .tag = tag_im
+ez.rules["Gnome-calendar"].tag = tag_im
 ez.rules["Telegram"]   .tag = tag_im
