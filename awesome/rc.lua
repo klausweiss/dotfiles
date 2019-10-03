@@ -121,3 +121,6 @@ ez.rules["Fractal"]    .tag = tag_im
 ez.rules["Geary"]      .tag = tag_im
 ez.rules["Gnome-calendar"].tag = tag_im
 ez.rules["Telegram"]   .tag = tag_im
+
+ez.rules["jetbrains-idea-ce"]   .tag = tag_dev
+ez.rules["jetbrains-pycharm-ce"]   .tag = tag_dev
