@@ -106,9 +106,8 @@ ez.wibar.right = {
 }
 
 ez.client.focus_follow_mouse = true
-ez.client.titlebar.left = {
-   icon,
-}
+ez.client.titlebar.left = {}
+ez.client.titlebar.middle = {}
 ez.client.titlebar.right = {
    floating, ontop, sticky,
    minimize, maximize, close,
