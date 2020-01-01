@@ -1,3 +1,6 @@
+(provide 'find-config-file)
+(provide 'reload-config)
+
 (defun find-config-file ()
   (interactive)
   (find-file "~/.emacs.d/init.el"))
