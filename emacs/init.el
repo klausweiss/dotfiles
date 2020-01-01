@@ -1,4 +1,4 @@
-;; package rpositories
+;; package repositories
 (require 'package) 
 (add-to-list 'package-archives '("melpa-stable" . "http://stable.melpa.org/packages/") t)
 (add-to-list 'package-archives '("melpa"        . "http://melpa.org/packages/") t)
@@ -14,8 +14,8 @@
 (setq use-package-always-pin "melpa-stable")
 
 ;; packages
-(load "~/.emacs.d/load-directory.el")
-(load-directory "~/.emacs.d/layers" t)
+(load "~/.emacs.d/lib/load-directory.el")
+(load-directory "~/.emacs.d/lib/" :recursive 't)
 
 ;; custom
 (setq custom-file "~/.emacs.d/custom.el")
