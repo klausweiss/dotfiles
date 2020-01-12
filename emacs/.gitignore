@@ -7,3 +7,5 @@
 /recentf
 /custom.el
 /tramp
+/.cache/
+/transient/

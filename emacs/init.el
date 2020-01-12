@@ -16,6 +16,7 @@
 ;; packages
 (load "~/.emacs.d/lib/load-directory.el")
 (load-directory "~/.emacs.d/lib/" :recursive 't)
+(load-directory "~/.emacs.d/packages/" :recursive 't)
 
 ;; custom
 (setq custom-file "~/.emacs.d/custom.el")
