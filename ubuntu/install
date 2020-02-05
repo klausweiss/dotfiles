@@ -16,6 +16,7 @@ my @packages = qw(
     tmux
     uswsusp
     vim
+    xclip
     xterm
 
 );
