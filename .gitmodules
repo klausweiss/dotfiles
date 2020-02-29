@@ -4,3 +4,6 @@
 [submodule "awesome/ez"]
 	path = awesome/ez
 	url = https://github.com/klausweiss/ez-awesome.git
+[submodule "awesome/themes/natty"]
+	path = awesome/themes/natty
+	url = https://github.com/klausweiss/awesomewm-natty-theme

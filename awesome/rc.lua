@@ -1,5 +1,6 @@
 local ez = require("ez")
 
+ez.theme = "natty"
 ez.theme.gaps = 0
 ez.theme.wallpaper = "~/.config/wallpaper"
 
