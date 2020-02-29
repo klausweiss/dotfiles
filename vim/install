@@ -8,9 +8,3 @@ my $HERE = dir(__FILE__);
 
 gprint "Linking vim config";
 symlink "$HERE/vimrc", "$HOME/.vimrc";
-
-gprint "Linking vim config dir";
-symlink "$HERE/vim", "$HOME/.vim";
-
-gprint "Installing vim plugins"; 
-ex "vim +PlugInstall +qall";

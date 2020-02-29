@@ -1,44 +1,8 @@
-"""""""""""
-" PLUGINS "
-"""""""""""
-call plug#begin('~/.vim/vimplug')
-
-""" themes
-Plug 'vim-airline/vim-airline'
-Plug 'vim-airline/vim-airline-themes'
-Plug 'morhetz/gruvbox'
-""" usability
-Plug 'scrooloose/nerdtree'
-Plug 'jistr/vim-nerdtree-tabs'
-Plug 'ctrlpvim/ctrlp.vim'
-Plug 'vim-scripts/tComment'
-
-call plug#end()
-
 """"""""""
 " THEMES "
 """"""""""
 set t_Co=256  " make use of 256 terminal colors
-silent! colorscheme gruvbox
 set background=dark
-let g:airline_powerline_fonts = 1
-
-""""""""""""""""""""""
-" KEYBOARD SHORTCUTS "
-""""""""""""""""""""""
-" tab navigation
-nnoremap th  :tabfirst<CR>
-nnoremap tj  :tabnext<CR>
-nnoremap tk  :tabprev<CR>
-nnoremap tl  :tablast<CR>
-nnoremap tt  :tabedit<Space>
-nnoremap tn  :tabnext<Space>
-nnoremap tm  :tabm<Space>
-nnoremap td  :tabclose<CR>
-nnoremap tn :tabnew<CR> 
-" NERDTree
-noremap <F1> :NERDTreeToggle<CR>
-noremap <F2> :NERDTreeFocusToggle<CR>
 
 """""""""""""
 " INTERFACE "
@@ -81,13 +45,3 @@ set nofoldenable
 au BufRead,BufNewFile *.py,*pyw set shiftwidth=4
 au BufRead,BufNewFile *.py,*.pyw set expandtab
 au BufNewFile *.py,*.pyw set fileformat=unix
-
-"""""""""""""""""""
-" PLUGIN-SPECIFIC "
-"""""""""""""""""""
-" ctrlp
-let g:ctrlp_custom_ignore = 'node_modules\|bower_components\|.git'
-
-" NERDTree
-let g:nerdtree_tabs_open_on_console_startup=2
-let NERDTreeIgnore = ['\.pyc$', '^__pycache__$']
