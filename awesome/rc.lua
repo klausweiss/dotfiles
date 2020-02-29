@@ -15,8 +15,6 @@ local tag_dev = " dev"
 local tag_term = " term"
 local tag_im = " im"
 local tag_5 = " 5"
-local tag_6 = " 6"
-local tag_7 = " 7"
 
 ez.tags = {tag_web, tag_dev, tag_term, tag_im, tag_5, tag_6, tag_7}
 
