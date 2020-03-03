@@ -1,10 +1,5 @@
-(use-package doom-themes
-  :config
-  (load-theme 'doom-one t)
-  
-  ;; Enable flashing mode-line on errors
-  (doom-themes-visual-bell-config)
-  
-  ;; Corrects (and improves) org-mode's native fontification.
-  (doom-themes-org-config)
+(use-package gruvbox-theme
+  :custom-face
+  (treemacs--root-face ((t (:inherit font-lock-string-face))))
+  (treemacs-root-face ((t (:inherit font-lock-string-face :weight bold :height 1.2))))
   )
