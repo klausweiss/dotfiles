@@ -8,7 +8,7 @@ gprint "Installing packages";
 my @packages = qw(
 
     awesome
-    emacs25
+    emacs
     fish
     redshift
     rofi
