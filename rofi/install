@@ -2,9 +2,4 @@
 
 [symlink]
 ./Xresources.conf: ~/.Xresources.d/rofi.conf
-
-[run]
-mkdir -p ~/.config/rofi    
-
-[symlink]
 ./theme.rasi: ~/.config/rofi/theme.rasi

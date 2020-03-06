@@ -68,7 +68,7 @@ sub parse {
 
     *process_lines = sub {
         my $process_line = shift;
-	
+        
         while (scalar @buffer > 0) {
             my $line = shift(@buffer);
 
@@ -254,7 +254,7 @@ sub mk_symlink {
         RESET, "\n";
 
     unless (-e $src) {
-	die RED "File ", UNDERSCORE $src, CLEAR RED " does not exist", RESET;
+        die RED "File ", UNDERSCORE $src, CLEAR RED " does not exist", RESET;
     }
 
     my $target_dir = containing_dir($target);
