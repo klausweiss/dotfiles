@@ -1,13 +1,8 @@
-#!/usr/bin/env perl
-use FindBin;
-use lib "$FindBin::Bin/../.meta";
-use Dotfiles qw( :ALL );
+#!/usr/bin/env -S perl ${HOME}/.dotfiles/.meta/install.pl --exec
 
-my $HERE = dir(__FILE__);
+[symlink]
+.: ~/.config/fish
 
-
-gprint "Linking fish config dir";
-symlink $HERE, "$HOME/.config/fish";
-
-gprint "Disabling fish motd";
-ex "fish -c 'set -U fish_greeting'"
+[run]
+# Disabling fish motd
+fish -c 'set -U fish_greeting'

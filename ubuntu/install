@@ -1,27 +1,7 @@
-#!/usr/bin/env perl
-use FindBin;
-use lib "$FindBin::Bin/../.meta";
-use Dotfiles qw( :ALL );
+#!/usr/bin/env -S perl ${HOME}/.dotfiles/.meta/install.pl --exec
 
-
-gprint "Installing packages";
-my @packages = qw(
-
-    awesome
-    emacs
-    fish
-    redshift
-    rofi
-    slock
-    tmux
-    uswsusp
-    vim
-    xclip
-    xterm
-
-);
-my $packages = join(" ", @packages);
-ex "sudo apt install -y $packages";
-
-gprint "Allowing everyone to suspend to ram";
-ex "sudo chmod +s /usr/sbin/s2ram";
+[run]
+# Installing packages
+sudo apt install -y awesome emacs fish redshift rofi slock tmux uswsusp vim xclip xterm
+#Allowing everyone to suspend to ram
+sudo chmod +s /usr/sbin/s2ram

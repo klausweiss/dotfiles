@@ -1,10 +1,4 @@
-#!/usr/bin/env perl
-use FindBin;
-use lib "$FindBin::Bin/../.meta";
-use Dotfiles qw( :ALL );
+#!/usr/bin/env -S perl ${HOME}/.dotfiles/.meta/install.pl --exec
 
-my $HERE = dir(__FILE__);
-
-
-gprint "Linking tmux config";
-symlink "$HERE/tmux.conf", "$HOME/.tmux.conf";
+[symlink]
+./tmux.conf: ~/.tmux.conf

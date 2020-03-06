@@ -1,13 +1,9 @@
-#!/usr/bin/env perl
-use FindBin;
-use lib "$FindBin::Bin/../.meta";
-use Dotfiles qw( :ALL );
+#!/usr/bin/env -S perl ${HOME}/.dotfiles/.meta/install.pl --exec
 
-my $HERE = dir(__FILE__);
+[symlink]
+.: ~/.emacs.d
 
+[run]
+# Installing emacs packages
+emacs --batch -l ~/.emacs.d/init.el
 
-gprint "Linking emacs config dir";
-symlink $HERE, "$HOME/.emacs.d";
-
-gprint "Installing emacs plugins";
-ex "emacs --batch -l ~/.emacs.d/init.el"

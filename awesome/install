@@ -1,10 +1,4 @@
-#!/usr/bin/env perl
-use FindBin;
-use lib "$FindBin::Bin/../.meta";
-use Dotfiles qw( :ALL );
+#!/usr/bin/env -S perl ${HOME}/.dotfiles/.meta/install.pl --exec
 
-my $HERE = dir(__FILE__);
-
-
-gprint "Linking awesome config dir";
-symlink $HERE, "$HOME/.config/awesome";
+[symlink]
+.: ~/.config/awesome

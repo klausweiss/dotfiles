@@ -1,28 +1,15 @@
-#!/usr/bin/env perl
-use FindBin;
-use lib "$FindBin::Bin/../.meta";
-use Dotfiles qw( :ALL );
+#!/usr/bin/env -S perl ${HOME}/.dotfiles/.meta/install.pl --exec
 
-my $HERE = dir(__FILE__);
+[symlink]
+./user-dirs: ~/.config/user-dirs.dirs
+./wallpaper.png: ~/.config/wallpaper
+./xinitrc: ~/.xinitrc
+./Xresources: ~/.Xresources
 
-
-gprint "Linking user-dirs";
-symlink "$HERE/user-dirs", "$HOME/.config/user-dirs.dirs";
-
-gprint "Linking wallpaper";
-symlink "$HERE/wallpaper.png", "$HOME/.config/wallpaper";
-
-gprint "Linking .xinitrc";
-symlink "$HERE/xinitrc", "$HOME/.xinitrc";
-
-gprint "Linking Xresources";
-symlink "$HERE/Xresources", "$HOME/.Xresources";
-
-gprint "Creating userdirs";
-ex "./create-user-dirs";
-
-gprint "Creating Xresources config dir";
-ex "mkdir -p $HOME/.Xresources.d";
-
-gprint "Loading Xresources config";
-ex "xrdb -I$HOME -load $HOME/.Xresources";
+[run]
+# Creating userdirs
+./create-user-dirs
+# Creating Xresources config dir
+mkdir -p ~/.Xresources.d
+# Loading XResources config
+xrdb -I$HOME -load ~/.Xresources

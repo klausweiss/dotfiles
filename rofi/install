@@ -1,16 +1,10 @@
-#!/usr/bin/env perl
-use FindBin;
-use lib "$FindBin::Bin/../.meta";
-use Dotfiles qw( :ALL );
+#!/usr/bin/env -S perl ${HOME}/.dotfiles/.meta/install.pl --exec
 
+[symlink]
+./Xresources.conf: ~/.Xresources.d/rofi.conf
 
-my $HERE = dir(__FILE__);
+[run]
+mkdir -p ~/.config/rofi    
 
-gprint "Linking rofi config";
-symlink "$HERE/Xresources.conf", "$HOME/.Xresources.d/rofi.conf";
-
-gprint "Creating rofi config dir";
-ex "mkdir -p $HOME/.config/rofi";
-
-gprint "Linking rofi theme";
-symlink "$HERE/theme.rasi", "$HOME/.config/rofi/theme.rasi";
+[symlink]
+./theme.rasi: ~/.config/rofi/theme.rasi
