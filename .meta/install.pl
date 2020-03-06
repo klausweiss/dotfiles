@@ -5,6 +5,7 @@ use warnings;
 use Cwd 'realpath';
 use Env qw(HOME);
 use File::Basename 'fileparse';
+use File::Path 'make_path';
 use File::Spec;
 use Term::ANSIColor qw(:constants);
 
@@ -239,7 +240,7 @@ sub run_commands {
 }
 
 sub containing_dir {
-    my ($_filename, $dirname, $_suffix) = fileparse(realpath(shift));
+    my ($_filename, $dirname, $_suffix) = fileparse(shift);
     return substr($dirname, 0, -1);
 }
 
@@ -251,7 +252,14 @@ sub mk_symlink {
         GREEN, " to ",
         BLUE, $target,
         RESET, "\n";
-    symlink $src, $target;
+
+    unless (-e $src) {
+	die RED "File ", UNDERSCORE $src, CLEAR RED " does not exist", RESET;
+    }
+
+    my $target_dir = containing_dir($target);
+    make_path($target_dir);
+    symlink($src, $target);
 }
 
 sub print_comment {
