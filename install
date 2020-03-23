@@ -14,7 +14,7 @@ function is_xorg_running {
 function install_config {
     echo "Configuring $1"
     pushd $1 >/dev/null 
-    ./install
+    perl ${BASE_DIR}/.meta/install.pl --exec install
     popd >/dev/null 
 }
 function install_configs { for config in $@; do install_config $config; done; }
