@@ -79,8 +79,13 @@ local screenshooter = "flameshot gui"
 ez.keyboard.global[{"Print"}] = run(screenshooter)
 ez.keyboard.global[{"XF86MonBrightnessUp"}] = run("light -A 4")
 ez.keyboard.global[{"XF86MonBrightnessDown"}] = run("light -U 4")
-ez.keyboard.global[{"XF86AudioRaiseVolume"}] = run("amixer sset Master 4%+")
-ez.keyboard.global[{"XF86AudioLowerVolume"}] = run("amixer sset Master 4%-")
+ez.keyboard.global[{"XF86AudioRaiseVolume"}] = run("pactl set-sink-volume @DEFAULT_SINK@ +5%")
+ez.keyboard.global[{"XF86AudioLowerVolume"}] = run("pactl set-sink-volume @DEFAULT_SINK@ -5%")
+ez.keyboard.global[{"XF86AudioMute"}] = run("pactl set-sink-mute @DEFAULT_SINK@ toggle")
+ez.keyboard.global[{shift, "XF86AudioMute"}] = run("pactl set-source-mute @DEFAULT_SOURCE@ toggle")
+ez.keyboard.global[{"XF86Launch5"}] = run("pactl set-sink-port 0 analog-output-lineout")
+ez.keyboard.global[{"XF86Launch6"}] = run("pactl set-sink-port 0 analog-output-speaker")
+ez.keyboard.global[{"XF86Tools"}] = run("")
 
 ez.wibar.left = {
    launcher_menu,
