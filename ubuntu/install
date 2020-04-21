@@ -2,6 +2,6 @@
 
 [run]
 # Installing packages
-sudo apt install -y awesome emacs fish redshift rofi slock tmux uswsusp vim xclip xterm
+sudo apt install -y autorandr awesome emacs fish redshift rofi slock tmux uswsusp vim xclip xterm
 #Allowing everyone to suspend to ram
 sudo chmod +s /usr/sbin/s2ram
