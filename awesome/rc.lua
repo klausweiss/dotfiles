@@ -85,7 +85,7 @@ ez.keyboard.global[{"XF86AudioMute"}] = run("pactl set-sink-mute @DEFAULT_SINK@ 
 ez.keyboard.global[{shift, "XF86AudioMute"}] = run("pactl set-source-mute @DEFAULT_SOURCE@ toggle")
 ez.keyboard.global[{"XF86Launch5"}] = run("pactl set-sink-port 0 analog-output-lineout")
 ez.keyboard.global[{"XF86Launch6"}] = run("pactl set-sink-port 0 analog-output-speaker")
-ez.keyboard.global[{"XF86Tools"}] = run("")
+ez.keyboard.global[{"XF86Tools"}] = run("autorandr -c")
 
 ez.wibar.left = {
    launcher_menu,
