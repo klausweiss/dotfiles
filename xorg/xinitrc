@@ -1,6 +1,6 @@
 #!/bin/bash
 
-xrdb -I"$HOME" -load ~/.Xresources
+xrdb -I"$HOME" -load ~/.Xresources -cpp m4
 
 # set keyring variables
 if [ -n "$DESKTOP_SESSION" ];then

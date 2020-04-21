@@ -1,4 +1,3 @@
-#include ".Xresources.d/xterm.conf"
-#include ".Xresources.d/rofi.conf"
+esyscmd(find ~/.Xresources.d -name *.conf -exec cat {} +)
 
 *TkTheme: clam

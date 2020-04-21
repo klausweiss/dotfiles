@@ -12,4 +12,4 @@
 # Creating Xresources config dir
 mkdir -p ~/.Xresources.d
 # Loading XResources config
-xrdb -I$HOME -load ~/.Xresources
+xrdb -I$HOME -load ~/.Xresources -cpp m4
