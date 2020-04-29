@@ -125,6 +125,10 @@ sub parse {
 	return shift =~ /^$/;
     };
 
+    *starts_with_whitespace = sub {
+	return shift =~ /^\s/;
+    };
+
     *get_section = sub {
         my ($words) = (shift =~ m/\[\s*(.*)?\s*\]/);
         return $words;
@@ -175,31 +179,47 @@ sub parse {
 
     *parse_run_block = sub {
         my $current_command;
-	my $defining_command = 0;
         my $commands = $config->commands;
+	my $just_parsed_comment = 0;
         *parse_run_line = sub {
             my $line = shift;
+	    my $was_starting_with_whitespace = starts_with_whitespace($line);
             trim($line);
             if (starts_section($line)) {
                 push(@buffer, $line);
                 return -1;
             }
-            
-            my $is_comment = is_comment($line);
-	    my $is_empty = is_empty($line);
-            if (!$defining_command || $is_comment || $is_empty) {
+	    if (is_empty($line)) {
+		return 0;
+	    }
+
+	    my $is_comment = is_comment($line);
+            if ($is_comment
+		|| (!$was_starting_with_whitespace && !$just_parsed_comment)
+		) {
                 $current_command = new Command(
                     workdir => $workdir,
                     );
-		$defining_command = 1;
+		push(@$commands, $current_command);
             }
+
+	    $just_parsed_comment = $is_comment;
+
             if ($is_comment) {
                 $current_command->comment($line);
-            } elsif (!defined $current_command->command && !$is_empty) {
-                $current_command->command($line);
-                push(@$commands, $current_command);
-		$defining_command = 0;
-            }
+            } elsif (
+		!defined $current_command->command
+		|| !$was_starting_with_whitespace
+		) {
+                $current_command->command("$line");
+	    } elsif ($was_starting_with_whitespace) {
+		my $command_part1 = $current_command->command;
+		$current_command->command(
+		    $command_part1 .
+		    " " .
+		    $line
+		    );
+	    }
         };
         my $result = process_lines(\&parse_run_line);
         undef &parse_run_line;
