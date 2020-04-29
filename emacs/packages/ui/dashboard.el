@@ -4,7 +4,7 @@
   (dashboard-setup-startup-hook)
   (setq dashboard-startup-banner 'logo)
   (setq dashboard-items '((recents  . 3)
-;			  (projects . 5)
+			  (projects . 5)
 			  (agenda   . 5)
 			  ))
   (add-hook 'kill-buffer-query-functions '(lambda ()
