@@ -11,13 +11,18 @@ use Term::ANSIColor qw(:constants);
 
 use Class::Struct InstallConfig => {
     commands => '@',
-    links => '%',
+    links => '@',
 };
 
 use Class::Struct Command => {
     command => '$',
     comment => '$',
     workdir => '$',
+};
+
+use Class::Struct Link => {
+    src => '$',
+    target => '$',
 };
 
 sub main {
@@ -27,7 +32,7 @@ sub main {
         my $config = parse_config_from_file($executed_file);
 
         my $links = $config->links;
-        create_links(%$links);
+        create_links(@$links);
 
         my $commands = $config->commands;
         run_commands(@$commands);
@@ -60,6 +65,8 @@ sub parse_config_from_file {
 sub parse {
     my ($workdir, $config, $file) = @_;
     my @buffer = ();
+
+    my $links = $config->links;
 
     *do_parse = sub {
         skip_headers();
@@ -155,7 +162,11 @@ sub parse {
         my $line = shift;
         my ($src, $target) = ($line =~ m/(.*): (.*)/);
         trim($src, $target);
-        $config->links($src, $target);
+	my $link = new Link(
+	    src => $src,
+	    target => $target,
+	    );
+	push(@$links, $link);
     };
 
     *parse_run_block = sub {
@@ -193,18 +204,10 @@ sub parse {
         );
     
     *relative_to_absolute_paths = sub {
-        my $links = $config->links;
-
-        my %newlinks = ();
-        while (my ($src, $target) = each %$links) {
-            delete %$links{$src};
-            my $abs_src = absolute_path($src);
-            my $abs_target = absolute_path($target);
-
-            $newlinks{$abs_src} = $abs_target;
+	foreach my $link (@$links) {
+            $link->src(absolute_path($link->src));
+            $link->target(absolute_path($link->target));
         }
-
-        @$links{keys %newlinks} = values %newlinks;
     };
 
     *absolute_path = sub {
@@ -218,10 +221,10 @@ sub parse {
 }
 
 sub create_links {
-    my %links = @_;
+    my @links = @_;
 
-    while (my ($src, $target) = each %links) {
-        mk_symlink($src, $target);
+    foreach my $link (@links) {
+        mk_symlink($link);
     }
 }
 
@@ -245,21 +248,21 @@ sub containing_dir {
 }
 
 sub mk_symlink {
-    my ($src, $target) = @_;
+    my $link = shift;
     print
         GREEN, "Linking ",
-        MAGENTA, $src,
+        MAGENTA, $link->src,
         GREEN, " to ",
-        BLUE, $target,
+        BLUE, $link->target,
         RESET, "\n";
 
-    unless (-e $src) {
-        die RED "File ", UNDERSCORE $src, CLEAR RED " does not exist", RESET;
+    unless (-e $link->src) {
+        die RED "File ", UNDERSCORE $link->src, CLEAR RED " does not exist", RESET;
     }
 
-    my $target_dir = containing_dir($target);
+    my $target_dir = containing_dir($link->target);
     make_path($target_dir);
-    symlink($src, $target);
+    symlink($link->src, $link->target);
 }
 
 sub print_comment {
