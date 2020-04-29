@@ -121,6 +121,10 @@ sub parse {
         }
     };
 
+    *is_empty = sub {
+	return shift =~ /^$/;
+    };
+
     *get_section = sub {
         my ($words) = (shift =~ m/\[\s*(.*)?\s*\]/);
         return $words;
@@ -171,6 +175,7 @@ sub parse {
 
     *parse_run_block = sub {
         my $current_command;
+	my $defining_command = 0;
         my $commands = $config->commands;
         *parse_run_line = sub {
             my $line = shift;
@@ -181,16 +186,19 @@ sub parse {
             }
             
             my $is_comment = is_comment($line);
-            if (!defined $current_command || $is_comment) {
+	    my $is_empty = is_empty($line);
+            if (!$defining_command || $is_comment || $is_empty) {
                 $current_command = new Command(
                     workdir => $workdir,
                     );
+		$defining_command = 1;
             }
             if ($is_comment) {
                 $current_command->comment($line);
-            } elsif (!defined $current_command->command) {
+            } elsif (!defined $current_command->command && !$is_empty) {
                 $current_command->command($line);
                 push(@$commands, $current_command);
+		$defining_command = 0;
             }
         };
         my $result = process_lines(\&parse_run_line);
