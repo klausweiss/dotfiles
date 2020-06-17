@@ -47,7 +47,7 @@ ez.keyboard.global[{alt, shift, "q"}]  = awesome.quit
 
 -- launcher
 local launcher = "rofi -show run"
-ez.keyboard.global[{ctrl, " "}] = run(launcher)
+ez.keyboard.global[{ctrl, shift, " "}] = run(launcher)
 ez.keyboard.global[{super, " "}] = require("menubar").show
 
 -- multiple monitors
