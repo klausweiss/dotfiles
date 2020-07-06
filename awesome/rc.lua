@@ -126,3 +126,11 @@ ez.rules["Thunderbird"].tag = tag_im
 ez.rules["jetbrains-idea-ce"].tag = tag_dev
 ez.rules["jetbrains-pycharm-ce"].tag = tag_dev
 ez.rules["jetbrains-studio"].tag = tag_dev
+
+android_studio_popups_rule = {
+	class = "jetbrains-studio",
+	name="^win[0-9]+$"
+}
+
+ez.rules[android_studio_popups_rule].placement = no_offscreen
+ez.rules[android_studio_popups_rule].titlebars_enabled = false
