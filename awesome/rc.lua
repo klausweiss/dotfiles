@@ -51,9 +51,9 @@ ez.keyboard.global[{ctrl, shift, " "}] = run(launcher)
 ez.keyboard.global[{super, " "}] = require("menubar").show
 
 -- multiple monitors
-ez.keyboard.global[{alt, "m"}] = focus_left_screen
-ez.keyboard.global[{alt, ","}] = move_client_to_next_screen
-ez.keyboard.global[{alt, "."}] = focus_right_screen
+ez.keyboard.global[{alt, "d"}] = focus_left_screen
+ez.keyboard.global[{alt, "k"}] = move_client_to_next_screen
+ez.keyboard.global[{alt, "g"}] = focus_right_screen
 
 -- tags
 ez.keyboard.tags[{ctrl}] = show_tag_by_index
