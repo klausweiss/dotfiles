@@ -131,6 +131,8 @@ android_studio_popups_rule = {
 	class = "jetbrains-studio",
 	name="^win[0-9]+$"
 }
-
 ez.rules[android_studio_popups_rule].placement = no_offscreen
 ez.rules[android_studio_popups_rule].titlebars_enabled = false
+-- To fix disappearing popups in IntelliJ-based IDE:
+-- 1. Help -> Edit Custom VM Options
+-- 2. add "-Djbre.popupwindow.settype" line
