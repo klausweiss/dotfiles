@@ -9,3 +9,5 @@
 /tramp
 /.cache/
 /transient/
+*.elc
+

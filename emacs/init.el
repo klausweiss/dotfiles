@@ -1,23 +1,36 @@
-;; package repositories
-(require 'package) 
-(add-to-list 'package-archives '("melpa-stable" . "http://stable.melpa.org/packages/") t)
-(add-to-list 'package-archives '("melpa"        . "http://melpa.org/packages/") t)
-(setq package-enable-at-startup nil)
-(package-initialize)
+(require 'seq)
+(require 'sort)
 
-;; use-package 
-(unless (package-installed-p 'use-package)
-  (package-refresh-contents)
-  (package-install 'use-package))
-(eval-when-compile (require 'use-package))
-(setq use-package-always-ensure t)
-(setq use-package-always-pin "melpa-stable")
+(defun directories-with-elisp-files (dir)
+  (let* ((elisp-files (directory-files-recursively dir "\\.elc?$" t))
+	 (directories-with-elisp-files (mapcar #'file-name-directory elisp-files)))
+    (delete-dups directories-with-elisp-files)))
 
-;; packages
-(load "~/.emacs.d/lib/load-directory.el")
-(load-directory "~/.emacs.d/lib/" :recursive 't)
-(load-directory "~/.emacs.d/packages/" :recursive 't)
+(defun emacs.d-path (p) (concat user-emacs-directory p))
 
-;; custom
-(setq custom-file "~/.emacs.d/custom.el")
-(load custom-file 'no-error)
+(if (not (fboundp 'flatten-list))
+    (defun flatten-list (list-of-lists) (apply #'append list-of-lists)))
+
+(let* ((subdirectories-names '("lib" "themes" "normal"))
+       (subdirectories (mapcar #'emacs.d-path subdirectories-names))
+       (directories-to-add (flatten-list (mapcar #'directories-with-elisp-files subdirectories)))
+       )
+  (dolist (path directories-to-add)
+    (add-to-list 'load-path path))
+  )
+
+(require 'normal-behavior)
+(require 'normal-completion)
+(require 'normal-interface)
+(require 'normal-ivy)
+(require 'normal-lsp)
+(require 'normal-magit)
+(require 'normal-menu)
+(require 'normal-project-integration)
+(require 'normal-search)
+(require 'normal-smart-shift)
+(require 'normal-tabs)
+(require 'normal-undo)
+(require 'normal-which-key)
+
+(require 'normal-keymap)
