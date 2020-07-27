@@ -8,6 +8,8 @@
 (with-eval-after-load 'dashboard
   (dashboard-setup-startup-hook)
   (define-key dashboard-mode-map (kbd "C-p") nil)
+  (setq dashboard-footer-messages
+	'("sup"))
   )
 
 (scroll-bar-mode -1)
