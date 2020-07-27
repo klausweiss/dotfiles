@@ -2,8 +2,3 @@
 
 [symlink]
 .: ~/.emacs.d
-
-[run]
-# Installing emacs packages
-emacs --batch -l ~/.emacs.d/init.el
-
