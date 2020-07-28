@@ -38,4 +38,10 @@
   (persp-mode t)
   )
 
+(defun persp-counsel-switch-buffer-force ()
+  (interactive)
+  (require 'counsel)
+  (call-interactively #'persp-counsel-switch-buffer)
+  )
+
 (provide 'normal-project-integration)
