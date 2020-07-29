@@ -2,3 +2,9 @@
 
 [symlink]
 .: ~/.emacs.d
+
+[run]
+# Compiling emacs libraries
+make compile -C lib
+# Compiling emacs themes
+make compile -C themes
