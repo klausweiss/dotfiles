@@ -30,6 +30,7 @@
 	      )
 (autoload-all "../lib/projectile"
 	      #'projectile-add-known-project
+	      #'projectile-dired
 	      #'projectile-remove-known-project
 	      #'projectile-switch-project
 	      #'projectile-switch-to-buffer
@@ -84,7 +85,8 @@
     (define-key map (kbd "C-S-g") #'magit-status)
     (define-key map (kbd "C-p C-p") #'projectile-switch-project)
     (define-key map (kbd "C-p C-a") #'projectile-add-known-project)
-    (define-key map (kbd "C-p C-d") #'projectile-remove-known-project)
+    (define-key map (kbd "C-p C-d") #'projectile-dired)
+    (define-key map (kbd "C-p x") #'projectile-remove-known-project)
     (define-key map (kbd "C-p C-s") #'persp-switch)
     (define-key map (kbd "C-p TAB") #'persp-switch-last)
     (define-key map (kbd "C-p C-b") #'projectile-switch-to-buffer)
