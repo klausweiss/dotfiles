@@ -1,0 +1,20 @@
+#!/usr/bin/env -S perl ${HOME}/.dotfiles/.meta/install.pl --exec
+
+[run]
+# Installing packages
+sudo xbps-install -Sy
+    awesome
+    emacs-x11
+    fish-shell
+    light
+    m4
+    redshift
+    rofi
+    slock
+    tmux
+    vim
+    xmodmap
+    xrdb
+    xterm
+# Allowing all users to control backlight
+sudo chmod +s /bin/light
