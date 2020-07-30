@@ -6,7 +6,7 @@ PROFILES_DIR="${BASE_DIR}/.meta/profiles"
 
 function detect_distro { cat /etc/*release | sed -n "s/^NAME=//p" | sed "s/\"//g"; }
 function is_xorg_running {
-        (xset q >/dev/null 2>/dev/null)
+        (ps aux | grep -iE "\bxorg\b")
         XORG_RUNNING=$?
         if [ $XORG_RUNNING -eq 0 ]; then true; else false; fi
 }
