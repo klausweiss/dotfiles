@@ -70,8 +70,11 @@ compile:
 	emacs --batch \
 		-L . \
 		-L company \
+		-L company-box \
+		-L dashboard \
 		-L expand-region \
 		-L lsp-mode \
+		-L lsp-ui \
 		-L magit \
 		-L swiper \
 		--execute '(byte-recompile-directory "." 0)'
