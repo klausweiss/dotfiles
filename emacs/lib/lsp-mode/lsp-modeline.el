@@ -33,6 +33,7 @@
   "Face used to code action text on modeline."
   :group 'lsp-faces)
 
+;;;###autoload
 (define-obsolete-variable-alias 'lsp-diagnostics-modeline-scope
   'lsp-modeline-diagnostics-scope  "lsp-mode 7.0.1")
 
@@ -77,18 +78,20 @@
                                                     lsp-modeline--code-action->string))
                                            'face 'lsp-modeline-code-actions-face))
           (single-action? (= (length actions) 1))
-          (keybinding (-some->> #'lsp-execute-code-action
-                        where-is-internal
-                        (-find (lambda (o)
-                                 (not (member (aref o 0) '(menu-bar normal-state)))))
-                        key-description
-                        (format "(%s)")))
+          (keybinding (concat "("
+                              (-some->> #'lsp-execute-code-action
+                                where-is-internal
+                                (-find (lambda (o)
+                                         (not (member (aref o 0) '(menu-bar normal-state)))))
+                                key-description)
+                              ")"))
           (string (if single-action?
-                      (format " %s %s " icon first-action-string)
-                    (format " %s %s %s " icon first-action-string
-                            (propertize (format "(%d more)" (1- (seq-length actions)))
+                      (concat " " icon " " first-action-string " ")
+                    (concat " " icon " " first-action-string " "
+                            (propertize (concat "(" (number-to-string (1- (seq-length actions))) " more)")
                                         'display `((height 0.9))
-                                        'face 'lsp-modeline-code-actions-face)))))
+                                        'face 'lsp-modeline-code-actions-face)
+                            " "))))
     (propertize string
                 'help-echo (concat (format "Apply code actions %s\nmouse-1: " keybinding)
                                    (if single-action?

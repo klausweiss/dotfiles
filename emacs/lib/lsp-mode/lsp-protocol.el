@@ -32,15 +32,16 @@
 (require 'ht)
 (require 's)
 
-(defun lsp-keyword->symbol (keyword)
-  "Convert a KEYWORD to symbol."
-  (intern (substring (symbol-name keyword) 1)))
+(eval-and-compile
+  (defun lsp-keyword->symbol (keyword)
+    "Convert a KEYWORD to symbol."
+    (intern (substring (symbol-name keyword) 1)))
 
-(defun lsp-keyword->string (keyword)
-  "Convert a KEYWORD to string."
-  (substring (symbol-name keyword) 1))
+  (defun lsp-keyword->string (keyword)
+    "Convert a KEYWORD to string."
+    (substring (symbol-name keyword) 1))
 
-(defvar lsp-use-plists nil)
+  (defvar lsp-use-plists nil))
 
 (defmacro lsp-interface (&rest interfaces)
   "Generate LSP bindings from INTERFACES triplet.
@@ -403,7 +404,7 @@ See `-let' for a description of the destructuring mechanism."
  (Command (:title :command) (:arguments))
  (CompletionCapabilities nil (:completionItem :completionItemKind :contextSupport :dynamicRegistration))
  (CompletionContext (:triggerKind) (:triggerCharacter))
- (CompletionItem (:label) (:additionalTextEdits :command :commitCharacters :data :deprecated :detail :documentation :filterText :insertText :insertTextFormat :kind :preselect :sortText :tags :textEdit :score))
+ (CompletionItem (:label) (:additionalTextEdits :command :commitCharacters :data :deprecated :detail :documentation :filterText :insertText :insertTextFormat :kind :preselect :sortText :tags :textEdit :score :keepWhitespace))
  (CompletionItemCapabilities nil (:commitCharactersSupport :deprecatedSupport :documentationFormat :preselectSupport :snippetSupport :tagSupport))
  (CompletionItemKindCapabilities nil (:valueSet))
  (CompletionItemTagSupportCapabilities (:valueSet) nil)

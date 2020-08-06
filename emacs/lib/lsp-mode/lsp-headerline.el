@@ -76,7 +76,7 @@ caching purposes.")
 
 (defun lsp-headerline--fix-image-background (image)
   "Fix IMAGE background if it is a file otherwise return as an icon."
-  (if (get-text-property 0 'display image)
+  (if (and image (get-text-property 0 'display image))
       (propertize " " 'display
                   (cl-list* 'image
                             (plist-put
@@ -131,8 +131,7 @@ narrow to the outer symbol."
   (narrow-to-region start end))
 
 (defun lsp-headerline--with-action (local-map help-echo-string display-string)
-  "Assign LOCAL-MAP and HELP-ECHO-STRING to the region around the
-DISPLAY-STRING."
+  "Assign LOCAL-MAP and HELP-ECHO-STRING to the region around the DISPLAY-STRING."
   (propertize display-string
               'mouse-face 'header-line-highlight
               'help-echo help-echo-string
@@ -201,7 +200,7 @@ PATH is the current folder to be checked."
 
 (defun lsp-headerline--build-path-up-to-project-string ()
   "Build the path-up-to-project segment for the breadcrumb."
-  (if-let (root (lsp-workspace-root))
+  (if-let ((root (lsp-workspace-root)))
       (mapconcat (lambda (next-dir)
                    (propertize next-dir
                                'font-lock-face
