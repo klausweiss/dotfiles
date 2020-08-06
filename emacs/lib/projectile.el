@@ -1760,13 +1760,13 @@ prefix the string will be assumed to be an ignore string."
         (insert-file-contents dirconfig)
         (while (not (eobp))
           (pcase (char-after)
-	    ;; ignore comment lines if prefix char has been set
-	    ((pred (lambda (leading-char)
-		     (and projectile-dirconfig-comment-prefix
-			  (eql leading-char
-			       projectile-dirconfig-comment-prefix))))
-	     nil)
-	    (?+ (push (buffer-substring (1+ (point)) (line-end-position)) keep))
+            ;; ignore comment lines if prefix char has been set
+            ((pred (lambda (leading-char)
+                     (and projectile-dirconfig-comment-prefix
+                          (eql leading-char
+                               projectile-dirconfig-comment-prefix))))
+             nil)
+            (?+ (push (buffer-substring (1+ (point)) (line-end-position)) keep))
             (?- (push (buffer-substring (1+ (point)) (line-end-position)) ignore))
             (?! (push (buffer-substring (1+ (point)) (line-end-position)) ensure))
             (_ (push (buffer-substring (point) (line-end-position)) ignore)))
@@ -1800,11 +1800,11 @@ project-root for every file."
                      (fboundp 'helm-make-source))
                 (helm :sources
                       (helm-make-source "Projectile" 'helm-source-sync
-                        :candidates choices
-                        :action (if action
-                                    (prog1 action
-                                      (setq action nil))
-                                  #'identity))
+                                        :candidates choices
+                                        :action (if action
+                                                    (prog1 action
+                                                      (setq action nil))
+                                                  #'identity))
                       :prompt prompt
                       :input initial-input
                       :buffer "*helm-projectile*")
@@ -2496,7 +2496,7 @@ The project types are symbols and they are linked to plists holding
 the properties of the various project types.")
 
 (cl-defun projectile-register-project-type
-    (project-type marker-files &key project-file compilation-dir configure compile test run test-suffix test-prefix src-dir test-dir related-files-fn)
+    (project-type marker-files &key project-file compilation-dir configure compile install package test run test-suffix test-prefix src-dir test-dir related-files-fn)
   "Register a project type with projectile.
 
 A project type is defined by PROJECT-TYPE, a set of MARKER-FILES,
@@ -2524,6 +2524,8 @@ test/impl/other files as below:
                              'configure-command configure
                              'compile-command compile
                              'test-command test
+                             'install-command install
+                             'package-command package
                              'run-command run)))
     ;; There is no way for the function to distinguish between an
     ;; explicit argument of nil and an omitted argument. However, the
@@ -2620,13 +2622,16 @@ test/impl/other files as below:
 (projectile-register-project-type 'make '("Makefile")
                                   :project-file "Makefile"
                                   :compile "make"
-                                  :test "make test")
+                                  :test "make test"
+                                  :install "make install")
 (projectile-register-project-type 'cmake '("CMakeLists.txt")
                                   :project-file "CMakeLists.txt"
                                   :compilation-dir "build"
                                   :configure "cmake %s -B %s"
                                   :compile "cmake --build ."
-                                  :test "ctest")
+                                  :test "ctest"
+                                  :install "cmake --build . --target install"
+                                  :package "cmake --build . --target package")
 ;; PHP
 (projectile-register-project-type 'php-symfony '("composer.json" "app" "src" "vendor")
                                   :project-file "composer.json"
@@ -3578,6 +3583,17 @@ Returns a list of expanded filenames."
              "\n+"
              t))))
 
+(defvar projectile-files-with-string-commands
+  '((rg . "rg -lF --no-heading --color never -- ")
+    (ag . "ag --literal --nocolor --noheading -l -- ")
+    (ack . "ack --literal --nocolor -l -- ")
+    (git . "git grep -HlI ")
+    ;; -r: recursive
+    ;; -H: show filename for each match
+    ;; -l: show only file names with matches
+    ;; -I: no binary files
+    (grep . "grep -rHlI %s .")))
+
 (defun projectile-files-with-string (string directory)
   "Return a list of all files containing STRING in DIRECTORY.
 
@@ -3587,23 +3603,19 @@ files in the project."
   (if (projectile-unixy-system-p)
       (let* ((search-term (shell-quote-argument string))
              (cmd (cond ((executable-find "rg")
-			   (concat "rg -lF --no-heading --color never -- "
-				    search-term))
-			  ((executable-find "ag")
-			   (concat "ag --literal --nocolor --noheading -l -- "
+                         (concat (cdr (assoc 'rg projectile-files-with-string-commands))
+                                 search-term))
+                        ((executable-find "ag")
+                         (concat (cdr (assoc 'ag projectile-files-with-string-commands))
                                  search-term))
                         ((executable-find "ack")
-                         (concat "ack --literal --noheading --nocolor -l -- "
+                         (concat (cdr (assoc 'ack projectile-files-with-string-commands))
                                  search-term))
                         ((and (executable-find "git")
                               (eq (projectile-project-vcs) 'git))
-                         (concat "git grep -HlI " search-term))
+                         (concat (cdr (assoc 'git projectile-files-with-string-commands)) search-term))
                         (t
-                         ;; -r: recursive
-                         ;; -H: show filename for each match
-                         ;; -l: show only file names with matches
-                         ;; -I: no binary files
-                         (format "grep -rHlI %s ." search-term)))))
+                         (format (cdr (assoc 'grep projectile-files-with-string-commands)) search-term)))))
         (projectile-files-from-cmd cmd directory))
     ;; we have to reject directories as a workaround to work with git submodules
     (cl-remove-if
@@ -3800,6 +3812,14 @@ directory to open."
   (make-hash-table :test 'equal)
   "A mapping between projects and the last compilation command used on them.")
 
+(defvar projectile-install-cmd-map
+  (make-hash-table :test 'equal)
+  "A mapping between projects and the last install command used on them.")
+
+(defvar projectile-package-cmd-map
+  (make-hash-table :test 'equal)
+  "A mapping between projects and the last package command used on them.")
+
 (defvar projectile-test-cmd-map
   (make-hash-table :test 'equal)
   "A mapping between projects and the last test command used on them.")
@@ -3825,6 +3845,16 @@ Should be set via .dir-locals.el.")
 
 (defvar projectile-project-test-cmd nil
   "The command to use with `projectile-test-project'.
+It takes precedence over the default command for the project type when set.
+Should be set via .dir-locals.el.")
+
+(defvar projectile-project-install-cmd nil
+  "The command to use with `projectile-install-project'.
+It takes precedence over the default command for the project type when set.
+Should be set via .dir-locals.el.")
+
+(defvar projectile-project-package-cmd nil
+  "The command to use with `projectile-package-project'.
 It takes precedence over the default command for the project type when set.
 Should be set via .dir-locals.el.")
 
@@ -3864,6 +3894,14 @@ be string to be executed as command."
 (defun projectile-default-test-command (project-type)
   "Retrieve default test command for PROJECT-TYPE."
   (projectile-default-generic-command project-type 'test-command))
+
+(defun projectile-default-install-command (project-type)
+  "Retrieve default install command for PROJECT-TYPE."
+  (projectile-default-generic-command project-type 'install-command))
+
+(defun projectile-default-package-command (project-type)
+  "Retrieve default package command for PROJECT-TYPE."
+  (projectile-default-generic-command project-type 'package-command))
 
 (defun projectile-default-run-command (project-type)
   "Retrieve default run command for PROJECT-TYPE."
@@ -3921,6 +3959,40 @@ project of that type"
   (or (gethash compile-dir projectile-test-cmd-map)
       projectile-project-test-cmd
       (projectile-default-test-command (projectile-project-type))))
+
+(defun projectile-install-command (compile-dir)
+  "Retrieve the install command for COMPILE-DIR.
+
+The command is determined like this:
+
+- first we check `projectile-install-cmd-map' for the last
+install command that was invoked on the project
+
+- then we check for `projectile-project-install-cmd' supplied
+via .dir-locals.el
+
+- finally we check for the default install command for a
+project of that type"
+  (or (gethash compile-dir projectile-install-cmd-map)
+      projectile-project-install-cmd
+      (projectile-default-install-command (projectile-project-type))))
+
+(defun projectile-package-command (compile-dir)
+  "Retrieve the pacakge command for COMPILE-DIR.
+
+The command is determined like this:
+
+- first we check `projectile-packgage-cmd-map' for the last
+install command that was invoked on the project
+
+- then we check for `projectile-project-package-cmd' supplied
+via .dir-locals.el
+
+- finally we check for the default package command for a
+project of that type"
+  (or (gethash compile-dir projectile-package-cmd-map)
+      projectile-project-package-cmd
+      (projectile-default-package-command (projectile-project-type))))
 
 (defun projectile-run-command (compile-dir)
   "Retrieve the run command for COMPILE-DIR.
@@ -4056,6 +4128,34 @@ with a prefix ARG."
                                  :save-buffers t)))
 
 ;;;###autoload
+(defun projectile-install-project (arg)
+  "Run project install command.
+
+Normally you'll be prompted for a compilation command, unless
+variable `compilation-read-command'.  You can force the prompt
+with a prefix ARG."
+  (interactive "P")
+  (let ((command (projectile-install-command (projectile-compilation-dir))))
+    (projectile--run-project-cmd command projectile-install-cmd-map
+                                 :show-prompt arg
+                                 :prompt-prefix "Install command: "
+                                 :save-buffers t)))
+
+;;;###autoload
+(defun projectile-package-project (arg)
+  "Run project package command.
+
+Normally you'll be prompted for a compilation command, unless
+variable `compilation-read-command'.  You can force the prompt
+with a prefix ARG."
+  (interactive "P")
+  (let ((command (projectile-package-command (projectile-compilation-dir))))
+    (projectile--run-project-cmd command projectile-package-cmd-map
+                                 :show-prompt arg
+                                 :prompt-prefix "Package command: "
+                                 :save-buffers t)))
+
+;;;###autoload
 (defun projectile-run-project (arg)
   "Run project run command.
 
@@ -4073,8 +4173,9 @@ with a prefix ARG."
   "Run last projectile external command.
 
 External commands are: `projectile-configure-project',
-`projectile-compile-project', `projectile-test-project' and
-`projectile-run-project'.
+`projectile-compile-project', `projectile-test-project',
+`projectile-install-project', `projectile-package-project',
+and `projectile-run-project'.
 
 If the prefix argument SHOW_PROMPT is non nil, the command can be edited."
   (interactive "P")
@@ -4705,7 +4806,9 @@ thing shown in the mode line otherwise."
     (define-key map (kbd "I") #'projectile-ibuffer)
     (define-key map (kbd "j") #'projectile-find-tag)
     (define-key map (kbd "k") #'projectile-kill-buffers)
+    (define-key map (kbd "K") #'projectile-package-project)
     (define-key map (kbd "l") #'projectile-find-file-in-directory)
+    (define-key map (kbd "L") #'projectile-install-project)
     (define-key map (kbd "m") #'projectile-commander)
     (define-key map (kbd "o") #'projectile-multi-occur)
     (define-key map (kbd "p") #'projectile-switch-project)
@@ -4785,6 +4888,8 @@ thing shown in the mode line otherwise."
         ["Configure project" projectile-configure-project]
         ["Compile project" projectile-compile-project]
         ["Test project" projectile-test-project]
+        ["Install project" projectile-install-project]
+        ["Package project" projectile-package-project]
         ["Run project" projectile-run-project]
         ["Repeat last external command" projectile-repeat-last-command]
         "--"
