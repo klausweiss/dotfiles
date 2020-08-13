@@ -72,6 +72,7 @@ ez.keyboard.global[{alt, shift, "e"}] = run(file_manager)
 ez.keyboard.global[{alt, shift, "w"}] = run(internet_browser)
 ez.keyboard.global[{alt, shift, "l"}] = run(screen_lock)
 ez.keyboard.global[{alt, shift, "x"}] = run("emacs")
+ez.keyboard.global[{alt, shift, "n"}] = run("zim")
 
 -- system
 local screenshooter = "flameshot gui"
