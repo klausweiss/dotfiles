@@ -200,7 +200,11 @@
       (TypeParameter . ,(company-box-icons-image "Class.png"))
       (Template . ,(company-box-icons-image "Template.png")))))
 
-(when (require 'all-the-icons nil t)
+(when (and (require 'all-the-icons nil t)
+           (fboundp 'all-the-icons-faicon)
+           (fboundp 'all-the-icons-alltheicon)
+           (fboundp 'all-the-icons-material)
+           (fboundp 'all-the-icons-octicon))
   ;; TODO: fix the rest
   (defvar company-box-icons-all-the-icons
     `((Unknown . ,(all-the-icons-faicon "cog"))
@@ -234,16 +238,25 @@
 
 (defcustom company-box-icons-alist 'company-box-icons-images
   "Rendering method for icons.
-With images, you can't change colors of icons.
 
 - Images
+- idea, from idea editors
+- netbeans, from netbeans editor
+- eclipse, from eclipse editor
 - all-the-icons [1]
 - icons-in-terminal [2]
+
+Changing colors of icons only works with `all-the-icons' and
+`icons-in-terminal'.  Colors with others methods are taken from
+the image.
 
 [1] https://github.com/domtronn/all-the-icons.el
 [2] https://github.com/sebastiencs/icons-in-terminal
 ."
   :type '(choice (const :tag "images" company-box-icons-images)
+                 (const :tag "idea" company-box-icons-idea)
+                 (const :tag "netbeans" company-box-icons-netbeans)
+                 (const :tag "eclipse" company-box-icons-eclipse)
                  (const :tag "all-the-icons" company-box-icons-all-the-icons)
                  (const :tag "icons-in-terminal" company-box-icons-icons-in-terminal))
   :group 'company-box)
@@ -286,10 +299,18 @@ See `company-box-icons-images' or `company-box-icons-all-the-icons' for the ICON
 [1] https://github.com/Microsoft/language-server-protocol/blob/gh-pages/\
 specification.md#completion-request-leftwards_arrow_with_hook.")
 
+(defconst company-box-icons--eglot-alist
+  company-box-icons--lsp-alist)
+
 (defun company-box-icons--lsp (candidate)
   (-when-let* ((lsp-item (get-text-property 0 'lsp-completion-item candidate))
-               (kind-num (gethash "kind" lsp-item)))
+               (kind-num (and (fboundp 'lsp-get) (lsp-get lsp-item :kind))))
     (alist-get kind-num company-box-icons--lsp-alist)))
+
+(defun company-box-icons--eglot (candidate)
+  (-when-let* ((eglot-item (get-text-property 0 'eglot--lsp-item candidate))
+               (kind-num (plist-get eglot-item :kind)))
+    (alist-get kind-num company-box-icons--eglot-alist)))
 
 (defconst company-box-icons--php-alist
   '(("t" . Interface)

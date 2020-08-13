@@ -87,7 +87,7 @@
   :group 'company-box)
 
 (defface company-box-selection
-  '((t :inherit company-tooltip-selection))
+  '((t :inherit company-tooltip-selection :extend t))
   "Face used to color the selected candidate."
   :group 'company-box)
 
@@ -101,6 +101,11 @@ Only the 'background' color is used in this face."
   '((t :inherit company-box-selection))
   "Face used for the scrollbar.
 Only the 'background' color is used in this face."
+  :group 'company-box)
+
+(defface company-box-numbers
+  '((t :inherit company-box-candidate))
+  "Face used for numbers when `company-show-numbers' is used."
   :group 'company-box)
 
 (defcustom company-box-color-icon t
@@ -141,7 +146,7 @@ detected."
   :group 'company-box)
 
 (defcustom company-box-icons-functions
-  '(company-box-icons--yasnippet company-box-icons--lsp company-box-icons--elisp company-box-icons--acphp)
+  '(company-box-icons--yasnippet company-box-icons--lsp company-box-icons--eglot company-box-icons--elisp company-box-icons--acphp)
   "Functions to call on each candidate that should return an icon.
 The functions takes 1 parameter, the completion candidate.
 
@@ -162,6 +167,19 @@ If all functions returns nil, `company-box-icons-unknown' is used.
   :type 'list
   :group 'company-box)
 
+(defcustom company-box-scrollbar t
+  "Whether to draw the custom scrollbar or use default scrollbar.
+
+- t means uses the custom scrollbar
+- 'inherit uses same scrollbar than the current frame
+- 'left or 'right puts default scrollbars to the left or right
+- nil means draw no scrollbar."
+  :type '(choice (const :tag "Custom scrollbar" t)
+                 (const :tag "Inherit scrollbar" 'inherit)
+                 (const :tag "Default scrollbar on left" 'left)
+                 (const :tag "Default scrollbar on right" 'right)
+                 (const :tag "No scrollbar" nil))
+  :group 'company-box)
 
 (defvar company-box-backends-colors
   '((company-yasnippet . (:all "lime green" :selected (:background "lime green" :foreground "black"))))
@@ -204,7 +222,6 @@ Examples:
     (min-height  . 0)
     (height  . 0)
     (internal-border-width . 1)
-    (vertical-scroll-bars . nil)
     (horizontal-scroll-bars . nil)
     (left-fringe . 0)
     (right-fringe . 0)
@@ -235,6 +252,17 @@ Examples:
 (defvar-local company-box--height nil)
 (defvar-local company-box--scrollbar-window nil)
 
+(defconst company-box--numbers
+  (let ((vec (make-vector 20 nil)))
+    (dotimes (index 20)
+      (aset vec index
+            (propertize
+             (concat
+              (string-trim (funcall company-show-numbers-function (mod (1+ index) 10)))
+              (and (> index 10) " "))
+             'face 'company-box-numbers)))
+    vec))
+
 (defvar company-box-selection-hook nil
   "Hook run when the selection changed.")
 
@@ -264,12 +292,18 @@ Examples:
     (and company-box-enable-icon
          (> spaces 1))))
 
+(defun company-box--make-scrollbar-parameter nil
+  (cond ((eq company-box-scrollbar 'inherit) (frame-parameter nil 'vertical-scroll-bars))
+        ((eq company-box-scrollbar 'left) 'left)
+        ((eq company-box-scrollbar 'right) 'right)))
+
 (defun company-box--make-frame (&optional buf)
   (let* ((after-make-frame-functions nil)
          (before-make-frame-hook nil)
          (buffer (or buf (company-box--get-buffer)))
          (params (append company-box-frame-parameters
-                         `((default-minibuffer-frame . ,(selected-frame))
+                         `((vertical-scroll-bars . ,(company-box--make-scrollbar-parameter))
+                           (default-minibuffer-frame . ,(selected-frame))
                            (minibuffer . ,(minibuffer-window))
                            (background-color . ,(face-background 'company-box-background nil t)))))
          (window (display-buffer-in-child-frame buffer `((child-frame-parameters . ,params))))
@@ -309,7 +343,31 @@ It doesn't nothing if a font icon is used."
                (new-image (append image (and color (company-box--extract-background color)))))
     (put-text-property point (1+ point) 'display new-image)))
 
-(defun company-box--update-line (selection common)
+(defun company-box--update-numbers (current &optional ignore-first remove-after)
+  (let ((side (if (eq company-show-numbers 'left) 'left-margin 'right-margin))
+        (offset (if (eq company-show-numbers 'left) 0 10)))
+    (when ignore-first
+      (-some--> (next-single-property-change (1+ current) 'company-box--number-pos)
+        (setq current (1+ it))))
+    (dotimes (index 10)
+      (-some--> current
+        (next-single-property-change it 'company-box--number-pos)
+        (setq current (1+ it))
+        (put-text-property (1- it) it 'display `((margin ,side) ,(aref company-box--numbers (+ index offset))))))
+    (when remove-after
+      (-some--> (next-single-property-change current 'company-box--number-pos)
+        (put-text-property it (1+ it) 'display `((margin ,side) "  "))))))
+
+(defun company-box--maybe-move-number (point first-render)
+  (when company-show-numbers
+    (cond ((< point (window-start))
+           (company-box--update-numbers point nil t))
+          ((>= point (window-end))
+           (company-box--update-numbers (window-start) t))
+          (first-render
+           (company-box--update-numbers 1)))))
+
+(defun company-box--update-line (selection common &optional first-render)
   (company-box--update-image)
   (goto-char 1)
   (forward-line selection)
@@ -317,7 +375,8 @@ It doesn't nothing if a font icon is used."
     (move-overlay (company-box--get-ov) beg (line-beginning-position 2))
     (move-overlay (company-box--get-ov-common)
                   (+ company-box--icon-offset beg)
-                  (+ 1 (length common) (+ company-box--icon-offset beg))))
+                  (+ 1 (length common) (+ company-box--icon-offset beg)))
+    (company-box--maybe-move-number beg first-render))
   (let ((color (or (get-text-property (point) 'company-box--color)
                    'company-box-selection)))
     (overlay-put (company-box--get-ov) 'face color)
@@ -342,7 +401,7 @@ It doesn't nothing if a font icon is used."
       (setq-local scroll-margin  0)
       (setq-local scroll-preserve-screen-position t)
       (add-hook 'window-configuration-change-hook 'company-box--prevent-changes t t)
-      (company-box--update-line selection common))))
+      (company-box--update-line selection common t))))
 
 (defvar-local company-box--bottom nil)
 
@@ -379,6 +438,7 @@ It doesn't nothing if a font icon is used."
           (char-height (frame-char-height frame))
           (char-width (frame-char-width frame))
           (height (* (min company-candidates-length company-tooltip-limit) char-height))
+          (space-numbers (if (eq company-show-numbers 'left) char-width 0))
           (frame-resize-pixelwise t)
           (mode-line-y (company-box--point-bottom))
           ((p-x . p-y) (company-box--prefix-pos))
@@ -393,9 +453,10 @@ It doesn't nothing if a font icon is used."
                            (- mode-line-y y))
                       height))
           (height (- height (mod height char-height)))
+          (scrollbar-width (if (eq company-box-scrollbar 'left) (frame-scroll-bar-width frame) 0))
           (x (if company-box--with-icons-p
-                 (- p-x (* char-width (if (= company-box--space 2) 2 3)))
-               (- p-x (if (= company-box--space 0) 0 char-width)))))
+                 (- p-x (* char-width (if (= company-box--space 2) 2 3)) space-numbers scrollbar-width)
+               (- p-x (if (= company-box--space 0) 0 char-width) space-numbers scrollbar-width))))
     ;; Debug
     ;; (message "X+LEFT: %s P-X: %s X: %s LEFT: %s space: %s with-icon: %s LESS: %s"
     ;;          (+ x left) p-x x left company-box--space company-box--with-icons-p (+ (* char-width 3) (/ char-width 2)))
@@ -475,22 +536,31 @@ It doesn't nothing if a font icon is used."
                             nil string))
   string)
 
+(defun company-box--candidate-string (candidate)
+  (concat (and company-common (propertize company-common 'face 'company-tooltip-common))
+          (substring (propertize candidate 'face 'company-box-candidate) (length company-common) nil)))
+
+(defun company-box--make-number-prop nil
+  (let ((side (if (eq company-show-numbers 'left) 'left-margin 'right-margin)))
+    (propertize " " 'company-box--number-pos t 'display `((margin ,side) "  "))))
+
 (defun company-box--make-line (candidate)
   (-let* (((candidate annotation len-c len-a backend) candidate)
           (color (company-box--get-color backend))
           ((c-color a-color i-color s-color) (company-box--resolve-colors color))
           (icon-string (and company-box--with-icons-p (company-box--add-icon candidate)))
-          (candidate-string (concat (and company-common (propertize company-common 'face 'company-tooltip-common))
-                                    (substring (propertize candidate 'face 'company-box-candidate) (length company-common) nil)))
+          (candidate-string (company-box--candidate-string candidate))
           (align-string (when annotation
                           (concat " " (and company-tooltip-align-annotations
-                                           (propertize " " 'display `(space :align-to (- right-fringe ,(or len-a 0) 1)))))))
+                                           (propertize " " 'display `(space :align-to (- right-margin ,len-a 1)))))))
           (space company-box--space)
           (icon-p company-box-enable-icon)
           (annotation-string (and annotation (propertize annotation 'face 'company-box-annotation)))
           (line (concat (unless (or (and (= space 2) icon-p) (= space 0))
                           (propertize " " 'display `(space :width ,(if (or (= space 1) (not icon-p)) 1 0.75))))
                         (company-box--apply-color icon-string i-color)
+                        (when company-show-numbers
+                          (company-box--make-number-prop))
                         (company-box--apply-color candidate-string c-color)
                         align-string
                         (company-box--apply-color annotation-string a-color)))
@@ -507,8 +577,8 @@ It doesn't nothing if a font icon is used."
 
 (defun company-box--make-candidate (candidate)
   (let* ((annotation (-some->> (company-call-backend 'annotation candidate)
-                               (replace-regexp-in-string "[ \t\n\r]+" " ")
-                               (string-trim)))
+                       (replace-regexp-in-string "[ \t\n\r]+" " ")
+                       (string-trim)))
          (len-candidate (string-width candidate))
          (len-annotation (if annotation (string-width annotation) 0))
          (len-total (+ len-candidate len-annotation))
@@ -537,7 +607,7 @@ It doesn't nothing if a font icon is used."
         company-box--prefix-pos nil
         company-box--edges nil)
   (-some-> (company-box--get-frame)
-           (make-frame-invisible))
+    (make-frame-invisible))
   (run-hook-with-args 'company-box-hide-hook (or (frame-parent) (selected-frame))))
 
 (defun company-box--calc-len (buffer start end char-width)
@@ -550,7 +620,7 @@ It doesn't nothing if a font icon is used."
             (when (> len max)
               (setq max len)))
           (forward-line))))
-    (* (+ max (if company-box--with-icons-p 6 2))
+    (* (+ max (if company-box--with-icons-p 6 2) (if company-show-numbers 2 0))
        char-width)))
 
 (defun company-box--update-width (&optional no-update height)
@@ -568,7 +638,7 @@ It doesn't nothing if a font icon is used."
                    (window-end window)))
           (max-width (- (frame-pixel-width) company-box--x char-width))
           (width (+ (company-box--calc-len (window-buffer window) start end char-width)
-                    (if (company-box--scrollbar-p frame) (* 2 char-width) 0)
+                    (if (and (eq company-box-scrollbar t) (company-box--scrollbar-p frame)) (* 2 char-width) 0)
                     char-width))
           (width (max (min width max-width
                            (* company-box-tooltip-maximum-width char-width))
@@ -586,6 +656,15 @@ It doesn't nothing if a font icon is used."
          (* (min company-candidates-length company-box-max-candidates)
             (frame-char-height frame)))))
 
+(defun company-box--scrollbar-prevent-changes (&rest _)
+  (let ((window-min-width 2)
+        (window-safe-min-width 2)
+        (ignore-window-parameters t)
+        (current-size (window-size nil t)))
+    (unless (= current-size 2)
+      ;; (message "MIN %s %s %s" current-size (window-min-size nil t) (window-parameters))
+      (minimize-window))))
+
 (defun company-box--update-scrollbar-buffer (height-blank height-scrollbar percent buffer)
   (with-current-buffer buffer
     (erase-buffer)
@@ -602,33 +681,38 @@ It doesn't nothing if a font icon is used."
                              height-scrollbar))
     (insert (propertize " " 'face (list :background (face-background 'company-box-scrollbar nil t))
                         'display `(space :align-to right-fringe :height ,height-scrollbar)))
+    (add-hook 'window-configuration-change-hook 'company-box--scrollbar-prevent-changes t t)
     (current-buffer)))
 
 (defun company-box--update-scrollbar (frame &optional first)
-  (let* ((selection company-selection)
-         (buffer (company-box--get-buffer "-scrollbar"))
-         (h-frame company-box--height)
-         (n-elements (min company-candidates-length company-box-max-candidates))
-         (percent (company-box--percent selection (1- n-elements)))
-         (percent-display (company-box--percent h-frame (* n-elements (frame-char-height frame))))
-         (scrollbar-pixels (* h-frame percent-display))
-         (height-scrollbar (/ scrollbar-pixels (frame-char-height frame)))
-         (blank-pixels (* (- h-frame scrollbar-pixels) percent))
-         (height-blank (/ blank-pixels (frame-char-height frame))))
-    (cond
-     ((and first (= percent-display 1) (window-live-p company-box--scrollbar-window))
-      (delete-window company-box--scrollbar-window))
-     ((window-live-p company-box--scrollbar-window)
-      (company-box--update-scrollbar-buffer height-blank height-scrollbar percent buffer))
-     ((/= percent-display 1)
-      (setq
-       company-box--scrollbar-window
-       (with-selected-frame (company-box--get-frame)
-         (display-buffer-in-side-window
-          (company-box--update-scrollbar-buffer height-blank height-scrollbar percent buffer)
-          '((side . right) (window-width . 2)))))
-      (set-frame-parameter frame 'company-box-scrollbar (window-buffer company-box--scrollbar-window))
-      (window-preserve-size company-box--scrollbar-window t t)))))
+  (when (eq company-box-scrollbar t)
+    (let* ((selection company-selection)
+           (buffer (company-box--get-buffer "-scrollbar"))
+           (h-frame company-box--height)
+           (n-elements (min company-candidates-length company-box-max-candidates))
+           (percent (company-box--percent selection (1- n-elements)))
+           (percent-display (company-box--percent h-frame (* n-elements (frame-char-height frame))))
+           (scrollbar-pixels (* h-frame percent-display))
+           (height-scrollbar (/ scrollbar-pixels (frame-char-height frame)))
+           (blank-pixels (* (- h-frame scrollbar-pixels) percent))
+           (height-blank (/ blank-pixels (frame-char-height frame))))
+      (cond
+       ((and first (= percent-display 1) (window-live-p company-box--scrollbar-window))
+        (delete-window company-box--scrollbar-window))
+       ((window-live-p company-box--scrollbar-window)
+        (company-box--update-scrollbar-buffer height-blank height-scrollbar percent buffer))
+       ((/= percent-display 1)
+        (setq
+         company-box--scrollbar-window
+         (with-selected-frame (company-box--get-frame)
+           (let ((window-min-width 2)
+                 (window-safe-min-width 2))
+             (display-buffer-in-side-window
+              (company-box--update-scrollbar-buffer height-blank height-scrollbar percent buffer)
+              '((side . right) (window-width . 2))))))
+        (set-frame-parameter frame 'company-box-scrollbar (window-buffer company-box--scrollbar-window))
+        ;;(window-preserve-size company-box--scrollbar-window t t)
+        )))))
 
 ;; ;; (message "selection: %s len: %s PERCENT: %s PERCENTS-DISPLAY: %s SIZE-FRAME: %s HEIGHT-S: %s HEIGHT-B: %s h-frame: %s sum: %s"
 ;; ;;          selection n-elements percent percent-display height height-scrollbar height-blank height (+ height-scrollbar height-blank))
@@ -643,17 +727,23 @@ It doesn't nothing if a font icon is used."
 
 (defun company-box--next-line nil
   (interactive)
-  (when (< (1+ company-selection) (min company-candidates-length
-                                       company-box-max-candidates))
-    (setq company-selection (1+ company-selection))
+  (let ((max (min company-candidates-length company-box-max-candidates))
+        (next (1+ company-selection)))
+    (setq company-selection (if company-selection-wrap-around
+                                (mod next max)
+                              (min next (1- max))))
     (company-box--change-line)
     (company-box--update-width)))
 
 (defun company-box--prev-line nil
   (interactive)
-  (setq company-selection (max (1- company-selection) 0))
-  (company-box--change-line)
-  (company-box--update-width))
+  (let ((max (min company-candidates-length company-box-max-candidates))
+        (prev (1- company-selection)))
+    (setq company-selection (if (and company-selection-wrap-around (< prev 0))
+                                (1- max)
+                              (max prev 0)))
+    (company-box--change-line)
+    (company-box--update-width)))
 
 (defun company-box--start-changed-p nil
   (not (equal company-box--start (window-start))))
@@ -663,7 +753,10 @@ It doesn't nothing if a font icon is used."
          (company-box--on-start-change))))
 
 (defun company-box--prevent-changes (&rest _)
-  (set-window-margins nil 0 0))
+  (set-window-margins
+   nil
+   (if (eq company-show-numbers 'left) 1 0)
+   (if (eq company-show-numbers 't) 2 0)))
 
 (defun company-box--handle-window-changes (&optional on-idle)
   (-when-let* ((frame (company-box--get-frame)))
@@ -713,6 +806,7 @@ COMMAND: See `company-frontends'."
     (company-box--set-frame-position (company-box--get-frame))
     (company-box--update-scrollbar (company-box--get-frame) t)))
 
+
 (defun company-box--kill-delay (buffer)
   (run-with-idle-timer
    0 nil (lambda nil
@@ -723,8 +817,18 @@ COMMAND: See `company-frontends'."
   (company-box--kill-delay (frame-parameter frame 'company-box-buffer))
   (company-box--kill-delay (frame-parameter frame 'company-box-scrollbar)))
 
+(defun company-box--is-box-buffer nil
+  (string-prefix-p " *company-box" (buffer-name)))
+
+(defun company-box--tweak-external-packages nil
+  (with-eval-after-load 'dimmer
+    (when (boundp 'dimmer-prevent-dimming-predicates)
+      (add-to-list
+       'dimmer-prevent-dimming-predicates
+       'company-box--is-own-buffer))))
+
 (defvar company-box-mode-map nil
-  "Keymap when `company-box' is active")
+  "Keymap when `company-box' is active.")
 
 (unless company-box-mode-map
   (let ((map (make-sparse-keymap)))
@@ -739,6 +843,7 @@ COMMAND: See `company-frontends'."
    ((and (bound-and-true-p company-box-mode) (not (display-graphic-p frame)))
     (company-box-mode -1))
    ((bound-and-true-p company-box-mode)
+    (company-box--tweak-external-packages)
     (remove-hook 'after-make-frame-functions 'company-box--set-mode t)
     (add-hook 'delete-frame-functions 'company-box--kill-buffer)
     (add-hook 'buffer-list-update-hook 'company-box--handle-window-changes t)

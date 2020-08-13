@@ -43,6 +43,7 @@
 
 (defcustom company-box-doc-delay 0.5
   "The number of seconds to wait before displaying the popup."
+  :type 'number
   :group 'company-box-doc)
 
 (defvar company-box-doc-frame-parameters
@@ -57,6 +58,7 @@
 
 (defvar company-box-frame-parameters)
 (defvar company-box--bottom)
+(defvar company-box-scrollbar)
 
 (defvar-local company-box-doc--timer nil)
 

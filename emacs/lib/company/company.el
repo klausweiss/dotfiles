@@ -307,21 +307,19 @@ This doesn't include the margins and the scroll bar."
     (company-capf . "completion-at-point-functions")
     (company-clang . "Clang")
     (company-cmake . "CMake")
-    (company-css . "CSS")
+    (company-css . "CSS (obsolete backend)")
     (company-dabbrev . "dabbrev for plain text")
     (company-dabbrev-code . "dabbrev for code")
-    (company-eclim . "Eclim (an Eclipse interface)")
-    (company-elisp . "Emacs Lisp")
+    (company-elisp . "Emacs Lisp (obsolete backend)")
     (company-etags . "etags")
     (company-files . "Files")
     (company-gtags . "GNU Global")
     (company-ispell . "Ispell")
     (company-keywords . "Programming language keywords")
-    (company-nxml . "nxml")
+    (company-nxml . "nxml (obsolete backend)")
     (company-oddmuse . "Oddmuse")
     (company-semantic . "Semantic")
-    (company-tempo . "Tempo templates")
-    (company-xcode . "Xcode")))
+    (company-tempo . "Tempo templates")))
 (put 'company-safe-backends 'risky-local-variable t)
 
 (defun company-safe-backends-p (backends)
@@ -339,9 +337,10 @@ This doesn't include the margins and the scroll bar."
                                   (list 'company-nxml))
                               ,@(unless (version<= "26" emacs-version)
                                   (list 'company-css))
-                              company-eclim company-semantic company-clang
-                              company-xcode company-cmake
+                              company-semantic
+                              company-cmake
                               company-capf
+                              company-clang
                               company-files
                               (company-dabbrev-code company-gtags company-etags
                                company-keywords)
@@ -2016,14 +2015,6 @@ uses the search string to filter the completion candidates."
   (interactive)
   (company-search-mode 1))
 
-(defvar company-filter-map
-  (let ((keymap (make-keymap)))
-    (define-key keymap [remap company-search-printing-char]
-      'company-filter-printing-char)
-    (set-keymap-parent keymap company-search-map)
-    keymap)
-  "Keymap used for incrementally searching the completion candidates.")
-
 (defun company-filter-candidates ()
   "Start filtering the completion candidates incrementally.
 This works the same way as `company-search-candidates' immediately
@@ -2637,7 +2628,10 @@ If SHOW-VERSION is non-nil, show the version in the echo area."
       ((match-beginning 1)
        ;; FIXME: Better char for 'non-printable'?
        ;; We shouldn't get any of these, but sometimes we might.
-       "\u2017")
+       ;; The official "replacement character" is not supported by some fonts.
+       ;;"\ufffd"
+       "?"
+       )
       ((match-beginning 2)
        ;; Zero-width non-breakable space.
        "")
@@ -2744,9 +2738,20 @@ If SHOW-VERSION is non-nil, show the version in the echo area."
                     (company--offset-line (pop lines) offset))
             new))
 
-    (let ((str (concat (when nl " \n")
-                       (mapconcat 'identity (nreverse new) "\n")
-                       "\n")))
+    ;; XXX: Also see branch 'more-precise-extend'.
+    (let* ((nl-face (list
+                     :extend t
+                     :inverse-video nil
+                     :background (face-attribute 'default :background)))
+           (str (apply #'concat
+                       (when nl " \n")
+                       (mapcan
+                        ;; https://debbugs.gnu.org/cgi/bugreport.cgi?bug=42552#23
+                        (lambda (line) (list line (propertize "\n" 'face nl-face)))
+                        (nreverse new)))))
+      ;; Use add-face-text-property in Emacs 24.4
+      ;; https://debbugs.gnu.org/38563
+      (font-lock-append-text-property 0 (length str) 'face 'default str)
       (when nl (put-text-property 0 1 'cursor t str))
       str)))
 
@@ -2955,14 +2960,12 @@ Returns a negative number if the tooltip should be displayed above point."
       (overlay-put ov 'priority 111)
       ;; No (extra) prefix for the first line.
       (overlay-put ov 'line-prefix "")
-      ;; `display' is better
-      ;; (http://debbugs.gnu.org/18285, http://debbugs.gnu.org/20847),
-      ;; but it doesn't work on 0-length overlays.
-      (if (< (overlay-start ov) (overlay-end ov))
-          (overlay-put ov 'display disp)
-        (overlay-put ov 'after-string disp)
-        (overlay-put ov 'invisible t))
-      (overlay-put ov 'face 'default)
+      (overlay-put ov 'after-string disp)
+      ;; `display' is better than `invisible':
+      ;; https://debbugs.gnu.org/18285
+      ;; https://debbugs.gnu.org/20847
+      ;; https://debbugs.gnu.org/42521
+      (overlay-put ov 'display "")
       (overlay-put ov 'window (selected-window)))))
 
 (defun company-pseudo-tooltip-guard ()
