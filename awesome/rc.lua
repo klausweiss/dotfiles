@@ -63,7 +63,7 @@ ez.keyboard.tags[{alt, ctrl, shift}] = toggle_tag_on_focused_client
 
 -- programs
 local terminal = "xterm"
-local file_manager = "thunar"
+local file_manager = "nemo"
 local internet_browser = "firefox"
 local mail_client = "thunderbird"
 local screen_lock = "slock"
