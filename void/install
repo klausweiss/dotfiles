@@ -5,9 +5,11 @@
 sudo xbps-install -Sy
     awesome
     emacs-x11
+    epiphany
     fish-shell
     light
     m4
+    nemo
     redshift
     rofi
     slock
