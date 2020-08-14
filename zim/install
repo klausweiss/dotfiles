@@ -1,0 +1,6 @@
+#!/usr/bin/env -S perl ${HOME}/.dotfiles/.meta/install.pl --exec
+
+[symlink]
+style.conf: ~/.config/zim/style.conf
+preferences.conf: ~/.config/zim/preferences.conf
+
