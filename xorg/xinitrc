@@ -1,5 +1,7 @@
 #!/bin/bash
 
+export PATH=~/.local/bin:$PATH
+
 xrdb -I"$HOME" -load ~/.Xresources -cpp m4
 
 # set keyring variables
