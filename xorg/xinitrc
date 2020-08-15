@@ -16,7 +16,7 @@ setxkbmap -option caps:ctrl_modifier
 xmodmap ~/.xmodmap
 
 # startup applications
-redshift &
+redshift -l 42.65:18.1 &
 nm-applet &
 
 source ~/.xinitrc.local
