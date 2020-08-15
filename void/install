@@ -1,11 +1,18 @@
 #!/usr/bin/env -S perl ${HOME}/.dotfiles/.meta/install.pl --exec
 
+[symlink]
+elogind-hibernate.sh: ~/.local/bin/hibernate
+elogind-poweroff.sh: ~/.local/bin/poweroff
+elogind-reboot.sh: ~/.local/bin/reboot
+elogind-suspend.sh: ~/.local/bin/suspend
+
 [run]
 # Installing packages
 sudo xbps-install -Sy
     awesome
     emacs-x11
     epiphany
+    elogind
     fish-shell
     light
     m4
@@ -20,3 +27,5 @@ sudo xbps-install -Sy
     xterm
 # Allowing all users to control backlight
 sudo chmod +s /bin/light
+# Setting up elogind
+bash setup-elogind.sh
