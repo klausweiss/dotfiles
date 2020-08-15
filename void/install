@@ -10,7 +10,7 @@ elogind-suspend.sh: ~/.local/bin/suspend
 # Installing packages
 sudo xbps-install -Sy
     awesome
-    emacs-x11
+    emacs-gtk3
     epiphany
     elogind
     fish-shell
