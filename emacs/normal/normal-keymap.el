@@ -189,7 +189,6 @@
   )
 
 (use-global-map normal-global-map)
-(cua-mode t)
 
 ;; https://stackoverflow.com/a/10166400/3103257
 (define-key minibuffer-local-map [escape] 'minibuffer-keyboard-quit)
