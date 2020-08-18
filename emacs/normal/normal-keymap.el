@@ -47,7 +47,7 @@
 (autoload-all "../lib/undo-tree"
 	      #'undo-tree-redo
 	      #'undo-tree-undo
-	      #'undo-tree-visualise
+	      #'undo-tree-visualize
 	      )
 
 (defvar normal-global-map
