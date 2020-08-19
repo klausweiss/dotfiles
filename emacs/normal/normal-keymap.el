@@ -49,6 +49,9 @@
 	      #'undo-tree-undo
 	      #'undo-tree-visualize
 	      )
+(autoload-all "../lib/simpleclip"
+	      #'simpleclip-paste
+	      )
 
 (defvar normal-global-map
   (let ((map (make-sparse-keymap))
@@ -59,7 +62,7 @@
     (define-key map (kbd "C-s") #'save-buffer)
     (define-key map (kbd "C-S-s") #'write-file)
     (define-key map (kbd "C-z") #'undo-tree-undo)
-    (define-key map (kbd "C-v") #'clipboard-yank)
+    (define-key map (kbd "C-v") #'simpleclip-paste)
     (define-key map (kbd "C-S-v") #'counsel-yank-pop)
     (define-key map (kbd "C-y") #'undo-tree-redo)
     (define-key map (kbd "C-S-y") #'undo-tree-visualize)
