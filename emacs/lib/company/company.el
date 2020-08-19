@@ -280,6 +280,11 @@ This doesn't include the margins and the scroll bar."
   :type 'integer
   :package-version '(company . "0.9.5"))
 
+(defcustom company-tooltip-width-grow-only nil
+  "When non-nil, the tooltip width is not allowed to decrease."
+  :type 'boolean
+  :package-version '(company . "0.9.14"))
+
 (defcustom company-tooltip-margin 1
   "Width of margin columns to show around the toolip."
   :type 'integer)
@@ -1818,6 +1823,7 @@ each one wraps a part of the input string."
 (defun company--permutations (lst)
   (if (not lst)
       '(nil)
+    ;; FIXME: Replace with `mapcan' in Emacs 26.
     (cl-mapcan
      (lambda (e)
        (mapcar (lambda (perm) (cons e perm))
@@ -2429,6 +2435,7 @@ If SHOW-VERSION is non-nil, show the version in the echo area."
                           thereis (let ((company-backend b))
                                     (setq backend b)
                                     (company-call-backend 'prefix))))
+         (c-a-p-f completion-at-point-functions)
          cc annotations)
     (when (or (stringp prefix) (consp prefix))
       (let ((company-backend backend))
@@ -2455,7 +2462,7 @@ If SHOW-VERSION is non-nil, show the version in the echo area."
               (memq 'company-capf backend)
             (eq backend 'company-capf))
       (insert "Value of c-a-p-f: "
-              (pp-to-string completion-at-point-functions)))
+              (pp-to-string c-a-p-f)))
     (insert "Major mode: " mode)
     (insert "\n")
     (insert "Prefix: " (pp-to-string prefix))
@@ -2476,6 +2483,8 @@ If SHOW-VERSION is non-nil, show the version in the echo area."
 (defvar-local company-pseudo-tooltip-overlay nil)
 
 (defvar-local company-tooltip-offset 0)
+
+(defvar-local company--tooltip-current-width 0)
 
 (defun company-tooltip--lines-update-offset (selection num-lines limit)
   (cl-decf limit 2)
@@ -2745,7 +2754,7 @@ If SHOW-VERSION is non-nil, show the version in the echo area."
                      :background (face-attribute 'default :background)))
            (str (apply #'concat
                        (when nl " \n")
-                       (mapcan
+                       (cl-mapcan
                         ;; https://debbugs.gnu.org/cgi/bugreport.cgi?bug=42552#23
                         (lambda (line) (list line (propertize "\n" 'face nl-face)))
                         (nreverse new)))))
@@ -2808,6 +2817,7 @@ If SHOW-VERSION is non-nil, show the version in the echo area."
           (setq annotation (company--clean-string annotation))
           (when company-tooltip-align-annotations
             ;; `lisp-completion-at-point' adds a space.
+            ;; FIXME: Use `string-trim' in Emacs 24.4
             (setq annotation (comment-string-strip annotation t nil))))
         (push (cons value annotation) items)
         (setq width (max (+ (length value)
@@ -2822,6 +2832,10 @@ If SHOW-VERSION is non-nil, show the version in the echo area."
                           (if company-show-numbers
                               (+ 2 width)
                             width))))
+
+    (when company-tooltip-width-grow-only
+      (setq width (max company--tooltip-current-width width))
+      (setq company--tooltip-current-width width))
 
     (let ((items (nreverse items))
           (numbered (if company-show-numbers 0 99999))
@@ -2999,6 +3013,7 @@ Returns a negative number if the tooltip should be displayed above point."
        (overlay-put company-pseudo-tooltip-overlay
                     'company-guard (company-pseudo-tooltip-guard)))
      (company-pseudo-tooltip-unhide))
+    (show (setq company--tooltip-current-width 0))
     (hide (company-pseudo-tooltip-hide)
           (setq company-tooltip-offset 0))
     (update (when (overlayp company-pseudo-tooltip-overlay)
