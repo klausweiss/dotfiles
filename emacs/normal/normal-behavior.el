@@ -12,6 +12,7 @@
 ;; system clipboard interaction
 
 (require 'simpleclip)
+(setq simpleclip-less-feedback t)
 (simpleclip-mode 1)
 
 (defun cua-cut-region (arg)
