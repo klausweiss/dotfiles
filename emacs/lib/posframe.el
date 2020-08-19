@@ -5,7 +5,7 @@
 ;; Author: Feng Shu <tumashu@163.com>
 ;; Maintainer: Feng Shu <tumashu@163.com>
 ;; URL: https://github.com/tumashu/posframe
-;; Version: 0.7.0
+;; Version: 0.8.0
 ;; Keywords: convenience, tooltip
 ;; Package-Requires: ((emacs "26"))
 
@@ -836,8 +836,7 @@ BUFFER-OR-NAME can be a buffer or a buffer name."
 
 (defun posframe-run-hidehandler ()
   "Run posframe hidehandler. this function is used in `post-command-hook'."
-  (while-no-input
-    (redisplay)
+  (ignore-errors
     (dolist (frame (frame-list))
       (let ((hidehandler (frame-parameter frame 'posframe-hidehandler))
             (buffer (frame-parameter frame 'posframe-buffer))
