@@ -114,6 +114,14 @@ complex regexes."
      str)
     str))
 
+(defalias 'counsel--executable-find
+  ;; Gained optional argument in 27.1.
+  (if (>= emacs-major-version 27)
+      #'executable-find
+    (lambda (command &optional _remote)
+      (executable-find command)))
+  "Compatibility shim for `executable-find'.")
+
 (defun counsel-require-program (cmd)
   "Check system for program used in CMD, printing error if not found.
 CMD is either a string or a list of strings.
@@ -124,7 +132,7 @@ To skip the `executable-find' check, start the string with a space."
                      (car (split-string cmd)))))
       (or (and (stringp program)
                (not (string= program ""))
-               (executable-find program))
+               (counsel--executable-find program t))
           (user-error "Required program \"%s\" not found in your path" program)))))
 
 (declare-function eshell-split-path "esh-util")
@@ -1186,6 +1194,15 @@ back to the face of the character after point, and finally the
   "Customize face with NAME in another window."
   (customize-face-other-window (intern name)))
 
+(declare-function hi-lock-set-pattern "hi-lock")
+(defun counsel-highlight-with-face (face)
+  "Highlight thing-at-point with FACE."
+  (hi-lock-mode 1)
+  (let ((thing (ivy-thing-at-point)))
+    (when (use-region-p)
+      (deactivate-mark))
+    (hi-lock-set-pattern (regexp-quote thing) face)))
+
 (ivy-set-actions
  'counsel-describe-face
  '(("c" counsel-customize-face "customize")
@@ -1230,7 +1247,8 @@ selected face."
 (ivy-set-actions
  'counsel-faces
  '(("c" counsel-customize-face "customize")
-   ("C" counsel-customize-face-other-window "customize other window")))
+   ("C" counsel-customize-face-other-window "customize other window")
+   ("h" counsel-highlight-with-face "highlight")))
 
 ;;* Git
 ;;** `counsel-git'
@@ -3835,18 +3853,28 @@ include attachments of other Org buffers."
   (interactive)
   (require 'org-capture)
   (ivy-read "Capture template: "
-            (delq nil
-                  (mapcar
-                   (lambda (x)
-                     (when (> (length x) 2)
-                       (format "%-5s %s" (nth 0 x) (nth 1 x))))
-                   ;; We build the list of capture templates as in
-                   ;; `org-capture-select-template':
-                   (or (org-contextualize-keys
-                        (org-capture-upgrade-templates org-capture-templates)
-                        org-capture-templates-contexts)
-                       '(("t" "Task" entry (file+headline "" "Tasks")
-                          "* TODO %?\n  %u\n  %a")))))
+            ;; We build the list of capture templates as in `org-capture-select-template':
+            (let (prefixes)
+              (cl-mapcan
+               (lambda (x)
+                 (let ((x-keys (car x)))
+                   ;; Remove prefixed keys until we get one that matches the current item.
+                   (while (and prefixes
+                               (let ((p1-keys (caar prefixes)))
+                                 (or
+                                  (<= (length x-keys) (length p1-keys))
+                                  (not (string-prefix-p p1-keys x-keys)))))
+                     (pop prefixes))
+                   (if (> (length x) 2)
+                       (let ((desc (mapconcat #'cadr (reverse (cons x prefixes)) " | ")))
+                         (list (format "%-5s %s" x-keys desc)))
+                     (push x prefixes)
+                     nil)))
+               (or (org-contextualize-keys
+                    (org-capture-upgrade-templates org-capture-templates)
+                    org-capture-templates-contexts)
+                   '(("t" "Task" entry (file+headline "" "Tasks")
+                      "* TODO %?\n  %u\n  %a")))))
             :require-match t
             :action (lambda (x)
                       (org-capture nil (car (split-string x))))
