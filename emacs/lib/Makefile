@@ -1,5 +1,7 @@
 SHELL := /bin/bash
 
+ALL_THE_ICONS_REPO := https://github.com/domtronn/all-the-icons.el
+	MEMOIZE_URL := https://raw.githubusercontent.com/skeeto/emacs-memoize/master/memoize.el
 AWESOME_TAB_URL := https://raw.githubusercontent.com/manateelazycat/awesome-tab/master/awesome-tab.el
 COMPANY_REPO := https://github.com/company-mode/company-mode.git
 COMPANY_BOX_REPO := https://github.com/sebastiencs/company-box.git
@@ -36,6 +38,7 @@ WHICH_KEY_URL := https://raw.githubusercontent.com/justbur/emacs-which-key/maste
 .PHONY: clean \
 	compile \
 	update \
+	update-all-the-icons \
 	update-awesome-tab \
 	update-company \
 	update-company-box \
@@ -51,6 +54,7 @@ WHICH_KEY_URL := https://raw.githubusercontent.com/justbur/emacs-which-key/maste
 	update-lv \
 	update-magit \
 	update-markdown \
+	update-memoize \
 	update-page-break-lines \
 	update-perspective \
 	update-persp-projectile \
@@ -83,7 +87,9 @@ compile:
 		-L swiper \
 		--execute '(byte-recompile-directory "." 0)'
 
-update: update-awesome-tab \
+update: \
+	update-all-the-icons \
+	update-awesome-tab \
 	update-company \
 	update-company-box \
 	update-cua-lite \
@@ -125,6 +131,13 @@ define download-from-repo
 	$(call update-lib-files, $(2))
 endef
 
+
+update-all-the-icons: update-memoize
+	$(call clone-repo, $(ALL_THE_ICONS_REPO), company-box)
+	rm -rf all-the-icons/
+	mkdir all-the-icons/
+	cp -r $(DIR)/{*.el,README*,data} all-the-icons/
+	rm -rf $(DIR)
 
 update-awesome-tab:
 	$(call download-from-url, $(AWESOME_TAB_URL))
@@ -202,6 +215,9 @@ update-magit: update-with-editor \
 
 update-markdown:
 	$(call download-from-url, $(MARKDOWN_URL))
+
+update-memoize:
+	$(call download-from-url, $(MEMOIZE_URL))
 
 update-page-break-lines:
 	$(call download-from-url, $(PAGE_BREAK_LINES_URL))
