@@ -51,7 +51,7 @@ clean:
 compile:
 	emacs --batch \
 		-L . \
-		-L company \
+		-L company-mode \
 		-L company-box \
 		-L emacs-dashboard \
 		-L expand-region.el \
