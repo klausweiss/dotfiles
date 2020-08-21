@@ -156,7 +156,8 @@ update-lsp-ui: \
 update-lv:
 	$(call download-from-url, $(LV_URL))
 
-update-magit: update-with-editor \
+update-magit: \
+	update-with-editor \
 	update-transient \
 	update-dash \
 
