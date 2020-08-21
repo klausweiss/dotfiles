@@ -53,7 +53,7 @@ compile:
 		-L . \
 		-L company \
 		-L company-box \
-		-L dashboard \
+		-L emacs-dashboard \
 		-L expand-region.el \
 		-L lsp-mode \
 		-L lsp-ui \
