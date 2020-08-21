@@ -54,7 +54,7 @@ compile:
 		-L company \
 		-L company-box \
 		-L dashboard \
-		-L expand-region \
+		-L expand-region.el \
 		-L lsp-mode \
 		-L lsp-ui \
 		-L magit \
@@ -130,7 +130,7 @@ update-dashboard: update-page-break-lines
 	$(call download-from-repo, $(DASHBOARD_REPO), dashboard, banners/)
 
 update-expand-region:
-	$(call download-from-repo, $(EXPAND_REGION_REPO), expand-region)
+	$(call download-from-repo, $(EXPAND_REGION_REPO), expand-region.el)
 
 update-f:
 	$(call download-from-url, $(F_URL))

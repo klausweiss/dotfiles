@@ -12,7 +12,7 @@
 	      #'counsel-M-x
 	      #'counsel-yank-pop
 	      )
-(autoload-all "../lib/expand-region/expand-region"
+(autoload-all "../lib/expand-region.el/expand-region"
 	      #'er/expand-region
 	      #'er/contract-region
 	      )
