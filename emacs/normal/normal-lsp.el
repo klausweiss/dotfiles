@@ -1,5 +1,8 @@
 (require 'normal-autoload)
 
+(autoload-all "../lib/flycheck/flycheck"
+	      #'flycheck-mode
+	      )
 (autoload-all "../lib/lsp-mode/lsp"
 	      #'lsp
 	      )
@@ -13,7 +16,8 @@
 	)
   )
 
-(add-hook 'perl-mode-hook 'lsp)
-(add-hook 'python-mode-hook 'lsp)
+(add-hook 'perl-mode-hook #'lsp)
+(add-hook 'python-mode-hook #'lsp)
+(add-hook 'lsp-mode-hook #'flycheck-mode)
 
 (provide 'normal-lsp)
