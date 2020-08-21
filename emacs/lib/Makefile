@@ -72,25 +72,43 @@ define clone-repo
 	git clone $(1) $(DIR) --depth 1
 endef
 
+define copy-if-any-srcs
+	if test -n "$(strip $(1))"; then \
+		cp -r $(1) $(2)/; \
+	fi
+endef
+
+define copy-existing-srcs
+	rsync --ignore-missing-args -r $(1) $(2)/
+endef
+
 define update-lib-files
-	rm -rf $(1)/
-	mkdir $(1)
-	cp -r $(DIR)/{*.el,README*} $(1)/
+	$(eval LIB_DIR = $(1))
+	rm -rf $(LIB_DIR)/
+	mkdir $(LIB_DIR)
+
+	$(eval FILES_TO_COPY = $(2))
+	$(eval ABS_FILES = $(foreach F,$(FILES_TO_COPY),$(DIR)/$(F)))
+	$(call copy-if-any-srcs, $(ABS_FILES), $(LIB_DIR))
+
+	$(eval STANDARD_FILES_TO_COPY = *.el README*)
+	$(eval ABS_STANDARD_FILES = $(foreach F,$(STANDARD_FILES_TO_COPY),$(strip $(DIR)/$(F))))
+	$(call copy-existing-srcs, $(ABS_STANDARD_FILES), $(LIB_DIR))
+endef
+
+define clean-repo-dir
 	rm -rf $(DIR)
 endef
 
 define download-from-repo
 	$(call clone-repo, $(1), $(2))
-	$(call update-lib-files, $(2))
+	$(call update-lib-files, $(2), $(3))
+	$(call clean-repo-dir)
 endef
 
 
 update-all-the-icons: update-memoize
-	$(call clone-repo, $(ALL_THE_ICONS_REPO), company-box)
-	rm -rf all-the-icons/
-	mkdir all-the-icons/
-	cp -r $(DIR)/{*.el,README*,data} all-the-icons/
-	rm -rf $(DIR)
+	$(call download-from-repo, $(ALL_THE_ICONS_REPO), all-the-icons, data/)
 
 update-awesome-tab:
 	$(call download-from-url, $(AWESOME_TAB_URL))
@@ -99,11 +117,7 @@ update-company:
 	$(call download-from-repo, $(COMPANY_REPO), company)
 
 update-company-box: update-dash
-	$(call clone-repo, $(COMPANY_BOX_REPO), company-box)
-	rm -rf company-box/
-	mkdir company-box
-	cp -r $(DIR)/{*.el,README*,images} company-box/
-	rm -rf $(DIR)
+	$(call download-from-repo, $(COMPANY_BOX_REPO), company-box, images/)
 
 update-cua-lite:
 	$(call download-from-url, $(CUA_LITE_URL))
@@ -113,11 +127,7 @@ update-dash:
 	$(call download-from-url, $(DASH_FUNCTIONAL_URL))
 
 update-dashboard: update-page-break-lines
-	$(call clone-repo, $(DASHBOARD_REPO), dashboard)
-	rm -rf dashboard/
-	mkdir dashboard
-	cp -r $(DIR)/{*.el,README*,banners} dashboard/
-	rm -rf $(DIR)
+	$(call download-from-repo, $(DASHBOARD_REPO), dashboard, banners/)
 
 update-expand-region:
 	$(call download-from-repo, $(EXPAND_REGION_REPO), expand-region)
@@ -140,11 +150,7 @@ update-lsp-mode: \
 	update-s \
 	update-spinner \
 
-	$(call clone-repo, $(LSP_MODE_REPO), lsp-mode)
-	rm -rf lsp-mode/
-	mkdir lsp-mode
-	cp -r $(DIR)/{*.el,README*,scripts/*} lsp-mode/
-	rm -rf $(DIR)
+	$(call download-from-repo, $(LSP_MODE_REPO), lsp-mode, scripts/*)
 
 update-lsp-ui: \
 	update-dash \
@@ -163,9 +169,8 @@ update-magit: \
 
 	$(call clone-repo, $(MAGIT_REPO), magit)
 	make -C $(DIR) versionlib
-	rm -rf magit/
-	cp -r $(DIR)/lisp magit
-	rm -rf $(DIR)
+	$(call update-lib-files, magit, lisp/*)
+	$(call clean-repo-dir)
 
 update-markdown:
 	$(call download-from-url, $(MARKDOWN_URL))
