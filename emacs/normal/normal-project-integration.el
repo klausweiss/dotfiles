@@ -3,6 +3,8 @@
 (autoload-all "../lib/magit/magit"
 	      #'magit-status
 	      )
+(autoload-all "../lib/perspective"
+	      #'persp-counsel-switch-buffer)
 (autoload-all "../lib/projectile"
 	      #'projectile-ensure-project
 	      #'projectile-find-file
