@@ -16,6 +16,10 @@
 	      #'er/expand-region
 	      #'er/contract-region
 	      )
+(autoload-all "../lib/flycheck/flycheck"
+	      #'flycheck-next-error
+	      #'flycheck-previous-error
+	      )
 (autoload-all "../lib/lsp-mode/lsp"
 	      #'lsp-rename
 	      #'lsp-execute-code-action
@@ -95,8 +99,8 @@
     (define-key map (kbd "C-p C-b") #'projectile-switch-to-buffer)
     (define-key map (kbd "C-p b") #'persp-counsel-switch-buffer-force)
     (define-key map (kbd "C-' t") #'toggle-theme)
-    (define-key map (kbd "<f2>") #'flymake-goto-next-error)
-    (define-key map (kbd "S-<f2>") #'flymake-goto-prev-error)
+    (define-key map (kbd "<f2>") #'flycheck-next-error)
+    (define-key map (kbd "S-<f2>") #'flycheck-previous-error)
     (define-key map (kbd "C-b") #'lsp-ui-peek-find-references)
     (define-key map (kbd "C-S-b") #'lsp-ui-peek-find-definitions)
     (define-key map (kbd "C-M-b") #'lsp-ui-peek-find-implementation)
