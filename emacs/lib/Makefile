@@ -68,7 +68,8 @@ define download-from-url
 endef
 
 define clone-repo
-	$(eval DIR = $(shell mktemp --directory --suffix $(2)))
+	$(eval SUFFIX = $(notdir $(basename $(1))))
+	$(eval DIR = $(shell mktemp --directory --suffix $(SUFFIX)))
 	git clone $(1) $(DIR) --depth 1
 endef
 
@@ -101,23 +102,24 @@ define clean-repo-dir
 endef
 
 define download-from-repo
-	$(call clone-repo, $(1), $(2))
-	$(call update-lib-files, $(2), $(3))
+	$(eval DEST_DIR = $(notdir $(basename $(1))))
+	$(call clone-repo, $(1))
+	$(call update-lib-files, $(DEST_DIR), $(2))
 	$(call clean-repo-dir)
 endef
 
 
 update-all-the-icons: update-memoize
-	$(call download-from-repo, $(ALL_THE_ICONS_REPO), all-the-icons, data/)
+	$(call download-from-repo, $(ALL_THE_ICONS_REPO), data/)
 
 update-awesome-tab:
 	$(call download-from-url, $(AWESOME_TAB_URL))
 
 update-company:
-	$(call download-from-repo, $(COMPANY_REPO), company)
+	$(call download-from-repo, $(COMPANY_REPO))
 
 update-company-box: update-dash
-	$(call download-from-repo, $(COMPANY_BOX_REPO), company-box, images/)
+	$(call download-from-repo, $(COMPANY_BOX_REPO), images/)
 
 update-cua-lite:
 	$(call download-from-url, $(CUA_LITE_URL))
@@ -127,10 +129,10 @@ update-dash:
 	$(call download-from-url, $(DASH_FUNCTIONAL_URL))
 
 update-dashboard: update-page-break-lines
-	$(call download-from-repo, $(DASHBOARD_REPO), dashboard, banners/)
+	$(call download-from-repo, $(DASHBOARD_REPO), banners/)
 
 update-expand-region:
-	$(call download-from-repo, $(EXPAND_REGION_REPO), expand-region.el)
+	$(call download-from-repo, $(EXPAND_REGION_REPO))
 
 update-f:
 	$(call download-from-url, $(F_URL))
@@ -150,14 +152,14 @@ update-lsp-mode: \
 	update-s \
 	update-spinner \
 
-	$(call download-from-repo, $(LSP_MODE_REPO), lsp-mode, scripts/*)
+	$(call download-from-repo, $(LSP_MODE_REPO), scripts/*)
 
 update-lsp-ui: \
 	update-dash \
 	update-lsp-mode \
 	update-markdown \
 
-	$(call download-from-repo, $(LSP_UI_REPO), lsp-ui)
+	$(call download-from-repo, $(LSP_UI_REPO))
 
 update-lv:
 	$(call download-from-url, $(LV_URL))
@@ -167,7 +169,7 @@ update-magit: \
 	update-transient \
 	update-dash \
 
-	$(call clone-repo, $(MAGIT_REPO), magit)
+	$(call clone-repo, $(MAGIT_REPO))
 	make -C $(DIR) versionlib
 	$(call update-lib-files, magit, lisp/*)
 	$(call clean-repo-dir)
@@ -212,7 +214,7 @@ update-transient:
 	$(call download-from-url, $(TRANSIENT_URL))
 
 update-swiper:
-	$(call download-from-repo, $(SWIPER_REPO), swiper)
+	$(call download-from-repo, $(SWIPER_REPO))
 
 update-undo-tree:
 	$(call download-from-url, $(UNDO_TREE_URL))
