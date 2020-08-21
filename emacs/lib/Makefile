@@ -33,43 +33,17 @@ SWIPER_REPO := https://github.com/abo-abo/swiper.git
 UNDO_TREE_URL := http://www.dr-qubit.org/undo-tree/undo-tree.el
 VISUAL_REGEXP_URL := https://raw.githubusercontent.com/benma/visual-regexp.el/master/visual-regexp.el
 WHICH_KEY_URL := https://raw.githubusercontent.com/justbur/emacs-which-key/master/which-key.el
+define get-all-update-targets
+	cat $(MAKEFILE_LIST) | grep '^update-.*:' | sed 's/:.*//g' | tr '\n' ' '
+endef
+
+all-update-targets := $(shell $(call get-all-update-targets))
 
 
 .PHONY: clean \
 	compile \
 	update \
-	update-all-the-icons \
-	update-awesome-tab \
-	update-company \
-	update-company-box \
-	update-cua-lite \
-	update-dash \
-	update-dashboard \
-	update-expand-region \
-	update-f \
-	update-ht \
-	update-ivy-posframe \
-	update-lsp-mode \
-	update-lsp-ui \
-	update-lv \
-	update-magit \
-	update-markdown \
-	update-memoize \
-	update-page-break-lines \
-	update-perspective \
-	update-persp-projectile \
-	update-posframe \
-	update-projectile \
-	update-s \
-	update-simpleclip \
-	update-smart-shift \
-	update-spinner \
-	update-swiper \
-	update-transient \
-	update-undo-tree \
-	update-visual-regexp \
-	update-which-key \
-	update-with-editor \
+	$(all-update-targets) \
 
 clean:
 	find -name '*.elc' -exec rm {} +
@@ -87,28 +61,7 @@ compile:
 		-L swiper \
 		--execute '(byte-recompile-directory "." 0)'
 
-update: \
-	update-all-the-icons \
-	update-awesome-tab \
-	update-company \
-	update-company-box \
-	update-cua-lite \
-	update-dashboard \
-	update-expand-region \
-	update-ivy-posframe \
-	update-lsp-mode \
-	update-lsp-ui \
-	update-magit \
-	update-perspective \
-	update-persp-projectile \
-	update-posframe \
-	update-projectile \
-	update-simpleclip \
-	update-smart-shift \
-	update-swiper \
-	update-undo-tree \
-	update-visual-regexp \
-	update-which-key \
+update: $(all-update-targets)
 
 define download-from-url
 	wget -N $(1)
