@@ -10,6 +10,7 @@ CUA_LITE_URL := https://raw.githubusercontent.com/emacsattic/cua-lite/master/cua
 DASHBOARD_REPO := https://github.com/emacs-dashboard/emacs-dashboard.git
 	PAGE_BREAK_LINES_URL := https://raw.githubusercontent.com/purcell/page-break-lines/master/page-break-lines.el
 EXPAND_REGION_REPO := https://github.com/magnars/expand-region.el.git
+FLYCHECK_REPO := https://github.com/flycheck/flycheck.git
 IVY_POSFRAME_URL := https://raw.githubusercontent.com/tumashu/ivy-posframe/master/ivy-posframe.el
 	POSFRAME_URL := https://raw.githubusercontent.com/tumashu/posframe/master/posframe.el
 LSP_MODE_REPO := https://github.com/emacs-lsp/lsp-mode.git
@@ -33,6 +34,8 @@ SWIPER_REPO := https://github.com/abo-abo/swiper.git
 UNDO_TREE_URL := http://www.dr-qubit.org/undo-tree/undo-tree.el
 VISUAL_REGEXP_URL := https://raw.githubusercontent.com/benma/visual-regexp.el/master/visual-regexp.el
 WHICH_KEY_URL := https://raw.githubusercontent.com/justbur/emacs-which-key/master/which-key.el
+
+
 define get-all-update-targets
 	cat $(MAKEFILE_LIST) | grep '^update-.*:' | sed 's/:.*//g' | tr '\n' ' '
 endef
@@ -55,6 +58,7 @@ compile:
 		-L company-box \
 		-L emacs-dashboard \
 		-L expand-region.el \
+		-L flycheck \
 		-L lsp-mode \
 		-L lsp-ui \
 		-L magit \
@@ -136,6 +140,9 @@ update-expand-region:
 
 update-f:
 	$(call download-from-url, $(F_URL))
+
+update-flycheck:
+	$(call download-from-repo, $(FLYCHECK_REPO))
 
 update-ht:
 	$(call download-from-url, $(HT_URL))
