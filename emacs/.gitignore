@@ -10,4 +10,4 @@
 /.cache/
 /transient/
 *.elc
-
+.lsp-session-v1
