@@ -37,10 +37,14 @@ WHICH_KEY_URL := https://raw.githubusercontent.com/justbur/emacs-which-key/maste
 
 
 define get-all-update-targets
-	cat $(MAKEFILE_LIST) | grep '^update-.*:' | sed 's/:.*//g' | tr '\n' ' '
+	cat $(MAKEFILE_LIST) | grep "^update-.*:" | sed "s/:.*//g" | tr "\n" " "
 endef
-
 all-update-targets := $(shell $(call get-all-update-targets))
+
+define get-all-lib-dirs
+	$(eval MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
+	ls -d $(MAKEFILE_DIR)*/ |  sed "s/^\//-L \//g" | tr "\n" " "
+endef
 
 
 .PHONY: clean \
@@ -54,15 +58,7 @@ clean:
 compile:
 	emacs --batch \
 		-L . \
-		-L company-mode \
-		-L company-box \
-		-L emacs-dashboard \
-		-L expand-region.el \
-		-L flycheck \
-		-L lsp-mode \
-		-L lsp-ui \
-		-L magit \
-		-L swiper \
+		$(shell $(call get-all-lib-dirs)) \
 		--execute '(byte-recompile-directory "." 0)'
 
 update: $(all-update-targets)
