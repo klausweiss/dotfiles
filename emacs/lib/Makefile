@@ -6,7 +6,6 @@ AWESOME_TAB_URL := https://raw.githubusercontent.com/manateelazycat/awesome-tab/
 COMPANY_REPO := https://github.com/company-mode/company-mode.git
 COMPANY_BOX_REPO := https://github.com/sebastiencs/company-box.git
 	DASH_FUNCTIONAL_URL := https://raw.githubusercontent.com/magnars/dash.el/master/dash-functional.el
-CUA_LITE_URL := https://raw.githubusercontent.com/emacsattic/cua-lite/master/cua-lite.el
 DASHBOARD_REPO := https://github.com/emacs-dashboard/emacs-dashboard.git
 	PAGE_BREAK_LINES_URL := https://raw.githubusercontent.com/purcell/page-break-lines/master/page-break-lines.el
 EXPAND_REGION_REPO := https://github.com/magnars/expand-region.el.git
@@ -120,9 +119,6 @@ update-company:
 
 update-company-box: update-dash
 	$(call download-from-repo, $(COMPANY_BOX_REPO), images/)
-
-update-cua-lite:
-	$(call download-from-url, $(CUA_LITE_URL))
 
 update-dash:
 	$(call download-from-url, $(DASH_URL))
