@@ -379,6 +379,7 @@ Regular expressions can be used."
 
 (defcustom projectile-globally-ignored-directories
   '(".idea"
+    ".vscode"
     ".ensime_cache"
     ".eunit"
     ".git"
@@ -390,7 +391,8 @@ Regular expressions can be used."
     ".tox"
     ".svn"
     ".stack-work"
-    ".ccls-cache")
+    ".ccls-cache"
+    ".clangd")
   "A list of directories globally ignored by projectile.
 
 Regular expressions can be used."
@@ -1127,6 +1129,12 @@ Controlled by `projectile-require-project-root'."
      (projectile-require-project-root (error "Projectile can't find a project definition in %s" dir))
      (t default-directory))))
 
+(defun projectile-acquire-root (&optional dir)
+  "Find the current project root, and prompts the user for it if that fails.
+Provides the common idiom (projectile-ensure-root (projectile-project-root)).
+Starts the search for the project with DIR."
+  (projectile-ensure-project (projectile-project-root dir)))
+
 (defun projectile-project-p (&optional dir)
   "Check if DIR is a project.
 Defaults to the current directory if not provided
@@ -1440,6 +1448,14 @@ If PROJECT is not specified the command acts on the current project."
   (let ((project-buffers (projectile-project-buffers)))
     (dolist (buffer project-buffers)
       (funcall action buffer))))
+
+(defun projectile-process-current-project-buffers-current (action)
+  "Invoke ACTION on every project buffer with that buffer current.
+ACTION is called without arguments."
+  (let ((project-buffers (projectile-project-buffers)))
+    (dolist (buffer project-buffers)
+      (with-current-buffer buffer
+        (funcall action)))))
 
 (defun projectile-project-buffer-files (&optional project)
   "Get a list of a project's buffer files.
