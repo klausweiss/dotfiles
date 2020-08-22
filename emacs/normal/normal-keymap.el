@@ -1,12 +1,32 @@
 (require 'easymenu)
 (require 'normal-autoload)
-(require 'normal-buffer-interaction)
-(require 'normal-emacs-interaction)
-(require 'normal-interface)
-(require 'normal-project-integration)
 (require 'normal-seq)
-(require 'normal-text-manipulation)
-(require 'normal-window-movement)
+
+(autoload-all "lib/normal-buffer-interaction"
+	      #'shift-right/complete/insert-tab
+	      )
+(autoload-all "lib/normal-emacs-interaction"
+	      #'minibuffer-keyboard-quit
+	      )
+(autoload-all "lib/normal-text-manipulation"
+	      #'comment-dwim-line
+	      #'duplicate-current-line
+	      #'newline-above
+	      #'newline-below
+	      )
+(autoload-all "lib/normal-themes"
+	      #'toggle-theme
+	      )
+(autoload-all "lib/normal-window-movement"
+	      #'switch-to-or-split-window-down
+	      #'switch-to-or-split-window-left
+	      #'switch-to-or-split-window-right
+	      #'switch-to-or-split-window-up
+	      )
+(autoload-all "normal-project-integration"
+	      #'persp-counsel-switch-buffer-force
+	      #'projectile-find-file-if-in-project
+	      )
 
 (autoload-all "../lib/swiper/counsel"
 	      #'counsel-M-x
