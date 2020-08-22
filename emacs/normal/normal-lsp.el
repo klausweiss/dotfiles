@@ -6,6 +6,9 @@
 (autoload-all "../lib/lsp-mode/lsp"
 	      #'lsp
 	      )
+(autoload-all "../lib/lsp-mode/lsp-completion"
+	      #'lsp-completion-mode
+	      )
 (autoload-all "../lib/lsp-mode/lsp-modeline"
 	      #'lsp-modeline-diagnostics-mode
 	      )
@@ -19,5 +22,6 @@
 (add-hook 'perl-mode-hook #'lsp)
 (add-hook 'python-mode-hook #'lsp)
 (add-hook 'lsp-mode-hook #'flycheck-mode)
+(add-hook 'lsp-mode-hook #'lsp-completion-mode)
 
 (provide 'normal-lsp)

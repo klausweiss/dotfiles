@@ -3,10 +3,9 @@
 (require 'company-box)
 (add-hook 'company-mode-hook #'company-box-mode)
 
-(setq company-backends (list
-			'company-capf
-			'company-dabbrev
-			)
+(setq company-backends '(company-capf
+			 company-dabbrev
+			 )
       company-idle-delay 0
       company-dabbrev-downcase nil
       tab-always-indent 'complete
