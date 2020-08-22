@@ -16,5 +16,9 @@
 (tool-bar-mode -1)
 (load-dark-theme)
 
-(provide 'normal-interface)
+(setq-default mode-line-format
+              '(
+	       ))
 
+
+(provide 'normal-interface)
