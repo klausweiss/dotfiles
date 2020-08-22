@@ -6,7 +6,9 @@
 (setq ediff-window-setup-function 'ediff-setup-windows-plain)
 
 (setq cua-prefix-override-inhibit-delay 0.01
-      cua-remap-control-v nil)
+      cua-remap-control-v nil
+      cua-remap-control-z nil
+      )
 (cua-mode t)
 
 ;; system clipboard interaction
