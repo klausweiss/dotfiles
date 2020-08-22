@@ -1,7 +1,9 @@
+(require 'normal-autoload)
+
 (require 'ivy)
-(require 'ivy-posframe)
 
 (with-eval-after-load 'ivy
+  (require 'ivy-posframe)
   (setq enable-recursive-minibuffers t
 	ivy-count-format "(%d/%d) "
 	ivy-re-builders-alist '((t . ivy--regex-plus))
