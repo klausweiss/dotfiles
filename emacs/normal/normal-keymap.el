@@ -17,7 +17,7 @@
 (autoload-all "lib/normal-themes"
 	      #'toggle-theme
 	      )
-(autoload-all "lib/normal-window-movement"
+(autoload-all "lib/normal-window-management"
 	      #'switch-to-or-split-window-down
 	      #'switch-to-or-split-window-left
 	      #'switch-to-or-split-window-right

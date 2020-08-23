@@ -36,4 +36,4 @@
 			))
   )
 
-(provide 'normal-window-movement)
+(provide 'normal-window-management)
