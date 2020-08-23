@@ -33,6 +33,7 @@ SWIPER_REPO := https://github.com/abo-abo/swiper.git
 UNDO_TREE_URL := http://www.dr-qubit.org/undo-tree/undo-tree.el
 VISUAL_REGEXP_URL := https://raw.githubusercontent.com/benma/visual-regexp.el/master/visual-regexp.el
 WHICH_KEY_URL := https://raw.githubusercontent.com/justbur/emacs-which-key/master/which-key.el
+WINUM_URL := https://raw.githubusercontent.com/deb0ch/emacs-winum/master/winum.el
 
 
 define get-all-update-targets
@@ -223,6 +224,9 @@ update-visual-regexp:
 
 update-which-key:
 	$(call download-from-url, $(WHICH_KEY_URL))
+
+update-winum:
+	$(call download-from-url, $(WINUM_URL))
 
 update-with-editor:
 	$(call download-from-url, $(WITH_EDITOR_URL))
