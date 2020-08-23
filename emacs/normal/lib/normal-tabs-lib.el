@@ -14,7 +14,9 @@
   (let ((this-tabs-buffers (awesome-tab-tabs (awesome-tab-current-tabset))))
     (if (> (length this-tabs-buffers) 1)
 	(kill-this-buffer)
-      (kill-buffer-and-window)))
+      (if (= 1 (length (get-buffer-window-list)))
+	  (kill-buffer-and-window)
+	(delete-window))))
     )
 
 (provide 'normal-tabs-lib)
