@@ -36,10 +36,11 @@ WHICH_KEY_URL := https://raw.githubusercontent.com/justbur/emacs-which-key/maste
 WINUM_URL := https://raw.githubusercontent.com/deb0ch/emacs-winum/master/winum.el
 
 
-define get-all-update-targets
-	cat $(MAKEFILE_LIST) | grep "^update-.*:" | sed "s/:.*//g" | tr "\n" " "
+define get-all-prefix-targets
+	cat $(MAKEFILE_LIST) | grep "^$(1)-.*:" | sed "s/:.*//g" | tr "\n" " "
 endef
-all-update-targets := $(shell $(call get-all-update-targets))
+all-update-targets := $(shell $(call get-all-prefix-targets,"update"))
+all-compile-targets := $(shell $(call get-all-prefix-targets,"compile"))
 
 define get-all-lib-dirs
 	$(eval MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
@@ -49,13 +50,14 @@ endef
 
 .PHONY: clean \
 	compile \
+	$(all-compile-targets) \
 	update \
 	$(all-update-targets) \
 
 clean:
 	find -name '*.elc' -exec rm {} +
 
-compile:
+compile: $(all-compile-targets)
 	emacs --batch \
 		-L . \
 		$(shell $(call get-all-lib-dirs)) \
