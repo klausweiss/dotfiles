@@ -2,7 +2,7 @@ SHELL := /bin/bash
 
 ALL_THE_ICONS_REPO := https://github.com/domtronn/all-the-icons.el
 	MEMOIZE_URL := https://raw.githubusercontent.com/skeeto/emacs-memoize/master/memoize.el
-AWESOME_TAB_URL := https://raw.githubusercontent.com/manateelazycat/awesome-tab/master/awesome-tab.el
+AWESOME_TAB_URL := https://raw.githubusercontent.com/klausweiss/awesome-tab/master/awesome-tab.el
 COMPANY_REPO := https://github.com/company-mode/company-mode.git
 COMPANY_BOX_REPO := https://github.com/sebastiencs/company-box.git
 	DASH_FUNCTIONAL_URL := https://raw.githubusercontent.com/magnars/dash.el/master/dash-functional.el
