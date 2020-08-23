@@ -32,5 +32,6 @@
 (require 'normal-tabs)
 (require 'normal-undo)
 (require 'normal-which-key)
+(require 'normal-winum)
 
 (require 'normal-keymap)

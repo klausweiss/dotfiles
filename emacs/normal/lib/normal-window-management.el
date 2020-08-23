@@ -1,4 +1,9 @@
+(require 'normal-autoload)
 (require 'windmove)
+
+(autoload-all "../../lib/winum"
+	      #'winum-get-number-string
+	      )
 
 (defun switch-to-or-split (switch-fun split-fun)
   (condition-case nil
@@ -35,5 +40,8 @@
 			(windmove-down)
 			))
   )
+
+(defun get-buffer-window-number ()
+  (winum-get-number-string (get-buffer-window)))
 
 (provide 'normal-window-management)
