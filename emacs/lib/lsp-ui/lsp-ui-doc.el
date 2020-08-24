@@ -363,7 +363,7 @@ We don't extract the string that `lps-line' is already displaying."
   (-when-let* ((xw (lsp-ui-doc--webkit-get-xwidget)))
     (xwidget-webkit-execute-script-rv xw script)))
 
-(defun lsp-ui-doc--hide-frame ()
+(defun lsp-ui-doc--hide-frame (&optional win)
   "Hide the frame."
   (setq lsp-ui-doc--bounds nil)
   (when (overlayp lsp-ui-doc--inline-ov)
@@ -453,8 +453,10 @@ FRAME just below the symbol at point."
           (window (frame-root-window frame))
           ((width . height) (window-text-pixel-size window nil nil 10000 10000 t))
           (width (+ width (* (frame-char-width frame) 1))) ;; margins
-          (char-h (frame-char-height))
+          (char-h (frame-char-height frame))
+          (char-w (frame-char-width frame))
           (height (min (- (* lsp-ui-doc-max-height char-h) (/ char-h 2)) height))
+          (width (min width (* lsp-ui-doc-max-width char-w)))
           (frame-right (pcase lsp-ui-doc-alignment
                          ('frame (frame-pixel-width))
                          ('window right)))
@@ -756,10 +758,11 @@ before, or if the new window is the minibuffer."
                              (equal (window-buffer initial-window) doc-buffer)))
               (lsp-ui-doc--hide-frame))))))))
 
-(advice-add #'select-window :around #'lsp-ui-doc-hide-frame-on-window-change)
+(unless (boundp 'window-selection-change-functions)
+  (advice-add #'select-window :around #'lsp-ui-doc-hide-frame-on-window-change)
+  (add-hook 'window-configuration-change-hook #'lsp-ui-doc--hide-frame))
 
 (advice-add 'load-theme :before (lambda (&rest _) (lsp-ui-doc--delete-frame)))
-(add-hook 'window-configuration-change-hook #'lsp-ui-doc--hide-frame)
 
 (advice-add #'keyboard-quit :before #'lsp-ui-doc--hide-frame)
 
@@ -786,10 +789,14 @@ before, or if the new window is the minibuffer."
         ;; ‘frameset-filter-alist’ for explanation.
         (cl-callf copy-tree frameset-filter-alist)
         (push '(lsp-ui-doc-frame . :never) frameset-filter-alist)))
+    (when (boundp 'window-selection-change-functions)
+      (add-hook 'window-selection-change-functions 'lsp-ui-doc--hide-frame nil t))
     (add-hook 'post-command-hook 'lsp-ui-doc--make-request nil t)
     (add-hook 'delete-frame-functions 'lsp-ui-doc--on-delete nil t))
    (t
     (lsp-ui-doc-hide)
+    (when (boundp 'window-selection-change-functions)
+      (remove-hook 'window-selection-change-functions 'lsp-ui-doc--hide-frame t))
     (remove-hook 'post-command-hook 'lsp-ui-doc--make-request t)
     (remove-hook 'delete-frame-functions 'lsp-ui-doc--on-delete t))))
 
