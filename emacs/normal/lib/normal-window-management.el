@@ -44,4 +44,7 @@
 (defun get-buffer-window-number ()
   (winum-get-number-string (get-buffer-window)))
 
+(defun get-buffer-windows-numbers ()
+  (mapcar #'winum-get-number-string (get-buffer-window-list)))
+
 (provide 'normal-window-management)
