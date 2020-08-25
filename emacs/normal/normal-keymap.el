@@ -6,7 +6,10 @@
 	      #'shift-right/complete/insert-tab
 	      )
 (autoload-all "lib/normal-emacs-interaction"
+	      #'decrease-font-size
+	      #'increase-font-size
 	      #'minibuffer-keyboard-quit
+	      #'reset-font-size
 	      )
 (autoload-all "lib/normal-text-manipulation"
 	      #'comment-dwim-line
