@@ -19,8 +19,6 @@
 	)
   )
 
-(add-hook 'perl-mode-hook #'lsp)
-(add-hook 'python-mode-hook #'lsp)
 (add-hook 'lsp-mode-hook #'flycheck-mode)
 (add-hook 'lsp-mode-hook #'lsp-completion-mode)
 
