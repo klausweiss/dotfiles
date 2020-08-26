@@ -20,6 +20,7 @@ LSP_MODE_REPO := https://github.com/emacs-lsp/lsp-mode.git
 	S_URL := https://raw.githubusercontent.com/magnars/s.el/master/s.el
 	SPINNER_URL := https://raw.githubusercontent.com/Malabarba/spinner.el/master/spinner.el
 LSP_UI_REPO := https://github.com/emacs-lsp/lsp-ui.git
+LUA_MODE_URL := https://raw.githubusercontent.com/immerrr/lua-mode/master/lua-mode.el
 MAGIT_REPO := https://github.com/magit/magit.git
 	TRANSIENT_URL := https://raw.githubusercontent.com/magit/transient/master/lisp/transient.el
 	WITH_EDITOR_URL := https://raw.githubusercontent.com/magit/with-editor/master/with-editor.el
@@ -162,6 +163,9 @@ update-lsp-ui: \
 	update-markdown \
 
 	$(call download-from-repo, $(LSP_UI_REPO))
+
+update-lua-mode:
+	$(call download-from-url, $(LUA_MODE_URL))
 
 update-lv:
 	$(call download-from-url, $(LV_URL))
