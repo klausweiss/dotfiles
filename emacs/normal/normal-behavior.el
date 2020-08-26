@@ -11,6 +11,10 @@
       )
 (cua-mode t)
 
+;; customization
+(setq custom-file "~/.emacs.d/custom.el")
+(load custom-file 'no-error)
+
 ;; system clipboard interaction
 
 (require 'simpleclip)
