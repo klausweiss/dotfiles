@@ -138,6 +138,10 @@
     (define-key map (kbd "C-M-n") #'switch-to-or-split-window-down)
     (define-key map (kbd "C-M-t") #'switch-to-or-split-window-left)
     (define-key map (kbd "C-M-p") #'switch-to-or-split-window-up)
+    (define-key map (kbd "<C-M-right>") #'switch-to-or-split-window-right)
+    (define-key map (kbd "<C-M-down>") #'switch-to-or-split-window-down)
+    (define-key map (kbd "<C-M-left>") #'switch-to-or-split-window-left)
+    (define-key map (kbd "<C-M-up>") #'switch-to-or-split-window-up)
 
     (define-key map (kbd "C-? ?") #'help-for-help)
     (define-key map (kbd "C-? a") #'apropos-command)
