@@ -45,7 +45,7 @@ all-compile-targets := $(shell $(call get-all-prefix-targets,"compile"))
 
 define get-all-lib-dirs
 	$(eval MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
-	ls -d $(MAKEFILE_DIR)*/ |  sed "s/^\//-L \//g" | tr "\n" " "
+	find $(MAKEFILE_DIR) -type d | sed "s/^\//-L \//g" | tr "\n" " "
 endef
 
 
