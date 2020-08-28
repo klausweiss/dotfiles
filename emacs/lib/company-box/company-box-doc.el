@@ -91,8 +91,10 @@
     (set-frame-size frame width height t)))
 
 (defun company-box-doc--make-buffer (object)
-  (let ((string (cond ((stringp object) object)
-                      ((bufferp object) (with-current-buffer object (buffer-string))))))
+  (let* ((buffer-list-update-hook nil)
+         (inhibit-modification-hooks t)
+         (string (cond ((stringp object) object)
+                       ((bufferp object) (with-current-buffer object (buffer-string))))))
     (when (> (length (string-trim string)) 0)
       (with-current-buffer (company-box--get-buffer "doc")
         (erase-buffer)
@@ -100,6 +102,7 @@
         (setq mode-line-format nil
               display-line-numbers nil
               header-line-format nil
+              show-trailing-whitespace nil
               cursor-in-non-selected-windows nil)
         (current-buffer)))))
 
@@ -115,6 +118,7 @@
 (defun company-box-doc--show (selection frame)
   (-when-let* ((valid-state (and (eq (selected-frame) frame)
                                  company-box--bottom
+                                 company-selection
                                  (company-box--get-frame)
                                  (frame-visible-p (company-box--get-frame))))
                (candidate (nth selection company-candidates))
@@ -134,7 +138,7 @@
     (when (timerp company-box-doc--timer)
       (cancel-timer company-box-doc--timer))
     (setq company-box-doc--timer
-          (run-with-idle-timer
+          (run-with-timer
            company-box-doc-delay nil
            (lambda nil
              (company-box-doc--show selection frame)
