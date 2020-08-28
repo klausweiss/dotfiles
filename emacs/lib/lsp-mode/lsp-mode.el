@@ -874,7 +874,9 @@ Changes take effect only when a new session is started."
                                         (purescript-mode . "purescript")
                                         (gdscript-mode . "gdscript")
                                         (perl-mode . "perl")
-                                        (robot-mode . "robot"))
+                                        (cperl-mode . "perl")
+                                        (robot-mode . "robot")
+                                        (nix-mode . "nix"))
   "Language id configuration.")
 
 (defvar lsp--last-active-workspaces nil
@@ -3372,7 +3374,8 @@ in that particular folder."
        (if (fboundp 'project-root)
            (project-root project)
          (car (with-no-warnings
-                (project-roots project))))))))
+                (project-roots project))))))
+   default-directory))
 
 (defun lsp--read-from-file (file)
   "Read FILE content."

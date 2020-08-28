@@ -155,7 +155,7 @@ update-lsp-mode: \
 	update-s \
 	update-spinner \
 
-	$(call download-from-repo, $(LSP_MODE_REPO), scripts/*)
+	$(call download-from-repo, $(LSP_MODE_REPO), scripts/* clients/)
 
 update-lsp-ui: \
 	update-dash \
