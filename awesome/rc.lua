@@ -123,6 +123,7 @@ ez.rules["Firefox"].tag = tag_web
 ez.rules["Fractal"].tag = tag_im
 ez.rules["Telegram"].tag = tag_im
 ez.rules["Thunderbird"].tag = tag_im
+ez.rules["discord"].tag = tag_im
 
 ez.rules["jetbrains-idea-ce"].tag = tag_dev
 ez.rules["jetbrains-pycharm-ce"].tag = tag_dev
