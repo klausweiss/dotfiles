@@ -163,7 +163,7 @@ update-lsp-ui: \
 	update-lsp-mode \
 	update-markdown \
 
-	$(call download-from-repo, $(LSP_UI_REPO))
+	$(call download-from-repo, $(LSP_UI_REPO), resources/)
 
 update-lua-mode:
 	$(call download-from-url, $(LUA_MODE_URL))
