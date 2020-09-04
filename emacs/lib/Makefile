@@ -6,6 +6,7 @@ AWESOME_TAB_URL := https://raw.githubusercontent.com/manateelazycat/awesome-tab/
 COMPANY_REPO := https://github.com/company-mode/company-mode.git
 COMPANY_BOX_REPO := https://github.com/sebastiencs/company-box.git
 	DASH_FUNCTIONAL_URL := https://raw.githubusercontent.com/magnars/dash.el/master/dash-functional.el
+	FRAME_LOCAL_URL := https://raw.githubusercontent.com/sebastiencs/frame-local/master/frame-local.el
 DASHBOARD_REPO := https://github.com/emacs-dashboard/emacs-dashboard.git
 	PAGE_BREAK_LINES_URL := https://raw.githubusercontent.com/purcell/page-break-lines/master/page-break-lines.el
 EXPAND_REGION_REPO := https://github.com/magnars/expand-region.el.git
@@ -122,7 +123,10 @@ update-awesome-tab:
 update-company:
 	$(call download-from-repo, $(COMPANY_REPO))
 
-update-company-box: update-dash
+update-company-box: \
+	update-dash \
+	update-frame-local \
+
 	$(call download-from-repo, $(COMPANY_BOX_REPO), images/)
 
 update-dash:
@@ -140,6 +144,9 @@ update-f:
 
 update-flycheck:
 	$(call download-from-repo, $(FLYCHECK_REPO))
+
+update-frame-local:
+	$(call download-from-url, $(FRAME_LOCAL_URL))
 
 update-ht:
 	$(call download-from-url, $(HT_URL))
