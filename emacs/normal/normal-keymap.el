@@ -19,7 +19,6 @@
 	      )
 (autoload-all "lib/normal-tabs-lib"
 	      #'normal-close-this-tab
-	      #'normal-close-this-tab-group
 	      )
 (autoload-all "lib/normal-themes"
 	      #'toggle-theme
@@ -101,7 +100,7 @@
     (define-key map (kbd "C-r") #'vr/replace-in-buffer)
     (define-key map (kbd "C-a") #'mark-whole-buffer)
     (define-key map (kbd "C-w") #'normal-close-this-tab)
-    (define-key map (kbd "C-S-w") #'normal-close-this-tab-group)
+    (define-key map (kbd "C-S-w") #'delete-window)
     (define-key map (kbd "C-d") #'duplicate-current-line)
     (define-key map (kbd "C-k") #'kill-whole-line)
     (define-key map (kbd "C-<backspace>") #'backward-kill-word)
