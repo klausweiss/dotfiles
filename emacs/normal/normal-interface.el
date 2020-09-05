@@ -1,8 +1,16 @@
 (require 'normal-themes)
 
 (require 'gruvbox)
-(setq dark-theme 'gruvbox-dark-medium)
-(setq light-theme 'gruvbox-light-hard)
+(setq dark-theme 'gruvbox-dark-medium
+      light-theme 'gruvbox-light-hard
+      font "JetBrains Mono-12:weight=thin"
+      )
+
+(set-face-attribute 'default nil :font font)
+(set-frame-font font nil t)
+
+(require 'normal-fonts)
+(normal-fonts-enable-ligatures)
 
 (require 'dashboard)
 (with-eval-after-load 'dashboard
