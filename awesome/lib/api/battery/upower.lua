@@ -1,8 +1,7 @@
 local awful = require("awful")
 local gears = require("gears")
 
-local battery_command = "acpi -i"
-
+local upower_battery_command = "sh -c \"upower -i /org/freedesktop/UPower/devices/DisplayDevice | grep -P '(state:|percentage:)'\""
 
 function mk_battery_info()
    local battery_info = {
@@ -10,17 +9,18 @@ function mk_battery_info()
       charging = false,
 
       _process_running = false,
-      _refreshed = false,
    }
    function battery_info:refresh()
       if self._process_running then return end
       local callbacks = {
 	 stdout = function(line)
-	    if self._refreshed then return end
-	    local status, charge_str, time = string.match(line, '.+: (%a+), (%d?%d?%d)%%,?(.*)')
-	    self.charging = string.find("Charging Full", status) ~= nil
-	    self.percentage = tonumber(charge_str)
-	    self._refreshed = true
+	    local status = string.match(line, 'state:%s*(.+)')
+	    if status ~= nil then 
+	       self.charging = string.find("discharging", status) ~= nil
+	    else
+	       local percentage_str = string.match(line, 'percentage:%s*(%d+)%%')
+	       self.percentage = tonumber(percentage_str)
+	    end
 
 	    awesome.emit_signal "battery_api:refreshed"
 	 end,
@@ -28,7 +28,7 @@ function mk_battery_info()
       }
       self._refreshed = false
       self._process_running = true
-      awful.spawn.with_line_callback(battery_command, callbacks)
+      awful.spawn.with_line_callback(upower_battery_command, callbacks)
    end
    return battery_info
 end

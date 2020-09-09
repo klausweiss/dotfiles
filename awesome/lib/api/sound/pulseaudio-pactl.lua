@@ -118,7 +118,6 @@ function mk_sound_info()
    end
 
    function sound_info:refresh(args)
-      print(table.unpack(args))
       self:refresh_input_muted(args.force)
       self:refresh_input_volume(args or {})
       self:refresh_output_muted(args.force)

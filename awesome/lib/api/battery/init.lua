@@ -1,4 +1,4 @@
-local battery_api = require("lib/api/battery/acpi")
+local battery_api = require("lib/api/battery/upower")
 
 local api_table = {
    _instance = nil,
