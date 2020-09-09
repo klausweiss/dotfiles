@@ -1,3 +1,4 @@
+local awful = require("awful")
 local beautiful = require("beautiful")
 local gears = require("gears")
 local wibox = require("wibox")
@@ -16,7 +17,7 @@ local icons = {
 
 local font = "FontAwesome " .. dpi(20)
 
-function get_battery_icon_color(percentage, is_charging)
+local function get_battery_icon_color(percentage, is_charging)
    if is_charging then
       return beautiful.fg_ternary
    else
@@ -28,7 +29,7 @@ function get_battery_icon_color(percentage, is_charging)
    end
 end
 
-function get_percentage_markup(args)
+local function get_percentage_markup(args)
    local percentage = args.percentage
    local is_charging = args.is_charging
    local color = get_battery_icon_color(percentage, is_charging)
@@ -50,7 +51,7 @@ function battery:refresh(api)
    }
 end
 
-function add_battery_margins(w)
+local function add_battery_margins(w)
    return {
       w,
       bottom = dpi(5),
@@ -59,13 +60,24 @@ function add_battery_margins(w)
    }
 end
 
+local function mk_tooltip(widget, api)
+   local battery_tooltip = awful.tooltip {
+      objects = { widget },
+      timer_function = function ()
+	 return api.get_percentage() .. "%"
+      end,
+   }
+   battery_tooltip.margins = dpi(10)
+   return battery_tooltip
+end
 
-function mk_widget()
+local function mk_widget()
    awesome.connect_signal("battery_api:refreshed",
 			  function ()
 			     battery:refresh(battery_api)
    end)
    battery_api:refresh()
+   local battery_tooltip = mk_tooltip(battery, battery_api)
    return {
       add_battery_margins(battery),
       layout = wibox.layout.flex.vertical,
