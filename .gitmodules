@@ -1,9 +1,0 @@
-[submodule "awesome/obvious"]
-	path = awesome/obvious
-	url = https://github.com/hoelzro/obvious.git
-[submodule "awesome/ez"]
-	path = awesome/ez
-	url = https://github.com/klausweiss/ez-awesome.git
-[submodule "awesome/themes/natty"]
-	path = awesome/themes/natty
-	url = https://github.com/klausweiss/awesomewm-natty-theme
