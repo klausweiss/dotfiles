@@ -30,6 +30,8 @@
   (setq projectile-switch-project-action #'projectile-magit-status
         projectile-completion-system 'ivy)
   (projectile-mode t)
+
+  (require 'perspective)  ;; to have /main/ perspective initialized beefor switching project
   )
 
 
