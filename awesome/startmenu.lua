@@ -17,17 +17,25 @@ local menu_terminal = { "open terminal", terminal }
 
 
 local has_fdo, freedesktop = pcall(require, "freedesktop")
+local has_debian, debian = pcall(require, "debian.menu")
 
 if has_fdo then
    mymainmenu = freedesktop.menu.build({
 	 before = { menu_awesome },
 	 after =  { menu_terminal }
    })
-else
+elseif has_debian then
    mymainmenu = awful.menu({
 	 items = {
 	    menu_awesome,
 	    { "Debian", debian.menu.Debian_menu.Debian },
+	    menu_terminal,
+	 }
+   })
+else
+   mymainmenu = awful.menu({
+	 items = {
+	    menu_awesome,
 	    menu_terminal,
 	 }
    })
