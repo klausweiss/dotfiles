@@ -15,7 +15,7 @@ function mk_layoutbox (screen)
       box,
       widget = wibox.container.margin,
       bottom = dpi(15),
-      top = dpi(10),
+      top = dpi(5),
       left = dpi(15),
       right = dpi(15),
    }
