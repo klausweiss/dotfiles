@@ -82,7 +82,7 @@ function mk_sound_info()
       local left, right = string.match(str, '.+ (%d+)%% .* (%d+)%%')
       left = tonumber(left)
       right = tonumber(right)
-      return (left + right) / 2
+      return math.floor((left + right) / 2)
    end
 
    function sound_info:refresh_output_volume(args)

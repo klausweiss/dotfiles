@@ -24,7 +24,7 @@ local volume_notification = nil
 
 local function on_volume_change()
    title = "Volume changed"
-   text = math.floor(sound_api.get_output_device_volume()) .. "%"
+   text = sound_api.get_output_device_volume() .. "%"
    if not volume_notification then
       volume_notification = naughty.notify {
 	 title = title,
