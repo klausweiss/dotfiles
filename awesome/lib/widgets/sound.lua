@@ -85,6 +85,17 @@ function add_sound_margins(w)
    }
 end
 
+local function mk_tooltip(widget, percentage_getter)
+   local sound_tooltip = awful.tooltip {
+      objects = { widget },
+      timer_function = function ()
+	 return percentage_getter() .. "%"
+      end,
+   }
+   sound_tooltip.margins = dpi(10)
+   return sound_tooltip
+end
+
 
 function mk_widget()
    local input_widget = mk_input_widget(sound_api)
@@ -94,6 +105,8 @@ function mk_widget()
    awesome.connect_signal("sound_api:changed:input",
 			  function () input_widget:refresh() end)
    sound_api.refresh { nonotify = true }
+   local output_tooltip = mk_tooltip(output_widget, sound_api.get_output_device_volume)
+   local input_tooltip = mk_tooltip(input_widget, sound_api.get_input_device_volume)
    widget = {
       add_sound_margins(input_widget),
       add_sound_margins(output_widget),
