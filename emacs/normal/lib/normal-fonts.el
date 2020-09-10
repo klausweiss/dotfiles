@@ -17,6 +17,9 @@
     ;; "?:" vc/replace
     ))
 
+(defun normal-disable-composition ()
+  (setq-local auto-composition-mode nil))
+
 (defun normal-fonts-enable-ligatures ()
   (dolist (pat normal-ligature-mode--ligatures)
     (set-char-table-range composition-function-table
@@ -25,8 +28,8 @@
 				 (list (vector (regexp-quote pat)
                                                0
 					       'compose-gstring-for-graphic)))))
-  (add-hook 'ediff-mode-hook
-          (lambda () (setq-local auto-composition-mode nil)))
+  (add-hook 'magit-log-mode-hook #'normal-disable-composition)
+  (add-hook 'ediff-mode-hook #'normal-disable-composition)
   )
 
 (provide 'normal-fonts)
