@@ -13,7 +13,7 @@ local mute_output_cmd = "pactl set-sink-mute @DEFAULT_SINK@ 1"
 local unmute_output_cmd = "pactl set-sink-mute @DEFAULT_SINK@ 0"
 local toggle_mute_output_cmd = "pactl set-sink-mute @DEFAULT_SINK@ toggle"
 
-local set_output_type_to_headphones_cmd = "pactl set-sink-port 0 analog-output-lineout"
+local set_output_type_to_headphones_cmd = "pactl set-sink-port 0 analog-output-headphones"
 local set_output_type_to_speakers_cmd = "pactl set-sink-port 0 analog-output-speaker"
 
 local get_output_volume_cmd = "pactl list sinks | grep -i 'volume.*front' | tail -n1"
