@@ -16,7 +16,7 @@ function mk_battery_info()
 	 stdout = function(line)
 	    local status = string.match(line, 'state:%s*(.+)')
 	    if status ~= nil then 
-	       self.charging = string.find("discharging", status) ~= nil
+	       self.charging = string.find(status, "discharging") == nil
 	    else
 	       local percentage_str = string.match(line, 'percentage:%s*(%d+)%%')
 	       self.percentage = tonumber(percentage_str)
