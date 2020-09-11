@@ -13,7 +13,7 @@
 	      )
 (autoload-all "lib/normal-text-manipulation"
 	      #'comment-dwim-line
-	      #'duplicate-current-line
+	      #'duplicate-current-region-or-line
 	      #'newline-above
 	      #'newline-below
 	      )
@@ -101,7 +101,7 @@
     (define-key map (kbd "C-a") #'mark-whole-buffer)
     (define-key map (kbd "C-w") #'normal-close-this-tab)
     (define-key map (kbd "C-S-w") #'delete-window)
-    (define-key map (kbd "C-d") #'duplicate-current-line)
+    (define-key map (kbd "C-d") #'duplicate-current-region-or-line)
     (define-key map (kbd "C-k") #'kill-whole-line)
     (define-key map (kbd "C-<backspace>") #'backward-kill-word)
     (define-key map (kbd "<C-delete>") #'kill-word)

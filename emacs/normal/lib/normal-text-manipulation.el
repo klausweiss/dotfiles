@@ -11,7 +11,24 @@
       ;; now insert as many time as requested
       (while (> n 0)
     	(insert current-line)
-    	(decf n)))))
+    	(cl-decf n)))))
+
+(defun duplicate-current-region ()
+  (interactive)
+  (let* ((start (region-beginning))
+	 (end (region-end))
+	 (text (buffer-substring start end)))
+    (goto-char end)
+    (insert text)
+    (setq deactivate-mark nil)
+    (exchange-point-and-mark)))
+
+(defun duplicate-current-region-or-line ()
+  "Duplicate current region if selected, current line otherwise."
+  (interactive)
+  (if (use-region-p)
+      (call-interactively #'duplicate-current-region)
+    (call-interactively #'duplicate-current-line)))
 
 ;; https://www.emacswiki.org/emacs/CommentingCode
 (defun comment-dwim-line (&optional arg)
