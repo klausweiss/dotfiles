@@ -24,9 +24,7 @@
 (tool-bar-mode -1)
 (load-dark-theme)
 
-(setq-default mode-line-format
-              '(
-	       ))
-
+(require 'doom-modeline)
+(doom-modeline-mode 1)
 
 (provide 'normal-interface)
