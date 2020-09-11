@@ -9,6 +9,8 @@ COMPANY_BOX_REPO := https://github.com/sebastiencs/company-box.git
 	FRAME_LOCAL_URL := https://raw.githubusercontent.com/sebastiencs/frame-local/master/frame-local.el
 DASHBOARD_REPO := https://github.com/emacs-dashboard/emacs-dashboard.git
 	PAGE_BREAK_LINES_URL := https://raw.githubusercontent.com/purcell/page-break-lines/master/page-break-lines.el
+DOOM_MODELINE_REPO := https://github.com/seagle0128/doom-modeline.git
+	SHRINK_PATH_URL := https://gitlab.com/bennya/shrink-path.el/-/raw/c14882c8599aec79a6e8ef2d06454254bb3e1e41/shrink-path.el
 EXPAND_REGION_REPO := https://github.com/magnars/expand-region.el.git
 FLYCHECK_REPO := https://github.com/flycheck/flycheck.git
 IVY_POSFRAME_URL := https://raw.githubusercontent.com/tumashu/ivy-posframe/master/ivy-posframe.el
@@ -136,6 +138,9 @@ update-dash:
 update-dashboard: update-page-break-lines
 	$(call download-from-repo, $(DASHBOARD_REPO), banners/)
 
+update-doom-modeline: update-shrink-path
+	$(call download-from-repo, $(DOOM_MODELINE_REPO))
+
 update-expand-region:
 	$(call download-from-repo, $(EXPAND_REGION_REPO))
 
@@ -221,14 +226,17 @@ update-spinner:
 update-simpleclip:
 	$(call download-from-url, $(SIMPLECLIP_URL))
 
+update-shrink-path:
+	$(call download-from-url, $(SHRINK_PATH_URL))
+
 update-smart-shift:
 	$(call download-from-url, $(SMART_SHIFT_URL))
 
-update-transient:
-	$(call download-from-url, $(TRANSIENT_URL))
-
 update-swiper:
 	$(call download-from-repo, $(SWIPER_REPO))
+
+update-transient:
+	$(call download-from-url, $(TRANSIENT_URL))
 
 update-undo-tree:
 	$(call download-from-url, $(UNDO_TREE_URL))
