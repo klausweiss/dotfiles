@@ -190,6 +190,7 @@
     (define-key map (kbd "<C-mouse-5>") #'decrease-font-size)
     (define-key map (kbd "C--") #'decrease-font-size)
 
+    (define-key map (kbd "<S-mouse-1>") #'mouse-save-then-kill)
     (define-key map [mouse-1] #'mouse-set-point)
     (define-key map [mouse-2] #'mouse-yank-primary)
     (define-key map [mouse-3] #'mouse-save-then-kill)
