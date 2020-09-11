@@ -5,7 +5,7 @@
 ;; Author: Justin Burkett <justin@burkett.cc>
 ;; Maintainer: Justin Burkett <justin@burkett.cc>
 ;; URL: https://github.com/justbur/emacs-which-key
-;; Version: 3.3.2
+;; Version: 3.5.0
 ;; Keywords:
 ;; Package-Requires: ((emacs "24.4"))
 
@@ -2125,7 +2125,10 @@ max-lines max-width avl-lines avl-width (which-key--pages-height result))
          (key (if paging-key-bound
                   (concat key " or " which-key-paging-key)
                 key)))
-    (when which-key-use-C-h-commands
+    (when (and which-key-use-C-h-commands
+               (or (not (stringp (kbd prefix-keys)))
+                   (not (string-equal (char-to-string help-char)
+                                      (kbd prefix-keys)))))
       (which-key--propertize (format "[%s paging/help]" key)
                              'face 'which-key-note-face))))
 
