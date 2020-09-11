@@ -878,7 +878,8 @@ Changes take effect only when a new session is started."
                                         (cperl-mode . "perl")
                                         (robot-mode . "robot")
                                         (racket-mode . "racket")
-                                        (nix-mode . "nix"))
+                                        (nix-mode . "nix")
+                                        (prolog-mode . "prolog"))
   "Language id configuration.")
 
 (defvar lsp--last-active-workspaces nil
@@ -992,9 +993,10 @@ They are added to `markdown-code-lang-modes'")
   :group 'lsp-mode
   :package-version '(lsp-mode . "6.2"))
 
-(defcustom lsp-signature-auto-activate nil
-  "Auto activate signature when trigger char is pressed."
-  :type 'boolean
+(defcustom lsp-signature-auto-activate '(:on-trigger-char)
+  "Auto activate signature conditions."
+  :type '(repeat (choice (const :tag "On trigger chars pressed." :on-trigger-char)
+                         (const :tag "After selected completion." :after-completion)))
   :group 'lsp-mode
   :package-version '(lsp-mode . "6.2"))
 
@@ -1025,6 +1027,9 @@ called with nil the signature info must be cleared."
   "Contain the `lsp-session' for the current Emacs instance.")
 
 (defvar lsp--tcp-port 10000)
+
+(defvar lsp--client-packages-required nil
+  "If non-nil, `lsp-client-packages' are yet to be required.")
 
 (defvar lsp--tcp-server-port 0
   "The server socket which is opened when using `lsp-tcp-server' (a server socket
@@ -1514,6 +1519,26 @@ BODY should never return `t' value."
   download-server-fn
   download-in-progress?
   buffers)
+
+(defun lsp-clients-executable-find (find-command &rest args)
+  "Finds an executable by invoking a search command.
+
+FIND-COMMAND is the executable finder that searches for the
+actual language server executable. ARGS is a list of arguments to
+give to FIND-COMMAND to find the language server.  Returns the
+output of FIND-COMMAND if it exits successfully, nil otherwise.
+
+Typical uses include finding an executable by invoking 'find' in
+a project, finding LLVM commands on macOS with 'xcrun', or
+looking up project-specific language servers for projects written
+in the various dynamic languages, e.g. 'nvm', 'pyenv' and 'rbenv'
+etc."
+  (when-let* ((find-command-path (executable-find find-command))
+              (executable-path
+               (with-temp-buffer
+                 (when (zerop (apply 'call-process find-command-path nil t nil args))
+                   (buffer-substring-no-properties (point-min) (point-max))))))
+    (string-trim executable-path)))
 
 (defvar lsp--already-widened nil)
 
@@ -2128,7 +2153,8 @@ WORKSPACE is the workspace that contains the diagnostics."
 (defun lsp-toggle-signature-auto-activate ()
   "Toggle signature auto activate."
   (interactive)
-  (setq lsp-signature-auto-activate (not lsp-signature-auto-activate))
+  (setq lsp-signature-auto-activate
+        (unless lsp-signature-auto-activate '(:on-trigger-char)))
   (lsp--info "Signature autoactivate %s." (if lsp-signature-auto-activate "enabled" "disabled"))
   (lsp--update-signature-help-hook))
 
@@ -3057,17 +3083,20 @@ CANCEL-TOKEN is the token that can be used to cancel request."
              ;; that all of the captured arguments are the same - in our case
              ;; `lsp--create-request-cancel' will return the same lambda when
              ;; called with the same params.
-             (cleanup-hooks (lambda ()
-                              (when (buffer-live-p buf)
-                                (with-current-buffer buf
-                                  (mapc (-lambda ((hook . local))
-                                          (remove-hook
-                                           hook
-                                           (lsp--create-request-cancel
-                                            id target-workspaces hook buf method cancel-callback)
-                                           local))
-                                        hooks)))
-                              (remhash cancel-token lsp--cancelable-requests)))
+             (cleanup-hooks
+              (lambda () (mapc
+                          (-lambda ((hook . local))
+                            (if local
+                                (when (buffer-live-p buf)
+                                  (with-current-buffer buf
+                                    (remove-hook hook
+                                                 (lsp--create-request-cancel
+                                                  id target-workspaces hook buf method cancel-callback)
+                                                 t)))
+                              (remove-hook hook (lsp--create-request-cancel
+                                                 id target-workspaces hook buf method cancel-callback))))
+                          hooks)
+                (remhash cancel-token lsp--cancelable-requests)))
              (callback (pcase mode
                          ((or 'alive 'tick) (lambda (&rest args)
                                               (with-current-buffer buf
@@ -3494,11 +3523,14 @@ in that particular folder."
 (defun lsp--update-signature-help-hook (&optional cleanup?)
   (let ((signature-help-handler (lsp--signature-help-handler-create)))
     (cond
-     ((and lsp-signature-auto-activate signature-help-handler)
+     ((and (or (equal lsp-signature-auto-activate t)
+               (memq :on-trigger-char lsp-signature-auto-activate))
+           signature-help-handler)
       (add-hook 'post-self-insert-hook signature-help-handler nil t))
 
      ((or cleanup?
-          (not lsp-signature-auto-activate))
+          (not (or (equal lsp-signature-auto-activate t)
+                   (memq :on-trigger-char lsp-signature-auto-activate))))
       (remove-hook 'post-self-insert-hook signature-help-handler t)))))
 
 (defun lsp--semantic-highlighting-warn-about-deprecated-setting ()
@@ -3780,6 +3812,7 @@ interface TextDocumentEdit {
                 (when buf
                   (lsp-with-current-buffer buf
                     (set-buffer-modified-p nil)
+                    (setq lsp-buffer-uri nil)
                     (set-visited-file-name new-file-name)
                     (lsp)))))
     (_ (let ((file-name (->> edit
@@ -5499,7 +5532,7 @@ perform the request synchronously."
               (let ((lsp--document-symbols-request-async t))
                 (apply oldfun r))))
 
-(defun lsp--document-symbols->symbols-hierarchy (document-symbols current-position)
+(defun lsp--document-symbols->document-symbols-hierarchy (document-symbols current-position)
   "Convert DOCUMENT-SYMBOLS to symbols hierarchy on CURRENT-POSITION."
   (-let (((symbol &as &DocumentSymbol? :children?)
           (seq-some (-lambda ((symbol &as &DocumentSymbol :range (&Range :start start-position
@@ -5509,27 +5542,42 @@ perform the request synchronously."
                         symbol))
                     document-symbols)))
     (if children?
-        (cons symbol (lsp--document-symbols->symbols-hierarchy children? current-position))
+        (cons symbol (lsp--document-symbols->document-symbols-hierarchy children? current-position))
       (when symbol
         (list symbol)))))
 
-(defun lsp--symbols-informations->symbols-hierarchy (symbols-informations current-position)
-  "Convert SYMBOLS-INFORMATIONS to symbols hierarchy on CURRENT-POSITION."
-  (seq-filter (-lambda ((symbol &as &SymbolInformation :location (&Location :range (&Range :start start-position
-                                                                                           :end end-position))))
-                (when (and (lsp--position-compare current-position start-position)
-                           (lsp--position-compare end-position current-position))
-                  symbol))
-              symbols-informations))
+(lsp-defun lsp--symbol-information->document-symbol ((&SymbolInformation :name :kind :location :container-name? :deprecated?))
+  "Convert a SymbolInformation to a DocumentInformation"
+  (lsp-make-document-symbol :name name
+                            :kind kind
+                            :range (lsp:location-range location)
+                            :children? nil
+                            :deprecated? deprecated?
+                            :selection-range (lsp:location-range location)
+                            :detail? container-name?))
 
-(defun lsp--symbols->symbols-hierarchy (symbols)
+(defun lsp--symbols-informations->document-symbols-hierarchy (symbols-informations current-position)
+  "Convert SYMBOLS-INFORMATIONS to symbols hierarchy on CURRENT-POSITION."
+  (--> symbols-informations
+       (mapcan (-lambda ((symbol &as &SymbolInformation :location (&Location :range (&Range :start start-position
+                                                                                            :end end-position))))
+                 (when (and (lsp--position-compare current-position start-position)
+                            (lsp--position-compare end-position current-position))
+                   (list (lsp--symbol-information->document-symbol symbol))))
+               it)
+       (sort it (-lambda ((&DocumentSymbol :range (&Range :start a-start-position :end a-end-position))
+                          (&DocumentSymbol :range (&Range :start b-start-position :end b-end-position)))
+                  (and (lsp--position-compare b-start-position a-start-position)
+                       (lsp--position-compare a-end-position b-end-position))))))
+
+(defun lsp--symbols->document-symbols-hierarchy (symbols)
   "Convert SYMBOLS to symbols-hierarchy."
   (when-let ((first-symbol (lsp-seq-first symbols)))
     (let ((cur-position (lsp-make-position :line (plist-get (lsp--cur-position) :line)
                                            :character (plist-get (lsp--cur-position) :character))))
       (if (lsp-symbol-information? first-symbol)
-          (lsp--symbols-informations->symbols-hierarchy symbols cur-position)
-        (lsp--document-symbols->symbols-hierarchy symbols cur-position)))))
+          (lsp--symbols-informations->document-symbols-hierarchy symbols cur-position)
+        (lsp--document-symbols->document-symbols-hierarchy symbols cur-position)))))
 
 (defun lsp--xref-backend () 'xref-lsp)
 
@@ -7495,11 +7543,12 @@ server if there is such. When `lsp' is called with prefix
 argument ask the user to select which language server to start. "
   (interactive "P")
 
-  (when lsp-auto-configure
+  (when (and lsp-auto-configure (not lsp--client-packages-required))
     (seq-do (lambda (package)
               ;; loading client is slow and `lsp' can be called repeatedly
               (unless (featurep package) (require package nil t)))
-            lsp-client-packages))
+            lsp-client-packages)
+    (setq lsp--client-packages-required t))
 
   (when (buffer-file-name)
     (let (clients

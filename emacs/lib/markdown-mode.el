@@ -1189,50 +1189,54 @@ giving the bounds of the current and parent list items."
   "Match preformatted text blocks from START to END."
   (save-excursion
     (goto-char start)
-    (let ((levels (markdown-calculate-list-levels))
-          indent pre-regexp close-regexp open close)
-      (while (and (< (point) end) (not close))
-        ;; Search for a region with sufficient indentation
-        (if (null levels)
-            (setq indent 1)
-          (setq indent (1+ (length levels))))
-        (setq pre-regexp (format "^\\(    \\|\t\\)\\{%d\\}" indent))
-        (setq close-regexp (format "^\\(    \\|\t\\)\\{0,%d\\}\\([^ \t]\\)" (1- indent)))
+    (let (finish)
+      ;; Use loop for avoiding too many recursive calls
+      ;; https://github.com/jrblevin/markdown-mode/issues/512
+      (while (not finish)
+        (let ((levels (markdown-calculate-list-levels))
+              indent pre-regexp close-regexp open close)
+          (while (and (< (point) end) (not close))
+            ;; Search for a region with sufficient indentation
+            (if (null levels)
+                (setq indent 1)
+              (setq indent (1+ (length levels))))
+            (setq pre-regexp (format "^\\(    \\|\t\\)\\{%d\\}" indent))
+            (setq close-regexp (format "^\\(    \\|\t\\)\\{0,%d\\}\\([^ \t]\\)" (1- indent)))
 
-        (cond
-         ;; If not at the beginning of a line, move forward
-         ((not (bolp)) (forward-line))
-         ;; Move past blank lines
-         ((markdown-cur-line-blank-p) (forward-line))
-         ;; At headers and horizontal rules, reset levels
-         ((markdown-new-baseline) (forward-line) (setq levels nil))
-         ;; If the current line has sufficient indentation, mark out pre block
-         ;; The opening should be preceded by a blank line.
-         ((and (markdown-prev-line-blank) (looking-at pre-regexp))
-          (setq open (match-beginning 0))
-          (while (and (or (looking-at-p pre-regexp) (markdown-cur-line-blank-p))
-                      (not (eobp)))
-            (forward-line))
-          (skip-syntax-backward "-")
-          (setq close (point)))
-         ;; If current line has a list marker, update levels, move to end of block
-         ((looking-at markdown-regex-list)
-          (setq levels (markdown-update-list-levels
-                        (match-string 2) (current-indentation) levels))
-          (markdown-end-of-text-block))
-         ;; If this is the end of the indentation level, adjust levels accordingly.
-         ;; Only match end of indentation level if levels is not the empty list.
-         ((and (car levels) (looking-at-p close-regexp))
-          (setq levels (markdown-update-list-levels
-                        nil (current-indentation) levels))
-          (markdown-end-of-text-block))
-         (t (markdown-end-of-text-block))))
+            (cond
+             ;; If not at the beginning of a line, move forward
+             ((not (bolp)) (forward-line))
+             ;; Move past blank lines
+             ((markdown-cur-line-blank-p) (forward-line))
+             ;; At headers and horizontal rules, reset levels
+             ((markdown-new-baseline) (forward-line) (setq levels nil))
+             ;; If the current line has sufficient indentation, mark out pre block
+             ;; The opening should be preceded by a blank line.
+             ((and (markdown-prev-line-blank) (looking-at pre-regexp))
+              (setq open (match-beginning 0))
+              (while (and (or (looking-at-p pre-regexp) (markdown-cur-line-blank-p))
+                          (not (eobp)))
+                (forward-line))
+              (skip-syntax-backward "-")
+              (setq close (point)))
+             ;; If current line has a list marker, update levels, move to end of block
+             ((looking-at markdown-regex-list)
+              (setq levels (markdown-update-list-levels
+                            (match-string 2) (current-indentation) levels))
+              (markdown-end-of-text-block))
+             ;; If this is the end of the indentation level, adjust levels accordingly.
+             ;; Only match end of indentation level if levels is not the empty list.
+             ((and (car levels) (looking-at-p close-regexp))
+              (setq levels (markdown-update-list-levels
+                            nil (current-indentation) levels))
+              (markdown-end-of-text-block))
+             (t (markdown-end-of-text-block))))
 
-      (when (and open close)
-        ;; Set text property data
-        (put-text-property open close 'markdown-pre (list open close))
-        ;; Recursively search again
-        (markdown-syntax-propertize-pre-blocks (point) end)))))
+          (if (and open close)
+              ;; Set text property data and continue to search
+              (put-text-property open close 'markdown-pre (list open close))
+            (setq finish t))))
+      nil)))
 
 (defconst markdown-fenced-block-pairs
   `(((,markdown-regex-tilde-fence-begin markdown-tilde-fence-begin)
@@ -1630,35 +1634,39 @@ region of a YAML metadata block as propertized by
 
 (defun markdown-syntax-propertize-comments (start end)
   "Match HTML comments from the START to END."
-  (let* ((in-comment (nth 4 (syntax-ppss)))
-         (comment-begin (nth 8 (syntax-ppss))))
+  ;; Implement by loop instead of recursive call for avoiding
+  ;; exceed max-lisp-eval-depth issue
+  ;; https://github.com/jrblevin/markdown-mode/issues/536
+  (let (finish)
     (goto-char start)
-    (cond
-     ;; Comment start
-     ((and (not in-comment)
-           (re-search-forward markdown-regex-comment-start end t)
-           (not (markdown-inline-code-at-point-p))
-           (not (markdown-code-block-at-point-p)))
-      (let ((open-beg (match-beginning 0)))
-        (put-text-property open-beg (1+ open-beg)
-                           'syntax-table (string-to-syntax "<"))
-        (markdown-syntax-propertize-comments
-         (min (1+ (match-end 0)) end (point-max)) end)))
-     ;; Comment end
-     ((and in-comment comment-begin
-           (re-search-forward markdown-regex-comment-end end t))
-      (let ((comment-end (match-end 0)))
-        (put-text-property (1- comment-end) comment-end
-                           'syntax-table (string-to-syntax ">"))
-        ;; Remove any other text properties inside the comment
-        (remove-text-properties comment-begin comment-end
-                                markdown--syntax-properties)
-        (put-text-property comment-begin comment-end
-                           'markdown-comment (list comment-begin comment-end))
-        (markdown-syntax-propertize-comments
-         (min (1+ comment-end) end (point-max)) end)))
-     ;; Nothing found
-     (t nil))))
+    (while (not finish)
+      (let* ((in-comment (nth 4 (syntax-ppss)))
+             (comment-begin (nth 8 (syntax-ppss))))
+        (cond
+         ;; Comment start
+         ((and (not in-comment)
+               (re-search-forward markdown-regex-comment-start end t)
+               (not (markdown-inline-code-at-point-p))
+               (not (markdown-code-block-at-point-p)))
+          (let ((open-beg (match-beginning 0)))
+            (put-text-property open-beg (1+ open-beg)
+                               'syntax-table (string-to-syntax "<"))
+            (goto-char (min (1+ (match-end 0)) end (point-max)))))
+         ;; Comment end
+         ((and in-comment comment-begin
+               (re-search-forward markdown-regex-comment-end end t))
+          (let ((comment-end (match-end 0)))
+            (put-text-property (1- comment-end) comment-end
+                               'syntax-table (string-to-syntax ">"))
+            ;; Remove any other text properties inside the comment
+            (remove-text-properties comment-begin comment-end
+                                    markdown--syntax-properties)
+            (put-text-property comment-begin comment-end
+                               'markdown-comment (list comment-begin comment-end))
+            (goto-char (min (1+ comment-end) end (point-max)))))
+         ;; Nothing found
+         (t (setq finish t)))))
+    nil))
 
 (defun markdown-syntax-propertize (start end)
   "Function used as `syntax-propertize-function'.
@@ -3715,6 +3723,28 @@ be used to populate the title attribute when converted to XHTML."
         "Reference [%s] was defined, press \\[markdown-do] to jump there")
        label))))
 
+(defcustom markdown-link-make-text-function nil
+  "Function that automatically generates a link text for a URL.
+
+If non-nil, this function will be called by
+`markdown--insert-link-or-image' and the result will be the
+default link text. The function should receive exactly one
+argument that corresponds to the link URL."
+  :group 'markdown
+  :type 'function
+  :package-version '(markdown-mode . "2.5"))
+
+(defcustom markdown-disable-tooltip-prompt nil
+  "Disable prompt for tooltip when inserting a link or image.
+
+If non-nil, `markdown-insert-link' and `markdown-insert-link'
+will not prompt the user to insert a tooltip text for the given
+link or image."
+  :group 'markdown
+  :type 'boolean
+  :safe 'booleanp
+  :package-version '(markdown-mode . "2.5"))
+
 (defun markdown--insert-link-or-image (image)
   "Interactively insert new or update an existing link or image.
 When IMAGE is non-nil, insert an image.  Otherwise, insert a link.
@@ -3752,6 +3782,8 @@ This is an internal function called by
                           (if ref
                               "Link text: "
                             "Link text (blank for plain URL): ")))
+           (text (or text (and markdown-link-make-text-function uri
+                               (funcall markdown-link-make-text-function uri))))
            (text (completing-read text-prompt defined-refs nil nil text))
            (text (if (= (length text) 0) nil text))
            (plainp (and uri (not text)))
@@ -3760,7 +3792,7 @@ This is an internal function called by
            (definedp (and ref (markdown-reference-definition ref)))
            (ref-url (unless (or uri definedp)
                       (completing-read "Reference URL: " used-uris)))
-           (title (unless (or plainp definedp)
+           (title (unless (or plainp definedp markdown-disable-tooltip-prompt)
                     (read-string "Title (tooltip text, optional): " title)))
            (title (if (= (length title) 0) nil title)))
       (when (and image implicitp)
@@ -3803,7 +3835,12 @@ it seems to be a URL, or link text value otherwise.
 If a given reference is not defined, this function will
 additionally prompt for the URL and optional title.  In this case,
 the reference definition is placed at the location determined by
-`markdown-reference-location'.
+`markdown-reference-location'.  In addition, it is possible to
+have the `markdown-link-make-text-function' function, if non-nil,
+define the default link text before prompting the user for it.
+
+If `markdown-disable-tooltip-prompt' is non-nil, the user will
+not be prompted to add or modify a tooltip text.
 
 Through updating the link, this function can be used to convert a
 link of one type (inline, reference, or plain) to another type by
