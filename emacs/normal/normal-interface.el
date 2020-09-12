@@ -5,6 +5,9 @@
       light-theme 'gruvbox-light-hard
       font "JetBrains Mono-12:weight=thin"
       )
+(with-eval-after-load 'gruvbox
+  (set-face-background 'internal-border "#00000000")
+  )
 
 (set-face-attribute 'default nil :font font)
 (set-frame-font font nil t)
