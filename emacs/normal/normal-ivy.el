@@ -15,7 +15,7 @@
 
 (with-eval-after-load 'ivy-posframe
   (setq ivy-posframe-display-functions-alist '((t . ivy-posframe-display-at-frame-center))
-	ivy-posframe-parameters '((internal-border-width . 2))
+	ivy-posframe-parameters '((internal-border-width . 1))
 	)
   (ivy-posframe-mode 1)
   )
