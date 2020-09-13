@@ -16,10 +16,11 @@
 	      #'yas-minor-mode
 	      )
 
-(with-eval-after-load 'lsp
+(with-eval-after-load 'lsp-mode
   (setq read-process-output-max (* 1024 1024)
 	gc-cons-threshold 100000000
 	)
+  (require 'lsp-ui)
   )
 
 (add-hook 'lsp-mode-hook #'flycheck-mode)
