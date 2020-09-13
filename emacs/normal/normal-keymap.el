@@ -200,6 +200,10 @@
     (define-key map [drag-mouse-1] #'mouse-set-region)
     (define-key map [vertical-scroll-bar mouse-1] #'scroll-bar-toolkit-scroll)
     (define-key map [horizontal-scroll-bar mouse-1] #'scroll-bar-toolkit-horizontal-scroll)
+    (define-key map (kbd "<mode-line> <down-mouse-1>") #'mouse-drag-mode-line)
+    (define-key map (kbd "<mode-line> <mouse-1>") #'mouse-select-window)
+    (define-key map (kbd "<vertical-line> <down-mouse-1>") #'mouse-drag-vertical-line)
+    (define-key map (kbd "<vertical-line> <mouse-1>") #'mouse-select-window)
 
     (define-key map [escape] #'keyboard-quit)
     (define-key map (kbd "TAB") #'shift-right/complete/insert-tab)
