@@ -6,12 +6,6 @@
 (autoload-all "../lib/lsp-mode/lsp"
 	      #'lsp
 	      )
-(autoload-all "../lib/lsp-mode/lsp-completion"
-	      #'lsp-completion-mode
-	      )
-(autoload-all "../lib/lsp-mode/lsp-modeline"
-	      #'lsp-modeline-diagnostics-mode
-	      )
 (autoload-all "../lib/yasnippet/yasnippet"
 	      #'yas-minor-mode
 	      )
@@ -20,11 +14,15 @@
   (setq read-process-output-max (* 1024 1024)
 	gc-cons-threshold 100000000
 	)
+  (require 'lsp-completion)
+  (require 'lsp-diagnostics)
+  (require 'lsp-headerline)
+  (require 'lsp-lens)
+  (require 'lsp-modeline)
   (require 'lsp-ui)
   )
 
 (add-hook 'lsp-mode-hook #'flycheck-mode)
-(add-hook 'lsp-mode-hook #'lsp-completion-mode)
 (add-hook 'lsp-mode-hook #'yas-minor-mode)
 
 (provide 'normal-lsp)
