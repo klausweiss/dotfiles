@@ -12,9 +12,6 @@
 (set-face-attribute 'default nil :font font)
 (set-frame-font font nil t)
 
-(require 'normal-fonts)
-(normal-fonts-enable-ligatures)
-
 (require 'dashboard)
 (with-eval-after-load 'dashboard
   (dashboard-setup-startup-hook)
