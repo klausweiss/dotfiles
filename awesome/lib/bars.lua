@@ -14,6 +14,7 @@ local systray = require("lib/widgets/systray")
 local sound_widget = sound()
 local battery_widget = battery()
 local systray_widget = systray()
+local clock_widget = clock()
 
 return {
    mk_bar = function (screen, modkey)
@@ -44,7 +45,7 @@ return {
 	      sound_widget,
 	      battery_widget,
 	      systray_widget,
-	      clock.clock,
+	      clock_widget,
 	      layoutbox(screen),
 	    },
 	 },
