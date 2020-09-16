@@ -1,7 +1,5 @@
 local awful = require("awful")
 local gears = require("gears")
-local naughty = require("naughty")
-local hotkeys_popup = require("awful.hotkeys_popup")
 local menubar = require("menubar")
 
 local clients = require("lib/clients")
@@ -70,38 +68,6 @@ setkey { ALT, SHIFT, "q",
 	 fun = awesome.quit }
 setkey { ALT, SHIFT, "s",
 	 fun = sound_api.refresh_ov }
-setkey { ALT, SHIFT, "p",
-	 fun = function()
-	    naughty.notify {
-	       text = "sup",
-	       title = "homie",
-	    }
-	    
-	    naughty.notify {
-	       preset = naughty.config.presets.critical,
-	       text = "su liarsne tlirasn etlris anetlrsnia terslniat erlsniaterlsniaersln iaterlsniat erlsniate rslniate rlsinate rlsinatep",
-	       title = "homie",
-	    }
-	    
-	    naughty.notify {
-	       text = [[slinaterlsinate
-liaresnltiaresnltiarsenltiarsentliaresnlia
-erlisanetrlisante
-linaterlisanetlriasne
-rliansetlianetiraesntliarsne
-liaeltiaresnlterslniat
-erliasnetlranetrsnaterl
-iaersnidzgvkxtympuoterlsina
-et]],
-	       title = "homie",
-	    }
-	    
-	    naughty.notify {
-	       title = "homie",
-	       text = "sup",
-	       icon = "/home/mbiel/doc/images/Thomas_Morgenstern_849763i.jpg",
-	    }
-end }
 -- keyboard action keys
 setkey { "Print",
 	 fun = run(programs.screenshooter) }
