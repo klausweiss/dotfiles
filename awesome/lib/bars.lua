@@ -2,7 +2,6 @@ local awful = require("awful")
 local wibox = require("wibox")
 local dpi = require("beautiful.xresources").apply_dpi
 
-local startmenu = require("startmenu")
 local battery = require("lib/widgets/battery")
 local sound = require("lib/widgets/sound")
 local taglist = require("lib/widgets/taglist")
@@ -13,7 +12,6 @@ local systray = require("lib/widgets/systray")
 
 local sound_widget = sound()
 local battery_widget = battery()
-local systray_widget = systray()
 local clock_widget = clock()
 
 return {
@@ -44,7 +42,7 @@ return {
             { layout = wibox.layout.fixed.vertical,
 	      sound_widget,
 	      battery_widget,
-	      systray_widget,
+	      systray(),
 	      clock_widget,
 	      layoutbox(screen),
 	    },

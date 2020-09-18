@@ -11,7 +11,8 @@ local icons = {
 
 local font = "FontAwesome " .. dpi(24)
 
-function add_systray_margins(w)
+
+local function add_systray_margins(w)
    return {
       w,
       bottom = dpi(3),
@@ -20,7 +21,7 @@ function add_systray_margins(w)
    }
 end
 
-function get_toggle_markup(shown)
+local function get_toggle_markup(shown)
    local color
    local icon
    if not shown then
@@ -33,8 +34,8 @@ function get_toggle_markup(shown)
    return "<span foreground='" .. color .. "'>" .. icon .."</span>"
 end
 
-function mk_systray()
-   systray = wibox.widget.systray()
+local function mk_systray()
+   local systray = wibox.widget.systray()
    systray.set_base_size(dpi(22))
    systray.visible = false
 
@@ -53,10 +54,10 @@ function mk_systray()
    return systray
 end
 
-function mk_toggle_widget(args)
+local function mk_toggle_widget(args)
    args = args or {}
-   systray = args.systray
-   timeout = args.timeout or 1
+   local systray = args.systray
+   local timeout = args.timeout or 1
 
    local toggle_widget = wibox.widget {
       align  = "center",
@@ -71,7 +72,7 @@ function mk_toggle_widget(args)
 	 toggle_widget.hide_timer:again()
       end
    end
-   
+
    function toggle_widget:step_leave_timer()
       if toggle_widget.hide_timer.started then
 	 toggle_widget.hide_timer:stop()
@@ -81,20 +82,21 @@ function mk_toggle_widget(args)
    function toggle_widget:set_expanded(shown)
       self.expanded = shown
    end
-   
+
    function toggle_widget:refresh()
       self.markup = get_toggle_markup(self.expanded)
    end
-   
-   function on_expand()
+
+   local function on_expand()
       toggle_widget:set_expanded(true)
       toggle_widget:refresh()
       systray.popup:move_next_to(mouse.current_widget_geometry)
+      systray:set_screen(awful.screen.focused())
       systray.popup.visible = true
       systray.visible = true
    end
 
-   function on_collapse()
+   local function on_collapse()
       toggle_widget:set_expanded(false)
       toggle_widget:refresh()
       systray.popup.visible = false
@@ -128,7 +130,7 @@ function mk_toggle_widget(args)
 end
 
 
-function mk_widget ()
+local function mk_widget ()
    local toggle_widget = mk_toggle_widget {
       systray = mk_systray(),
    }
