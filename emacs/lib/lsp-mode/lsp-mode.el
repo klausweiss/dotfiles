@@ -352,7 +352,7 @@ unless overridden by a more specific face association."
          lsp-crystal lsp-csharp lsp-css lsp-dart lsp-dhall lsp-dockerfile lsp-elm
          lsp-elixir lsp-erlang lsp-eslint lsp-fortran lsp-fsharp lsp-gdscript lsp-go
          lsp-hack lsp-groovy lsp-haskell lsp-haxe lsp-java lsp-javascript lsp-json
-         lsp-kotlin lsp-lua lsp-nim lsp-metals lsp-ocaml lsp-perl lsp-php lsp-pwsh
+         lsp-kotlin lsp-lua lsp-nim lsp-nix lsp-metals lsp-ocaml lsp-perl lsp-php lsp-pwsh
          lsp-pyls lsp-python-ms lsp-purescript lsp-r lsp-rf lsp-rust lsp-solargraph
          lsp-tex lsp-terraform lsp-verilog lsp-vetur lsp-vhdl lsp-vimscript lsp-xml
          lsp-yaml lsp-sqls lsp-svelte)
@@ -719,7 +719,8 @@ are determined by the index of the element."
 
 (defcustom lsp-imenu-index-symbol-kinds nil
   "Which symbol kinds to show in imenu."
-  :type '(repeat (choice (const :tag "File" File)
+  :type '(repeat (choice (const :tag "Miscellaneous" nil)
+                         (const :tag "File" File)
                          (const :tag "Module" Module)
                          (const :tag "Namespace" Namespace)
                          (const :tag "Package" Package)
@@ -1371,12 +1372,31 @@ INHERIT-INPUT-METHOD will be proxied to `completing-read' without changes."
      (with-current-buffer ,buffer-id
        ,@body)))
 
+(defvar lsp--throw-on-input nil
+  "Make `lsp-*-while-no-input' throws `input' on interrupted.")
+
+(defmacro lsp--catch (tag bodyform &rest handlers)
+  "Catch TAG thrown in BODYFORM.
+The return value from TAG will be handled in HANDLERS by `pcase'."
+  (declare (debug (form form &rest (pcase-PAT body))) (indent 2))
+  (let ((re-sym (make-symbol "re")))
+    `(let ((,re-sym (catch ,tag ,bodyform)))
+       (pcase ,re-sym
+         ,@handlers))))
+
 (defmacro lsp--while-no-input (&rest body)
-  "Run BODY and return value while there's no input.
-If it's interrupt by input, return nil.
-BODY should never return `t' value."
-  `(let ((re (while-no-input ,@body)))
-     (unless (booleanp re) re)))
+  "Wrap BODY in `while-no-input' and respecting `non-essential'.
+If `lsp--throw-on-input' is set, will throw if input is pending, else
+return value of `body' or nil if interrupted."
+  (declare (debug t) (indent 0))
+  `(if non-essential
+       (let ((res (while-no-input ,@body)))
+         (cond
+          ((and lsp--throw-on-input (equal res t))
+           (throw 'input :interrupted))
+          ((booleanp res) nil)
+          (t res)))
+     ,@body))
 
 ;; A ‘lsp--client’ object describes the client-side behavior of a language
 ;; server.  It is used to start individual server processes, each of which is
@@ -2941,7 +2961,8 @@ If NO-WAIT is non-nil send the request as notification."
           (lsp-cancel-request-by-token :sync-request))))))
 
 (cl-defun lsp-request-while-no-input (method params)
-  "Send request METHOD with PARAMS and waits until there is no input."
+  "Send request METHOD with PARAMS and waits until there is no input.
+Return same value as `lsp--while-no-input' and respecting `non-essential'."
   (let* (resp-result resp-error done?)
     (unwind-protect
         (progn
@@ -2951,15 +2972,16 @@ If NO-WAIT is non-nil send the request as notification."
                              :error-handler (lambda (err) (setf resp-error err))
                              :mode 'detached
                              :cancel-token :sync-request)
-          (while (and (not (or resp-error resp-result))
-                      (not (input-pending-p)))
+          (while (not (or resp-error resp-result
+                          (and non-essential (input-pending-p))))
             (accept-process-output nil 0.001))
           (setq done? t)
           (cond
            ((eq resp-result :finished) nil)
            (resp-result resp-result)
            ((lsp-json-error? resp-error) (error (lsp:json-error-message resp-error)))
-           ((input-pending-p) nil)
+           ((input-pending-p) (when lsp--throw-on-input
+                                (throw 'input :interrupted)))
            (t (error (lsp:json-error-message (cl-first resp-error))))))
       (unless done?
         (lsp-cancel-request-by-token :sync-request)))))
@@ -3220,9 +3242,11 @@ disappearing, unset all the variables related to it."
                       ,@(when lsp-enable-semantic-highlighting
                           `((semanticTokens
                              . ((dynamicRegistration . t)
+                                (requests . ((range . t) (full . t)))
                                 (tokenModifiers . ,(if lsp-semantic-tokens-apply-modifiers
                                                        (apply 'vector (mapcar #'car lsp-semantic-token-modifier-faces)) []))
-                                (tokenTypes . ,(apply 'vector (mapcar #'car lsp-semantic-token-faces)))))))
+                                (tokenTypes . ,(apply 'vector (mapcar #'car lsp-semantic-token-faces)))
+                                (formats . ["relative"])))))
                       (rename . ((dynamicRegistration . t) (prepareSupport . t)))
                       (codeAction . ((dynamicRegistration . t)
                                      (isPreferredSupport . t)
@@ -3644,7 +3668,7 @@ in that particular folder."
       (add-hook 'lsp-on-idle-hook #'lsp--document-links nil t))
 
     (when (and lsp-enable-dap-auto-configure
-               (featurep 'dap-mode))
+               (functionp 'dap-mode))
       (dap-auto-configure-mode 1))
 
     (when (and lsp-enable-semantic-highlighting
@@ -4663,20 +4687,6 @@ Stolen from `org-copy-visible'."
   "Render markdown."
 
   (let ((markdown-enable-math nil))
-    ;; Temporary patch --- since the symbol is not rendered fine in lsp-ui
-    ;; Anything that renders full-width disturbs the width calculation
-    ;; of the resulting hover window.
-    ;; See https://github.com/emacs-lsp/lsp-ui/issues/442
-    (goto-char (point-min))
-    (while (re-search-forward
-            (rx (or
-                 (seq bol (+ "-") eol)
-                 (seq "\* \* \*" eol)
-                 (seq "\-\-\-" eol)
-                 (seq "\_\_\_" eol)))
-            nil t)
-      (replace-match ""))
-
     (goto-char (point-min))
     (while (re-search-forward
             (rx (and "\\" (group (or "\\" "`" "*" "_" ":" "/"
@@ -5759,7 +5769,12 @@ REFERENCES? t when METHOD returns references."
   (let ((params (if args
                     (list :command command :arguments args)
                   (list :command command))))
-    (lsp-request "workspace/executeCommand" params)))
+    (condition-case-unless-debug err
+        (lsp-request "workspace/executeCommand" params)
+      (error
+       (lsp--error "Please open an issue in lsp-mode for implementing `%s'.\n\n%S"
+                   command
+                   err)))))
 
 (defalias 'lsp-point-to-position #'lsp--point-to-position)
 (defalias 'lsp-text-document-identifier #'lsp--text-document-identifier)
@@ -6178,12 +6193,17 @@ an alist
       (cons name
             (lsp--imenu-create-hierarchical-index filtered-children)))))
 
-(lsp-defun lsp--symbol-filter ((&SymbolInformation :kind :location))
+(lsp-defun lsp--symbol-ignore ((&SymbolInformation :kind :location))
   "Determine if SYM is for the current document and is to be shown."
   ;; It's a SymbolInformation or DocumentSymbol, which is always in the
   ;; current buffer file.
   (or (and lsp-imenu-index-symbol-kinds
-           (not (memql (aref lsp/symbol-kind-lookup kind) lsp-imenu-index-symbol-kinds)))
+           (numberp kind)
+           (let ((clamped-kind (if (< 0 kind (length lsp/symbol-kind-lookup))
+                                   kind
+                                 0)))
+             (not (memql (aref lsp/symbol-kind-lookup clamped-kind)
+                         lsp-imenu-index-symbol-kinds))))
       (and location
            (not (eq (->> location
                          (lsp:location-uri)
@@ -6256,7 +6276,7 @@ representation to point representation."
 
 (defun lsp--imenu-filter-symbols (symbols)
   "Filter out unsupported symbols from SYMBOLS."
-  (seq-remove #'lsp--symbol-filter symbols))
+  (seq-remove #'lsp--symbol-ignore symbols))
 
 (defun lsp--imenu-hierarchical-p (symbols)
   "Determine whether any element in SYMBOLS has children."
