@@ -1,4 +1,5 @@
 (require 'normal-autoload)
+(require 'normal-buffers)
 (require 'windmove)
 
 (autoload-all "../../lib/winum"
@@ -9,7 +10,10 @@
   (condition-case nil
       (call-interactively switch-fun)
     (user-error ; no such window
-     (call-interactively split-fun))))
+     (progn
+       (call-interactively split-fun)
+       (normal-new-scratch-buffer)
+       ))))
 
 (defun switch-to-or-split-window-right ()
   (interactive)
