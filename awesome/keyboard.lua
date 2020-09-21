@@ -66,8 +66,6 @@ setkey { ALT, SHIFT, "r",
 	 fun = awesome.restart  }
 setkey { ALT, SHIFT, "q",
 	 fun = awesome.quit }
-setkey { ALT, SHIFT, "s",
-	 fun = sound_api.refresh_ov }
 -- keyboard action keys
 setkey { "Print",
 	 fun = run(programs.screenshooter) }

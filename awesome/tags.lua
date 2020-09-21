@@ -20,7 +20,7 @@ end
 
 return {
    tags = {"1", "2", "3", "4", "5", "6"},
-   
+
    show_only_tag       = function (tag) tag:view_only() end,
    show_tag_by_index   = by_index(function (tag) tag:view_only() end),
    show_next_tag       = with_current_tag(function (tag) awful.tag.viewnext(tag.screen) end),
