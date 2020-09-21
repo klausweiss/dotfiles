@@ -31,6 +31,8 @@ MAGIT_REPO := https://github.com/magit/magit.git
 PERSPECTIVE_URL := https://raw.githubusercontent.com/nex3/perspective-el/master/perspective.el
 PERSPECTIVE_PROJECTILE_URL := https://raw.githubusercontent.com/bbatsov/persp-projectile/master/persp-projectile.el
 PROJECTILE_URL := https://raw.githubusercontent.com/bbatsov/projectile/master/projectile.el
+RUSTIC_REPO := https://github.com/brotzeit/rustic.git
+	XTERM_COLOR_URL := https://raw.githubusercontent.com/atomontage/xterm-color/master/xterm-color.el
 SIMPLECLIP_URL := https://raw.githubusercontent.com/rolandwalker/simpleclip/master/simpleclip.el
 SMART_SHIFT_URL := https://raw.githubusercontent.com/klausweiss/smart-shift/master/smart-shift.el
 SWIPER_REPO := https://github.com/abo-abo/swiper.git
@@ -217,6 +219,9 @@ update-posframe:
 update-projectile:
 	$(call download-from-url, $(PROJECTILE_URL))
 
+update-rustic: update-xterm-color
+	$(call download-from-repo, $(RUSTIC_REPO))
+
 update-s:
 	$(call download-from-url, $(S_URL))
 
@@ -252,6 +257,9 @@ update-winum:
 
 update-with-editor:
 	$(call download-from-url, $(WITH_EDITOR_URL))
+
+update-xterm-color:
+	$(call download-from-url, $(XTERM_COLOR_URL))
 
 update-yasnippet:
 	$(call download-from-repo, $(YASNIPPET_REPO))
