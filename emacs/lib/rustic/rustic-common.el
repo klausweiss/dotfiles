@@ -95,7 +95,8 @@ Takes a value accepted by `spinner-start'."
                                  ,@(mapcar (lambda (c) (list 'const (car c)))
                                            spinner-types)))
                  (vector :tag "A user defined vector"
-                         (repeat :inline t string))))
+                         (repeat :inline t string)))
+  :group 'rustic-babel)
 
 (defmacro rustic-with-spinner (spinner val mode-line &rest body)
   (declare (indent defun))
