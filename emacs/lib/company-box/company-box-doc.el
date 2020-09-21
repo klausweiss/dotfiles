@@ -32,6 +32,7 @@
 (require 'company)
 (require 'frame-local)
 (require 'cl-macs)
+(require 'subr-x)
 
 (defgroup company-box-doc nil
   "Display documentation popups alongside company-box"
@@ -67,7 +68,7 @@
 (defun company-box-doc--fetch-doc-buffer (candidate)
   (let ((inhibit-message t))
     (-some-> (company-call-backend 'doc-buffer candidate)
-             (get-buffer))))
+      (get-buffer))))
 
 (defun company-box-doc--set-frame-position (frame)
   (-let* ((box-position (frame-position (company-box--get-frame)))
@@ -118,7 +119,10 @@
     frame))
 
 (defun company-box-doc--show (selection frame)
-  (cl-letf (((symbol-function 'completing-read) #'company-box-completing-read))
+  (cl-letf (((symbol-function 'completing-read) #'company-box-completing-read)
+            (window-configuration-change-hook nil)
+            (inhibit-redisplay t)
+            (buffer-list-update-hook nil))
     (-when-let* ((valid-state (and (eq (selected-frame) frame)
                                    company-box--bottom
                                    company-selection
@@ -134,7 +138,7 @@
       (unless (frame-visible-p (frame-local-getq company-box-doc-frame))
         (make-frame-visible (frame-local-getq company-box-doc-frame))))))
 
-(defun company-box-completing-read (prompt candidates &rest rest)
+(defun company-box-completing-read (_prompt candidates &rest _)
   "`cider', and probably other libraries, prompt the user to
 resolve ambiguous documentation requests.  Instead of failing we
 just grab the first candidate and press forward."

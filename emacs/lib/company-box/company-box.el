@@ -60,9 +60,6 @@
 
 ;;; Code:
 
-(unless (require 'icons-in-terminal nil t)
-  (defun icons-in-terminal (&rest _) " "))
-
 (require 'subr-x)
 (require 'dash)
 (require 'dash-functional)
@@ -163,10 +160,10 @@ The functions takes 1 parameter, the completion candidate.
 It should return an ICON or nil.
 An ICON can be either a SYMBOL, an IMAGE, a LIST, a STRING:
 
-- SYMBOL:  It is the name of the icon (from `icons-in-terminal').
+- SYMBOL:  It is the name of the icon (from `company-box--icons-in-terminal').
 - IMAGE:   An image descriptor [1]
            Example: '(image :type png :file \"/path/to/image.png\")
-- LIST:    The list is then `apply' to `icons-in-terminal' function.
+- LIST:    The list is then `apply' to `company-box--icons-in-terminal' function.
            Example: '(fa_icon :face some-face :foreground \"red\")
 - STRING:  A simple string which is inserted, should be of length 1
 
@@ -272,6 +269,8 @@ Examples:
     (no-special-glyphs . t))
   "Frame parameters used to create the frame.")
 
+(defvar company-box-debug-scrollbar nil)
+
 (defvar-local company-box--ov nil)
 (defvar-local company-box--ov-common nil)
 (defvar-local company-box--max 0)
@@ -295,6 +294,12 @@ Examples:
 
 (defvar company-box-selection-hook nil
   "Hook run when the selection changed.")
+
+
+(defalias 'company-box--icons-in-terminal
+  (if (require 'icons-in-terminal nil t)
+      'icons-in-terminal
+    (lambda (&rest _) " ")))
 
 (defun company-box--get-frame (&optional frame)
   "Return the company-box child frame on FRAME."
@@ -336,6 +341,7 @@ Examples:
                          `((vertical-scroll-bars . ,(company-box--make-scrollbar-parameter))
                            (default-minibuffer-frame . ,(selected-frame))
                            (minibuffer . ,(minibuffer-window))
+                           (inhibit-double-buffering . t)
                            (background-color . ,(face-background 'company-tooltip nil t)))))
          (window (display-buffer-in-child-frame buffer `((child-frame-parameters . ,params))))
          (frame (window-frame window)))
@@ -412,7 +418,7 @@ It doesn't nothing if a font icon is used."
 (defvar-local company-box--last-scroll 0)
 (defvar-local company-box--last-start nil)
 
-(defun company-box--handle-scroll (win new-start)
+(defun company-box--handle-scroll (_win new-start)
   (setq company-box--last-start new-start)
   (when company-box--x
     (when (>= (abs (- company-box--last-scroll (or company-selection 0)))
@@ -493,7 +499,9 @@ It doesn't nothing if a font icon is used."
         (inhibit-modification-hooks t)
         (candidates-length company-candidates-length)
         (show-numbers company-show-numbers)
-        (with-icons-p company-box--with-icons-p))
+        (with-icons-p company-box--with-icons-p)
+        (window-configuration-change-hook nil)
+        (buffer-list-update-hook nil))
     (with-current-buffer (company-box--get-buffer)
       (erase-buffer)
       (insert string)
@@ -558,7 +566,8 @@ It doesn't nothing if a font icon is used."
       (setq company-box--edges (window-edges nil t nil t))))
 
 (defun company-box--compute-frame-position (frame)
-  (-let* (((left top _right _bottom) (company-box--edges))
+  (-let* ((window-configuration-change-hook nil)
+          ((left top _right _bottom) (company-box--edges))
           (window-tab-line-height (if (fboundp 'window-tab-line-height)
                                       (window-tab-line-height)
                                     0))
@@ -599,6 +608,8 @@ It doesn't nothing if a font icon is used."
 
 (defun company-box--update-frame-position (frame)
   (-let (((new-x . width) (company-box--set-width nil t))
+         (window-configuration-change-hook nil)
+         (buffer-list-update-hook nil)
          (inhibit-redisplay t))
     (frame-local-setq company-box-window-origin (selected-window) frame)
     (frame-local-setq company-box-buffer-origin (current-buffer) frame)
@@ -643,10 +654,10 @@ It doesn't nothing if a font icon is used."
                 (propertize " " 'display icon 'company-box-image t
                             'display-origin icon))
                ((and company-box-color-icon icon)
-                (apply 'icons-in-terminal icon))
-               (t (icons-in-terminal (or (car icon) 'fa_question_circle)))))
+                (apply 'company-box--icons-in-terminal icon))
+               (t (company-box--icons-in-terminal (or (car icon) 'fa_question_circle)))))
         ((symbolp icon)
-         (icons-in-terminal (or icon 'fa_question_circle)))
+         (company-box--icons-in-terminal (or icon 'fa_question_circle)))
         (t icon)))
 
 (defun company-box--add-icon (candidate)
@@ -829,6 +840,9 @@ It doesn't nothing if a font icon is used."
           (frame-width (frame-pixel-width (frame-parent)))
           (new-x (and (> (+ width company-box--x) frame-width)
                       (max 0 (- frame-width width char-width)))))
+    (when company-box-debug-scrollbar
+      (message "[RESIZE] NEW-WIDTH=%s NEW-PIXEL=%s OLD=%s OLD-PIXEL=%s"
+               (/ width char-width) width (frame-parameter frame 'width) (frame-pixel-width frame)))
     (or (and value-only (cons new-x width))
         (and (> diff 2)
              (modify-frame-parameters
@@ -844,8 +858,6 @@ It doesn't nothing if a font icon is used."
          company-box--height
          (* company-candidates-length
             (frame-char-height frame)))))
-
-(defvar company-box-debug-scrollbar nil)
 
 (defun company-box--scrollbar-prevent-changes (&rest _)
   (when company-box-debug-scrollbar
@@ -899,6 +911,7 @@ It doesn't nothing if a font icon is used."
            (height-blank (/ blank-pixels (frame-char-height frame)))
            (inhibit-redisplay t)
            (inhibit-eval-during-redisplay t)
+           (window-configuration-change-hook nil)
            (window-scroll-functions nil))
       (when company-box-debug-scrollbar
         (message "[SCROLL] SELECTION=%s BUFFER=%s H-FRAME=%s N-ELEMENTS=%s PERCENT=%s PERCENT-DISPLAY=%s SCROLLBAR-PIXEL=%s HEIGHT=SCROLLBAR=%s BLANK-PIXELS=%s HEIGHT-BLANK=%s FRAME-CHAR-HEIGHT=%s FRAME-CHAR-HEIGHT-NO-FRAME=%s FRAME=%s MUL=%s"
@@ -914,6 +927,7 @@ It doesn't nothing if a font icon is used."
          (with-selected-frame (company-box--get-frame)
            (let* ((window-min-width 2)
                   (window-safe-min-width 2)
+                  (window-configuration-change-hook nil)
                   (window-scroll-functions nil))
              (display-buffer-in-side-window
               (company-box--update-scrollbar-buffer height-blank height-scrollbar percent buffer)
@@ -936,10 +950,14 @@ It doesn't nothing if a font icon is used."
         (candidates-length company-candidates-length)
         (inhibit-redisplay t)
         (inhibit-modification-hooks t)
+        (buffer-list-update-hook nil)
+        (window-configuration-change-hook nil)
         (prefix company-prefix))
     (with-selected-window (get-buffer-window (company-box--get-buffer) t)
       (setq company-selection selection)
-      (let ((new-point (company-box--point-at-line selection)))
+      (let ((new-point (company-box--point-at-line selection))
+            (buffer-list-update-hook nil)
+            (window-configuration-change-hook nil))
         (cond ((and (> new-point 1) (null (get-text-property (1- new-point) 'company-box--rendered)))
                ;; When going backward, render lines not yet visible
                ;; This avoid to render the lines when it's already visible
@@ -1001,6 +1019,7 @@ It doesn't nothing if a font icon is used."
 (defun company-box--update nil
   (-let* (((prefix common search length) company-box--state)
           (frame (company-box--get-frame))
+          (window-configuration-change-hook nil)
           (frame-visible (and (frame-live-p frame) (frame-visible-p frame))))
     (if (and frame-visible
              (equal search company-search-string)
@@ -1042,14 +1061,16 @@ COMMAND: See `company-frontends'."
    ))
 
 (defun company-box--ensure-full-window-is-rendered (&optional start)
-  (with-selected-window (get-buffer-window (company-box--get-buffer) t)
-    (let* ((start (or start (window-start)))
-           (line-end company-box--chunk-size)
-           (end (company-box--point-at-line line-end start))
-           (nlines (- end start)))
-      (dotimes (index nlines)
-        (unless (get-text-property (- end (1+ index)) 'company-box--rendered)
-          (company-box--render-lines (- end (1+ index)) t))))))
+  (let ((window-configuration-change-hook nil)
+        (buffer-list-update-hook nil))
+    (with-selected-window (get-buffer-window (company-box--get-buffer) t)
+      (let* ((start (or start (window-start)))
+             (line-end company-box--chunk-size)
+             (end (company-box--point-at-line line-end start))
+             (nlines (- end start)))
+        (dotimes (index nlines)
+          (unless (get-text-property (- end (1+ index)) 'company-box--rendered)
+            (company-box--render-lines (- end (1+ index)) t)))))))
 
 (defun company-box--on-start-change nil
   (setq company-box--prefix-pos nil
@@ -1073,15 +1094,28 @@ COMMAND: See `company-frontends'."
   (company-box--kill-delay (frame-local-getq company-box-buffer frame))
   (company-box--kill-delay (frame-local-getq company-box-scrollbar frame)))
 
-(defun company-box--is-box-buffer nil
-  (string-prefix-p " *company-box" (buffer-name)))
+(defun company-box--is-box-buffer (&optional buffer)
+  (or (and buffer (eq buffer (frame-local-getq company-box--dimmer-parent (frame-parent))))
+      (string-prefix-p " *company-box" (buffer-name (or buffer (window-buffer))))))
+
+(defun company-box--dimmer-show (&rest _)
+  (frame-local-setq company-box--dimmer-parent (window-buffer)))
+
+(defun company-box--dimmer-hide (&rest _)
+  (frame-local-setq company-box--dimmer-parent nil))
 
 (defun company-box--tweak-external-packages nil
   (with-eval-after-load 'dimmer
     (when (boundp 'dimmer-prevent-dimming-predicates)
       (add-to-list
        'dimmer-prevent-dimming-predicates
-       'company-box--is-own-buffer)))
+       'company-box--is-box-buffer))
+    (when (boundp 'dimmer-buffer-exclusion-predicates)
+      (add-to-list
+       'dimmer-buffer-exclusion-predicates
+       'company-box--is-box-buffer))
+    (advice-add 'company-box-show :before 'company-box--dimmer-show)
+    (advice-add 'company-box-hide :before 'company-box--dimmer-hide))
   (with-eval-after-load 'golden-ratio
     (when (boundp 'golden-ratio-exclude-buffer-regexp)
       (add-to-list 'golden-ratio-exclude-buffer-regexp " *company-box"))))
