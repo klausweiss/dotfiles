@@ -687,7 +687,11 @@ as defined in `vc.el'."
 
     ;; OCaml extensions
     ("ml" . ("mli"))
-    ("mli" . ("ml"))
+    ("mli" . ("ml" "mll" "mly"))
+    ("mll" . ("mli"))
+    ("mly" . ("mli"))
+    ("eliomi" . ("eliom"))
+    ("eliom" . ("eliomi"))
 
     ;; vertex shader and fragment shader extensions in glsl
     ("vert" . ("frag"))
@@ -3427,7 +3431,12 @@ regular expression."
            (tags-exclude (projectile-tags-exclude-patterns))
            (default-directory project-root)
            (tags-file (expand-file-name projectile-tags-file-name))
-           (command (format projectile-tags-command tags-file tags-exclude default-directory))
+           (command (format projectile-tags-command
+                            tags-file
+                            tags-exclude
+                            ;; Use directory file name for MSYS2 compatibility.
+                            ;; See https://github.com/bbatsov/projectile/issues/1377 for more details
+                            (directory-file-name default-directory)))
            shell-output exit-code)
       (with-temp-buffer
         (setq exit-code
