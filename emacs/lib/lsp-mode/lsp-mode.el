@@ -5,7 +5,7 @@
 ;; Author: Vibhav Pant, Fangrui Song, Ivan Yonchovski
 ;; Keywords: languages
 ;; Package-Requires: ((emacs "26.1") (dash "2.14.1") (dash-functional "2.14.1") (f "0.20.0") (ht "2.0") (spinner "1.7.3") (markdown-mode "2.3") (lv "0"))
-;; Version: 7.0.1
+;; Version: 7.1.0
 
 ;; URL: https://github.com/emacs-lsp/lsp-mode
 ;; This program is free software; you can redistribute it and/or modify
@@ -486,18 +486,21 @@ the server has requested that."
                                     "[/\\\\]_darcs$"
                                     "[/\\\\]\\.svn$"
                                     "[/\\\\]_FOSSIL_$"
-                                    ;; IDE tools
+                                    ;; IDE or build tools
                                     "[/\\\\]\\.idea$"
                                     "[/\\\\]\\.ensime_cache$"
                                     "[/\\\\]\\.eunit$"
                                     "[/\\\\]node_modules$"
                                     "[/\\\\]\\.fslckout$"
                                     "[/\\\\]\\.tox$"
+                                    "[/\\\\]dist$"
+                                    "[/\\\\]dist-newstyle$"
                                     "[/\\\\]\\.stack-work$"
                                     "[/\\\\]\\.bloop$"
                                     "[/\\\\]\\.metals$"
                                     "[/\\\\]target$"
                                     "[/\\\\]\\.ccls-cache$"
+                                    "[/\\\\]\\.vscode$"
                                     ;; Autotools output
                                     "[/\\\\]\\.deps$"
                                     "[/\\\\]build-aux$"
@@ -6913,11 +6916,22 @@ When prefix UPDATE? is t force installation even if the server is present."
    :buffer " *lsp-install*"
    :noquery t))
 
+(defun lsp-resolve-value (value)
+  "Resolve VALUE's value.
+If it is function - call it.
+If it is symbol - return it's value
+Otherwise returns value itself."
+  (cond
+   ((functionp value) (funcall value))
+   ((symbolp value) (symbol-value value))
+   (value)))
 
 (defvar lsp-deps-providers
   (list :npm (list :path #'lsp--npm-dependency-path
-                   :install #'lsp--npm-dependency-download)
-        :system (list :path #'lsp--system-path)))
+                   :install #'lsp--npm-dependency-install)
+        :system (list :path #'lsp--system-path)
+        :download (list :path #'lsp-download-path
+                        :install #'lsp-download-install)))
 
 (defun lsp--system-path (path)
   "If PATH is absolute and exists return it as is. Otherwise,
@@ -6931,10 +6945,11 @@ nil."
   ;; child process spawn command that is invoked by the
   ;; typescript-language-server). This is why we check for existence and not
   ;; that the path is executable.
-  (if (and (f-absolute? path)
-           (f-exists? path))
-      path
-    (executable-find path)))
+  (let ((path (lsp-resolve-value path)))
+    (if (and (f-absolute? path)
+             (f-exists? path))
+        path
+      (executable-find path))))
 
 (defun lsp-package-path (dependency)
   "Path to the DEPENDENCY each of the registered providers."
@@ -6972,7 +6987,7 @@ nil."
       (error "The package %s is not installed.  Unable to find %s" package path))
     path))
 
-(cl-defun lsp--npm-dependency-download (callback error-callback &key package &allow-other-keys)
+(cl-defun lsp--npm-dependency-install (callback error-callback &key package &allow-other-keys)
   (if-let ((npm-binary (executable-find "npm")))
       (lsp-async-start-process callback
                                error-callback
@@ -6986,6 +7001,38 @@ nil."
     nil))
 
 
+;; Download URL handling
+(cl-defun lsp-download-install (callback error-callback &key url store-path &allow-other-keys)
+  (let ((url (lsp-resolve-value url))
+        (store-path (lsp-resolve-value store-path)))
+    (make-thread
+     (lambda ()
+       (condition-case err
+           (progn
+             (when (f-exists? store-path)
+               (f-delete store-path))
+             (lsp--info "Starting to download %s to %s..." url store-path)
+             (mkdir (f-parent store-path) t)
+             (url-copy-file url store-path)
+             (lsp--info "Finished downloading %s..." store-path)
+             (funcall callback))
+         (error (funcall error-callback err)))))))
+
+(cl-defun lsp-download-path (&key store-path set-executable? &allow-other-keys)
+  "Download URL and store it into STORE-PATH.
+
+SET-EXECUTABLE? when non-nil change the executable flags of
+STORE-PATH to make it executable."
+  (let ((store-path (lsp-resolve-value store-path)))
+    (cond
+     ((executable-find store-path) store-path)
+     ((and set-executable? (f-exists? store-path))
+      (set-file-modes store-path #o0700)
+      store-path)
+     ((f-exists? store-path) store-path))))
+
+
+
 (defun lsp--matching-clients? (client)
   (and
    ;; both file and client remote or both local
@@ -7709,10 +7756,12 @@ This avoids overloading the server with many files when starting Emacs."
        (with-help-window (current-buffer)
          ,@(-map (-lambda ((msg form))
                    `(insert (format "%s: %s\n" ,msg
-                                    (if (with-current-buffer buf
-                                          ,form)
-                                        (propertize "OK" 'face 'success)
-                                      (propertize "ERROR" 'face 'error)))))
+                                    (let ((res (with-current-buffer buf
+                                                 ,form)))
+                                      (cond
+                                       ((eq res :optional) (propertize "NOT AVAILABLE (OPTIONAL)" 'face 'warning))
+                                       (res (propertize "OK" 'face 'success))
+                                       (t (propertize "ERROR" 'face 'error)))))))
                  (-partition 2 checks))))))
 
 (defvar company-backends)
@@ -7725,8 +7774,9 @@ This avoids overloading the server with many files when starting Emacs."
   (interactive)
   (lsp--doctor
    "Checking for Native JSON support" (functionp 'json-serialize)
-   "Checking emacs version has `read-process-output-max'" (boundp 'read-process-output-max)
-   "Using company-capf" (-contains? company-backends 'company-capf)
+   "Using company-capf" (--find (or (equal it 'company-capf)
+                                    (and (listp it) (-contains? it 'company-capf)))
+                                company-backends)
    "Check emacs supports `read-process-output-max'" (boundp 'read-process-output-max)
    "Check `read-process-output-max' default has been changed from 4k"
    (and (boundp 'read-process-output-max)
@@ -7736,7 +7786,11 @@ This avoids overloading the server with many files when starting Emacs."
        (progn (lsp--make-message (list "a" "b"))
               nil)
      (error t))
-   "`gc-cons-threshold' increased?" (> gc-cons-threshold 800000)))
+   "`gc-cons-threshold' increased?" (> gc-cons-threshold 800000)
+   "Using gccemacs with emacs lisp native compilation (https://akrl.sdf.org/gccemacs.html)"
+   (or (and (fboundp 'native-comp-available-p)
+            (native-comp-available-p))
+       :optional)))
 
 
 ;; org-mode/virtual-buffer
