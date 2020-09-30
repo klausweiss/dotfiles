@@ -1,13 +1,8 @@
 (require 'normal-autoload)
 
-(autoload-all "../lib/company-box/company-box"
-	      #'company-box-mode
-	      )
-
 (require 'company)
 
 (with-eval-after-load 'company
-  (add-hook 'company-mode-hook #'company-box-mode)
   (setq company-backends '(company-capf
 			   company-dabbrev
 			   )
