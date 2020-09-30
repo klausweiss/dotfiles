@@ -25,12 +25,18 @@ Status](https://travis-ci.com/brotzeit/rustic.svg?branch=master)](https://travis
                     - [Auto import](#auto-import)
                 - [Macro expansion](#macro-expansion)
     - [Cargo](#cargo)
+        - [Edit](#edit)
         - [Test](#test)
         - [Outdated](#outdated)
     - [Clippy](#clippy)
         - [Flycheck](#flycheck)
         - [lsp-mode](#lsp-mode-1)
     - [Org-babel](#org-babel)
+    - [Spinner](#spinner)
+    - [inline-documentation](#inline-documentation)
+        - [Prequisites](#prequisites)
+        - [Usage](#usage)
+        - [Notes](#notes)
     - [Popup](#popup)
     - [elisp tests](#elisp-tests)
     - [Contributing](#contributing)
@@ -56,6 +62,7 @@ Differences with rust-mode:
 - automatic LSP configuration with
   [eglot](https://github.com/joaotavora/eglot) or
   [lsp-mode](https://github.com/emacs-lsp/lsp-mode)
+- Optional rust inline documentation
 - cask for testing
 - requires emacs 26
 - etc.
@@ -113,6 +120,12 @@ at the beginning of a line.  This feature is provided by a hook around
 
 ![](https://raw.githubusercontent.com/brotzeit/rustic/master/img/compilation_buffer.png)
 
+Commands:
+
+- `rustic-compile`            compile project using `rustic-compile-command`
+- `rustic-recompile`          recompile using `compilation-arguments`
+- `rustic-compile-send-input` send string to process of current buffer
+
 Customization:
 
 - `rustic-compile-display-method` choose function that displays the
@@ -154,16 +167,17 @@ Additional faces:
 
 ## Rustfmt
 
-You can format your code with `rustic-format-buffer` or
-`rustic-cargo-fmt`. Rustic uses the function
-`rustic-save-some-buffers` for saving buffers before compilation. To
-save buffers automatically, you can change the value of
+You can format your code with:
+
+- `rustic-format-buffer` format buffer with stdin
+- `rustic-format-file`   form file and revert buffer
+- `rustic-cargo-fmt`     run cargo-fmt on workspace
+
+Rustic uses the function `rustic-save-some-buffers` for saving buffers before
+compilation. To save buffers automatically, you can change the value of
 `buffer-save-without-query`. In case you prefer using lsp for
 formatting, turn off `rustic-format-on-save` and set
 `rustic-lsp-format`to `t`.
-
-Commands:
-- `rustic-compile-send-input` send string to process of current buffer
 
 Customization:
 
@@ -262,6 +276,17 @@ your own function by customizing
 ![](https://raw.githubusercontent.com/brotzeit/rustic/master/img/macro_expansion.png)
 
 ## Cargo
+
+### Edit
+
+[cargo-edit](https://github.com/killercup/cargo-edit) provides commands to edit
+your dependencies quickly.
+
+The rustic commands can be called with prefix `C-u` if you want to modify the parameters of a command.
+
+- `rustic-cargo-add`     Add crate to Cargo.toml using 'cargo add'
+- `rustic-cargo-rm`      Remove crate from Cargo.toml using 'cargo rm'
+- `rustic-cargo-upgrade`  Upgrade dependencies as specified in the local manifest file using 'cargo upgrade'
 
 ### Test
 
@@ -362,20 +387,54 @@ Customization:
 - `rustic-babel-format-src-block` format block after successful build
 - `rustic-babel-display-compilation-buffer` display compilation buffer
   of babel process
-- `rustic-display-spinner` turn off spinner in the mode-line
+
+## Spinner
+
+In case you want to use a different spinner type you can modify `rustic-spinner-type` or turn it off completely with `rustic-display-spinner`.([Available spinner types](https://github.com/Malabarba/spinner.el/blob/master/spinner.el#L104)).
+
+## inline-documentation
+
+With some setup, it is possible to read rust documentation inside Emacs!
+
+### Prequisites
+
+* Install Pandoc https://pandoc.org/installing.html
+* Install cargo https://doc.rust-lang.org/cargo/getting-started/installation.html
+* Install helm-ag https://github.com/emacsorphanage/helm-ag (Optional, but highly recommended)
+If you do not have them, you will be prompted to install `fd-find`, `ripgrep` and `cargo-makedocs` when you run `rustic-doc-setup`. 
+`ripgrep` is optional but highly recommended.
+If helm-ag and ripgrep is installed, those will be used by default.
+If only ripgrep is installed, it will be used with the emacs `grep` command.
+If neither is installed, the emacs `grep` command will use `grep`, like in the good old days.
+You can change this by providing your own search function by changing `rustic-doc-search-function`.
+
+### Usage
+
+* Enable `rustic-doc-mode`.
+* Run `M-x rustic-doc-setup` to download files that rustic-doc needs to convert rust documentation and also convert `std`.
+* You can now convert package-specific documentation with `M-x rustic-doc-convert-current-package`
+* Search the org files with `rustic-doc-search` (bound to `C-#` by default) if you are in `Rust mode`, `Rustic mode` or `Org mode`. If you hover over a symbol when you invoke the command, `rustic-doc-search` will insert a default value.
+* Add `universal argument` to only search for level 1 headers like struct or enum names.
+
+### Notes
+* We are waiting for an update to Pandoc that will make the generated documents prettier, it should be available soon https://github.com/jgm/pandoc/issues/6554
+* You should re-run `rustic-doc-setup` once in a while, to update the pandoc filter.
+* If rustic-doc does not find the documentation for something, the first thing to do is check the project's `target/doc` folder for the corresponding `.html-file`. If there is no file there, there is nothing for rustic-doc to convert. If there is a file there, please create an issue!
 
 ## Popup
 
-You can execute commands with `rustic-popup`. The list of commands can
-be customized with `rustic-popup-commands`. It's also possible to view
-the command's flags with `h`.  The command
-`rustic-popup-default-action` (`RET` or `TAB`) allows you to change:
+You can execute commands with `rustic-popup`. The list of commands can be customized with `rustic-popup-commands`.
+The command `rustic-popup-default-action` (`RET` or `TAB`) allows you to change:
 
 - `RUST_BACKTRACE` environment variable
 - `compilation-arguments` for `recompile`
 - arguments for `cargo test`
 
 ![](https://raw.githubusercontent.com/brotzeit/rustic/master/img/popup.png)
+
+View help buffer containing a command's flags with `h`:
+
+![](https://raw.githubusercontent.com/brotzeit/rustic/master/img/popup_help.png)
 
 ## elisp tests
 

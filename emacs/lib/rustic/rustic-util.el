@@ -64,7 +64,9 @@
 (defvar rustic-format-buffer-name "*rustfmt*"
   "Buffer name for rustfmt process buffers.")
 
-(defvar rustic-save-pos nil)
+(defvar rustic-save-pos nil
+  "Marker, holding location of the cursor's position before
+running rustfmt.")
 
 (defun rustic-format-start-process (sentinel &rest args)
   "Run rustfmt with ARGS.
@@ -92,7 +94,7 @@ and it's `cdr' is a list of arguments."
          (command (or (plist-get args :command)
                       (cons rustic-rustfmt-bin (rustic-compute-rustfmt-args))))
          (command (if (listp command) command (list command))))
-    (setq rustic-save-pos (point))
+    (setq rustic-save-pos (set-marker (make-marker) (point) (current-buffer)))
     (rustic-compilation-setup-buffer err-buf dir 'rustic-format-mode t)
     (--each files
       (unless (file-exists-p it)
@@ -126,8 +128,8 @@ and it's `cdr' is a list of arguments."
                 (copy-to-buffer file-buffer (point-min) (point-max)))
               (with-current-buffer file-buffer
                 (if use-replace
-                    (replace-buffer-contents proc-buffer)
-                  (goto-char rustic-save-pos)))
+                    (replace-buffer-contents proc-buffer))
+                (goto-char rustic-save-pos))
               (kill-buffer proc-buffer)
               (message "Formatted buffer with rustfmt."))
           (goto-char (point-min))
@@ -213,7 +215,26 @@ were issues when using stdin for formatting."
                                                 :buffer buf
                                                 :files file))))
     (while (eq (process-status proc) 'run)
-      (sit-for 0.1))))
+      (sit-for 0.05))))
+
+(defun rustic-format-file (&optional file)
+  "Unlike `rustic-format-buffer' format file directly and revert the buffer."
+  (interactive "P")
+  (unless (or (eq major-mode 'rustic-mode)
+              (eq major-mode 'rustic-macro-expansion-mode))
+    (error "Not a rustic-mode buffer."))
+  (let* ((buf (current-buffer))
+         (file (or (if file (read-from-minibuffer "Format file: ") nil)
+                   (buffer-file-name buf)
+                   (read-from-minibuffer "Format file: ")))
+         (string (buffer-string)))
+    (write-region string nil file nil 0)
+    (let ((proc (rustic-format-start-process 'rustic-format-file-sentinel
+                                             :buffer buf
+                                             :files file)))
+      (while (eq (process-status proc) 'run)
+        (sit-for 0.05)))))
+
 
 ;;; LSP
 
