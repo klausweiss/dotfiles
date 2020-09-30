@@ -10,8 +10,6 @@ DOOM_MODELINE_REPO := https://github.com/seagle0128/doom-modeline.git
 	SHRINK_PATH_URL := https://gitlab.com/bennya/shrink-path.el/-/raw/c14882c8599aec79a6e8ef2d06454254bb3e1e41/shrink-path.el
 EXPAND_REGION_REPO := https://github.com/magnars/expand-region.el.git
 FLYCHECK_REPO := https://github.com/flycheck/flycheck.git
-IVY_POSFRAME_URL := https://raw.githubusercontent.com/tumashu/ivy-posframe/master/ivy-posframe.el
-	POSFRAME_URL := https://raw.githubusercontent.com/tumashu/posframe/master/posframe.el
 LSP_MODE_REPO := https://github.com/emacs-lsp/lsp-mode.git
 	F_URL := https://raw.githubusercontent.com/rejeep/f.el/master/f.el
 	HT_URL := https://raw.githubusercontent.com/Wilfred/ht.el/master/ht.el
@@ -147,9 +145,6 @@ update-flycheck:
 update-ht:
 	$(call download-from-url, $(HT_URL))
 
-update-ivy-posframe: update-posframe
-	$(call download-from-url, $(IVY_POSFRAME_URL))
-
 update-lsp-mode: \
 	update-dash \
 	update-f \
@@ -201,9 +196,6 @@ update-persp-projectile: \
 	update-projectile \
 
 	$(call download-from-url, $(PERSPECTIVE_PROJECTILE_URL))
-
-update-posframe:
-	$(call download-from-url, $(POSFRAME_URL))
 
 update-projectile:
 	$(call download-from-url, $(PROJECTILE_URL))
