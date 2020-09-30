@@ -4,9 +4,6 @@ ALL_THE_ICONS_REPO := https://github.com/domtronn/all-the-icons.el
 	MEMOIZE_URL := https://raw.githubusercontent.com/skeeto/emacs-memoize/master/memoize.el
 AWESOME_TAB_URL := https://raw.githubusercontent.com/manateelazycat/awesome-tab/master/awesome-tab.el
 COMPANY_REPO := https://github.com/company-mode/company-mode.git
-COMPANY_BOX_REPO := https://github.com/sebastiencs/company-box.git
-	DASH_FUNCTIONAL_URL := https://raw.githubusercontent.com/magnars/dash.el/master/dash-functional.el
-	FRAME_LOCAL_URL := https://raw.githubusercontent.com/sebastiencs/frame-local/master/frame-local.el
 DASHBOARD_REPO := https://github.com/emacs-dashboard/emacs-dashboard.git
 	PAGE_BREAK_LINES_URL := https://raw.githubusercontent.com/purcell/page-break-lines/master/page-break-lines.el
 DOOM_MODELINE_REPO := https://github.com/seagle0128/doom-modeline.git
@@ -24,6 +21,7 @@ LSP_MODE_REPO := https://github.com/emacs-lsp/lsp-mode.git
 	SPINNER_URL := https://raw.githubusercontent.com/Malabarba/spinner.el/master/spinner.el
 LSP_UI_REPO := https://github.com/emacs-lsp/lsp-ui.git
 LUA_MODE_URL := https://raw.githubusercontent.com/immerrr/lua-mode/master/lua-mode.el
+	DASH_FUNCTIONAL_URL := https://raw.githubusercontent.com/magnars/dash.el/master/dash-functional.el
 MAGIT_REPO := https://github.com/magit/magit.git
 	TRANSIENT_URL := https://raw.githubusercontent.com/magit/transient/master/lisp/transient.el
 	WITH_EDITOR_URL := https://raw.githubusercontent.com/magit/with-editor/master/with-editor.el
@@ -127,12 +125,6 @@ update-awesome-tab:
 update-company:
 	$(call download-from-repo, $(COMPANY_REPO))
 
-update-company-box: \
-	update-dash \
-	update-frame-local \
-
-	$(call download-from-repo, $(COMPANY_BOX_REPO), images/)
-
 update-dash:
 	$(call download-from-url, $(DASH_URL))
 	$(call download-from-url, $(DASH_FUNCTIONAL_URL))
@@ -151,9 +143,6 @@ update-f:
 
 update-flycheck:
 	$(call download-from-repo, $(FLYCHECK_REPO))
-
-update-frame-local:
-	$(call download-from-url, $(FRAME_LOCAL_URL))
 
 update-ht:
 	$(call download-from-url, $(HT_URL))
