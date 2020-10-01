@@ -2,7 +2,6 @@ SHELL := /bin/bash
 
 ALL_THE_ICONS_REPO := https://github.com/domtronn/all-the-icons.el
 	MEMOIZE_URL := https://raw.githubusercontent.com/skeeto/emacs-memoize/master/memoize.el
-AWESOME_TAB_URL := https://raw.githubusercontent.com/manateelazycat/awesome-tab/master/awesome-tab.el
 COMPANY_REPO := https://github.com/company-mode/company-mode.git
 DASHBOARD_REPO := https://github.com/emacs-dashboard/emacs-dashboard.git
 	PAGE_BREAK_LINES_URL := https://raw.githubusercontent.com/purcell/page-break-lines/master/page-break-lines.el
@@ -116,9 +115,6 @@ endef
 
 update-all-the-icons: update-memoize
 	$(call download-from-repo, $(ALL_THE_ICONS_REPO), data/)
-
-update-awesome-tab:
-	$(call download-from-url, $(AWESOME_TAB_URL))
 
 update-company:
 	$(call download-from-repo, $(COMPANY_REPO))
