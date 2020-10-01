@@ -1,4 +1,5 @@
 (require 'normal-autoload)
+(require 'perspective)  ;; to have /main/ perspective initialized beefor switching project
 
 (autoload-all "../lib/magit/magit"
 	      #'magit-status
@@ -25,20 +26,16 @@
     (call-interactively #'find-file))
   )
 
-
 (with-eval-after-load 'projectile
   (setq projectile-switch-project-action #'projectile-magit-status
         projectile-completion-system 'ivy)
   (projectile-mode t)
 
-  (require 'perspective)  ;; to have /main/ perspective initialized beefor switching project
-  )
-
-
-(with-eval-after-load 'perspective
   (require 'persp-projectile)
   (projectile-persp-bridge projectile-find-file-hook-function)
+  )
 
+(with-eval-after-load 'perspective
   (setq persp-mode-prefix-key (kbd "C-p p"))
   (persp-mode t)
   )
