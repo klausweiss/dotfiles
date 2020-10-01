@@ -17,9 +17,6 @@
 	      #'newline-above
 	      #'newline-below
 	      )
-(autoload-all "lib/normal-tabs-lib"
-	      #'normal-close-this-tab
-	      )
 (autoload-all "lib/normal-themes"
 	      #'toggle-theme
 	      )
@@ -99,7 +96,7 @@
     (define-key map (kbd "C-f") #'swiper-isearch-with-current-region)
     (define-key map (kbd "C-r") #'vr/replace-in-buffer)
     (define-key map (kbd "C-a") #'mark-whole-buffer)
-    (define-key map (kbd "C-w") #'normal-close-this-tab)
+    (define-key map (kbd "C-w") #'kill-this-buffer)
     (define-key map (kbd "C-S-w") #'delete-window)
     (define-key map (kbd "C-d") #'duplicate-current-region-or-line)
     (define-key map (kbd "C-k") #'kill-whole-line)
