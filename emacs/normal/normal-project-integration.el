@@ -37,6 +37,7 @@
 
 (with-eval-after-load 'perspective
   (require 'persp-projectile)
+  (projectile-persp-bridge projectile-find-file-hook-function)
 
   (setq persp-mode-prefix-key (kbd "C-p p"))
   (persp-mode t)
