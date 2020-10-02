@@ -7,6 +7,9 @@
 (autoload-all "rustic"
 	      #'rustic-mode
 	      )
+(autoload-all "dockerfile-mode"
+	      #'dockerfile-mode
+	      )
 
 (add-to-list 'auto-mode-alist '("\\.lua$" . lua-mode))
 (add-to-list 'interpreter-mode-alist '("lua" . lua-mode))
@@ -25,6 +28,8 @@
           lsp-rust-analyzer-cargo-watch-args "--all-features --tests"
 	  )
     ))
+
+(add-to-list 'auto-mode-alist '("Dockerfile\\(?:\\..*\\)?\\'" . dockerfile-mode))
 
 (add-hook 'perl-mode-hook #'lsp)
 (add-hook 'python-mode-hook #'lsp)
