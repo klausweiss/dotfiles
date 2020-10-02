@@ -1,17 +1,10 @@
 (require 'normal-autoload)
-(require 'perspective)  ;; to have /main/ perspective initialized beefor switching project
+;; to have /main/ perspective initialized beefor switching project
+(require 'perspective)
+(require 'projectile)
 
 (autoload-all "../lib/magit/magit"
 	      #'magit-status
-	      )
-(autoload-all "../lib/perspective"
-	      #'persp-counsel-switch-buffer)
-(autoload-all "../lib/projectile"
-	      #'projectile-ensure-project
-	      #'projectile-find-file
-	      #'projectile-project-root
-	      #'projectile-project-p
-	      #'projectile-with-default-dir
 	      )
 
 (defun projectile-magit-status ()
