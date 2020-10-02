@@ -30,6 +30,7 @@
     ))
 
 (add-to-list 'auto-mode-alist '("Dockerfile\\(?:\\..*\\)?\\'" . dockerfile-mode))
+(add-hook 'dockerfile-mode #'lsp)
 
 (add-hook 'perl-mode-hook #'lsp)
 (add-hook 'python-mode-hook #'lsp)
