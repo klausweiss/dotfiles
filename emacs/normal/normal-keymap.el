@@ -8,6 +8,9 @@
 (autoload-all "lib/normal-buffers"
 	      #'normal-close-window-with-buffer
 	      )
+(autoload-all "lib/normal-elisp"
+	      #'eval-expression-or-region
+	      )
 (autoload-all "lib/normal-emacs-interaction"
 	      #'decrease-font-size
 	      #'increase-font-size
@@ -110,7 +113,7 @@
     (define-key map (kbd "C-<return>") #'newline-above)
     (define-key map (kbd "S-<return>") #'newline-below)
     (define-key map (kbd "C-S-a") #'counsel-M-x)
-    (define-key map (kbd "C-`") #'eval-expression)
+    (define-key map (kbd "C-`") #'eval-expression-or-region)
     (define-key map (kbd "C-<tab>") #'awesome-tab-forward-tab)
     (define-key map (kbd "<C-iso-lefttab>") #'awesome-tab-backward-tab)
     (define-key map (kbd "C-/") #'comment-dwim-line)
