@@ -5,6 +5,9 @@
 (autoload-all "lib/normal-buffer-interaction"
 	      #'shift-right/complete/insert-tab
 	      )
+(autoload-all "lib/normal-buffers"
+	      #'normal-close-window-with-buffer
+	      )
 (autoload-all "lib/normal-emacs-interaction"
 	      #'decrease-font-size
 	      #'increase-font-size
@@ -99,7 +102,7 @@
     (define-key map (kbd "C-r") #'vr/replace-in-buffer)
     (define-key map (kbd "C-a") #'mark-whole-buffer)
     (define-key map (kbd "C-w") #'kill-this-buffer)
-    (define-key map (kbd "C-S-w") #'delete-window)
+    (define-key map (kbd "C-S-w") #'normal-close-window-with-buffer)
     (define-key map (kbd "C-d") #'duplicate-current-region-or-line)
     (define-key map (kbd "C-k") #'kill-whole-line)
     (define-key map (kbd "C-<backspace>") #'backward-kill-word)
