@@ -467,7 +467,10 @@ symbol at point, to not obstruct the view of the code that follows.
 If there's no space above in the current window, it places
 FRAME just below the symbol at point."
   (-let* (((x . y) (--> (or lsp-ui-doc--bounds (bounds-of-thing-at-point 'symbol))
-                        (posn-x-y (posn-at-point (car it)))))
+                        (or (posn-x-y (posn-at-point (car it)))
+                            (if (< (car it) (window-start))
+                                (cons 0 0)
+                              (posn-x-y (posn-at-point (1- (window-end))))))))
           (frame-relative-symbol-x (+ start-x x))
           (frame-relative-symbol-y (+ start-y y))
           (char-height (frame-char-height))
@@ -670,6 +673,7 @@ FN is the function to call on click."
           line-prefix '(space :height (1) :width 1))
     (setq-local face-remapping-alist `((header-line lsp-ui-doc-header)))
     (setq-local window-min-height 1)
+    (setq-local show-trailing-whitespace nil)
     (setq-local window-configuration-change-hook nil)
     (add-hook 'pre-command-hook 'lsp-ui-doc--buffer-pre-command nil t)
     (when (boundp 'window-state-change-functions)
