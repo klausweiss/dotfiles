@@ -125,11 +125,6 @@
     (define-key map (kbd "C-' t") #'toggle-theme)
     (define-key map (kbd "<f2>") #'flycheck-next-error)
     (define-key map (kbd "S-<f2>") #'flycheck-previous-error)
-    (define-key map (kbd "C-b") #'lsp-ui-peek-find-references)
-    (define-key map (kbd "C-S-b") #'lsp-ui-peek-find-definitions)
-    (define-key map (kbd "C-M-b") #'lsp-ui-peek-find-implementation)
-    (define-key map (kbd "S-<f6>") #'lsp-rename)
-    (define-key map (kbd "M-RET") #'lsp-execute-code-action)
     (define-key map (kbd "C-M-S-s") #'switch-to-or-split-window-right)
     (define-key map (kbd "C-M-S-n") #'switch-to-or-split-window-down)
     (define-key map (kbd "C-M-S-t") #'switch-to-or-split-window-left)
@@ -231,6 +226,14 @@
      map global-map)
     (append map (list menu-bar tool-bar))
     )
+  )
+
+(with-eval-after-load 'lsp-mode
+  (define-key lsp-mode-map (kbd "C-b") #'lsp-ui-peek-find-references)
+  (define-key lsp-mode-map (kbd "C-S-b") #'lsp-ui-peek-find-definitions)
+  (define-key lsp-mode-map (kbd "C-M-b") #'lsp-ui-peek-find-implementation)
+  (define-key lsp-mode-map (kbd "S-<f6>") #'lsp-rename)
+  (define-key lsp-mode-map (kbd "M-RET") #'lsp-execute-code-action)
   )
 
 (use-global-map normal-global-map)
