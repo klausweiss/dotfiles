@@ -80,6 +80,8 @@
 	      #'simpleclip-paste
 	      )
 
+(setq normal-keymap-find-definition (kbd "C-S-b"))
+
 (defvar normal-global-map
   (let ((map (make-sparse-keymap))
 	(menu-bar (seq-find-by-first-val 'menu-bar global-map))
@@ -138,6 +140,8 @@
     (define-key map (kbd "<C-M-left>") #'switch-to-or-split-window-left)
     (define-key map (kbd "<C-M-up>") #'switch-to-or-split-window-up)
     (define-key map (kbd "C-M-l") #'indent-region)
+
+    (define-key map normal-keymap-find-definition #'find-function-at-point)
 
     (define-key map (kbd "C-? ?") #'help-for-help)
     (define-key map (kbd "C-? a") #'apropos-command)
@@ -230,7 +234,7 @@
 
 (with-eval-after-load 'lsp-mode
   (define-key lsp-mode-map (kbd "C-b") #'lsp-ui-peek-find-references)
-  (define-key lsp-mode-map (kbd "C-S-b") #'lsp-ui-peek-find-definitions)
+  (define-key lsp-mode-map normal-keymap-find-definition #'lsp-ui-peek-find-definitions)
   (define-key lsp-mode-map (kbd "C-M-b") #'lsp-ui-peek-find-implementation)
   (define-key lsp-mode-map (kbd "S-<f6>") #'lsp-rename)
   (define-key lsp-mode-map (kbd "M-RET") #'lsp-execute-code-action)
