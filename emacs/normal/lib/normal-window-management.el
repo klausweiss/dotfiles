@@ -12,7 +12,6 @@
     (user-error ; no such window
      (progn
        (call-interactively split-fun)
-       (normal-new-scratch-buffer)
        ))))
 
 (defun switch-to-or-split-window-right ()
