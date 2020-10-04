@@ -24,6 +24,7 @@ MAGIT_REPO := https://github.com/magit/magit.git
 	TRANSIENT_URL := https://raw.githubusercontent.com/magit/transient/master/lisp/transient.el
 	WITH_EDITOR_URL := https://raw.githubusercontent.com/magit/with-editor/master/with-editor.el
 	DASH_URL := https://raw.githubusercontent.com/magnars/dash.el/master/dash.el
+MINI_MODELINE_URL := https://raw.githubusercontent.com/kiennq/emacs-mini-modeline/master/mini-modeline.el
 PERSPECTIVE_URL := https://raw.githubusercontent.com/nex3/perspective-el/master/perspective.el
 PERSPECTIVE_PROJECTILE_URL := https://raw.githubusercontent.com/bbatsov/persp-projectile/master/persp-projectile.el
 PROJECTILE_URL := https://raw.githubusercontent.com/bbatsov/projectile/master/projectile.el
@@ -184,6 +185,9 @@ update-markdown:
 
 update-memoize:
 	$(call download-from-url, $(MEMOIZE_URL))
+
+update-mini-modeline:
+	$(call download-from-url, $(MINI_MODELINE_URL))
 
 update-page-break-lines:
 	$(call download-from-url, $(PAGE_BREAK_LINES_URL))
