@@ -86,7 +86,7 @@
 	      #'simpleclip-paste
 	      )
 
-(setq normal-keymap-find-definition (kbd "C-S-b"))
+(setq normal-keymap-find-definition (kbd "C-b"))
 
 (defvar normal-global-map
   (let ((map (make-sparse-keymap))
@@ -239,7 +239,7 @@
   )
 
 (with-eval-after-load 'lsp-mode
-  (define-key lsp-mode-map (kbd "C-b") #'lsp-ui-peek-find-references)
+  (define-key lsp-mode-map (kbd "C-S-b") #'lsp-ui-peek-find-references)
   (define-key lsp-mode-map normal-keymap-find-definition #'lsp-ui-peek-find-definitions)
   (define-key lsp-mode-map (kbd "C-M-b") #'lsp-ui-peek-find-implementation)
   (define-key lsp-mode-map (kbd "S-<f6>") #'lsp-rename)
