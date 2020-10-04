@@ -16,6 +16,7 @@ LSP_MODE_REPO := https://github.com/emacs-lsp/lsp-mode.git
 	S_URL := https://raw.githubusercontent.com/magnars/s.el/master/s.el
 	SPINNER_URL := https://raw.githubusercontent.com/Malabarba/spinner.el/master/spinner.el
 LSP_UI_REPO := https://github.com/emacs-lsp/lsp-ui.git
+LSP_IVY_URL := https://raw.githubusercontent.com/emacs-lsp/lsp-ivy/master/lsp-ivy.el
 LUA_MODE_URL := https://raw.githubusercontent.com/immerrr/lua-mode/master/lua-mode.el
 	DASH_FUNCTIONAL_URL := https://raw.githubusercontent.com/magnars/dash.el/master/dash-functional.el
 MAGIT_REPO := https://github.com/magit/magit.git
@@ -151,6 +152,13 @@ update-lsp-mode: \
 	update-spinner \
 
 	$(call download-from-repo, $(LSP_MODE_REPO), scripts/* clients/)
+
+update-lsp-ivy: \
+	update-lsp-mode \
+	update-dash \
+	update-swiper \
+
+	$(call download-from-url, $(LSP_IVY_URL))
 
 update-lsp-ui: \
 	update-dash \
