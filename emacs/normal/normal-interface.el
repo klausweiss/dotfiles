@@ -3,7 +3,7 @@
 (require 'gruvbox)
 (setq dark-theme 'gruvbox-dark-medium
       light-theme 'gruvbox-light-hard
-      font "JetBrains Mono-12:weight=thin"
+      font "JetBrains Mono-11:weight=thin"
       )
 (with-eval-after-load 'gruvbox
   (set-face-background 'internal-border "#00000000")
