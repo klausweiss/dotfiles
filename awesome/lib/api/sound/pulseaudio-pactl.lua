@@ -217,9 +217,9 @@ function mk_api(args)
       end,
       toggle_output_type = function()
 	 if sound_info.output_device_type == "speakers" then
-	    awful.spawn(set_output_type_to_headphones_cmd)
+	    sound_info:set_output_type_to_headphones()
 	 else
-	    awful.spawn(set_output_type_to_speakers_cmd)
+	    sound_info:set_output_type_to_speakers()
 	 end
 	 sound_info:refresh_output_type()
       end,
