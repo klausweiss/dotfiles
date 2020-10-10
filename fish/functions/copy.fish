@@ -1,7 +1,7 @@
 switch (uname)
 case Linux
     function copy
-        command xsel -ib
+        command perl -0 -pe 's/\n\Z//' | xsel -ib
     end
 case Darwin
     function copy
