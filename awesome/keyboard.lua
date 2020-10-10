@@ -55,12 +55,22 @@ setkey { ALT, TAB,
 setkey { ALT, SHIFT, TAB,
 	 fun = clients.focus_prev }
 -- screens
-setkey { ALT, "d",
+setkey { ALT, "t",
 	 fun = screens.focus_left_screen }
-setkey { ALT, "k",
-	 fun = screens.move_client_to_next_screen  }
-setkey { ALT, "g",
+setkey { ALT, "s",
 	 fun = screens.focus_right_screen }
+setkey { ALT, "p",
+	 fun = screens.focus_up_screen }
+setkey { ALT, "n",
+	 fun = screens.focus_down_screen }
+setkey { ALT, SHIFT, "t",
+	 fun = screens.move_client_to_left_screen  }
+setkey { ALT, SHIFT, "s",
+	 fun = screens.move_client_to_right_screen  }
+setkey { ALT, SHIFT, "p",
+	 fun = screens.move_client_to_up_screen  }
+setkey { ALT, SHIFT, "n",
+	 fun = screens.move_client_to_down_screen  }
 -- awesome
 setkey { ALT, SHIFT, "r",
 	 fun = awesome.restart  }
@@ -103,7 +113,7 @@ setkey { ALT, SHIFT, "l",
 	 fun = run(programs.screen_lock) }
 setkey { ALT, SHIFT, "x",
 	 fun = run("emacs") }
-setkey { ALT, SHIFT, "n",
+setkey { ALT, SHIFT, "k",
 	 fun = run("zim") }
 
 
