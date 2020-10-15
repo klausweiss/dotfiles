@@ -76,16 +76,17 @@ caching purposes.")
 
 (defun lsp-headerline--fix-image-background (image)
   "Fix IMAGE background if it is a file otherwise return as an icon."
-  (if (and image (get-text-property 0 'display image))
-      (propertize " " 'display
-                  (cl-list* 'image
-                            (plist-put
-                             (cl-copy-list
-                              (cl-rest (get-text-property
-                                        0 'display
-                                        image)))
-                             :background (face-attribute 'header-line :background))))
-    (replace-regexp-in-string "\s\\|\t" "" (or image ""))))
+  (if image
+      (let ((display-image (get-text-property 0 'display image)))
+        (if (listp display-image)
+            (propertize " " 'display
+                        (cl-list* 'image
+                                  (plist-put
+                                   (cl-copy-list
+                                    (cl-rest display-image))
+                                   :background (face-attribute 'header-line :background))))
+          (replace-regexp-in-string "\s\\|\t" "" display-image)))
+    ""))
 
 (defun lsp-headerline--filename-with-icon (file-path)
   "Return the filename from FILE-PATH with the extension related icon."
@@ -173,9 +174,17 @@ Switch to current mouse interacting window before doing BODY."
                                      (lsp-headerline--go-to-symbol symbol)))
                                  (define-key map [header-line mouse-2]
                                    (lsp-headerline--make-mouse-handler
-                                     (lsp-headerline--narrow-to-symbol symbol)))
+                                     (-let (((&DocumentSymbol :range (&RangeToPoint :start :end)) symbol))
+                                       (if (and (eq (point-min) start) (eq (point-max) end))
+                                           (widen)
+                                         (lsp-headerline--narrow-to-symbol symbol)))))
                                  map)
-                               (format "mouse-1: go to '%s' symbol\nmouse-2: narrow to '%s' range" name name)
+                               (format "mouse-1: go to '%s' symbol\nmouse-2: %s"
+                                       name
+                                       (-let (((&DocumentSymbol :range (&RangeToPoint :start :end)) symbol))
+                                         (if (and (eq (point-min) start) (eq (point-max) end))
+                                             "widen"
+                                           (format "narrow to '%s' range" name))))
                                symbol-display-string))
 
 (defun lsp-headerline--path-up-to-project-root (root-path path)

@@ -487,12 +487,12 @@ The MARKERS and PREFIX value will be attached to each candidate."
        :company-doc-buffer (-compose #'company-doc-buffer
                                      #'lsp-completion--get-documentation)
        :exit-function
-       (-rpartial #'lsp-completion--exit-fn trigger-chars candidates)))))
+       (-rpartial #'lsp-completion--exit-fn candidates)))))
 
-(defun lsp-completion--exit-fn (candidate _status &optional trigger-chars candidates)
+(defun lsp-completion--exit-fn (candidate _status &optional candidates)
   "Exit function of `completion-at-point'.
 CANDIDATE is the selected completion item.
-Others: TRIGGER-CHARS CANDIDATES"
+Others: CANDIDATES"
   (unwind-protect
       (-let* ((candidate (if (plist-member (text-properties-at 0 candidate)
                                            'lsp-completion-item)
@@ -545,10 +545,7 @@ Others: TRIGGER-CHARS CANDIDATES"
                    (lsp-feature? "textDocument/signatureHelp"))
           (lsp-signature-activate))
 
-        (setq-local lsp-inhibit-lsp-hooks nil)
-
-        (when (lsp-completion--looking-back-trigger-characterp trigger-chars)
-          (setq this-command 'self-insert-command)))
+        (setq-local lsp-inhibit-lsp-hooks nil))
     (lsp-completion--clear-cache)))
 
 (defun lsp-completion--regex-fuz (str)
@@ -561,11 +558,9 @@ Others: TRIGGER-CHARS CANDIDATES"
                      (format "\\(%s\\)" (regexp-quote (char-to-string c))))
                    str))))
 
-(defvar lsp-completion--fuz-case-sensitiveness 20
-  "Case sensitiveness, can be in range of [0, inf).")
-
 (defun lsp-completion--fuz-score (query str)
-  "Calculate fuzzy score for STR with query QUERY."
+  "Calculate fuzzy score for STR with query QUERY.
+The return is nil or in range of (0, inf)."
   (-when-let* ((md (cddr (or (get-text-property 0 'match-data str)
                              (let ((re (lsp-completion--regex-fuz query)))
                                (when (string-match re str)
@@ -610,21 +605,23 @@ Others: TRIGGER-CHARS CANDIDATES"
                   "Update score variables given match range (A B)."
                   (setq score-numerator (+ score-numerator (- b a)))
                   (unless (= a len)
+                    ;; case mis-match will be pushed to near next rank
+                    (unless (equal (aref query q-ind) (aref str a))
+                      (cl-incf a 0.9))
                     (setq score-denominator
                           (+ score-denominator
                              (if (= a last-b) 0
-                               ;; Give a higher score for match near start
-                               (+ 1 (expt (- a last-b 1) (if (eq last-b -1) 0.75 0.25))))
-                             (if (equal (aref query q-ind) (aref str a)) 0
-                               lsp-completion--fuz-case-sensitiveness))))
+                               (+ 1 (* (if (< 0 (- a last-b 1)) 1 -1)
+                                       (expt (abs (- a last-b 1))
+                                             ;; Give a higher score for match near start
+                                             (if (eq last-b -1) 0.75 0.25))))))))
                   (setq last-b b))))
-    (funcall update-score start start)
     (while md
       (funcall update-score start (cl-first md))
+      ;; Due to the way completion regex is constructed, `(eq end (+ start 1))`
+      (cl-incf q-ind)
       (pop md)
-      (setq start (pop md))
-      (cl-incf q-ind))
-    (funcall update-score len len)
+      (setq start (pop md)))
     (unless (zerop len)
       (/ score-numerator (1+ score-denominator) 1.0))))
 
