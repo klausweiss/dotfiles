@@ -11,6 +11,9 @@
 (autoload-all "lib/normal-elisp"
 	      #'eval-expression-or-region
 	      )
+(autoload-all "normal-flycheck"
+	      #'flycheck-next-or-first-error
+	      )
 (autoload-all "lib/normal-emacs-interaction"
 	      #'decrease-font-size
 	      #'increase-font-size
@@ -134,7 +137,7 @@
     (define-key map (kbd "C-p C-b") #'projectile-switch-to-buffer)
     (define-key map (kbd "C-p b") #'persp-counsel-switch-buffer-force)
     (define-key map (kbd "C-' t") #'toggle-theme)
-    (define-key map (kbd "<f2>") #'flycheck-next-error)
+    (define-key map (kbd "<f2>") #'flycheck-next-or-first-error)
     (define-key map (kbd "S-<f2>") #'flycheck-previous-error)
     (define-key map (kbd "C-M-S-s") #'switch-to-or-split-window-right)
     (define-key map (kbd "C-M-S-n") #'switch-to-or-split-window-down)
