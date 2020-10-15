@@ -234,6 +234,7 @@
     (define-key map (kbd "C-<left>") #'left-word)
     (define-key map (kbd "C-<up>") #'backward-paragraph)
     (define-key map (kbd "C-<down>") #'forward-paragraph)
+    (define-key map (kbd "C-h") #'pop-global-mark)
     (define-key map (kbd "<deletechar>") #'delete-char)
     (define-key map (kbd "DEL") #'backward-delete-char)
     (define-key map (kbd "RET") #'newline)
