@@ -193,7 +193,7 @@ Customization:
 
 ### edition 2018
 
-You have to put `edition = "2018"` in a `rustfmt.toml`.
+If you are struggling with errors relating to the rust edition in `cargo.toml`, this may in fact be a problem with `rustfmt` and its default settings. To solve this, *even though the error message mentions `cargo.toml`*, you you have to put `edition = "2018"` in a `rustfmt.toml`. [See here for more info](https://github.com/rust-lang/rustfmt/issues/4454).
 
 ## LSP
 
@@ -246,7 +246,7 @@ Turn off flymake.
 - `lsp-find-definition` makes use of xref
 
 You can find more information in the [lsp-mode
-wiki](https://github.com/emacs-lsp/lsp-mode/wiki/Rust).
+wiki](https://emacs-lsp.github.io/lsp-mode/page/lsp-rust/).
 
 ##### `lsp-execute-code-action`
 
