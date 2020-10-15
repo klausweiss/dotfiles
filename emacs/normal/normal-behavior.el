@@ -1,3 +1,5 @@
+(require 'elec-pair)
+
 (setq backup-directory-alist
       '(("." . "~/.emacs.d/backup")))
 
@@ -10,6 +12,8 @@
       cua-remap-control-z nil
       )
 (cua-mode t)
+
+(electric-pair-mode)
 
 ;; customization
 (setq custom-file "~/.emacs.d/custom.el")
