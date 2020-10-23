@@ -55,6 +55,7 @@
 (autoload-all "../lib/lsp-mode/lsp"
 	      #'lsp-rename
 	      #'lsp-execute-code-action
+	      #'lsp-format-buffer
 	      )
 (autoload-all "../lib/lsp-ivy"
 	      #'lsp-ivy-workspace-symbol
@@ -252,6 +253,7 @@
   (define-key lsp-mode-map (kbd "C-n") #'lsp-ivy-workspace-symbol)
   (define-key lsp-mode-map (kbd "S-<f6>") #'lsp-rename)
   (define-key lsp-mode-map (kbd "M-RET") #'lsp-execute-code-action)
+  (define-key lsp-mode-map (kbd "C-M-l") #'lsp-format-buffer)
   )
 
 (with-eval-after-load 'cc-mode
