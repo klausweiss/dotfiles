@@ -3,7 +3,11 @@
 (require 'company)
 
 (with-eval-after-load 'company
-  (setq company-backends '(company-capf
+  (setq company-backends '((company-capf
+			    company-yasnippet
+			    company-files
+			    company-dabbrev-code
+			    )
 			   company-dabbrev
 			   )
 	company-idle-delay 0
