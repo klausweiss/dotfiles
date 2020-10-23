@@ -38,6 +38,7 @@ VISUAL_REGEXP_URL := https://raw.githubusercontent.com/benma/visual-regexp.el/ma
 WHICH_KEY_URL := https://raw.githubusercontent.com/justbur/emacs-which-key/master/which-key.el
 WINUM_URL := https://raw.githubusercontent.com/deb0ch/emacs-winum/master/winum.el
 YASNIPPET_REPO := https://github.com/joaotavora/yasnippet.git
+YASNIPPET_SNIPPETS_REPO := https://github.com/AndreaCrotti/yasnippet-snippets.git
 
 
 define get-all-prefix-targets
@@ -252,3 +253,6 @@ update-xterm-color:
 
 update-yasnippet:
 	$(call download-from-repo, $(YASNIPPET_REPO))
+
+update-yasnippet-snippets:
+	$(call download-from-repo, $(YASNIPPET_SNIPPETS_REPO), snippets)
