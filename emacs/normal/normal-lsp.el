@@ -13,6 +13,7 @@
 (with-eval-after-load 'lsp-mode
   (setq read-process-output-max (* 1024 1024)
 	gc-cons-threshold 100000000
+	lsp-ui-doc-position 'at-point
 	)
   (require 'lsp-completion)
   (require 'lsp-diagnostics)
