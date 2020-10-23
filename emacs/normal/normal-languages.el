@@ -14,6 +14,9 @@
 	      #'cmake-mode
 	      )
 
+(with-eval-after-load 'yasnippet
+  (require 'yasnippet-snippets))
+
 (add-to-list 'auto-mode-alist '("\\.lua$" . lua-mode))
 (add-to-list 'interpreter-mode-alist '("lua" . lua-mode))
 (add-hook 'lua-mode-hook #'lsp)
