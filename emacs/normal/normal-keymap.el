@@ -254,6 +254,9 @@
   (define-key lsp-mode-map (kbd "M-RET") #'lsp-execute-code-action)
   )
 
+(with-eval-after-load 'cc-mode
+  (define-key c++-mode-map (kbd "C-d") nil))
+
 (use-global-map normal-global-map)
 
 ;; https://stackoverflow.com/a/10166400/3103257
