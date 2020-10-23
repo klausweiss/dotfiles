@@ -2,6 +2,7 @@ SHELL := /bin/bash
 
 ALL_THE_ICONS_REPO := https://github.com/domtronn/all-the-icons.el
 	MEMOIZE_URL := https://raw.githubusercontent.com/skeeto/emacs-memoize/master/memoize.el
+CMAKE_MODE_URL := https://raw.githubusercontent.com/Kitware/CMake/master/Auxiliary/cmake-mode.el
 COMPANY_REPO := https://github.com/company-mode/company-mode.git
 DASHBOARD_REPO := https://github.com/emacs-dashboard/emacs-dashboard.git
 	PAGE_BREAK_LINES_URL := https://raw.githubusercontent.com/purcell/page-break-lines/master/page-break-lines.el
@@ -119,6 +120,9 @@ update-all-the-icons: update-memoize
 
 update-company:
 	$(call download-from-repo, $(COMPANY_REPO))
+
+update-cmake-mode:
+	$(call download-from-url, $(CMAKE_MODE_URL))
 
 update-dash:
 	$(call download-from-url, $(DASH_URL))
