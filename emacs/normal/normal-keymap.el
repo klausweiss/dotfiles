@@ -259,6 +259,9 @@
 (with-eval-after-load 'cc-mode
   (define-key c++-mode-map (kbd "C-d") nil))
 
+(with-eval-after-load 'cua-rect
+  (define-key cua-global-keymap (kbd "<C-return>") nil))
+
 (use-global-map normal-global-map)
 
 ;; https://stackoverflow.com/a/10166400/3103257
