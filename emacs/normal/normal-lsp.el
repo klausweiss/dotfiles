@@ -15,6 +15,7 @@
 	gc-cons-threshold 100000000
 	lsp-completion-provider :none
 	lsp-ui-doc-position 'at-point
+	lsp-ui-doc-show-with-cursor nil
 	)
   (require 'lsp-completion)
   (require 'lsp-diagnostics)
