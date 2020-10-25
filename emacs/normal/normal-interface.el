@@ -1,4 +1,9 @@
+(require 'normal-autoload)
 (require 'normal-themes)
+
+(autoload-all "lib/normal-buffer-interaction.el"
+	      #'normal-linum-format-with-padding
+	      )
 
 (require 'gruvbox)
 (setq dark-theme 'gruvbox-dark-medium
@@ -25,6 +30,9 @@
 (menu-bar-mode -1)
 (load-dark-theme)
 
+(defun normal-update-linum-format ()
+  (setq-local linum-format (normal-linum-format-with-padding)))
+(add-hook 'post-command-hook #'normal-update-linum-format)
 (add-hook 'prog-mode-hook #'linum-mode)
 
 (require 'mini-modeline)

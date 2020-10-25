@@ -21,4 +21,9 @@
 	)
   )
 
+(defun normal-linum-format-with-padding ()
+  (let ((w (length (number-to-string
+                    (count-lines (point-min) (point-max))))))
+    (concat " %" (number-to-string w) "d ")))
+
 (provide 'normal-buffer-interaction)
