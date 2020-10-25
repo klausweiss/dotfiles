@@ -25,6 +25,8 @@
 (menu-bar-mode -1)
 (load-dark-theme)
 
+(add-hook 'prog-mode-hook #'linum-mode)
+
 (require 'mini-modeline)
 (with-eval-after-load 'mini-modeline
   (mini-modeline-mode 1)
