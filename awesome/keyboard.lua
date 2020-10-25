@@ -43,6 +43,10 @@ local ENTER = "Return"
 local SHIFT = "Shift"
 local SUPER = "Mod4"
 local TAB = "Tab"
+local LEFT = "Left"
+local RIGHT = "Right"
+local UP = "Up"
+local DOWN = "Down"
 
 -- layouts
 setkey { ALT, " ",
@@ -57,19 +61,35 @@ setkey { ALT, SHIFT, TAB,
 -- screens
 setkey { ALT, "t",
 	 fun = screens.focus_left_screen }
+setkey { ALT, LEFT,
+	 fun = screens.focus_left_screen }
 setkey { ALT, "s",
+	 fun = screens.focus_right_screen }
+setkey { ALT, RIGHT,
 	 fun = screens.focus_right_screen }
 setkey { ALT, "p",
 	 fun = screens.focus_up_screen }
+setkey { ALT, UP,
+	 fun = screens.focus_up_screen }
 setkey { ALT, "n",
+	 fun = screens.focus_down_screen }
+setkey { ALT, DOWN,
 	 fun = screens.focus_down_screen }
 setkey { ALT, SHIFT, "t",
 	 fun = screens.move_client_to_left_screen  }
+setkey { ALT, SHIFT, LEFT,
+	 fun = screens.move_client_to_left_screen  }
 setkey { ALT, SHIFT, "s",
+	 fun = screens.move_client_to_right_screen  }
+setkey { ALT, SHIFT, RIGHT,
 	 fun = screens.move_client_to_right_screen  }
 setkey { ALT, SHIFT, "p",
 	 fun = screens.move_client_to_up_screen  }
+setkey { ALT, SHIFT, UP,
+	 fun = screens.move_client_to_up_screen  }
 setkey { ALT, SHIFT, "n",
+	 fun = screens.move_client_to_down_screen  }
+setkey { ALT, SHIFT, DOWN,
 	 fun = screens.move_client_to_down_screen  }
 -- awesome
 setkey { ALT, SHIFT, "r",
