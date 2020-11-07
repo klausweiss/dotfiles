@@ -79,9 +79,9 @@ sub get_files_to_execute {
     my @configs = ();
     my @files = ();
     GetOptions(
-	"profile=s@" => \@profiles,
-	"config=s@" => \@configs,
-	"file=s@" => \@files,
+	"profile|p=s@" => \@profiles,
+	"config|c=s@" => \@configs,
+	"file|f=s@" => \@files,
     ) or die("Could not parse command line arguments\n");
     foreach (@configs) {
 	push(@files, get_config_file($_));
