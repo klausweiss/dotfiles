@@ -1,4 +1,4 @@
-#!/usr/bin/env -S perl ${HOME}/.dotfiles/.meta/install.pl --exec
+#!/usr/bin/env -S perl ${HOME}/.dotfiles/install --file
 
 [symlink]
 style.conf: ~/.config/zim/style.conf

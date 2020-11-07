@@ -1,51 +1,431 @@
-#!/usr/bin/env bash
-set -e
+#!/usr/bin/env perl
+use strict;
+use warnings;
 
-BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROFILES_DIR="${BASE_DIR}/.meta/profiles"
+use Cwd 'realpath';
+use English 'OSNAME';
+use Env qw(HOME);
+use File::Basename 'fileparse';
+use File::Path 'make_path';
+use File::Spec;
+use Getopt::Long;
+use Term::ANSIColor qw(:constants);
 
-function detect_distro { cat /etc/*release | sed -n "s/^NAME=//p" | sed "s/\"//g"; }
-function is_xorg_running {
-        (ps aux | grep -iE "\bxorg\b")
-        XORG_RUNNING=$?
-        if [ $XORG_RUNNING -eq 0 ]; then true; else false; fi
+use Class::Struct InstallConfig => {
+    commands => '@',
+    links => '@',
+};
+
+use Class::Struct Command => {
+    command => '$',
+    comment => '$',
+    workdir => '$',
+};
+
+use Class::Struct Link => {
+    src => '$',
+    target => '$',
+};
+
+sub containing_dir {
+    my ($_filename, $dirname, $_suffix) = fileparse(shift);
+    return substr($dirname, 0, -1);
 }
 
-function install_config {
-    echo "Configuring $1"
-    pushd $1 >/dev/null 
-    perl ${BASE_DIR}/.meta/install.pl --exec install
-    popd >/dev/null 
+use constant INSTALL_DIR => containing_dir(__FILE__);
+use constant { true => 1, false => 0 };
+
+sub main {
+    my @files = get_files_to_execute();
+    foreach (@files) {
+	execute_file($_);
+    }
 }
-function install_configs { for config in $@; do install_config $config; done; }
-function install_profile {
-    for config in `cat "${PROFILES_DIR}/$1"`; do
-        install_config $config
-    done
+
+sub detect_profiles {
+    my @profiles = ();
+    my $distro = detect_distro();
+    my %detectors = (
+	linux => sub {
+	    return $OSNAME eq "linux";
+	},
+	ubuntu => sub {
+	    return $distro eq "Ubuntu";
+	},
+	void => sub {
+	    return $distro eq "void";
+	},
+	xorg => sub {
+	    return system('(ps aux | grep -iE "\bxorg\b" > /dev/null)') eq 0;
+	},
+    );
+    foreach my $profile (keys %detectors) {
+	my $detector = $detectors{$profile};
+	if (&$detector()) {
+	    push(@profiles, $profile);
+	}
+    }
+    return @profiles;
 }
-function install_profiles { for profile in $@; do install_profile $profile; done; }
 
-# checkout submodules
-cd $BASE_DIR
-git submodule update --init --recursive
+sub detect_distro {
+    my $distro = qx(sh -c 'cat /etc/*release | sed -n \"s/^NAME=//p\" | sed \"s/\\\"//g\"');
+    trim($distro);
+    return $distro;
+}
 
-ARGV=$@
-if [ ${#ARGV} -eq 0 ]; then
-    # automatically detect profiles to install
-    PROFILES=()
-    SYSTEM=$(uname)
-    if [[ $SYSTEM == Linux ]]; then
-        PROFILES+=("linux")
-        PROFILES+=(`detect_distro`)
-        if (is_xorg_running); then
-            PROFILES+=("xorg")
-        fi
-    else
-        echo $SYSTEM not supported!
-        exit 1
-    fi
+sub get_files_to_execute {
+    my @profiles = ();
+    my @configs = ();
+    my @files = ();
+    GetOptions(
+	"profile=s@" => \@profiles,
+	"config=s@" => \@configs,
+	"file=s@" => \@files,
+    ) or die("Could not parse command line arguments\n");
+    foreach (@configs) {
+	push(@files, get_config_file($_));
+    }
+    foreach (@ARGV) {
+	push(@files, $_);
+    }
+    if (!@profiles && !@files) {
+	@profiles = detect_profiles();
+    }
+    if (@profiles) {
+	my $profiles_file_path = File::Spec->catfile(INSTALL_DIR, "profiles");
+	my %profiles = parse_profiles_file($profiles_file_path);
+	foreach (@profiles) {
+	    my $profile = $profiles{$_};
+	    if (!defined $profile) {
+		die "Unknown profile: ", $_, "\n";
+	    }
 
-    install_profiles ${PROFILES[@]}
-else
-    install_configs $ARGV
-fi
+	    foreach my $config (@$profile) {
+		push(@files, get_config_file($config));
+	    }
+	}
+    }
+    return @files;
+}
+
+sub get_config_file {
+    return File::Spec->catfile(INSTALL_DIR, shift, "install");
+}
+
+*trim = sub {
+    for my $str (@_) {
+	$str =~ s/^\s+|\s+$//g;
+    }
+};
+
+*is_empty = sub {
+    return shift =~ /^$/;
+};
+
+sub parse_profiles_file {
+    my $profiles_file_path = shift;
+    my %profiles;
+
+    *starts_profile = sub {
+        return shift =~ /\[.*\]/;
+    };
+
+    *get_profile = sub {
+        my ($words) = (shift =~ m/\[\s*(.*)?\s*\]/);
+        return $words;
+    };
+
+    my $profile;
+    *add_to_profile = sub {
+	my $config = shift;
+	my $profile_configs;
+	$profile_configs = $profiles{$profile};
+	if (!defined $profile_configs) {
+	    $profile_configs = [];
+	    @profiles{$profile} = $profile_configs;
+	}
+	push(@$profile_configs, $config);
+    };
+    
+    open(my $file, "<", $profiles_file_path);
+    while (my $line = <$file>) {
+	trim($line);
+	if (is_empty($line)) {
+	    next;
+	}
+	elsif (starts_profile($line)) {
+	    $profile = get_profile($line);
+	} else {
+	    add_to_profile($line);
+	}
+    }
+    close $file;
+
+    return %profiles;
+}
+
+sub execute_file {
+    my $executed_file = shift;
+    
+    my $config = parse_config_from_file($executed_file);
+
+    my $links = $config->links;
+    create_links(@$links);
+
+    my $commands = $config->commands;
+    run_commands(@$commands);
+}
+
+sub parse_config_from_file {
+    my $file_path = shift;
+    my $workdir = containing_dir($file_path);
+    
+    my $config = new InstallConfig();
+
+    open(my $file, "<", $file_path);
+    parse($workdir, $config, $file);
+    close $file;
+    
+    return $config;
+}
+
+sub parse {
+    my ($workdir, $config, $file) = @_;
+    my @buffer = ();
+
+    my $links = $config->links;
+
+    *do_parse = sub {
+        skip_headers();
+        while (parse_config_block()) {}
+    };
+
+    *process_lines = sub {
+        my $process_line = shift;
+        
+        while (scalar @buffer > 0) {
+            my $line = shift(@buffer);
+
+            if (&$process_line($line) eq -1) {
+                return -1;
+            }
+        }
+        
+        while (my $line = <$file>) {
+            if (&$process_line($line) eq -1) {
+                return -1;
+            }
+        }
+    };
+
+    *for_every_line = sub {
+        my $lines_processor = shift;
+        return sub {
+            return process_lines(\&$lines_processor);
+        };
+    };
+
+    *skip_headers = for_every_line(
+        sub {
+            my $line = shift;
+            if (starts_section($line)) {
+                push(@buffer, $line);
+                return -1;
+            }
+        });
+
+    *starts_section = sub {
+        return shift =~ /\[.*\]/;
+    };
+
+    *is_comment = sub {
+        return shift =~ /^\s*#/;
+    };
+
+    *starts_with_whitespace = sub {
+	return shift =~ /^\s/;
+    };
+
+    *get_section = sub {
+        my ($words) = (shift =~ m/\[\s*(.*)?\s*\]/);
+        return $words;
+    };
+
+    my %sections_parsers;
+    
+    *parse_config_block = sub {
+        my $section = "none";
+        *parse_section = sub {
+            my $line = shift;
+            $section = get_section($line);
+            return -1
+        };
+
+        process_lines(\&parse_section);
+        undef &parse_section;
+
+        my $parser = $sections_parsers{$section};
+        if (!defined $parser) {
+            die "unknown section: ", $section, "\n";
+        }
+        &$parser();
+    };
+
+    *parse_symlink_block = for_every_line(
+        sub {
+            my $line = shift;
+            if (starts_section($line)) {
+                push(@buffer, $line);
+                return -1;
+            }
+            if ($line =~ /\S/) {
+                parse_symlink_line($line);
+            }
+        });
+    
+    *parse_symlink_line = sub {
+        my $line = shift;
+        my ($src, $target) = ($line =~ m/(.*): (.*)/);
+        trim($src, $target);
+	my $link = new Link(
+	    src => $src,
+	    target => $target,
+	    );
+	push(@$links, $link);
+    };
+
+    *parse_run_block = sub {
+        my $current_command;
+        my $commands = $config->commands;
+	my $just_parsed_comment = 0;
+        *parse_run_line = sub {
+            my $line = shift;
+	    my $was_starting_with_whitespace = starts_with_whitespace($line);
+            trim($line);
+            if (starts_section($line)) {
+                push(@buffer, $line);
+                return -1;
+            }
+	    if (is_empty($line)) {
+		return 0;
+	    }
+
+	    my $is_comment = is_comment($line);
+            if ($is_comment
+		|| (!$was_starting_with_whitespace && !$just_parsed_comment)
+		) {
+                $current_command = new Command(
+                    workdir => $workdir,
+                    );
+		push(@$commands, $current_command);
+            }
+
+	    $just_parsed_comment = $is_comment;
+
+            if ($is_comment) {
+                $current_command->comment($line);
+            } elsif (
+		!defined $current_command->command
+		|| !$was_starting_with_whitespace
+		) {
+                $current_command->command("$line");
+	    } elsif ($was_starting_with_whitespace) {
+		my $command_part1 = $current_command->command;
+		$current_command->command(
+		    $command_part1 .
+		    " " .
+		    $line
+		    );
+	    }
+        };
+        my $result = process_lines(\&parse_run_line);
+        undef &parse_run_line;
+        return $result;
+    };
+    
+    %sections_parsers = (
+        "symlink" => \&parse_symlink_block,
+        "run" => \&parse_run_block,
+        );
+    
+    *relative_to_absolute_paths = sub {
+	foreach my $link (@$links) {
+            $link->src(absolute_path($link->src));
+            $link->target(absolute_path($link->target));
+        }
+    };
+
+    *absolute_path = sub {
+        my $path = shift;
+        $path =~ s/^~/$HOME/;
+        return File::Spec->rel2abs($path, $workdir);
+    };
+    
+    do_parse();
+    relative_to_absolute_paths();
+    undef &process_lines;
+    undef &skip_headers;
+    undef &parse_config_block;
+    undef &parse_symlink_block;
+    undef &parse_symlink_line;
+    undef &parse_run_block;
+    undef &relative_to_absolute_paths;
+    undef &absolute_path;
+}
+
+sub create_links {
+    my @links = @_;
+
+    foreach my $link (@links) {
+        mk_symlink($link);
+    }
+}
+
+sub run_commands {
+    my @commands = @_;
+
+    foreach my $command (@commands) {
+        if (defined $command->comment) {
+            print_comment($command->comment);
+        }
+        run_command(
+            $command->workdir,
+            $command->command,
+            );
+    }
+}
+
+sub mk_symlink {
+    my $link = shift;
+    print
+        GREEN, "Linking ",
+        MAGENTA, $link->src,
+        GREEN, " to ",
+        BLUE, $link->target,
+        RESET, "\n";
+
+    unless (-e $link->src) {
+        die RED "File ", UNDERSCORE $link->src, CLEAR RED " does not exist", RESET, "\n";
+    }
+
+    my $target_dir = containing_dir($link->target);
+    make_path($target_dir);
+    symlink($link->src, $link->target);
+}
+
+sub print_comment {
+    my $comment = shift;
+    $comment =~ s/^#\s*//;
+    print
+        BOLD GREEN, $comment,
+        RESET, "\n";
+}
+
+sub run_command {
+    my ($workdir, $command) = @_;
+    system("(cd $workdir; $command)");
+}
+
+main();
+
