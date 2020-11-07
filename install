@@ -50,12 +50,6 @@ sub detect_profiles {
 	linux => sub {
 	    return $OSNAME eq "linux";
 	},
-	ubuntu => sub {
-	    return $distro eq "Ubuntu";
-	},
-	void => sub {
-	    return $distro eq "void";
-	},
 	xorg => sub {
 	    return system('(ps aux | grep -iE "\bxorg\b" > /dev/null)') eq 0;
 	},
@@ -65,6 +59,10 @@ sub detect_profiles {
 	if (&$detector()) {
 	    push(@profiles, $profile);
 	}
+    }
+    my $linux_detector = $detectors{"linux"};
+    if (&$linux_detector()) {
+	push(@profiles, detect_distro());
     }
     return @profiles;
 }
@@ -93,8 +91,10 @@ sub get_files_to_execute {
     foreach (@ARGV) {
 	push(@files, $_);
     }
+    my $die_on_missing_profile = true;
     if (!@profiles && !@files) {
 	@profiles = detect_profiles();
+	$die_on_missing_profile = false;
     }
     if (@profiles) {
 	my $profiles_file_path = File::Spec->catfile(INSTALL_DIR, "profiles");
@@ -102,6 +102,7 @@ sub get_files_to_execute {
 	foreach (@profiles) {
 	    my $profile = $profiles{$_};
 	    if (!defined $profile) {
+		next unless $die_on_missing_profile;
 		die "Unknown profile: ", $_, "\n";
 	    }
 
