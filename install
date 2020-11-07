@@ -9,6 +9,7 @@ use File::Basename 'fileparse';
 use File::Path 'make_path';
 use File::Spec;
 use Getopt::Long;
+use Pod::Usage qw(pod2usage);
 use Term::ANSIColor qw(:constants);
 
 use Class::Struct InstallConfig => {
@@ -78,11 +79,14 @@ sub get_files_to_execute {
     my @profiles = ();
     my @configs = ();
     my @files = ();
+    my $help = 0;
     GetOptions(
 	"profile|p=s@" => \@profiles,
 	"config|c=s@" => \@configs,
 	"file|f=s@" => \@files,
-    ) or die("Could not parse command line arguments\n");
+	"help|h" => \$help,
+    ) or pod2usage(-verbose => 0, -exitval => 1);
+    pod2usage(0) if $help;
     foreach (@configs) {
 	push(@files, get_config_file($_));
     }
@@ -429,3 +433,54 @@ sub run_command {
 
 main();
 
+
+__END__
+
+=head1 SYNOPSIS
+
+install [options] [file ...]
+
+Executes specified configuration scripts.
+If no configuration, file nor profile is specified,
+ tries to automatically detect which profiles to install.
+
+ Options:
+   --config CONFIG    | -c    configuration to install 
+   --file FILE        | -f    file to execute
+   --profile PROFILE  | -p    profile to install
+   --help             | -h    help message
+
+=head1 OPTIONS
+
+=over 4
+
+=item B<--config CONFIG>
+
+Specify which configuration to install.
+"install" files from configuration's folder within
+ the directory containing this very script will be executed.
+
+Can be specified multiple times to install multiple configurations.
+
+=item B<--file FILE>
+
+Specify which file to execute.
+
+Can be specified multiple times to execute multiple files.
+
+=item B<--profile PROFILE>
+
+Specify which profile to install.
+Profile contains of multiple configs.
+Profiles with corresponding configs can be defined
+ in a "profiles" file in the directory containing this very script.
+
+Can be specified multiple times to install multiple profiles.
+
+=item B<--help>
+
+Print a help message and exit.
+
+=back
+
+=cut
