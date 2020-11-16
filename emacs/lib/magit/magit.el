@@ -219,6 +219,56 @@ and/or `magit-branch-remote-head'."
   "Face for filenames."
   :group 'magit-faces)
 
+;;; Global Bindings
+
+;;;###autoload
+(define-obsolete-variable-alias 'global-magit-file-mode
+  'magit-define-global-key-bindings "Magit 3.0.0")
+
+;;;###autoload
+(defcustom magit-define-global-key-bindings t
+  "Whether to bind some Magit commands in the global keymap.
+
+If this variable is non-nil, then the following bindings may
+be added to the global keymap.  The default is t.
+
+key             binding
+---             -------
+C-x g           magit-status
+C-x M-g         magit-dispatch
+C-c M-g         magit-file-dispatch
+
+These bindings are added when `after-init-hook' is called, so you
+can set this variable `magit-define-global-key-bindings' anywhere
+in your init file, but once that hook has run, then doing so does
+not have any effect until you restart Emacs.
+
+Even if you use the above bindings, you may still wish to
+bind \"C-c g\" instead of \"C-c M-g\" to `magit-file-dispatch'.
+The former is a much better binding but the \"C-c <letter>\"
+namespace is strictly reserved for users; preventing Magit
+from using it by default.
+
+Also see info node `(magit)Commands for Buffers Visiting Files'."
+  :package-version '(magit . "3.0.0")
+  :group 'magit-essentials
+  :type 'boolean)
+
+;;;###autoload
+(progn
+  (defun magit-maybe-define-global-key-bindings ()
+    (when magit-define-global-key-bindings
+      (let ((map (current-global-map)))
+        (unless (lookup-key map (kbd "C-x g"))
+          (define-key map (kbd "C-x g") 'magit-status))
+        (unless (lookup-key map (kbd "C-x M-g"))
+          (define-key map (kbd "C-x M-g") 'magit-dispatch))
+        (unless (lookup-key map (kbd "C-c M-g"))
+          (define-key map (kbd "C-c M-g") 'magit-file-dispatch)))))
+  (if after-init-time
+      (magit-maybe-define-global-key-bindings)
+    (add-hook 'after-init-hook 'magit-maybe-define-global-key-bindings t)))
+
 ;;; Dispatch Popup
 
 ;;;###autoload (autoload 'magit-dispatch "magit" nil t)

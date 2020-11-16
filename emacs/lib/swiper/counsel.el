@@ -1100,17 +1100,17 @@ See `describe-buffer-bindings' for further information."
         (describe-buffer-bindings buffer prefix))
       (goto-char (point-min))
       ;; Skip the "Key translations" section
-      (re-search-forward "")
-      (forward-char 1)
+      (skip-chars-forward "^\C-l")
+      (forward-char 2)
       (while (not (eobp))
         (when (looking-at "^\\([^\t\n]+\\)[\t ]*\\(.*\\)$")
           (let ((key (match-string 1))
                 (fun (match-string 2))
                 cmd)
             (unless (or (member fun '("??" "self-insert-command"))
-                        (string-match re-exclude key)
+                        (string-match-p re-exclude key)
                         (not (or (commandp (setq cmd (intern-soft fun)))
-                                 (member fun '("Prefix Command")))))
+                                 (equal fun "Prefix Command"))))
               (push
                (cons (format
                       "%-15s %s"
@@ -1118,7 +1118,7 @@ See `describe-buffer-bindings' for further information."
                       fun)
                      (cons key cmd))
                res))))
-        (forward-line 1)))
+        (forward-line)))
     (nreverse res)))
 
 (defcustom counsel-descbinds-function #'describe-function
@@ -3088,10 +3088,12 @@ Works for `counsel-git-grep', `counsel-ag', etc."
               (funcall cmd-template ivy-text)
             (let* ((command-args (counsel--split-command-args ivy-text))
                    (regex (counsel--grep-regex (cdr command-args)))
+                   (extra-switches (counsel--ag-extra-switches regex))
                    (all-args (append
                               (when (car command-args)
                                 (split-string (car command-args)))
-                              (counsel--ag-extra-switches regex)
+                              (when extra-switches
+                                (split-string extra-switches))
                               (list
                                (counsel--grep-smart-case-flag)
                                regex))))

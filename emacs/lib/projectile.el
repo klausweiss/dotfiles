@@ -3699,16 +3699,19 @@ to run the replacement."
       ;; Emacs 25 and 26
       ;;
       ;; Adapted from `tags-query-replace' for literal strings (not regexp)
-      (setq tags-loop-scan `(let ,(unless (equal old-text (downcase old-text))
-                                    '((case-fold-search nil)))
-                              (if (search-forward ',old-text nil t)
-                                  ;; When we find a match, move back to
-                                  ;; the beginning of it so
-                                  ;; perform-replace will see it.
-                                  (goto-char (match-beginning 0))))
-            tags-loop-operate `(perform-replace ',old-text ',new-text t nil nil
-                                                nil multi-query-replace-map))
-      (with-no-warnings (tags-loop-continue (or (cons 'list files) t))))))
+      (with-no-warnings
+        (setq tags-loop-scan
+              `(let ,(unless (equal old-text (downcase old-text))
+                       '((case-fold-search nil)))
+                 (if (search-forward ',old-text nil t)
+                     ;; When we find a match, move back to
+                     ;; the beginning of it so
+                     ;; perform-replace will see it.
+                     (goto-char (match-beginning 0)))))
+        (setq tags-loop-operate
+              `(perform-replace ',old-text ',new-text t nil nil
+                                nil multi-query-replace-map))
+        (tags-loop-continue (or (cons 'list files) t))))))
 
 ;;;###autoload
 (defun projectile-replace-regexp (&optional arg)
@@ -4522,8 +4525,10 @@ overwriting each other's changes."
   (:reader (read-directory-name "Project root: " (projectile-project-root))
            :description nil)
   (with-current-buffer buf
-    (equal (file-name-as-directory (expand-file-name qualifier))
-           (projectile-project-root))))
+    (let ((directory (file-name-as-directory (expand-file-name qualifier))))
+      (and (projectile-project-buffer-p buf directory)
+           (equal directory
+                  (projectile-project-root))))))
 
 (defun projectile-ibuffer-by-project (project-root)
   "Open an IBuffer window showing all buffers in PROJECT-ROOT."

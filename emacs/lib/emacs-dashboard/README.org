@@ -1,4 +1,8 @@
-* Emacs Dashboard [[https://melpa.org/#/dashboard][https://melpa.org/packages/dashboard-badge.svg]] [[https://stable.melpa.org/#/dashboard][https://stable.melpa.org/packages/dashboard-badge.svg]] [[https://circleci.com/gh/emacs-dashboard][https://img.shields.io/circleci/project/emacs-dashboard/emacs-dashboard/master.svg]]
+[[https://circleci.com/gh/emacs-dashboard][https://img.shields.io/circleci/project/emacs-dashboard/emacs-dashboard/master.svg]]
+[[https://melpa.org/#/dashboard][https://melpa.org/packages/dashboard-badge.svg]]
+[[https://stable.melpa.org/#/dashboard][https://stable.melpa.org/packages/dashboard-badge.svg]]
+
+* Emacs Dashboard
 
 An extensible emacs startup screen showing you what's most important.
 
@@ -6,13 +10,13 @@ An extensible emacs startup screen showing you what's most important.
   1. Displays an awesome Emacs banner!
   2. Recent files
   3. Bookmarks list
-  4. Recent projectile projects list (Depends on `projectile` package)
+  4. Recent projects list (Depends on `projectile` or `project.el` package)
   5. Org mode agenda
   6. Register list
 
 * Screenshot
 
-[[./screenshot.png]]
+[[./etc/screenshot.png]]
 
 * Dependencies
 You will need the following packages which are all available on Melpa:
@@ -38,8 +42,13 @@ M-x package-install RET dashboard
  #+END_SRC
 
 By default, this will show three lists, recent files and bookmarks and org-agenda items.
-One more widget is implemented by Dashboard but it's made optional because of it's dependency on a third party application, which is
-`projects` which shows you the list of known projectile projects.
+
+The widget “projects”, which shows a list of recent projects, is not enabled
+by default since it depends on packages that might not be available.  To
+activate the widget, set the variable =dashboard-projects-backend= to either
+='projectile= (projectile, available from melpa) or ='project-el= (project.el,
+available from GNU elpa), then add an entry like
+=(projects . 5)= to the variable =dashboard-items=.
 
 ** Emacs Daemon
 
@@ -63,7 +72,7 @@ To update the banner or banner title
 ;; 'official which displays the official emacs logo
 ;; 'logo which displays an alternative emacs logo
 ;; 1, 2 or 3 which displays one of the text banners
-;; "path/to/your/image.png" which displays whatever image you would prefer
+;; "path/to/your/image.png" or "path/to/your/text.txt" which displays whatever image/text you would prefer
 
 ;; Content is not centered by default. To center, set
 (setq dashboard-center-content t)

@@ -147,15 +147,29 @@ The value has the form ((COMMAND nil|PROMPT DEFAULT)...).
                         (const  :tag "use default without confirmation" t)))))
 
 (defconst magit--confirm-actions
-  '((const reverse)           (const discard)
-    (const rename)            (const resurrect)
-    (const untrack)           (const trash)
-    (const delete)            (const abort-rebase)
-    (const abort-merge)       (const merge-dirty)
-    (const drop-stashes)      (const reset-bisect)
-    (const kill-process)      (const delete-unmerged-branch)
-    (const delete-pr-branch)  (const remove-modules)
-    (const stage-all-changes) (const unstage-all-changes)
+  '((const discard)
+    (const reverse)
+    (const stage-all-changes)
+    (const unstage-all-changes)
+    (const delete)
+    (const trash)
+    (const resurrect)
+    (const untrack)
+    (const rename)
+    (const reset-bisect)
+    (const abort-rebase)
+    (const abort-merge)
+    (const merge-dirty)
+    (const delete-unmerged-branch)
+    (const delete-pr-remote)
+    (const drop-stashes)
+    (const amend-published)
+    (const rebase-published)
+    (const edit-published)
+    (const remove-modules)
+    (const remove-dirty-modules)
+    (const trash-module-gitdirs)
+    (const kill-process)
     (const safe-with-wip)))
 
 (defcustom magit-no-confirm nil
@@ -404,6 +418,7 @@ and delay of your graphical environment or operating system."
 (defvar helm-completion-in-region-default-sort-fn)
 (defvar helm-crm-default-separator)
 (defvar ivy-sort-functions-alist)
+(defvar ivy-sort-matches-functions-alist)
 
 (defvar magit-completing-read--silent-default nil)
 
@@ -526,6 +541,7 @@ into a list."
          (minibuffer-completion-confirm t)
          (helm-completion-in-region-default-sort-fn nil)
          (helm-crm-default-separator nil)
+         (ivy-sort-matches-functions-alist nil)
          (input
           (cl-letf (((symbol-function 'completion-pcm--all-completions)
                      #'magit-completion-pcm--all-completions))
@@ -560,6 +576,7 @@ to nil."
                         crm-local-must-match-map
                       crm-local-completion-map))
                (helm-completion-in-region-default-sort-fn nil)
+               (ivy-sort-matches-functions-alist nil)
                ;; If the user enters empty input, `read-from-minibuffer'
                ;; returns the empty string, not DEF.
                (input (read-from-minibuffer
