@@ -16,15 +16,16 @@
 (require 'url)
 (require 'lsp-mode)
 (require 'f)
+(require 'async)
 
-(if (< emacs-major-version 27)
-    (defun rustic-doc--xdg-data-home ()
-      (or (getenv "XDG_DATA_HOME")
-          (concat (file-name-as-directory (getenv "HOME"))
-                  ".local/share")))
-  (progn
+(eval-and-compile
+  (if (< emacs-major-version 27)
+      (defun rustic-doc--xdg-data-home ()
+        (or (getenv "XDG_DATA_HOME")
+            (concat (file-name-as-directory (getenv "HOME"))
+                    ".local/share")))
     (require 'xdg)
-    (fset 'rustic-doc--xdg-data-home 'xdg-data-home)))
+    (fset 'rustic-doc--xdg-data-home #'xdg-data-home)))
 
 (defvar rustic-doc-lua-filter (concat (file-name-as-directory (getenv "HOME"))
                                       ".local/bin/rustic-doc-filter.lua")
@@ -59,6 +60,10 @@ Needs to be a function because of its reliance on
   "The default command string to pass helm-ag when searching."
   :type 'function
   :group 'rustic-doc)
+
+(defvar helm-ag-base-command)
+(defvar helm-ag-success-exit-status)
+(declare-function helm-ag "ext:helm-ag")
 
 (defun rustic-doc-default-search-function (search-dir search-term)
   "Default search functionality.

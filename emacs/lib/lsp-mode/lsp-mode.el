@@ -505,7 +505,10 @@ the server has requested that."
                                     "[/\\\\]\\.deps\\'"
                                     "[/\\\\]build-aux\\'"
                                     "[/\\\\]autom4te.cache\\'"
-                                    "[/\\\\]\\.reference\\'")
+                                    "[/\\\\]\\.reference\\'"
+                                    ;; .Net Core build-output
+                                    "[/\\\\]bin/Debug\\'"
+                                    "[/\\\\]obj\\'")
   "List of regexps matching directory paths which won't be monitored when creating file watches."
   :group 'lsp-mode
   :type '(repeat string)
@@ -2581,11 +2584,11 @@ an Elisp regexp."
   nil nil nil
   :keymap lsp-mode-map
   :lighter
-  '(" LSP["
-    (lsp--buffer-workspaces
-     (:eval (mapconcat #'lsp--workspace-print lsp--buffer-workspaces "]["))
-     (:propertize "Disconnected" face warning))
-    "]")
+  (" LSP["
+   (lsp--buffer-workspaces
+    (:eval (mapconcat #'lsp--workspace-print lsp--buffer-workspaces "]["))
+    (:propertize "Disconnected" face warning))
+   "]")
   :group 'lsp-mode)
 
 (defvar lsp-mode-menu
@@ -3649,7 +3652,12 @@ in that particular folder."
 
 (defun lsp-configure-buffer ()
   "Configure LSP features for current buffer."
-  (let (lsp--cur-workspace)
+  ;; make sure the core is running in the context of all available workspaces
+  ;; to avoid misconfiguration in case we are running in `with-lsp-workspace' context
+  (let ((lsp--buffer-workspaces (cond
+                                 (lsp--buffer-workspaces)
+                                 (lsp--cur-workspace (list lsp--cur-workspace))))
+        lsp--cur-workspace)
     (when lsp-auto-configure
       (when (and lsp-enable-text-document-color
                  (lsp-feature? "textDocument/documentColor"))
@@ -6210,7 +6218,17 @@ the signature)."
                   (propertize name 'face 'lsp-face-semhl-deprecated) name)))
     (concat name detail)))
 
-(lsp-defun lsp--symbol-to-imenu-elem ((sym &as &SymbolInformation :name :container-name?))
+(lsp-defun lsp-render-symbol-information ((&SymbolInformation :name :deprecated? :container-name?)
+                                          separator)
+  "Render a piece of SymbolInformation.
+Handle :deprecated?. If SEPARATOR is non-nil, the
+symbol's (optional) parent, SEPARATOR and the symbol itself are
+concatenated."
+  (when (and separator container-name? (not (string-empty-p container-name?)))
+    (setq name (concat name separator container-name?)))
+  (if deprecated? (propertize name 'face 'lsp-face-semhl-deprecated) name))
+
+(defun lsp--symbol-to-imenu-elem (sym)
   "Convert SYM to imenu element.
 
 SYM is a SymbolInformation message.
@@ -6218,9 +6236,9 @@ SYM is a SymbolInformation message.
 Return a cons cell (full-name . start-point)."
   (let ((start-point (ht-get lsp--line-col-to-point-hash-table
                              (lsp--get-line-and-col sym))))
-    (cons (if (and lsp-imenu-show-container-name container-name?)
-              (concat container-name? lsp-imenu-container-name-separator name)
-            name)
+    (cons (lsp-render-symbol-information
+           sym (and lsp-imenu-show-container-name
+                    lsp-imenu-container-name-separator))
           start-point)))
 
 (lsp-defun lsp--symbol-to-hierarchical-imenu-elem ((sym &as &DocumentSymbol :children?))

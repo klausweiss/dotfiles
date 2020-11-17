@@ -2150,7 +2150,10 @@ Depending on your font, some reasonable choices are:
 Used for `flyspell-generic-check-word-predicate'."
   (save-excursion
     (goto-char (1- (point)))
-    (if (or (markdown-code-block-at-point-p)
+    ;; https://github.com/jrblevin/markdown-mode/issues/560
+    ;; enable spell check YAML meta data
+    (if (or (and (markdown-code-block-at-point-p)
+                 (not (markdown-text-property-at-point 'markdown-yaml-metadata-section)))
             (markdown-inline-code-at-point-p)
             (markdown-in-comment-p)
             (markdown--face-p (point) '(markdown-reference-face
@@ -8575,11 +8578,19 @@ position."
 (defvar edit-indirect-guess-mode-function)
 (defvar edit-indirect-after-commit-functions)
 
-(defun markdown--edit-indirect-after-commit-function (_beg end)
-  "Ensure trailing newlines at the END of code blocks."
+(defun markdown--edit-indirect-after-commit-function (beg end)
+  "Corrective logic run on code block content from lines BEG to END.
+Restores code block indentation from BEG to END, and ensures trailing newlines
+at the END of code blocks."
+  ;; ensure trailing newlines
   (goto-char end)
   (unless (eq (char-before) ?\n)
-    (insert "\n")))
+    (insert "\n"))
+  ;; restore code block indentation
+  (goto-char (- beg 1))
+  (let ((block-indentation (current-indentation)))
+    (when (> block-indentation 0)
+      (indent-rigidly beg end block-indentation))))
 
 (defun markdown-edit-code-block ()
   "Edit Markdown code block in an indirect buffer."
@@ -8590,13 +8601,17 @@ position."
                (begin (and bounds (goto-char (nth 0 bounds)) (point-at-bol 2)))
                (end (and bounds (goto-char (nth 1 bounds)) (point-at-bol 1))))
           (if (and begin end)
-              (let* ((lang (markdown-code-block-lang))
+              (let* ((indentation (and (goto-char (nth 0 bounds)) (current-indentation)))
+                     (lang (markdown-code-block-lang))
                      (mode (or (and lang (markdown-get-lang-mode lang))
                                markdown-edit-code-block-default-mode))
                      (edit-indirect-guess-mode-function
                       (lambda (_parent-buffer _beg _end)
-                        (funcall mode))))
-                (edit-indirect-region begin end 'display-buffer))
+                        (funcall mode)))
+                     (indirect-buf (edit-indirect-region begin end 'display-buffer)))
+                (when (> indentation 0) ;; un-indent in edit-indirect buffer
+                  (with-current-buffer indirect-buf
+                    (indent-rigidly (point-min) (point-max) (- indentation)))))
             (user-error "Not inside a GFM or tilde fenced code block")))
       (when (y-or-n-p "Package edit-indirect needed to edit code blocks. Install it now? ")
         (progn (package-refresh-contents)
