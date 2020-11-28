@@ -158,15 +158,14 @@ Example:
   :group 'dashboard)
 
 (defcustom dashboard-init-info
-  ;; Check if package.el was loaded and if package loading was enabled
-  (if (bound-and-true-p package-alist)
-      (format "%d packages loaded in %s"
-              (length package-activated-list) (emacs-init-time))
-    (if (and (boundp 'straight--profile-cache)
-             (hash-table-p straight--profile-cache))
-        (format "%d packages loaded in %s"
-                (hash-table-size straight--profile-cache) (emacs-init-time))
-      (format "Emacs started in %s" (emacs-init-time))))
+  (let ((package-count 0) (time (emacs-init-time)))
+    (when (bound-and-true-p package-alist)
+      (setq package-count (length package-activated-list)))
+    (when (boundp 'straight--profile-cache)
+      (setq package-count (+ (hash-table-size straight--profile-cache) package-count)))
+    (if (zerop package-count)
+        (format "Emacs started in %s" time)
+      (format "%d packages loaded in %s" package-count time)))
   "Init info with packages loaded and init time."
   :type 'boolean
   :group 'dashboard)

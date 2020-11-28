@@ -138,6 +138,8 @@ and it's `cdr' is a list of arguments."
               (save-match-data
                 (when (search-forward "<stdin>" nil t)
                   (replace-match file)))))
+          (with-current-buffer next-error-last-buffer
+            (goto-char rustic-save-pos))
           (funcall rustic-format-display-method proc-buffer)
           (message "Rustfmt error."))))))
 
@@ -149,6 +151,7 @@ and it's `cdr' is a list of arguments."
         (if (string-match-p "^finished" output)
             (with-current-buffer next-error-last-buffer
               (revert-buffer t t))
+          (sit-for 0.1)
           (with-current-buffer next-error-last-buffer
             (goto-char rustic-save-pos))
           (goto-char (point-min))
@@ -171,11 +174,12 @@ and it's `cdr' is a list of arguments."
         (mode 'rustic-cargo-fmt-mode))
     (rustic-compilation-process-live)
     (rustic-compilation command
-                        :no-display t
-                        :buffer buffer
-                        :process proc
-                        :mode mode
-                        :sentinel #'rustic-cargo-fmt-sentinel)))
+                        (list
+                         :no-display t
+                         :buffer buffer
+                         :process proc
+                         :mode mode
+                         :sentinel #'rustic-cargo-fmt-sentinel))))
 
 (defun rustic-cargo-fmt-sentinel (proc output)
   "Sentinel for formatting with `rustic-cargo-fmt'."
@@ -252,6 +256,7 @@ were issues when using stdin for formatting."
   "When changing the `lsp-rust-server', it's also necessary to update the priorities
 with `lsp-rust-switch-server'."
   (require 'lsp-rust)
+  (require 'lsp-modeline)
   (lsp-workspace-folders-add (rustic-buffer-workspace))
   (setq lsp-rust-server rustic-lsp-server)
   (setq lsp-rust-analyzer-server-command rustic-analyzer-command)

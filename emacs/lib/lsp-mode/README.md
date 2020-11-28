@@ -77,7 +77,8 @@ most popular Emacs packages like `company`, `flycheck` and `projectile`.
     for better discovery
 
 ## Presentations/demos
-
+  - [System Crafters](https://twitter.com/SystemCrafters) channel
+    [Emacs IDE Videos](https://www.youtube.com/playlist?list=PLEoMzSkcN8oNvsrtk_iZSb94krGRofFjN)
   - [skybert](https://github.com/skybert)'s emacsconf
     [presentation](https://media.emacsconf.org/2019/19.html) (Java)
   - [thatwist](https://github.com/thatwist)'s ScalaUA Conference
