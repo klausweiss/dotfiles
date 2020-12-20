@@ -33,6 +33,7 @@ RUSTIC_REPO := https://github.com/brotzeit/rustic.git
 SIMPLECLIP_URL := https://raw.githubusercontent.com/rolandwalker/simpleclip/master/simpleclip.el
 SMART_SHIFT_URL := https://raw.githubusercontent.com/klausweiss/smart-shift/master/smart-shift.el
 SWIPER_REPO := https://github.com/abo-abo/swiper.git
+TREEMACS_REPO := https://github.com/Alexander-Miller/treemacs.git
 UNDO_TREE_URL := http://www.dr-qubit.org/undo-tree/undo-tree.el
 VISUAL_REGEXP_URL := https://raw.githubusercontent.com/benma/visual-regexp.el/master/visual-regexp.el
 WHICH_KEY_URL := https://raw.githubusercontent.com/justbur/emacs-which-key/master/which-key.el
@@ -232,6 +233,14 @@ update-swiper:
 
 update-transient:
 	$(call download-from-url, $(TRANSIENT_URL))
+
+update-treemacs: \
+	update-dash \
+	update-f \
+	update-ht \
+	update-s \
+
+	$(call download-from-repo, $(TREEMACS_REPO), icons/ src/)
 
 update-undo-tree:
 	$(call download-from-url, $(UNDO_TREE_URL))
