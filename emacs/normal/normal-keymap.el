@@ -7,6 +7,7 @@
 	      )
 (autoload-all "lib/normal-buffers"
 	      #'normal-close-window-with-buffer
+	      #'normal-kill-this-buffer
 	      )
 (autoload-all "lib/normal-elisp"
 	      #'eval-expression-or-region
@@ -111,7 +112,7 @@
     (define-key map (kbd "C-f") #'swiper-isearch-with-current-region)
     (define-key map (kbd "C-r") #'vr/replace-in-buffer)
     (define-key map (kbd "C-a") #'mark-whole-buffer)
-    (define-key map (kbd "C-w") #'kill-this-buffer)
+    (define-key map (kbd "C-w") #'normal-kill-this-buffer)
     (define-key map (kbd "C-S-w") #'normal-close-window-with-buffer)
     (define-key map (kbd "C-d") #'duplicate-current-region-or-line)
     (define-key map (kbd "C-k") #'kill-whole-line)
