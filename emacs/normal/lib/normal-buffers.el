@@ -1,4 +1,5 @@
 (require 'normal-autoload)
+(require 'seq)
 
 (autoload-all "../../lib/perspective"
 	      #'persp-current-buffers
@@ -13,10 +14,18 @@
       (kill-buffer-and-window)
     (delete-window)))
 
+(defun normal-can-transparently-kill-buffer (b)
+  (or
+   (not (buffer-live-p b))
+   (string-match "^*scratch*" (buffer-name b))
+   )
+  )
+
 (defun normal-kill-this-buffer ()
   (interactive)
-  (let* ((persp-buffers (persp-current-buffers)))
-    (if (>= 1 (length persp-buffers))
+  (let* ((persp-buffers (persp-current-buffers))
+	 (concrete-buffers (seq-remove #'normal-can-transparently-kill-buffer persp-buffers)))
+    (if (>= 1 (length concrete-buffers))
 	(progn
 	  (persp-kill (persp-current-name))
 	  (normal-dashboard-open)
