@@ -25,7 +25,6 @@
   (projectile-mode t)
 
   (require 'persp-projectile)
-  (projectile-persp-bridge projectile-find-file-hook-function)
   )
 
 (with-eval-after-load 'perspective
