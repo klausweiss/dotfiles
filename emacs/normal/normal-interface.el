@@ -30,6 +30,8 @@
 (menu-bar-mode -1)
 (load-dark-theme)
 
+(show-paren-mode t)
+
 (defun normal-update-linum-format ()
   (setq-local linum-format (normal-linum-format-with-padding)))
 (add-hook 'post-command-hook #'normal-update-linum-format)
