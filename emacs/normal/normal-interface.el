@@ -21,8 +21,12 @@
 (with-eval-after-load 'dashboard
   (dashboard-setup-startup-hook)
   (define-key dashboard-mode-map (kbd "C-p") nil)
-  (setq dashboard-footer-messages
-	'("sup"))
+  (setq dashboard-footer-messages '("sup")
+  	dashboard-projects-switch-function 'projectile-persp-switch-project
+	dashboard-items '((projects . 5)
+			  (recents  . 5)
+			  )
+	)
   )
 
 (scroll-bar-mode -1)
