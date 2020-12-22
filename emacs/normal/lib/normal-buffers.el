@@ -3,6 +3,9 @@
 (autoload-all "../../lib/perspective"
 	      #'persp-current-buffers
 	      )
+(autoload-all "../lib/normal-dashboard-lib"
+	      #'normal-dashboard-open
+	      )
 
 (defun normal-close-window-with-buffer ()
   (interactive)
@@ -13,9 +16,13 @@
 (defun normal-kill-this-buffer ()
   (interactive)
   (let* ((persp-buffers (persp-current-buffers)))
-    (if (<= 1 (length persp-buffers))
-	 (persp-kill (persp-current-name)))
-    (kill-this-buffer)
+    (if (>= 1 (length persp-buffers))
+	(progn
+	  (persp-kill (persp-current-name))
+	  (normal-dashboard-open)
+	  )
+      (kill-this-buffer)
+      )
     ))
 
 (provide 'normal-buffers)
