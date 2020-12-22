@@ -93,6 +93,9 @@
 (autoload-all "../lib/simpleclip"
 	      #'simpleclip-paste
 	      )
+(autoload-all "../lib/treemacs/src/elisp/treemacs"
+	      #'treemacs-select-window
+	      )
 
 (setq normal-keymap-find-definition (kbd "C-b"))
 
@@ -154,6 +157,11 @@
     (define-key map (kbd "<C-M-left>") #'switch-to-or-split-window-left)
     (define-key map (kbd "<C-M-up>") #'switch-to-or-split-window-up)
     (define-key map (kbd "C-M-l") #'indent-region)
+
+    (define-key map (kbd "<f1>") #'treemacs-select-window)
+    (with-eval-after-load 'treemacs-mode
+      (define-key treemacs-mode-map (kbd "<f1>") #'treemacs-quit)
+      )
 
     (define-key map normal-keymap-find-definition #'find-function-at-point)
 
