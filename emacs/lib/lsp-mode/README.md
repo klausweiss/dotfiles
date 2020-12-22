@@ -5,7 +5,7 @@ description: Language Server Protocol support with multiples languages support f
 
 [![](https://melpa.org/packages/lsp-mode-badge.svg)](https://melpa.org/#/lsp-mode)
 [![](https://stable.melpa.org/packages/lsp-mode-badge.svg)](https://stable.melpa.org/#/lsp-mode)
-[![](https://badges.gitter.im/emacs-lsp/lsp-mode.svg)](https://gitter.im/emacs-lsp/lsp-mode)
+[![](https://discordapp.com/api/guilds/789885435026604033/widget.png?style=shield)](https://discord.gg/swuxy5AAgT)
 [![](https://github.com/emacs-lsp/lsp-mode/workflows/CI/badge.svg)](https://github.com/emacs-lsp/lsp-mode/actions?query=workflow%3ACI)
 
 
@@ -244,6 +244,17 @@ primary working on/responsible for.
         </a>
         <br/>
         completions | pwsh
+      </div>
+    </td>
+    <td align="center">
+      <div>
+        <a href="https://github.com/nbfalcon">
+          <img src="https://github.com/nbfalcon.png" width="100px;" style="border-radius: 50%;" alt="kiennq"/>
+          <br/>
+          <sub><b>nbfalcon</b></sub>
+        </a>
+        <br/>
+        lsp-mode core
       </div>
     </td>
   </tr>

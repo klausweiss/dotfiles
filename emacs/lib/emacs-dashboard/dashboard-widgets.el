@@ -60,18 +60,20 @@
 (defcustom dashboard-image-banner-max-height 0
   "Maximum height of banner image.
 
-This setting applies only if Emacs is compiled with Imagemagick
-support.  When value is non-zero the image banner will be resized
-to the specified height, with aspect ratio preserved."
+This setting applies only if Emacs supports image transforms or
+compiled with Imagemagick support.  When value is non-zero the image
+banner will be resized to the specified height in pixels, with aspect
+ratio preserved."
   :type 'integer
   :group 'dashboard)
 
 (defcustom dashboard-image-banner-max-width 0
   "Maximum width of banner image.
 
-This setting applies if Emacs is compiled with Imagemagick
-support.  When value is non-zero the image banner will be resized
-to the specified width, with aspect ratio preserved."
+This setting applies if Emacs supports image transforms or compiled
+with Imagemagick support.  When value is non-zero the image banner
+will be resized to the specified width in pixels, with aspect ratio
+preserved."
   :type 'integer
   :group 'dashboard)
 
@@ -108,8 +110,7 @@ to the specified width, with aspect ratio preserved."
     "Happy coding!"
     "Vi Vi Vi, the editor of the beast"
     "Welcome to the church of Emacs"
-    "While any text editor can save your files,\
- only Emacs can save your soul"
+    "While any text editor can save your files, only Emacs can save your soul"
     "I showed you my source code, pls respond")
   "A list of messages, one of which dashboard chooses to display."
   :type 'list
@@ -128,9 +129,8 @@ Example:
   :group 'dashboard)
 
 (defconst dashboard-banners-directory
-  (concat (file-name-directory
-           (locate-library "dashboard"))
-          "/banners/"))
+  (concat (file-name-directory (locate-library "dashboard")) "/banners/")
+  "Default banner directory.")
 
 (defconst dashboard-banner-official-png
   (expand-file-name (concat dashboard-banners-directory "emacs.png"))
@@ -171,18 +171,7 @@ Example:
   :group 'dashboard)
 
 (defcustom dashboard-footer
-  (let ((list '("The one true editor, Emacs!"
-                "Who the hell uses VIM anyway? Go Evil!"
-                "Free as free speech, free as free Beer"
-                "Richard Stallman is proud of you"
-                "Happy coding!"
-                "Vi Vi Vi, the editor of the beast"
-                "Welcome to the church of Emacs"
-                "While any text editor can save your files,\
- only Emacs can save your soul"
-                "I showed you my source code, pls respond"
-                )))
-    (nth (random (1- (1+ (length list)))) list))
+  (nth (random (1- (1+ (length dashboard-footer-messages)))) dashboard-footer-messages)
   "A footer with some short message."
   :type 'string
   :group 'dashboard)
@@ -232,13 +221,13 @@ Possible values for list-type are: `recents', `bookmarks', `projects',
 
 (defcustom dashboard-projects-backend 'projectile
   "The package that supplies the list of recent projects.
-With the value `projectile', the projects widget uses
-projectile (available from MELPA), with `project-el' the widget
-uses project.el (built-in since Emacs 27.1).
+With the value `projectile', the projects widget uses the package
+projectile (available in MELPA).  With the value `project-el',
+the widget uses the package project (available in GNU ELPA).
 
 To activate the projects widget, add e.g. `(projects . 10)' to
-`dashboard-items' after making sure either of the above packages
-is installed."
+`dashboard-items' after making sure the necessary package is
+installed."
   :type '(choice (const :tag "Use projectile" projectile)
                  (const :tag "Use project.el" project-el))
   :group 'dashboard)
@@ -309,6 +298,16 @@ If nil it is disabled.  Possible values for list-type are:
 (defface dashboard-heading
   '((t (:inherit font-lock-keyword-face)))
   "Face used for widget headings."
+  :group 'dashboard)
+
+(defface dashboard-items-face
+  '((t (:inherit widget-button)))
+  "Face used for items."
+  :group 'dashboard)
+
+(defface dashboard-no-items-face
+  '((t (:inherit widget-button)))
+  "Face used for no items."
   :group 'dashboard)
 
 (defface dashboard-footer
@@ -449,14 +448,18 @@ If MESSAGEBUF is not nil then MSG is also written in message buffer."
   "Display an image BANNER."
   (when (file-exists-p banner)
     (let* ((title dashboard-banner-logo-title)
+           (size-props
+            (append (when (> dashboard-image-banner-max-width 0)
+                      (list :max-width dashboard-image-banner-max-width))
+                    (when (> dashboard-image-banner-max-height 0)
+                      (list :max-height dashboard-image-banner-max-height))))
            (spec
             (if (image-type-available-p 'imagemagick)
-                (apply 'create-image banner 'imagemagick nil
-                       (append (when (> dashboard-image-banner-max-width 0)
-                                 (list :max-width dashboard-image-banner-max-width))
-                               (when (> dashboard-image-banner-max-height 0)
-                                 (list :max-height dashboard-image-banner-max-height))))
-              (create-image banner)))
+                (apply 'create-image banner 'imagemagick nil size-props)
+              (apply 'create-image banner nil nil
+                     (when (and (fboundp 'image-transforms-p)
+                                (memq 'scale (funcall 'image-transforms-p)))
+                       size-props))))
            (size (image-size spec))
            (width (car size))
            (left-margin (max 0 (floor (- dashboard-banner-length width) 2))))
@@ -545,7 +548,7 @@ If MESSAGEBUF is not nil then MSG is also written in message buffer."
                                (when title (propertize title 'face face)))
                          :help-echo help
                          :action action
-                         :button-face `(:underline nil)
+                         :button-face 'dashboard-items-face
                          :mouse-face 'highlight
                          :button-prefix prefix
                          :button-suffix suffix
@@ -574,7 +577,7 @@ WIDGET-PARAMS are passed to the \"widget-create\" function."
                      ,@widget-params)
                     ,shortcut)
            (dashboard-insert-shortcut ,shortcut ,section-name))
-       (insert "\n    --- No items ---"))))
+       (insert (propertize "\n    --- No items ---" 'face 'dashboard-no-items-face)))))
 
 ;;
 ;; Section list
@@ -607,7 +610,7 @@ WIDGET-PARAMS are passed to the \"widget-create\" function."
           (widget-create 'item
                          :tag tag
                          :action ,action
-                         :button-face `(:underline nil)
+                         :button-face 'dashboard-items-face
                          :mouse-face 'highlight
                          :button-prefix ""
                          :button-suffix ""
@@ -664,39 +667,60 @@ WIDGET-PARAMS are passed to the \"widget-create\" function."
 ;;
 ;; Projects
 ;;
+(defcustom dashboard-projects-switch-function
+  nil
+  "Custom function to switch to projects from dashboard.
+If non-NIL, should be bound to a function with one argument.  The
+function will be called with the root directory of the project to
+switch to."
+  :type '(choice (const :tag "Default" nil) function)
+  :group 'dashboard)
+
 (defun dashboard-insert-projects (list-size)
   "Add the list of LIST-SIZE items of projects."
+  (dashboard-insert-section
+   "Projects:"
+   (dashboard-subseq (dashboard-projects-backend-load-projects) 0 list-size)
+   list-size
+   (dashboard-get-shortcut 'projects)
+   `(lambda (&rest ignore)
+      (funcall (dashboard-projects-backend-switch-function) ,el))
+   (abbreviate-file-name el)))
+
+(defun dashboard-projects-backend-load-projects ()
+  "Depending on `dashboard-projects-backend' load corresponding backend.
+Return function that returns a list of projects."
   (cond
    ((eq dashboard-projects-backend 'projectile)
     (require 'projectile)
     (let ((inhibit-message t) (message-log-max nil))
       (projectile-cleanup-known-projects))
-    (projectile-load-known-projects)
-    (dashboard-insert-section
-     "Projects:"
-     (dashboard-subseq (projectile-relevant-known-projects)
-                       0 list-size)
-     list-size
-     (dashboard-get-shortcut 'projects)
-     `(lambda (&rest ignore) (projectile-switch-project-by-name ,el))
-     (abbreviate-file-name el)))
+    (projectile-load-known-projects))
    ((eq dashboard-projects-backend 'project-el)
     (require 'project)
-    (dashboard-insert-section
-     "Projects:"
-     (dashboard-subseq (project-known-project-roots) 0 list-size)
-     list-size
-     (dashboard-get-shortcut 'projects)
-     `(lambda (&rest ignore)
-        (let ((default-directory ,el)
-              (project-current-inhibit-prompt t))
-          (call-interactively 'project-find-file)))
-     (abbreviate-file-name el)))
+    (project-known-project-roots))
    (t
     (display-warning '(dashboard)
                      "Invalid value for `dashboard-projects-backend'"
                      :error))))
 
+(defun dashboard-projects-backend-switch-function ()
+  "Return the function to switch to a project.
+Custom variable `dashboard-projects-switch-function' variable takes preference
+over custom backends."
+  (or dashboard-projects-switch-function
+      (cond
+       ((eq dashboard-projects-backend 'projectile)
+        'projectile-switch-project-by-name)
+       ((eq dashboard-projects-backend 'project-el)
+        (lambda (project)
+          "This function is used to switch to `PROJECT'."
+          (let ((default-directory project))
+            (project-find-file))))
+       (t
+        (display-warning '(dashboard)
+                         "Invalid value for `dashboard-projects-backend'"
+                         :error)))))
 ;;
 ;; Org Agenda
 ;;
@@ -755,21 +779,32 @@ if returns a point."
   (let ((schedule-time (org-get-scheduled-time (point)))
         (deadline-time (org-get-deadline-time (point)))
         (due-date (dashboard-due-date-for-agenda)))
-    (if (or (org-entry-is-done-p)
-            (and (null schedule-time)
-                 (null deadline-time))
-            (not (or (org-time-less-p deadline-time due-date)
-                     (org-time-less-p schedule-time due-date))))
-        (point)
-      nil)))
+    (unless (and (not (org-entry-is-done-p))
+                 (or (and schedule-time
+                          (org-time-less-p schedule-time due-date))
+                     (and deadline-time
+                          (org-time-less-p deadline-time due-date))))
+      (point))))
+
+(defun dashboard-filter-agenda-by-todo ()
+  "Include entry if it is todo and not done.
+An entry is included if this function returns nil and excluded
+if returns a point."
+  (unless (and (org-entry-is-todo-p)
+               (not (org-entry-is-done-p)))
+    (point)))
 
 (defun dashboard-no-filter-agenda ()
   "No filter agenda entries."
   (when (org-entry-is-done-p) (point)))
 
-(defcustom dashboard-filter-agenda-entry `dashboard-filter-agenda-by-time
+(defcustom dashboard-filter-agenda-entry 'dashboard-filter-agenda-by-time
   "Function to filter `org-agenda' entries."
-  :type 'function
+  :type '(choice
+          (const :tag "No filter" dashboard-no-filter-agenda)
+          (const :tag "Filter by time" dashboard-filter-agenda-by-time)
+          (const :tag "Filter by todo" dashboard-filter-agenda-by-todo)
+          (function :tag "Custom function"))
   :group 'dashboard)
 
 (defun dashboard-get-agenda ()

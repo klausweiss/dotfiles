@@ -853,9 +853,9 @@ selection, non-nil otherwise."
                                     (string-prefix-p key (car x)))
                                   (cdr actions)))
                 (not (string= key (car (nth action-idx (cdr actions))))))
-      (setq key (concat key (key-description (string (read-key hint))))))
+      (setq key (concat key (key-description (vector (read-key hint))))))
     (ivy-shrink-after-dispatching)
-    (cond ((member key '("ESC" "C-g"))
+    (cond ((member key '("ESC" "C-g" "M-o"))
            nil)
           ((null action-idx)
            (message "%s is not bound" key)
@@ -1689,6 +1689,7 @@ minibuffer."
   (interactive)
   (setq ivy--old-re nil)
   (cl-rotatef ivy--regex-function ivy--regexp-quote)
+  (setq ivy--old-text "")
   (setq ivy-regex (funcall ivy--regex-function ivy-text)))
 
 (defcustom ivy-format-functions-alist
@@ -2627,6 +2628,12 @@ See `ivy-set-prompt'."
   "When non-nil `ivy-mode' will set `completion-in-region-function'."
   :type 'boolean)
 
+(defvar ivy--old-crf nil
+  "Store previous value of `completing-read-function'.")
+
+(defvar ivy--old-cirf nil
+  "Store previous value of `completion-in-region-function'.")
+
 ;;;###autoload
 (define-minor-mode ivy-mode
   "Toggle Ivy mode on or off.
@@ -2645,11 +2652,21 @@ Minibuffer bindings:
   :lighter " ivy"
   (if ivy-mode
       (progn
-        (setq completing-read-function 'ivy-completing-read)
+        (unless (eq completing-read-function #'ivy-completing-read)
+          (setq ivy--old-crf completing-read-function)
+          (setq completing-read-function #'ivy-completing-read))
         (when ivy-do-completion-in-region
-          (setq completion-in-region-function 'ivy-completion-in-region)))
-    (setq completing-read-function 'completing-read-default)
-    (setq completion-in-region-function 'completion--in-region)))
+          (unless (eq completion-in-region-function #'ivy-completion-in-region)
+            (setq ivy--old-cirf completion-in-region-function)
+            (setq completion-in-region-function #'ivy-completion-in-region))))
+    (when (eq completing-read-function #'ivy-completing-read)
+      (setq completing-read-function (or ivy--old-crf
+                                         #'completing-read-default))
+      (setq ivy--old-crf nil))
+    (when (eq completion-in-region-function #'ivy-completion-in-region)
+      (setq completion-in-region-function (or ivy--old-cirf
+                                              #'completion--in-region))
+      (setq ivy--old-cirf nil))))
 
 (defun ivy--preselect-index (preselect candidates)
   "Return the index of PRESELECT in CANDIDATES."
@@ -5115,7 +5132,7 @@ EVENT gives the mouse position."
   (ivy--occur-press-update-window)
   (when (save-excursion
           (beginning-of-line)
-          (looking-at "\\(?:./\\|    \\)\\(.*\\)$"))
+          (looking-at "\\(?:.[/\\]\\|    \\)\\(.*\\)$"))
     (let* ((ivy-last ivy-occur-last)
            (ivy-text (ivy-state-text ivy-last))
            (str (buffer-substring

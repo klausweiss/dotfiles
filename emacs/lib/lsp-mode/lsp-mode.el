@@ -355,7 +355,7 @@ unless overridden by a more specific face association."
          lsp-kotlin lsp-lua lsp-nim lsp-nix lsp-metals lsp-ocaml lsp-perl lsp-php lsp-pwsh
          lsp-pyls lsp-python-ms lsp-purescript lsp-r lsp-rf lsp-rust lsp-solargraph lsp-sorbet
          lsp-tex lsp-terraform lsp-vala lsp-verilog lsp-vetur lsp-vhdl lsp-vimscript lsp-xml
-         lsp-yaml lsp-sqls lsp-svelte)
+         lsp-yaml lsp-sqls lsp-svelte lsp-steep)
   "List of the clients to be automatically required."
   :group 'lsp-mode
   :type '(repeat symbol))
@@ -479,46 +479,72 @@ the server has requested that."
   :package-version '(lsp-mode . "6.1"))
 ;;;###autoload(put 'lsp-enable-file-watchers 'safe-local-variable #'booleanp)
 
-(defcustom lsp-file-watch-ignored '(; SCM tools
-                                    "[/\\\\]\\.git\\'"
-                                    "[/\\\\]\\.hg\\'"
-                                    "[/\\\\]\\.bzr\\'"
-                                    "[/\\\\]_darcs\\'"
-                                    "[/\\\\]\\.svn\\'"
-                                    "[/\\\\]_FOSSIL_\\'"
-                                    ;; IDE or build tools
-                                    "[/\\\\]\\.idea\\'"
-                                    "[/\\\\]\\.ensime_cache\\'"
-                                    "[/\\\\]\\.eunit\\'"
-                                    "[/\\\\]node_modules"
-                                    "[/\\\\]\\.fslckout\\'"
-                                    "[/\\\\]\\.tox\\'"
-                                    "[/\\\\]dist\\'"
-                                    "[/\\\\]dist-newstyle\\'"
-                                    "[/\\\\]\\.stack-work\\'"
-                                    "[/\\\\]\\.bloop\\'"
-                                    "[/\\\\]\\.metals\\'"
-                                    "[/\\\\]target\\'"
-                                    "[/\\\\]\\.ccls-cache\\'"
-                                    "[/\\\\]\\.vscode\\'"
-                                    ;; Autotools output
-                                    "[/\\\\]\\.deps\\'"
-                                    "[/\\\\]build-aux\\'"
-                                    "[/\\\\]autom4te.cache\\'"
-                                    "[/\\\\]\\.reference\\'"
-                                    ;; .Net Core build-output
-                                    "[/\\\\]bin/Debug\\'"
-                                    "[/\\\\]obj\\'")
+(define-obsolete-variable-alias 'lsp-file-watch-ignored 'lsp-file-watch-ignored-directories "7.1.0")
+
+(defcustom lsp-file-watch-ignored-directories
+  '(; SCM tools
+    "[/\\\\]\\.git\\'"
+    "[/\\\\]\\.hg\\'"
+    "[/\\\\]\\.bzr\\'"
+    "[/\\\\]_darcs\\'"
+    "[/\\\\]\\.svn\\'"
+    "[/\\\\]_FOSSIL_\\'"
+    ;; IDE or build tools
+    "[/\\\\]\\.idea\\'"
+    "[/\\\\]\\.ensime_cache\\'"
+    "[/\\\\]\\.eunit\\'"
+    "[/\\\\]node_modules"
+    "[/\\\\]\\.fslckout\\'"
+    "[/\\\\]\\.tox\\'"
+    "[/\\\\]dist\\'"
+    "[/\\\\]dist-newstyle\\'"
+    "[/\\\\]\\.stack-work\\'"
+    "[/\\\\]\\.bloop\\'"
+    "[/\\\\]\\.metals\\'"
+    "[/\\\\]target\\'"
+    "[/\\\\]\\.ccls-cache\\'"
+    "[/\\\\]\\.vscode\\'"
+    ;; Autotools output
+    "[/\\\\]\\.deps\\'"
+    "[/\\\\]build-aux\\'"
+    "[/\\\\]autom4te.cache\\'"
+    "[/\\\\]\\.reference\\'"
+    ;; .Net Core build-output
+    "[/\\\\]bin/Debug\\'"
+    "[/\\\\]obj\\'")
   "List of regexps matching directory paths which won't be monitored when creating file watches."
   :group 'lsp-mode
   :type '(repeat string)
-  :package-version '(lsp-mode . "6.1"))
+  :package-version '(lsp-mode . "7.1.0"))
 
-(defun lsp-file-watch-ignored ()
-  lsp-file-watch-ignored)
+(define-obsolete-function-alias 'lsp-file-watch-ignored 'lsp-file-watch-ignored-directories "7.0.1")
 
-;; Allow lsp-file-watch-ignored as a file or directory-local variable
-(put 'lsp-file-watch-ignored 'safe-local-variable 'lsp--string-listp)
+(defun lsp-file-watch-ignored-directories ()
+  lsp-file-watch-ignored-directories)
+
+;; Allow lsp-file-watch-ignored-directories as a file or directory-local variable
+(put 'lsp-file-watch-ignored-directories 'safe-local-variable 'lsp--string-listp)
+
+(defcustom lsp-file-watch-ignored-files
+  '(
+    ;; lockfiles
+    "[/\\\\]\\.#[^/\\\\]+\\'"
+    ;; backup files
+    "[/\\\\][^/\\\\]+~\\'" )
+  "List of regexps matching files for which change events will
+not be sent to the server.
+
+This setting has no impact on whether a file-watch is created for
+a directory; it merely prevents notifications pertaining to
+matched files from being sent to the server.  To prevent a
+file-watch from being created for a directory, customize
+`lsp-file-watch-ignored-directories'"
+  :group 'lsp-mode
+  :type '(repeat string)
+  :package-version '(lsp-mode . "7.1.0"))
+
+;; Allow lsp-file-watch-ignored-files as a file or directory-local variable
+(put 'lsp-file-watch-ignored-files 'safe-local-variable 'lsp--string-listp)
 
 (defcustom lsp-after-uninitialized-functions nil
   "List of functions to be called after a Language Server has been uninitialized."
@@ -654,7 +680,7 @@ If this is set to nil, `eldoc' will show only the symbol information."
   :group 'lsp-mode
   :package-version '(lsp-mode . "7.1"))
 
-(defcustom lsp-headerline-breadcrumb-enable nil
+(defcustom lsp-headerline-breadcrumb-enable t
   "Whether to enable breadcrumb on headerline."
   :type 'boolean
   :group 'lsp-mode)
@@ -1179,17 +1205,32 @@ Deprecated. Use `lsp-repeatable-vector' instead. "
 
 (make-obsolete 'lsp-string-vector nil "lsp-mode 7.1")
 
+(defun lsp--message  (format &rest args)
+  "Wrapper for `message'
+
+We `inhibit-message' the message when the cursor is in the
+minibuffer and when emacs version is before emacs 27 due to the
+fact that we often use `lsp--info', `lsp--warn' and `lsp--error'
+in async context and the call to these function is removing the
+minibuffer prompt. The issue with async messages is already fixed
+in emacs 27.
+
+See #2049"
+  (let ((inhibit-message (and (minibufferp)
+                              (version< emacs-version "27.0"))))
+    (apply #'message format args)))
+
 (defun lsp--info (format &rest args)
   "Display lsp info message with FORMAT with ARGS."
-  (message "%s :: %s" (propertize "LSP" 'face 'success) (apply #'format format args)))
+  (lsp--message "%s :: %s" (propertize "LSP" 'face 'success) (apply #'format format args)))
 
 (defun lsp--warn (format &rest args)
   "Display lsp warn message with FORMAT with ARGS."
-  (message "%s :: %s" (propertize "LSP" 'face 'warning) (apply #'format format args)))
+  (lsp--message "%s :: %s" (propertize "LSP" 'face 'warning) (apply #'format format args)))
 
 (defun lsp--error (format &rest args)
   "Display lsp error message with FORMAT with ARGS."
-  (message "%s :: %s" (propertize "LSP" 'face 'error) (apply #'format format args)))
+  (lsp--message "%s :: %s" (propertize "LSP" 'face 'error) (apply #'format format args)))
 
 (defun lsp--eldoc-message (&optional msg)
   "Show MSG in eldoc."
@@ -1212,6 +1253,7 @@ FORMAT and ARGS i the same as for `message'."
       (unless log-buffer
         (setq log-buffer (get-buffer-create "*lsp-log*"))
         (with-current-buffer log-buffer
+          (buffer-disable-undo)
           (view-mode 1)
           (set (make-local-variable 'lsp--log-lines) 0)))
       (with-current-buffer log-buffer
@@ -1742,7 +1784,7 @@ This set of allowed chars is enough for hexifying local file paths.")
     (cond
      ((and (file-directory-p file-name)
            (equal 'created event-type)
-           (not (lsp--string-match-any (lsp-file-watch-ignored) file-name)))
+           (not (lsp--string-match-any (lsp-file-watch-ignored-directories) file-name)))
 
       (lsp-watch-root-folder (file-truename file-name) callback watch)
 
@@ -1753,11 +1795,12 @@ This set of allowed chars is enough for hexifying local file paths.")
                      (unless (file-directory-p f)
                        (funcall callback (list nil 'created f)))))))
      ((and (not (file-directory-p file-name))
+           (not (lsp--string-match-any lsp-file-watch-ignored-files file-name))
            (memq event-type '(created deleted changed)))
       (funcall callback event)))))
 
 (defun lsp--directory-files-recursively (dir regexp &optional include-directories)
-  "Copy of `directory-files-recursively' but it skips `lsp-file-watch-ignored'."
+  "Copy of `directory-files-recursively' but it skips `lsp-file-watch-ignored-directories'."
   (let* ((result nil)
          (files nil)
          (dir (directory-file-name dir))
@@ -1768,7 +1811,7 @@ This set of allowed chars is enough for hexifying local file paths.")
                         'string<))
       (unless (member file '("./" "../"))
         (if (and (directory-name-p file)
-                 (not (lsp--string-match-any (lsp-file-watch-ignored) (f-join dir (f-filename file)))))
+                 (not (lsp--string-match-any (lsp-file-watch-ignored-directories) (f-join dir (f-filename file)))))
             (let* ((leaf (substring file 0 (1- (length file))))
                    (full-file (f-join dir leaf)))
               ;; Don't follow symlinks to other directories.
@@ -1837,7 +1880,7 @@ already have been created."
                                                   (file-truename f)
                                                 f)
                                               (lsp-watch-descriptors watch)))
-                                (not (lsp--string-match-any (lsp-file-watch-ignored) f))
+                                (not (lsp--string-match-any (lsp-file-watch-ignored-directories) f))
                                 (not (-contains? '("." "..") (f-filename f)))))
                          (directory-files dir t))))
         (error (lsp-log "Failed to create a watch for %s: message" (error-message-string err)))
@@ -1947,6 +1990,11 @@ WORKSPACE is the workspace that contains the progress token."
          (progress-reporter-done reporter))
        (lsp-workspace-rem-work-done-token token workspace)))))
 
+
+;; diagnostics
+
+(defvar lsp-diagnostic-stats (ht))
+
 (defun lsp-diagnostics (&optional current-workspace?)
   "Return the diagnostics from all workspaces."
   (or (pcase (if current-workspace?
@@ -1966,9 +2014,38 @@ WORKSPACE is the workspace that contains the progress token."
                         result)))
       (ht)))
 
-
+(defun lsp-diagnostics-stats-for (path)
+  "Get diagnostics statistics for PATH.
+The result format is vector [_ errors warnings infos hints] or nil."
+  (gethash (lsp--fix-path-casing path) lsp-diagnostic-stats))
 
-(lsp-defun lsp--on-diagnostics (workspace (&PublishDiagnosticsParams :uri :diagnostics))
+(defun lsp-diagnostics--update-path (path new-stats)
+  (let ((new-stats (copy-sequence new-stats))
+        (path (lsp--fix-path-casing (directory-file-name path))))
+    (if-let ((old-data (gethash path lsp-diagnostic-stats)))
+        (dotimes (idx 5)
+          (cl-callf + (aref old-data idx)
+            (aref new-stats idx)))
+      (puthash path new-stats lsp-diagnostic-stats))))
+
+(lsp-defun lsp--on-diagnostics-update-stats (workspace
+                                             (&PublishDiagnosticsParams :uri :diagnostics))
+  (let ((path (lsp--uri-to-path uri))
+        (new-stats (make-vector 5 0)))
+    (mapc (-lambda ((&Diagnostic :severity?))
+            (cl-incf (aref new-stats (or severity? 1))))
+          diagnostics)
+    (when-let ((old-diags (gethash path (lsp--workspace-diagnostics workspace))))
+      (mapc (-lambda ((&Diagnostic :severity?))
+              (cl-decf (aref new-stats (or severity? 1))))
+            old-diags))
+    (lsp-diagnostics--update-path path new-stats)
+    (while (not (string= path (setf path (file-name-directory
+                                          (directory-file-name path)))))
+      (lsp-diagnostics--update-path path new-stats))))
+
+(lsp-defun lsp--on-diagnostics (workspace (params &as
+                                                  &PublishDiagnosticsParams :uri :diagnostics))
   "Callback for textDocument/publishDiagnostics.
 interface PublishDiagnosticsParams {
     uri: string;
@@ -1976,6 +2053,7 @@ interface PublishDiagnosticsParams {
 }
 PARAMS contains the diagnostics data.
 WORKSPACE is the workspace that contains the diagnostics."
+  (lsp--on-diagnostics-update-stats workspace params)
   (let* ((lsp--virtual-buffer-mappings (ht))
          (file (lsp--fix-path-casing (lsp--uri-to-path uri)))
          (workspace-diagnostics (lsp--workspace-diagnostics workspace)))
@@ -1985,6 +2063,17 @@ WORKSPACE is the workspace that contains the diagnostics."
       (puthash file (append diagnostics nil) workspace-diagnostics))
 
     (run-hooks 'lsp-diagnostics-updated-hook)))
+
+(defun lsp-diagnostics--workspace-cleanup (workspace)
+  (->> workspace
+       (lsp--workspace-diagnostics)
+       (maphash (lambda (key _)
+                  (lsp--on-diagnostics-update-stats
+                   workspace
+                   (lsp-make-publish-diagnostics-params
+                    :uri (lsp--path-to-uri key)
+                    :diagnostics [])))))
+  (clrhash (lsp--workspace-diagnostics workspace)))
 
 
 
@@ -2544,9 +2633,27 @@ an Elisp regexp."
            glob-segments)
           current-regexp)))))
 
-(defun lsp-glob-to-regexp (pattern)
-  "Convert a PATTERN from LSP's glob syntax to an Elisp regexp."
-  (concat "\\`" (lsp--glob-to-regexp (string-trim pattern)) "\\'"))
+;; See https://github.com/emacs-lsp/lsp-mode/issues/2365
+(defun lsp-glob-unbrace-at-top-level (glob-pattern)
+  "If GLOB-PATTERN does not start with a brace, return a singleton list containing GLOB-PATTERN.
+
+If GLOB-PATTERN does start with a brace, return a list of the
+comma-separated globs within the top-level braces."
+  (if (not (string-prefix-p "{" glob-pattern))
+      (list glob-pattern)
+    (lsp-split-glob-pattern (substring glob-pattern 1 -1) ?\,)))
+
+(defun lsp-glob-convert-to-wrapped-regexp (glob-pattern)
+  "Convert GLOB-PATTERN to a regexp wrapped with the beginning-
+and end-of-string meta-characters."
+  (concat "\\`" (lsp--glob-to-regexp (string-trim glob-pattern)) "\\'"))
+
+(defun lsp-glob-to-regexps (glob-pattern)
+  "Convert a GLOB-PATTERN to a list of Elisp regexps."
+  (let* ((trimmed-pattern (string-trim glob-pattern))
+         (top-level-unbraced-patterns (lsp-glob-unbrace-at-top-level trimmed-pattern)))
+    (seq-map #'lsp-glob-convert-to-wrapped-regexp
+             top-level-unbraced-patterns)))
 
 
 
@@ -2630,7 +2737,9 @@ an Elisp regexp."
      "---"
      ("Debug"
       :active (bound-and-true-p dap-ui-mode)
-      :filter ,(lambda (_) (nthcdr 3 dap-ui-menu-items)))))
+      :filter ,(lambda (_)
+                 (and (boundp 'dap-ui-menu-items)
+                      (nthcdr 3 dap-ui-menu-items))))))
   "Menu for lsp-mode.")
 
 (defalias 'make-lsp-client 'make-lsp--client)
@@ -3227,7 +3336,8 @@ disappearing, unset all the variables related to it."
             (when (lsp-buffer-live-p buf)
               (lsp-with-current-buffer buf
                 (lsp-managed-mode -1))))
-          buffers)))
+          buffers)
+    (lsp-diagnostics--workspace-cleanup lsp--cur-workspace)))
 
 (defun lsp--client-capabilities (&optional custom-capabilities)
   "Return the client capabilities."
@@ -3313,6 +3423,7 @@ disappearing, unset all the variables related to it."
 (defun lsp--file-process-event (session root-folder event)
   "Process file event."
   (let* ((changed-file (cl-third event))
+         (rel-changed-file (f-relative changed-file root-folder))
          (event-numeric-kind (alist-get (cl-second event) lsp--file-change-type))
          (bit-position (1- event-numeric-kind))
          (watch-bit (ash 1 bit-position)))
@@ -3337,9 +3448,11 @@ disappearing, unset all the variables related to it."
                             (-lambda ((&FileSystemWatcher :glob-pattern :kind?))
                               (when (or (null kind?)
                                         (> (logand kind? watch-bit) 0))
-                                (-let [glob-regex (lsp-glob-to-regexp glob-pattern)]
-                                  (or (string-match glob-regex changed-file)
-                                      (string-match glob-regex (f-relative changed-file root-folder))))))))))))
+                                (-let [regexes (lsp-glob-to-regexps glob-pattern)]
+                                  (-any? (lambda (re)
+                                           (or (string-match re changed-file)
+                                               (string-match re rel-changed-file)))
+                                         regexes))))))))))
                  (with-lsp-workspace workspace
                    (lsp-notify
                     "workspace/didChangeWatchedFiles"
@@ -3468,7 +3581,8 @@ in that particular folder."
 (defun lsp-workspace-folders-remove (project-root)
   "Remove PROJECT-ROOT from the list of workspace folders."
   (interactive (list (completing-read "Select folder to remove: "
-                                      (lsp-session-folders (lsp-session)) nil t
+                                      (lsp-session-folders (lsp-session))
+                                      nil t nil nil
                                       (lsp-find-session-folder (lsp-session) default-directory))))
 
   (setq project-root (lsp-f-canonical project-root))
@@ -3614,6 +3728,11 @@ in that particular folder."
       (add-hook 'xref-backend-functions #'lsp--xref-backend nil t))
 
     (lsp-configure-buffer)
+
+    ;; make sure we turn off lsp-mode in case major mode changes, because major
+    ;; mode change will wipe the buffer locals.
+    (add-hook 'change-major-mode-hook #'lsp-disconnect nil t)
+
     (let ((buffer (lsp-current-buffer)))
       (run-with-idle-timer
        0.0 nil
@@ -3648,7 +3767,8 @@ in that particular folder."
     (lsp--remove-overlays 'lsp-highlight)
     (lsp--remove-overlays 'lsp-links)
 
-    (remove-hook 'xref-backend-functions #'lsp--xref-backend t))))
+    (remove-hook 'xref-backend-functions #'lsp--xref-backend t)
+    (remove-hook 'change-major-mode-hook #'lsp-disconnect t))))
 
 (defun lsp-configure-buffer ()
   "Configure LSP features for current buffer."
@@ -3696,7 +3816,8 @@ in that particular folder."
   (run-hooks 'lsp-unconfigure-hook)
 
   (lsp--remove-overlays 'lsp-color)
-  (setq-local indent-region-function nil)
+  (when (eq indent-region-function #'lsp-format-region)
+    (setq-local indent-region-function nil))
   (remove-hook 'lsp-on-change-hook #'lsp--document-color t)
   (remove-hook 'lsp-on-idle-hook #'lsp--document-highlight t)
   (remove-hook 'lsp-on-idle-hook #'lsp--document-links t))
@@ -3867,6 +3988,11 @@ interface TextDocumentEdit {
   (if (= left-line right-line)
       (> left-character right-character)
     (> left-line right-line)))
+
+(lsp-defun lsp-point-in-range? (position (&Range :start :end))
+  "Returns if POINT is in RANGE."
+  (not (or (lsp--position-compare start position)
+           (lsp--position-compare position end))))
 
 (lsp-defun lsp--position-equal ((&Position :line left-line
                                            :character left-character)
@@ -4587,7 +4713,7 @@ If INCLUDE-DECLARATION is non-nil, request the server to include declarations."
   (run-hooks 'lsp-eldoc-hook)
   eldoc-last-message)
 
-(eval-when-compile
+(eval-and-compile
   (defun dash-expand:&lsp-wks (key source)
     `(,(intern-soft (format "lsp--workspace-%s" (eval key))) ,source))
 
@@ -4914,7 +5040,7 @@ RENDER-ALL - nil if only the signature should be rendered."
       (progn
         (setq lsp--signature-last-buffer (current-buffer))
         (let ((lv-force-update t))
-          (lv-message message)))
+          (lv-message "%s" message)))
     (lv-delete-window)))
 
 (defun lsp--handle-signature-update (signature)
@@ -5580,12 +5706,10 @@ perform the request synchronously."
 (defun lsp--symbols-informations->document-symbols-hierarchy (symbols-informations current-position)
   "Convert SYMBOLS-INFORMATIONS to symbols hierarchy on CURRENT-POSITION."
   (--> symbols-informations
-       (mapcan (-lambda ((symbol &as &SymbolInformation :location (&Location :range (&Range :start start-position
-                                                                                            :end end-position))))
-                 (when (and (lsp--position-compare current-position start-position)
-                            (lsp--position-compare end-position current-position))
-                   (list (lsp--symbol-information->document-symbol symbol))))
-               it)
+       (-keep (-lambda ((symbol &as &SymbolInformation :location (&Location :range)))
+                (when (lsp-point-in-range? current-position range)
+                  (lsp--symbol-information->document-symbol symbol)))
+              it)
        (sort it (-lambda ((&DocumentSymbol :range (&Range :start a-start-position :end a-end-position))
                           (&DocumentSymbol :range (&Range :start b-start-position :end b-end-position)))
                   (and (lsp--position-compare b-start-position a-start-position)
@@ -5762,7 +5886,7 @@ REFERENCES? t when METHOD returns references."
   (let ((loc (lsp-request method
                           (append (lsp--text-document-position-params) extra))))
     (if (seq-empty-p loc)
-        (message "Not found for: %s" (thing-at-point 'symbol t))
+        (lsp--error "Not found for: %s" (thing-at-point 'symbol t))
       (lsp-show-xrefs (lsp--locations-to-xref-items loc) display-action references?))))
 
 (cl-defun lsp-find-declaration (&key display-action)
@@ -5951,7 +6075,9 @@ PARAMS are the `workspace/configuration' request params"
                        (path-parts-len (length path-parts)))
                  (cond
                   ((<= path-parts-len 1)
-                   (apply 'ht-get* `(,(lsp-configuration-section section?) ,@path-parts)))
+                   (ht-get (lsp-configuration-section section?)
+                           (car-safe path-parts)
+                           (ht-create)))
                   ((> path-parts-len 1)
                    (when-let ((section (lsp-configuration-section path-without-last))
                               (keys path-parts))
@@ -6729,7 +6855,7 @@ returns the command to execute."
   (when lsp-modeline-workspace-status-enable
     (add-hook 'lsp-configure-hook 'lsp-modeline-workspace-status-mode))
   (when lsp-lens-enable
-    (add-hook 'lsp-configure-hook 'lsp-lens-mode))
+    (add-hook 'lsp-configure-hook 'lsp-lens--enable))
 
   ;; yas-snippet config
   (setq-local yas-inhibit-overlay-modification-protection t))
@@ -6947,10 +7073,11 @@ typescript-language-server requires both the server and the
 typescript compiler. If you've installed them in a team shared
 read-only location, you can instruct lsp-mode to use them via
 
-  (eval-after-load 'lsp-clients
-    '(progn
-       (lsp-dependency 'typescript-language-server `(:system ,tls-exe))
-       (lsp-dependency 'typescript `(:system ,ts-js))))
+ (eval-after-load 'lsp-mode
+   '(progn
+      (require 'lsp-javascript)
+      (lsp-dependency 'typescript-language-server `(:system ,tls-exe))
+      (lsp-dependency 'typescript `(:system ,ts-js))))
 
 where tls-exe is the absolute path to the typescript-language-server
 executable and ts-js is the absolute path to the typescript compiler
@@ -7140,19 +7267,33 @@ nil."
 
 
 ;; Download URL handling
-(cl-defun lsp-download-install (callback error-callback &key url store-path &allow-other-keys)
-  (let ((url (lsp-resolve-value url))
-        (store-path (lsp-resolve-value store-path)))
+(cl-defun lsp-download-install (callback error-callback &key url store-path decompress &allow-other-keys)
+  (let* ((url (lsp-resolve-value url))
+         (store-path (lsp-resolve-value store-path))
+         ;; (decompress (lsp-resolve-value decompress))
+         (download-path
+          (pcase decompress
+           (:gzip (concat store-path ".gz"))
+           (:zip (concat store-path ".zip"))
+           (`nil store-path)
+           (_ (error ":decompress must be `:gzip', `:zip' or `nil'")))))
     (make-thread
      (lambda ()
        (condition-case err
            (progn
-             (when (f-exists? store-path)
-               (f-delete store-path))
-             (lsp--info "Starting to download %s to %s..." url store-path)
-             (mkdir (f-parent store-path) t)
-             (url-copy-file url store-path)
-             (lsp--info "Finished downloading %s..." store-path)
+             (when (f-exists? download-path)
+               (f-delete download-path))
+             (lsp--info "Starting to download %s to %s..." url download-path)
+             (mkdir (f-parent download-path) t)
+             (url-copy-file url download-path)
+             (lsp--info "Finished downloading %s..." download-path)
+             (when decompress
+               (lsp--info "Decompressing %s..." download-path)
+               (pcase decompress
+                 (:gzip
+                  (lsp-gunzip download-path))
+                 (:zip (lsp-unzip download-path store-path)))
+               (lsp--info "Decompressed %s..." store-path))
              (funcall callback))
          (error (funcall error-callback err)))))))
 
@@ -7191,7 +7332,24 @@ STORE-PATH to make it executable."
   (unless lsp-unzip-script
     (error "Unable to find `unzip' or `powershell' on the path, please customize `lsp-unzip-script'"))
   (shell-command (format lsp-unzip-script zip-file dest)))
+
+;; gunzip
 
+(defconst lsp-ext-gunzip-script "gzip -d %1$s"
+  "Script to decompress a gzippped file with gzip.")
+
+(defcustom lsp-gunzip-script (cond ((executable-find "gzip") lsp-ext-gunzip-script)
+                                   (t nil))
+  "The script to decompress a gzipped file. Should be a format string with one argument for the file to be decompressed in place."
+  :group 'lsp-mode
+  :type 'string
+  :package-version '(lsp-mode . "7.1"))
+
+(defun lsp-gunzip (gz-file)
+  "Decompress file in place."
+  (unless lsp-gunzip-script
+    (error "Unable to find `gzip' on the path, please either customize `lsp-gunzip-script' or manually decompress %s" gz-file))
+  (shell-command (format lsp-gunzip-script gz-file)))
 
 ;; VSCode marketplace
 
@@ -7979,6 +8137,7 @@ This avoids overloading the server with many files when starting Emacs."
 (declare-function package-version-join "ext:package")
 (declare-function package-desc-version "ext:package")
 (declare-function package--alist "ext:package")
+
 (defun lsp-version ()
   "Return string describing current version of `lsp-mode'."
   (interactive)
@@ -7991,7 +8150,7 @@ This avoids overloading the server with many files when starting Emacs."
                      emacs-version
                      system-type)))
     (if (called-interactively-p 'interactive)
-        (message "%s" ver)
+        (lsp--info "%s" ver)
       ver)))
 
 

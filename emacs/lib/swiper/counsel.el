@@ -126,7 +126,7 @@ complex regexes."
   "Check system for program used in CMD, printing error if not found.
 CMD is either a string or a list of strings.
 To skip the `executable-find' check, start the string with a space."
-  (unless (and (stringp cmd) (string-match-p "^ " cmd))
+  (unless (and (stringp cmd) (string-prefix-p " " cmd))
     (let ((program (if (listp cmd)
                        (car cmd)
                      (car (split-string cmd)))))
@@ -1986,15 +1986,14 @@ Skip some dotfiles unless `ivy-text' requires them."
 
 (defun counsel-find-file-action (x)
   "Find file X."
-  (with-ivy-window
-    (cond ((and counsel-find-file-speedup-remote
-                (file-remote-p ivy--directory))
-           (let ((find-file-hook nil))
-             (find-file (expand-file-name x ivy--directory))))
-          ((member (file-name-extension x) counsel-find-file-extern-extensions)
-           (counsel-find-file-extern x))
-          (t
-           (find-file (expand-file-name x ivy--directory))))))
+  (cond ((and counsel-find-file-speedup-remote
+              (file-remote-p ivy--directory))
+         (let ((find-file-hook nil))
+           (find-file (expand-file-name x ivy--directory))))
+        ((member (file-name-extension x) counsel-find-file-extern-extensions)
+         (counsel-find-file-extern x))
+        (t
+         (find-file (expand-file-name x ivy--directory)))))
 
 (defun counsel--preselect-file ()
   "Return candidate to preselect during filename completion.
@@ -2543,13 +2542,13 @@ can use `C-x r j i' to open that file."
 
 ;;** `counsel-locate'
 (defcustom counsel-locate-cmd (cond ((memq system-type '(darwin berkeley-unix))
-                                     'counsel-locate-cmd-noregex)
+                                     #'counsel-locate-cmd-noregex)
                                     ((and (eq system-type 'windows-nt)
                                           (executable-find "es.exe"))
-                                     'counsel-locate-cmd-es)
+                                     #'counsel-locate-cmd-es)
                                     (t
-                                     'counsel-locate-cmd-default))
-  "The function for producing a locate command string from the input.
+                                     #'counsel-locate-cmd-default))
+  "The function for producing a `locate' command string from the input.
 
 The function takes a string - the current input, and returns a
 string - the full shell command to run."
@@ -2557,7 +2556,8 @@ string - the full shell command to run."
           (const :tag "Default" counsel-locate-cmd-default)
           (const :tag "No regex" counsel-locate-cmd-noregex)
           (const :tag "mdfind" counsel-locate-cmd-mdfind)
-          (const :tag "everything" counsel-locate-cmd-es)))
+          (const :tag "everything" counsel-locate-cmd-es)
+          (function :tag "Custom")))
 
 (ivy-set-actions
  'counsel-locate
@@ -2592,33 +2592,33 @@ string - the full shell command to run."
   (dired-jump nil x))
 
 (defun counsel-locate-cmd-default (input)
-  "Return a shell command based on INPUT."
+  "Return a `locate' shell command based on regexp INPUT."
   (counsel-require-program "locate")
-  (format "locate -i --regex '%s'"
-          (counsel--elisp-to-pcre
-           (ivy--regex input))))
+  (format "locate -i --regex %s"
+          (shell-quote-argument
+           (counsel--elisp-to-pcre
+            (ivy--regex input)))))
 
 (defun counsel-locate-cmd-noregex (input)
-  "Return a shell command based on INPUT."
+  "Return a `locate' shell command based on INPUT."
   (counsel-require-program "locate")
-  (format "locate -i '%s'" input))
+  (format "locate -i %s" (shell-quote-argument input)))
 
 (defun counsel-locate-cmd-mdfind (input)
-  "Return a shell command based on INPUT."
+  "Return a `mdfind' shell command based on INPUT."
   (counsel-require-program "mdfind")
-  (format "mdfind -name '%s'" input))
-
-(defvar w32-ansi-code-page)
+  (format "mdfind -name %s" (shell-quote-argument input)))
 
 (defun counsel-locate-cmd-es (input)
-  "Return a shell command based on INPUT."
+  "Return a `es' shell command based on INPUT."
+  (defvar w32-ansi-code-page)
   (counsel-require-program "es.exe")
   (let ((raw-string (format "es.exe -i -p -r %s"
                             (counsel--elisp-to-pcre
                              (ivy--regex input t)))))
-    ;; W32 don't use Unicode by default, so we encode search command
-    ;; to local codepage to support searching filename contains non-ASCII
-    ;; characters.
+    ;; W32 doesn't use Unicode by default, so we encode search command
+    ;; to local codepage to support searching file names containing
+    ;; non-ASCII characters.
     (if (and (eq system-type 'windows-nt)
              (boundp 'w32-ansi-code-page))
         (encode-coding-string raw-string
@@ -2626,7 +2626,7 @@ string - the full shell command to run."
       raw-string)))
 
 (defun counsel-locate-function (input)
-  "Call the \"locate\" shell command with INPUT."
+  "Call a \"locate\" style shell command with INPUT."
   (or
    (ivy-more-chars)
    (progn
@@ -2640,10 +2640,7 @@ string - the full shell command to run."
 
 (defun counsel-file-stale-p (fname seconds)
   "Return non-nil if FNAME was modified more than SECONDS ago."
-  (> (time-to-seconds
-      (time-subtract
-       (current-time)
-       (nth 5 (file-attributes fname))))
+  (> (float-time (time-subtract nil (nth 5 (file-attributes fname))))
      seconds))
 
 (defun counsel--locate-updatedb ()
@@ -2658,7 +2655,7 @@ string - the full shell command to run."
 
 ;;;###autoload
 (defun counsel-locate (&optional initial-input)
-  "Call the \"locate\" shell command.
+  "Call a \"locate\" style shell command.
 INITIAL-INPUT can be given as the initial minibuffer input."
   (interactive)
   (counsel--locate-updatedb)
@@ -3796,7 +3793,7 @@ include attachments of other Org buffers."
   (let (dirs)
     (save-excursion
       (goto-char (point-min))
-      (while (re-search-forward "^:\\(ATTACH_DIR\\|ID\\):[\t ]+\\(.*\\)$" nil t)
+      (while (re-search-forward ":\\(?:ATTACH_DIR\\|ID\\):[\t ]+.*$" nil t)
         (let ((dir (org-attach-dir)))
           (when dir
             (push dir dirs)))))
@@ -4031,7 +4028,7 @@ This variable has no effect unless
 ;; Misc. Emacs
 ;;** `counsel-mark-ring'
 (defface counsel--mark-ring-highlight
-  '((t (:inherit highlight)))
+  '((t :inherit highlight))
   "Face for current `counsel-mark-ring' line."
   :group 'ivy-faces)
 
@@ -4588,7 +4585,7 @@ matching the register's value description against a regexp in
 
 ;;** `counsel-evil-registers'
 (defface counsel-evil-register-face
-  '((t (:inherit counsel-outline-1)))
+  '((t :inherit counsel-outline-1))
   "Face for highlighting `evil' registers in ivy."
   :group 'ivy-faces)
 
@@ -5904,6 +5901,7 @@ as arguments."
           (const :tag "Command : Name - Comment" counsel-linux-app-format-function-default)
           (const :tag "Name - Comment (Command)" counsel-linux-app-format-function-name-first)
           (const :tag "Name - Comment" counsel-linux-app-format-function-name-only)
+          (const :tag "Name - Comment (Pretty)" counsel-linux-app-format-function-name-pretty)
           (const :tag "Command" counsel-linux-app-format-function-command-only)
           (function :tag "Custom")))
 
@@ -5978,7 +5976,9 @@ NAME is the name of the application, COMMENT its comment and EXEC
 the command to launch it."
   (format "% -45s: %s%s"
           (propertize
-           (ivy--truncate-string exec 45)
+           (ivy--truncate-string
+            (replace-regexp-in-string "env +[^ ]+ +" "" exec)
+            45)
            'face 'counsel-application-name)
           name
           (if comment
@@ -6006,6 +6006,16 @@ EXEC is the command to launch the application."
 (defun counsel-linux-app-format-function-command-only (_name _comment exec)
   "Display only the command EXEC when formatting Linux application names."
   exec)
+
+(defun counsel-linux-app-format-function-name-pretty (name comment _exec)
+  "Format Linux application names with the NAME (and COMMENT) only, but pretty."
+  (format "% -45s%s"
+          (propertize
+           (ivy--truncate-string name 45)
+           'face 'counsel-application-name)
+          (if comment
+              (concat ": " comment)
+            "")))
 
 (defun counsel-linux-apps-list-desktop-files ()
   "Return an alist of all Linux applications.
@@ -6137,7 +6147,7 @@ Any desktop entries that fail to parse are recorded in
   "Launch a Linux desktop application, similar to Alt-<F2>.
 When ARG is non-nil, ignore NoDisplay property in *.desktop files."
   (interactive "P")
-  (ivy-read "Run a command: " (counsel-linux-apps-list)
+  (ivy-read "Run application: " (counsel-linux-apps-list)
             :predicate (unless arg (lambda (x) (get-text-property 0 'visible (car x))))
             :action #'counsel-linux-app-action-default
             :caller 'counsel-linux-app))

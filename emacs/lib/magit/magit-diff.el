@@ -75,6 +75,7 @@
 (defgroup magit-diff nil
   "Inspect and manipulate Git diffs."
   :link '(info-link "(magit)Diffing")
+  :group 'magit-commands
   :group 'magit-modes)
 
 (defcustom magit-diff-mode-hook nil
@@ -1555,7 +1556,7 @@ Like `magit-diff-visit-worktree-file' but use
 (defun magit-diff-visit-file--internal (file force-worktree fn)
   "From a diff visit the appropriate version of FILE.
 If FORCE-WORKTREE is non-nil, then visit the worktree version of
-the file, even if the diff is about a committed change.  USE FN
+the file, even if the diff is about a committed change.  Use FN
 to display the buffer in some window."
   (if (magit-file-accessible-directory-p file)
       (magit-diff-visit-directory file force-worktree)

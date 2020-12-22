@@ -60,9 +60,10 @@ If nil then the project is simply created."
         (mode 'rustic-cargo-clippy-mode))
     (rustic-compilation-process-live)
     (rustic-compilation command
-                        :buffer buf
-                        :process proc
-                        :mode mode)))
+                        (list
+                         :buffer buf
+                         :process proc
+                         :mode mode))))
 
 ;;; Test
 
@@ -387,10 +388,19 @@ If BIN is not nil, create a binary application, otherwise a library."
   (rustic-run-cargo-command "cargo build"))
 
 ;;;###autoload
-(defun rustic-cargo-run ()
-  "Run 'cargo run' for the current project."
-  (interactive)
-  (rustic-run-cargo-command "cargo run" (list :mode 'rustic-cargo-run-mode)))
+(defun rustic-cargo-run (&optional arg)
+  "Run 'cargo run' for the current project.
+If running with prefix command `C-u', read whole command from minibuffer."
+  (interactive "P")
+  (let* ((command (if arg
+                      (read-from-minibuffer "Cargo run command: " "cargo run ")
+                    (concat rustic-cargo-bin " run "
+                            (read-from-minibuffer
+                             "Run arguments: "
+                             (car compile-history)
+                             nil nil
+                             'compile-history)))))
+    (rustic-run-cargo-command command (list :mode 'rustic-cargo-run-mode))))
 
 (define-derived-mode rustic-cargo-run-mode rustic-compilation-mode "Cargo run"
   "Mode for 'cargo run' that derives from `rustic-compilation-mode', but uses
