@@ -32,6 +32,7 @@ add_rule({
 	 class = {
 	    "Emacs",
 	    "jetbrains-idea-ce",
+	    "jetbrains-pycharm",
 	    "jetbrains-pycharm-ce",
 	    "jetbrains-studio",
 	 },
@@ -46,6 +47,7 @@ add_rule({
 	 class = {
 	    "discord",
 	    "Evolution",
+	    "rambox",
 	    "Telegram",
 	    "Thunderbird",
 	 },
