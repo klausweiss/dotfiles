@@ -13,6 +13,9 @@
 (autoload-all "cmake-mode"
 	      #'cmake-mode
 	      )
+(autoload-all "yaml-mode"
+	      #'yaml-mode
+	      )
 
 (with-eval-after-load 'yasnippet
   (require 'yasnippet-snippets))
@@ -44,6 +47,8 @@
 (with-eval-after-load 'cmake-mode
   (add-hook 'cmake-mode-hook #'lsp)
   )
+
+(add-to-list 'auto-mode-alist '("\\.ya?ml$" . yaml-mode))
 
 (add-hook 'c-mode-hook #'lsp)
 (add-hook 'c++-mode-hook #'lsp)
