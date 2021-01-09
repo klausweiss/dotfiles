@@ -48,6 +48,7 @@ add_rule({
 	    "discord",
 	    "Evolution",
 	    "rambox",
+	    "Signal",
 	    "Telegram",
 	    "Thunderbird",
 	 },
