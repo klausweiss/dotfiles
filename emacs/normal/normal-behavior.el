@@ -15,6 +15,10 @@
 
 (electric-pair-mode)
 
+(require 'exec-path-from-shell)
+(when (memq window-system '(mac ns x))
+  (exec-path-from-shell-initialize))
+
 ;; customization
 (setq custom-file "~/.emacs.d/custom.el")
 (load custom-file 'no-error)

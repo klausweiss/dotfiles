@@ -7,6 +7,7 @@ COMPANY_REPO := https://github.com/company-mode/company-mode.git
 DASHBOARD_REPO := https://github.com/emacs-dashboard/emacs-dashboard.git
 	PAGE_BREAK_LINES_URL := https://raw.githubusercontent.com/purcell/page-break-lines/master/page-break-lines.el
 DOCKERFILE_MODE_URL := https://raw.githubusercontent.com/spotify/dockerfile-mode/master/dockerfile-mode.el
+EXEC_PATH_FROM_SHELL_URL := https://raw.githubusercontent.com/purcell/exec-path-from-shell/master/exec-path-from-shell.el
 EXPAND_REGION_REPO := https://github.com/magnars/expand-region.el.git
 FLYCHECK_REPO := https://github.com/flycheck/flycheck.git
 LSP_MODE_REPO := https://github.com/emacs-lsp/lsp-mode.git
@@ -136,6 +137,9 @@ update-dashboard: update-page-break-lines
 
 update-dockerfile-mode:
 	$(call download-from-url, $(DOCKERFILE_MODE_URL))
+
+update-exec-path-from-shell:
+	$(call download-from-url, $(EXEC_PATH_FROM_SHELL_URL))
 
 update-expand-region:
 	$(call download-from-repo, $(EXPAND_REGION_REPO))
