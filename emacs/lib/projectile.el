@@ -629,7 +629,7 @@ Examples of such paths might be ~/projects, ~/work, etc."
   :group 'projectile
   :type 'string)
 
-(defcustom projectile-git-submodule-command "git submodule --quiet foreach 'echo $path' | tr '\\n' '\\0'"
+(defcustom projectile-git-submodule-command "git submodule --quiet foreach 'echo $displaypath' | tr '\\n' '\\0'"
   "Command used by projectile to list submodules of a given git repository.
 Set to nil to disable listing submodules contents."
   :group 'projectile
@@ -1380,15 +1380,12 @@ If `command' is nil or an empty string, return nil.
 This allows commands to be disabled.
 
 Only text sent to standard output is taken into account."
-  (save-window-excursion
-    (when (stringp command)
-      (let ((default-directory root))
-        (with-temp-buffer
-          (let ((stderr-buffer (current-buffer)))
-            (with-temp-buffer
-              (shell-command command t stderr-buffer)
-              (let ((shell-output (buffer-substring (point-min) (point-max))))
-                (split-string (string-trim shell-output) "\0" t)))))))))
+  (when (stringp command)
+    (let ((default-directory root))
+      (with-temp-buffer
+        (shell-command command t "*projectile-files-errors*")
+        (let ((shell-output (buffer-substring (point-min) (point-max))))
+          (split-string (string-trim shell-output) "\0" t))))))
 
 (defun projectile-adjust-files (project vcs files)
   "First remove ignored files from FILES, then add back unignored files."
@@ -4876,7 +4873,7 @@ If the current buffer does not belong to a project, call `previous-buffer'."
 
 
 ;;; Projectile Minor mode
-(define-obsolete-variable-alias 'projectile-mode-line-lighter 'projectile-mode-line-prefix)
+(define-obsolete-variable-alias 'projectile-mode-line-lighter 'projectile-mode-line-prefix "0.12.0")
 (defcustom projectile-mode-line-prefix
   " Projectile"
   "Mode line lighter prefix for Projectile.

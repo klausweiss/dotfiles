@@ -1,6 +1,6 @@
 ;;; treemacs.el --- A tree style file viewer package -*- lexical-binding: t -*-
 
-;; Copyright (C) 2020 Alexander Miller
+;; Copyright (C) 2021 Alexander Miller
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -59,7 +59,7 @@ not visible."
             (current-buffer  (current-buffer))
             (current-file    (or (buffer-file-name current-buffer)
                                  (when (eq major-mode 'dired-mode)
-                                   (treemacs--canonical-path (dired-current-directory))))))
+                                   (treemacs-canonical-path (dired-current-directory))))))
        (when (and treemacs-window
                   current-file
                   (not (s-starts-with? treemacs--buffer-name-prefix (buffer-name current-buffer)))
@@ -106,6 +106,7 @@ This functionality can also be manually invoked with `treemacs-find-file'."
   :init-value nil
   :global     t
   :lighter    nil
+  :group      'treemacs
   (if treemacs-follow-mode
       (treemacs--setup-follow-mode)
     (treemacs--tear-down-follow-mode)))

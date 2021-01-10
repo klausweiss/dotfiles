@@ -1,9 +1,9 @@
 ;;; treemacs-magit.el --- Magit integration for treemacs -*- lexical-binding: t -*-
 
-;; Copyright (C) 2020 Alexander Miller
+;; Copyright (C) 2021 Alexander Miller
 
 ;; Author: Alexander Miller <alexanderm@web.de>
-;; Package-Requires: ((emacs "25.2") (treemacs "0.0") (pfuture "1.3" ) (magit "2.90.0"))
+;; Package-Requires: ((emacs "26.1") (treemacs "0.0") (pfuture "1.3" ) (magit "2.90.0"))
 ;; Version: 0
 ;; Homepage: https://github.com/Alexander-Miller/treemacs
 
@@ -50,7 +50,7 @@ In order for the update to fully run several conditions must be met:
  * The directory must be part of a treemacs workspace, and
  * The project must not be set for refresh already."
   (when treemacs-git-mode
-    (let ((magit-root (treemacs--canonical-path (magit-toplevel))))
+    (let ((magit-root (treemacs-canonical-path (magit-toplevel))))
       (unless (member magit-root treemacs-magit--timers)
         (push magit-root treemacs-magit--timers)
         (run-with-idle-timer
@@ -69,15 +69,11 @@ In order for the update to fully run several conditions must be met:
 Without the parsing ability of extended git-mode this update uses
 filewatch-mode's mechanics to update the entire project."
   (treemacs-run-in-every-buffer
-   (when-let* ((project (treemacs--find-project-for-path magit-root)))
-     (let* ((project-root (treemacs-project->path project))
-            (dom-node (treemacs-find-in-dom project-root)))
-       (when (and dom-node
-                  (null (treemacs-dom-node->refresh-flag dom-node)))
-         ;; adding a number of change events is the easiest way to cause a full directory
-         ;; refresh without touching treemacs proper
-         (dotimes (_ 8)
-           (treemacs--set-refresh-flags project-root 'magit-refresh project-root)))))))
+   (when-let* ((project (treemacs--find-project-for-path magit-root))
+               (dom-node (treemacs-find-in-dom (treemacs-project->path project))))
+     (push (cons (treemacs-project->path project) 'force-refresh)
+           (treemacs-dom-node->refresh-flag dom-node))
+     (treemacs--start-filewatch-timer))))
 
 (defun treemacs-magit--extended-git-mode-update (magit-root)
   "Update the project at the given MAGIT-ROOT.

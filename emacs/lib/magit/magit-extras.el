@@ -1,6 +1,6 @@
 ;;; magit-extras.el --- additional functionality for Magit  -*- lexical-binding: t -*-
 
-;; Copyright (C) 2008-2020  The Magit Project Contributors
+;; Copyright (C) 2008-2021  The Magit Project Contributors
 ;;
 ;; You should have received a copy of the AUTHORS.md file which
 ;; lists all contributors.  If not, see http://magit.vc/authors.
@@ -654,7 +654,7 @@ argument."
                    (region-beginning)
                    (region-end))
        (replace-regexp-in-string
-        (format "^\\%c.*\n" (if (< (prefix-numeric-value arg) 0) ?+ ?-))
+        (format "^\\%c.*\n?" (if (< (prefix-numeric-value arg) 0) ?+ ?-))
         "")
        (replace-regexp-in-string "^[ \\+\\-]" "")))
     (deactivate-mark))

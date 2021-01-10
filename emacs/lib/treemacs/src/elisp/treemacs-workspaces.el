@@ -1,6 +1,6 @@
 ;;; treemacs.el --- A tree style file viewer package -*- lexical-binding: t -*-
 
-;; Copyright (C) 2020 Alexander Miller
+;; Copyright (C) 2021 Alexander Miller
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -64,7 +64,8 @@
                (:constructor treemacs-project->create!))
   name
   path
-  path-status)
+  path-status
+  is-disabled?)
 
 (cl-defstruct (treemacs-workspace
                (:conc-name treemacs-workspace->)
@@ -101,7 +102,7 @@ To be called whenever a project or workspace changes."
 (defun treemacs--default-current-user-project-function ()
   "Find the current project.el project."
   (declare (side-effect-free t))
-  (-some-> (project-current) (cdr) (file-truename) (treemacs--canonical-path)))
+  (-some-> (project-current) (cdr) (file-truename) (treemacs-canonical-path)))
 
 (define-inline treemacs-workspaces ()
   "Return the list of all workspaces in treemacs."
@@ -304,7 +305,7 @@ Return values may be as follows:
   - the symbol `success'
   - the created workspace"
   (treemacs-block
-   (-let [name (or name (read-string "Workspace name: "))]
+   (-let [name (or name (treemacs--read-string "Workspace name: "))]
      (treemacs-return-if (treemacs--is-name-invalid? name)
        `(invalid-name ,name))
      (-when-let (ws (--first (string= name (treemacs-workspace->name it))
@@ -461,10 +462,11 @@ NAME: String"
   (treemacs-block
    (treemacs-error-return-if (null path)
      `(invalid-path "Path is nil."))
-   (let ((path-status (treemacs--get-path-status path)))
+   (let ((path-status (treemacs--get-path-status path))
+         (added-in-workspace (treemacs-current-workspace)))
      (treemacs-error-return-if (not (file-readable-p path))
        `(invalid-path "Path is not readable does not exist."))
-     (setq path (-> path (file-truename) (treemacs--canonical-path)))
+     (setq path (-> path (file-truename) (treemacs-canonical-path)))
      (-when-let (project (treemacs--find-project-for-path path))
        (treemacs-return `(duplicate-project ,project)))
      (treemacs-return-if (treemacs--is-name-invalid? name)
@@ -479,25 +481,28 @@ NAME: String"
        (treemacs--add-project-to-current-workspace project)
        (treemacs--invalidate-buffer-project-cache)
        (treemacs-run-in-every-buffer
-        (treemacs-with-writable-buffer
-         (goto-char (treemacs--projects-end))
-         (cond
-          ;; Inserting the first and only button - no need to add spacing
-          ((not (treemacs-current-button)))
-          ;; Inserting before a button. This happens when only bottom extensions exist.
-          ((bolp)
-           (save-excursion (treemacs--insert-root-separator))
-           ;; Unlock the marker - when the marker is at the beginning of the buffer,
-           ;; expanding/collapsing extension nodes would move the marker and it was thus locked.
-           (set-marker-insertion-type (treemacs--projects-end) t))
-          ;; Inserting after a button (the standard case)
-          ;; We should already be at EOL, but play it safe.
-          (t
-           (end-of-line)
-           (treemacs--insert-root-separator)))
-         (treemacs--add-root-element project)
-         (treemacs-dom-node->insert-into-dom!
-          (treemacs-dom-node->create! :key path :position (treemacs-project->position project)))))
+        (when (eq added-in-workspace workspace)
+          (treemacs-with-writable-buffer
+           (goto-char (treemacs--projects-end))
+           (cond
+            ;; Inserting the first and only button - no need to add spacing
+            ((not (treemacs-current-button)))
+            ;; Inserting before a button. This happens when only bottom extensions exist.
+            ((bolp)
+             (save-excursion (treemacs--insert-root-separator))
+             ;; Unlock the marker - when the marker is at the beginning of the buffer,
+             ;; expanding/collapsing extension nodes would move the marker and it was thus locked.
+             (set-marker-insertion-type (treemacs--projects-end) t))
+            ;; Inserting after a button (the standard case)
+            ;; We should already be at EOL, but play it safe.
+            (t
+             (end-of-line)
+             (treemacs--insert-root-separator)))
+           (treemacs--add-root-element project)
+           (treemacs-dom-node->insert-into-dom!
+            (treemacs-dom-node->create! :key path :position (treemacs-project->position project)))
+           (when treemacs-expand-added-projects
+             (treemacs--expand-root-node (treemacs-project->position project))))))
        (treemacs--persist)
        (run-hook-with-args 'treemacs-create-project-functions project)
        `(success ,project)))))
@@ -535,7 +540,7 @@ Return values may be as follows:
    ;; when used from outside treemacs it is much easier to supply a path string than to
    ;; look up the project instance
    (when (stringp project)
-     (setf project (treemacs-is-path (treemacs--canonical-path project) :in-workspace)))
+     (setf project (treemacs-is-path (treemacs-canonical-path project) :in-workspace)))
    (treemacs-error-return-if (null project)
      `(invalid-project "Given path is not in the workspace"))
    (treemacs-run-in-every-buffer
@@ -583,12 +588,17 @@ Return values may be as follows:
    (treemacs--persist)
    'success))
 
-(defun treemacs-do-switch-workspace ()
-  "Switch to a new workspace.
+(defun treemacs-do-switch-workspace (&optional workspace)
+  "Switch to a new WORKSPACE.
+Workspace may either be a workspace name, a workspace object, or be left out.
+In the latter case the workspace to switch to will be selected interactively.
 Return values may be as follows:
 
 * If there are no workspaces to switch to:
   - the symbol `only-one-workspace'
+* If the given workspace could not be found (if WORKSPACE was a name string)
+  - the symbol `workspace-not-found'
+  - the given workspace name
 * If everything went well:
   - the symbol `success'
   - the selected workspace"
@@ -596,17 +606,26 @@ Return values may be as follows:
   (treemacs-block
    (treemacs-return-if (= 1 (length treemacs--workspaces))
      'only-one-workspace)
-   (let* ((workspaces (->> treemacs--workspaces
-                           (--reject (eq it (treemacs-current-workspace)))
-                           (--map (cons (treemacs-workspace->name it) it))))
-          (name (completing-read "Switch to: " workspaces nil t))
-          (selected (cdr (--first (string= (car it) name) workspaces))))
-     (setf (treemacs-current-workspace) selected)
+   (let (new-workspace)
+     (cond
+      ((treemacs-workspace-p workspace)
+       (setf new-workspace workspace))
+      ((stringp workspace)
+       (setf new-workspace (treemacs-find-workspace-by-name workspace))
+       (treemacs-return-if (null new-workspace)
+         `(workspace-not-found ,workspace)))
+      ((null workspace)
+       (let* ((workspaces (->> treemacs--workspaces
+                               (--reject (eq it (treemacs-current-workspace)))
+                               (--map (cons (treemacs-workspace->name it) it))))
+              (name (completing-read "Switch to: " workspaces nil :require-match)))
+         (setf new-workspace (cdr (--first (string= (car it) name) workspaces))))))
+     (setf (treemacs-current-workspace) new-workspace)
      (treemacs--invalidate-buffer-project-cache)
      (treemacs--rerender-after-workspace-change)
      (run-hooks 'treemacs-switch-workspace-hook)
      (treemacs-return
-      `(success ,selected)))))
+      `(success ,new-workspace)))))
 
 (defun treemacs-do-rename-workspace ()
   "Rename a workspace.
@@ -626,7 +645,7 @@ Return values may be as follows:
                         (sort (lambda (n _) (string= (car n) old-name)))))
           (str-to-rename (completing-read "Rename: " name-map))
           (ws-to-rename (cdr (assoc str-to-rename name-map)))
-          (new-name (read-string "New name: ")))
+          (new-name (treemacs--read-string "New name: ")))
      (treemacs-return-if (treemacs--is-name-invalid? new-name)
        `(invalid-name ,new-name))
      (setf (treemacs-workspace->name ws-to-rename) new-name)

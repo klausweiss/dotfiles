@@ -1,6 +1,6 @@
 ;;; treemacs.el --- A tree style file viewer package -*- lexical-binding: t -*-
 
-;; Copyright (C) 2020 Alexander Miller
+;; Copyright (C) 2021 Alexander Miller
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -30,8 +30,6 @@
 (require 'treemacs-rendering)
 (require 'treemacs-scope)
 (require 'treemacs-follow-mode)
-(require 'treemacs-tag-follow-mode)
-(require 'treemacs-mouse-interface)
 (require 'treemacs-customization)
 (require 'treemacs-workspaces)
 (require 'treemacs-persistence)
@@ -43,9 +41,21 @@
   (require 'treemacs-macros))
 
 (autoload 'ansi-color-apply-on-region "ansi-color")
+(autoload 'aw-select "ace-window")
+
+(treemacs-import-functions-from "cfrs"
+  cfrs-read)
 
 (treemacs-import-functions-from "treemacs"
   treemacs-select-window)
+
+(treemacs-import-functions-from "treemacs-tags"
+  treemacs--expand-file-node
+  treemacs--collapse-file-node
+  treemacs--expand-tag-node
+  treemacs--collapse-tag-node
+  treemacs--goto-tag
+  treemacs--visit-or-expand/collapse-tag-node)
 
 (defvar treemacs-valid-button-states
   '(root-node-open
@@ -440,7 +450,7 @@ likewise be updated."
          "Found nothing to rename here.")
        (treemacs-error-return-if (not (file-exists-p old-path))
          "The file to be renamed does not exist.")
-       (setq new-name (read-string "New name: " (file-name-nondirectory old-path))
+       (setq new-name (treemacs--read-string "New name: " (file-name-nondirectory old-path))
              dir      (f-dirname old-path)
              new-path (f-join dir new-name))
        (treemacs-error-return-if (file-exists-p new-path)
@@ -497,21 +507,42 @@ With a prefix ARG simply reset the width of the treemacs window."
                (read-number))))
   (treemacs--set-width treemacs-width))
 
-(defun treemacs-copy-path-at-point ()
+(defun treemacs-copy-absolute-path-at-point ()
   "Copy the absolute path of the node at point."
   (interactive)
-  (--if-let (-some-> (treemacs--prop-at-point :path) (f-full) (kill-new))
-      (treemacs-pulse-on-success "Copied path: %s" (propertize it 'face 'font-lock-string-face))
-    (treemacs-pulse-on-failure  "There is nothing to copy here")))
+  (treemacs-block
+   (-let [path (treemacs--prop-at-point :path)]
+     (treemacs-error-return-if (null path)
+       "There is nothing to copy here")
+     (treemacs-error-return-if (not (stringp path))
+       "Path at point is not a file.")
+     (-let [copied (-> path (f-full) (kill-new))]
+       (treemacs-pulse-on-success "Copied absolute path: %s" (propertize copied 'face 'font-lock-string-face))))))
 
-(defun treemacs-copy-project-root ()
+(defun treemacs-copy-relative-path-at-point ()
+  "Copy the path of the node at point relative to the project root."
+  (interactive)
+  (treemacs-block
+   (let ((path (treemacs--prop-at-point :path))
+         (project (treemacs-project-at-point)))
+     (treemacs-error-return-if (null path)
+       "There is nothing to copy here")
+     (treemacs-error-return-if (not (stringp path))
+       "Path at point is not a file.")
+     (-let [copied (-> path (f-full) (file-relative-name (treemacs-project->path project)) (kill-new))]
+       (treemacs-pulse-on-success "Copied relative path: %s" (propertize copied 'face 'font-lock-string-face))))))
+
+(defun treemacs-copy-project-path-at-point ()
   "Copy the absolute path of the current treemacs root."
   (interactive)
-  (--if-let (treemacs-current-button)
-      (-let [path (-> it (treemacs--nearest-path) (treemacs--find-project-for-path) (treemacs-project->path))]
-        (kill-new path)
-        (treemacs-log "Copied project root: %s" (propertize path 'face 'font-lock-string-face)))
-    (treemacs-pulse-on-failure "There is no project to copy from here.")))
+  (treemacs-block
+   (-let [project (treemacs-project-at-point)]
+     (treemacs-error-return-if (null project)
+       "There is nothing to copy here")
+     (treemacs-error-return-if (not (stringp (treemacs-project->path project)))
+       "Project at point is not a file.")
+    (-let [copied (-> project (treemacs-project->path) (kill-new))]
+      (treemacs-pulse-on-success "Copied project path: %s" (propertize copied 'face 'font-lock-string-face))))))
 
 (defun treemacs-delete-other-windows ()
   "Same as `delete-other-windows', but will not delete the treemacs window.
@@ -685,7 +716,7 @@ For slower scrolling see `treemacs-previous-line-other-window'"
       (let* ((old-name (treemacs-project->name project))
              (project-btn (treemacs-project->position project))
              (state (treemacs-button-get project-btn :state))
-             (new-name (read-string "New name: " (treemacs-project->name project))))
+             (new-name (treemacs--read-string "New name: " (treemacs-project->name project))))
         (treemacs-save-position
          (progn
            (treemacs-return-if (treemacs--is-name-invalid? new-name)
@@ -718,7 +749,7 @@ auto-selected name already exists."
          (double-name (--first (string= default-name (treemacs-project->name it))
                                (treemacs-workspace->projects (treemacs-current-workspace)))))
     (if (or current-prefix-arg double-name)
-        (setf name (read-string "Project Name: " (unless double-name (treemacs--filename path))))
+        (setf name (treemacs--read-string "Project Name: " (unless double-name (treemacs--filename path))))
       (setf name default-name)))
   (pcase (treemacs-do-add-project-to-workspace path name)
     (`(success ,project)

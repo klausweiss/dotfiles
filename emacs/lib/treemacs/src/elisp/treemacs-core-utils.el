@@ -1,6 +1,6 @@
 ;;; treemacs.el --- A tree style file viewer package -*- lexical-binding: t -*-
 
-;; Copyright (C) 2020 Alexander Miller
+;; Copyright (C) 2021 Alexander Miller
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -25,7 +25,6 @@
 (require 's)
 (require 'ht)
 (require 'f)
-(require 'ace-window)
 (require 'pfuture)
 (require 'treemacs-customization)
 (require 'treemacs-logging)
@@ -34,6 +33,9 @@
   (require 'inline)
   (require 'cl-lib)
   (require 'treemacs-macros))
+
+(treemacs-import-functions-from "cfrs"
+  cfrs-read)
 
 (treemacs-import-functions-from "treemacs-tags"
   treemacs--expand-file-node
@@ -440,7 +442,7 @@ Simply collapses and re-expands the button (if it has not been closed)."
          (goto-char (treemacs-button-start btn))
          (treemacs--push-button btn))))))
 
-(define-inline treemacs--canonical-path (path)
+(define-inline treemacs-canonical-path (path)
   "The canonical version of PATH for being handled by treemacs.
 In practice this means expand PATH and remove its final slash."
   (declare (pure t) (side-effect-free t))
@@ -448,6 +450,8 @@ In practice this means expand PATH and remove its final slash."
     (inline-quote
      (let (file-name-handler-alist)
        (-> ,path (expand-file-name) (treemacs--unslash))))))
+;; TODO(2020/12/28): alias is for backwards compatibility, remove it eventually
+(defalias 'treemacs--canonical-path #'treemacs-canonical-path)
 
 (define-inline treemacs-is-file-git-ignored? (file git-info)
   "Determined if FILE is ignored by git by means of GIT-INFO."
@@ -518,13 +522,13 @@ Add a project for ROOT and NAME if they are non-nil."
        (treemacs--render-projects (treemacs-workspace->projects current-workspace))
        (when (treemacs-workspace->is-empty?)
          (let* ((path (-> (treemacs--read-first-project-path)
-                          (treemacs--canonical-path)))
+                          (treemacs-canonical-path)))
                 (name (treemacs--filename path)))
            (treemacs-do-add-project-to-workspace path name)
            (treemacs-log "Created first project.")))
        (goto-char 2)
        (setf run-hook? t)))
-    (when root (treemacs-do-add-project-to-workspace (treemacs--canonical-path root) name))
+    (when root (treemacs-do-add-project-to-workspace (treemacs-canonical-path root) name))
     (with-no-warnings (setq treemacs--ready-to-follow t))
     (when (or treemacs-follow-after-init (with-no-warnings treemacs-follow-mode))
       (with-current-buffer origin-buffer
@@ -598,7 +602,7 @@ IS-FILE?: Bool"
                                           (treemacs-button-get :parent)
                                           (treemacs-button-get :path)))
            (treemacs-do-update-node created-under)))
-       (treemacs-goto-file-node (treemacs--canonical-path path-to-create) project)
+       (treemacs-goto-file-node (treemacs-canonical-path path-to-create) project)
        (recenter))
      (treemacs-pulse-on-success
          "Created %s." (propertize path-to-create 'face 'font-lock-string-face)))))
@@ -1245,6 +1249,18 @@ exists it returns /file/name (Copy 2).ext etc."
       (cl-incf n)
       (setf new-path (f-join dir (concat filename-no-ext (format template n) ext))))
     new-path))
+
+(defun treemacs--read-string (prompt &optional initial-input)
+  "Read a string with an interface based on `treemacs-read-string-input'.
+PROMPT and INITIAL-INPUT will be passed on to the read function.
+
+PROMPT: String
+INITIAL-INPUT: String"
+  (declare (side-effect-free t))
+  (pcase treemacs-read-string-input
+    ('from-child-frame (cfrs-read prompt initial-input))
+    ('from-minibuffer  (read-string prompt initial-input))
+    (other (user-error "Unknown read-string-input value: `%s'" other))))
 
 (provide 'treemacs-core-utils)
 

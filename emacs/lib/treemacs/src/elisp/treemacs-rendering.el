@@ -1,6 +1,6 @@
 ;;; treemacs.el --- A tree style file viewer package -*- lexical-binding: t -*-
 
-;; Copyright (C) 2020 Alexander Miller
+;; Copyright (C) 2021 Alexander Miller
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -497,6 +497,8 @@ Run POST-CLOSE-ACTION after everything else is done."
            :immediate-insert nil
            :button btn
            :new-state 'root-node-open
+           ;; TODO(2020/12/30): temporary workaround for issues like #752, to be removed in 2 months
+           :new-icon (or treemacs-icon-root-open treemacs-icon-root)
            :open-action
            (progn
              ;; TODO(2019/10/14): go back to post open
@@ -517,6 +519,8 @@ Remove all open entries below BTN when RECURSIVE is non-nil."
   (treemacs--button-close
    :button btn
    :new-state 'root-node-closed
+   ;; TODO(2020/12/30): temporary workaround for issues like #752, to be removed in 2 months
+   :new-icon (or treemacs-icon-root-closed treemacs-icon-root)
    :post-close-action
    (-let [path (treemacs-button-get btn :path)]
      (treemacs--stop-watching path)
@@ -581,7 +585,8 @@ Remove all open dir and tag entries under BTN when RECURSIVE."
   "Insert a new root node for the given PROJECT node.
 
 PROJECT: Project Struct"
-  (insert treemacs-icon-root)
+  ;; TODO(2020/12/30): temporary workaround for issues like #752, to be removed in 2 months
+  (insert (or treemacs-icon-root-closed treemacs-icon-root))
   (let* ((pos (point-marker))
          (path (treemacs-project->path project))
          (dom-node (treemacs-dom-node->create! :key path :position pos)))
@@ -604,7 +609,8 @@ PROJECT: Project Struct"
   (treemacs-with-writable-buffer
    (unless treemacs--projects-end
      (setq treemacs--projects-end (make-marker)))
-   (let* ((current-workspace (treemacs-current-workspace))
+   (let* ((projects (-reject #'treemacs-project->is-disabled? projects))
+          (current-workspace (treemacs-current-workspace))
           (has-previous (treemacs--apply-root-top-extensions current-workspace)))
 
      (--each projects
@@ -1014,6 +1020,11 @@ parents' git status can be updated."
                  (treemacs-update-single-file-git-state path)))
               ('created
                (treemacs-do-insert-single-node path (treemacs-dom-node->key node)))
+              ('force-refresh
+               (setf recurse nil)
+               (if (null (treemacs-dom-node->parent node))
+                   (treemacs-project->refresh! project)
+                 (treemacs--refresh-dir (treemacs-dom-node->key node) project)))
               (_
                ;; Renaming is handled as a combination of delete+create, so
                ;; this case should never be taken

@@ -1,9 +1,9 @@
 ;;; treemacs.el --- A tree style file explorer package -*- lexical-binding: t -*-
 
-;; Copyright (C) 2020 Alexander Miller
+;; Copyright (C) 2021 Alexander Miller
 
 ;; Author: Alexander Miller <alexanderm@web.de>
-;; Package-Requires: ((emacs "25.2") (cl-lib "0.5") (dash "2.11.0") (s "1.12.0") (f "0.11.0") (ace-window "0.9.0") (pfuture "1.7") (hydra "0.13.2") (ht "2.2"))
+;; Package-Requires: ((emacs "26.1") (cl-lib "0.5") (dash "2.11.0") (s "1.12.0") (f "0.11.0") (ace-window "0.9.0") (pfuture "1.7") (hydra "0.13.2") (ht "2.2") (cfrs "1.3.2"))
 ;; Homepage: https://github.com/Alexander-Miller/treemacs
 ;; Version: 2.8
 
@@ -41,10 +41,7 @@
 (require 'treemacs-filewatch-mode)
 (require 'treemacs-mode)
 (require 'treemacs-interface)
-(require 'treemacs-mouse-interface)
 (require 'treemacs-persistence)
-(require 'treemacs-tags)
-(require 'treemacs-tag-follow-mode)
 (require 'treemacs-async)
 (require 'treemacs-compatibility)
 (require 'treemacs-workspaces)
@@ -57,6 +54,10 @@
     (format "v2.8 (installed %s) @ Emacs %s"
             (format-time-string "%Y.%m.%d" (current-time))
             emacs-version)))
+
+(treemacs-import-functions-from "treemacs-tag-follow-mode"
+  treemacs--flatten&sort-imenu-index
+  treemacs--do-follow-tag)
 
 ;;;###autoload
 (defun treemacs-version ()
@@ -94,7 +95,7 @@ For the most part only useful when `treemacs-follow-mode' is not active."
       (setq manually-entered t
             path (->> (--if-let (treemacs-current-button) (treemacs--nearest-path it))
                       (read-file-name "File to find: ")
-                      (treemacs--canonical-path))))
+                      (treemacs-canonical-path))))
     (treemacs-unless-let (project (treemacs--find-project-for-path path))
         (treemacs-pulse-on-failure (format "%s does not fall under any project in the workspace."
                                     (propertize path 'face 'font-lock-string-face)))
@@ -193,7 +194,7 @@ only project, all other projects *will be removed* from the current workspace."
    (treemacs-unless-let (root (treemacs--find-current-user-project))
        (treemacs-error-return-if (null root)
          "Not in a project.")
-     (let* ((path (treemacs--canonical-path root))
+     (let* ((path (treemacs-canonical-path root))
             (name (treemacs--filename path))
             (ws (treemacs-current-workspace)))
        (treemacs-return-if (and (= 1 (length (treemacs-workspace->projects ws)))
@@ -231,7 +232,7 @@ An error message is displayed if the current buffer is not part of any project."
    (treemacs-unless-let (root (treemacs--find-current-user-project))
        (treemacs-error-return-if (null root)
          "Not in a project.")
-     (let* ((path (treemacs--canonical-path root))
+     (let* ((path (treemacs-canonical-path root))
             (name (treemacs--filename path)))
        (unless (treemacs-current-workspace)
          (treemacs--find-workspace))

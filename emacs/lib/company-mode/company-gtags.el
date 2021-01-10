@@ -17,7 +17,7 @@
 ;; GNU General Public License for more details.
 
 ;; You should have received a copy of the GNU General Public License
-;; along with GNU Emacs.  If not, see <http://www.gnu.org/licenses/>.
+;; along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.
 
 
 ;;; Commentary:
@@ -84,7 +84,8 @@ completion."
           symvars
           `((company-gtags--executable-connection . ,company-gtags--executable)))
 
-         (connection-local-set-profiles `(:machine ,host) symvars)))))
+         (connection-local-set-profiles `(:machine ,host) symvars))
+       company-gtags--executable)))
    (t     ;; use default value (searched locally)
     company-gtags-executable)))
 

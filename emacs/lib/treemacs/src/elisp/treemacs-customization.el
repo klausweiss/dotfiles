@@ -1,6 +1,6 @@
 ;;; treemacs.el --- A tree style file viewer package -*- lexical-binding: t -*-
 
-;; Copyright (C) 2020 Alexander Miller
+;; Copyright (C) 2021 Alexander Miller
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -116,6 +116,21 @@ indentation will be a space INTEGER pixels wide."
                  (list :tag "Pixels"
                        (integer :tag "Pixels" :value 16)
                        (const :tag "" px)))
+  :group 'treemacs)
+
+(defcustom treemacs-read-string-input 'from-child-frame
+  "The function treemacs uses to read user input.
+Only applies to plaintext input, like when renaming a project, file or
+workspace.
+
+There are 2 options:
+ - `from-child-frame': will use the `cfrs' package to read input from a small
+   child frame pop-up.  Only available in GUI frames, otherwise the default
+   minibuffer input is used.
+ - `from-minibuffer': will read input from the minibuffer, same as baseline
+   Emacs."
+  :type '(choice (const :tag "With Child Frame Popup" 'from-child-frame)
+                 (const :tag "From the Minibuffer (Emacs Default)" 'from-minibuffer))
   :group 'treemacs)
 
 (defcustom treemacs-move-forward-on-expand nil
@@ -337,7 +352,7 @@ Its possible values are:
  * refetch-index
    Call up the file's imenu index again and use its information to jump.
  * call-xref
-   Call `xref-find-definitions' to find the tag.  Only available since Emacs 25.
+   Call `xref-find-definitions' to find the tag.
  * issue-warning
    Just issue a warning that the tag's position pointer is invalid."
   :type 'integer
@@ -378,6 +393,11 @@ The change will apply the next time a treemacs buffer is created."
   :type 'boolean
   :group 'treemacs)
 
+(defcustom treemacs-expand-added-projects t
+  "When non-nil newly added projects will be expanded."
+  :type 'boolean
+  :group 'treemacs)
+
 (defcustom treemacs-recenter-after-project-jump 'always
   "Decides when to recenter view after moving between projects.
 Specifically applies to calling `treemacs-next-project' and
@@ -409,7 +429,7 @@ Possible values are:
 
 (defcustom treemacs-pulse-on-success t
   "When non-nil treemacs will pulse the current line as a success indicator.
-This applies to actions like `treemacs-copy-path-at-point'."
+This applies to actions like `treemacs-copy-relative-path-at-point'."
   :type 'boolean
   :group 'treemacs)
 
@@ -673,6 +693,14 @@ In practice means that treemacs will become invisible to commands like
   :type 'boolean
   :group 'treemacs-window)
 
+(defcustom treemacs-window-background-color nil
+  "Custom background colours for the treemacs window.
+Value must be a cons cell consisting of two colours: first the background of the
+treemacs window proper, then a second colour for treemacs' `hl-line' overlay
+marking the selected line."
+  :type '(cons color color)
+  :group 'treemacs-window)
+
 (defcustom treemacs-width 35
   "Width of the treemacs window."
   :type 'integer
@@ -842,7 +870,7 @@ The hooks will be run *after* the treemacs buffer was destroyed."
   :type 'hook
   :group 'treemacs-hooks)
 
-(define-obsolete-variable-alias 'treemacs-select-hook 'treemacs-select-functions)
+(define-obsolete-variable-alias 'treemacs-select-hook 'treemacs-select-functions "2.9")
 
 (defcustom treemacs-select-functions nil
   "Hooks to run when the treemacs window is selected.
@@ -902,6 +930,15 @@ unaffected."
   :type '(choice (const :tag "All Buffers" all)
                  (const :tag "Only File Buffers" files)
                  (const :tag "None" nil))
+  :group 'treemacs)
+
+(defcustom treemacs-imenu-scope 'everything
+  "Determines which items treemacs' imenu function will collect.
+There are 2 options:
+ - `everything' will collect entries from every project in the workspace.
+ - `current-project' will only gather the index for the project at point."
+  :type '(choice (const :tag "Everything" everything)
+                 (const :tag "Current Project Only" current-project))
   :group 'treemacs)
 
 (provide 'treemacs-customization)

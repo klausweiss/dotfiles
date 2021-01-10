@@ -1,6 +1,6 @@
 ;;; git-commit.el --- Edit Git commit messages  -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2010-2020  The Magit Project Contributors
+;; Copyright (C) 2010-2021  The Magit Project Contributors
 ;;
 ;; You should have received a copy of the AUTHORS.md file which
 ;; lists all contributors.  If not, see http://magit.vc/authors.
@@ -117,6 +117,7 @@
 (require 'magit-git nil t)
 (require 'magit-utils nil t)
 (require 'ring)
+(require 'rx)
 (require 'server)
 (require 'transient)
 (require 'with-editor)
@@ -653,17 +654,29 @@ conventions are checked."
   "Cycle backward through message history, after saving current message.
 With a numeric prefix ARG, go back ARG comments."
   (interactive "*p")
-  (when (and (git-commit-save-message) (> arg 0))
-    (setq log-edit-comment-ring-index
-          (log-edit-new-comment-index
-           arg (ring-length log-edit-comment-ring))))
-  (save-restriction
-    (goto-char (point-min))
-    (narrow-to-region (point)
-                      (if (re-search-forward (concat "^" comment-start) nil t)
-                          (max 1 (- (point) 2))
-                        (point-max)))
-    (log-edit-previous-comment arg)))
+  (let ((len (ring-length log-edit-comment-ring)))
+    (if (<= len 0)
+        (progn (message "Empty comment ring") (ding))
+      ;; Unlike `log-edit-previous-comment' we save the current
+      ;; non-empty and newly written comment, because otherwise
+      ;; it would be irreversibly lost.
+      (when-let ((message (git-commit-buffer-message)))
+        (unless (ring-member log-edit-comment-ring message)
+          (ring-insert log-edit-comment-ring message)
+          (cl-incf arg)
+          (setq len (ring-length log-edit-comment-ring))))
+      ;; Delete the message but not the instructions at the end.
+      (save-restriction
+        (goto-char (point-min))
+        (narrow-to-region
+         (point)
+         (if (re-search-forward (concat "^" comment-start) nil t)
+             (max 1 (- (point) 2))
+           (point-max)))
+        (delete-region (point-min) (point)))
+      (setq log-edit-comment-ring-index (log-edit-new-comment-index arg len))
+      (message "Comment %d" (1+ log-edit-comment-ring-index))
+      (insert (ring-ref log-edit-comment-ring log-edit-comment-ring-index)))))
 
 (defun git-commit-next-message (arg)
   "Cycle forward through message history, after saving current message.
@@ -858,7 +871,8 @@ Added to `font-lock-extend-region-functions'."
     "Changes not staged for commit:"
     "Unmerged paths:"
     "Author:"
-    "Date:"))
+    "Date:")
+  "Also fontified outside of comments in `git-commit-font-lock-keywords-2'.")
 
 (defconst git-commit-font-lock-keywords-1
   '(;; Pseudo headers
@@ -866,8 +880,6 @@ Added to `font-lock-extend-region-functions'."
                        (regexp-opt git-commit-known-pseudo-headers))
               (1 'git-commit-known-pseudo-header)
               (2 'git-commit-pseudo-header)))
-    ("^[-a-zA-Z]+: [^<]+? <[^>]+>"
-     (0 'git-commit-pseudo-header))
     ;; Summary
     (eval . `(,(git-commit-summary-regexp)
               (1 'git-commit-summary)))
@@ -893,7 +905,13 @@ Added to `font-lock-extend-region-functions'."
               (1 'git-commit-comment-heading t)))
     (eval . `(,(format "^%s\t\\(?:\\([^:\n]+\\):\\s-+\\)?\\(.*\\)" comment-start)
               (1 'git-commit-comment-action t t)
-              (2 'git-commit-comment-file t)))))
+              (2 'git-commit-comment-file t)))
+    ;; "commit HASH"
+    (eval . `(,(rx bol "commit " (1+ alnum) eol)
+              (0 'git-commit-pseudo-header)))
+    ;; `git-commit-comment-headings' (but not in commented lines)
+    (eval . `(,(rx-to-string `(seq bol (or ,@git-commit-comment-headings) (1+ blank) (1+ nonl) eol))
+              (0 'git-commit-pseudo-header)))))
 
 (defconst git-commit-font-lock-keywords-3
   `(,@git-commit-font-lock-keywords-2

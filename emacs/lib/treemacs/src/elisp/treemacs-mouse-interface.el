@@ -1,6 +1,6 @@
 ;;; treemacs.el --- A tree style file viewer package -*- lexical-binding: t -*-
 
-;; Copyright (C) 2020 Alexander Miller
+;; Copyright (C) 2021 Alexander Miller
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
 
 ;;; Commentary:
 ;;; Functions relating to using the mouse in treemacs.
+;;; NOTE: This module is lazy-loaded.
 
 ;;; Code:
 
@@ -34,6 +35,31 @@
   (require 'cl-lib)
   (require 'treemacs-macros))
 
+(treemacs-import-functions-from "treemacs-interface"
+  treemacs-add-project-to-workspace)
+
+(defvar treemacs--mouse-project-list-functions
+  '(("Add Project.el project" . treemacs--builtin-project-mouse-selection-menu)))
+
+(defun treemacs--builtin-project-mouse-selection-menu ()
+  "Build a mouse selection menu for project.el projects."
+  (pcase (if (not (fboundp 'project-known-project-roots))
+             'unavailable
+           (->> (project-known-project-roots)
+                (-map #'treemacs-canonical-path)
+                (-sort #'string<)))
+    (`unavailable
+     (list (vector "Project.el api is not available" #'ignore)))
+    (`nil
+     (list (vector "Project.el list is empty" #'ignore)))
+    (projects
+     (pcase (--reject (treemacs-is-path it :in-workspace) projects)
+       (`nil
+        (list (vector "All Project.el projects are alread in the workspace" #'ignore)))
+       (candidates
+        (--map (vector it (lambda () (interactive) (treemacs-add-project-to-workspace it))) candidates))))))
+
+;;;###autoload
 (defun treemacs-leftclick-action (event)
   "Move focus to the clicked line.
 Must be bound to a mouse click, or EVENT will not be supplied."
@@ -53,6 +79,7 @@ Must be bound to a mouse click, or EVENT will not be supplied."
        :no-error            t))
     (treemacs--evade-image)))
 
+;;;###autoload
 (defun treemacs-doubleclick-action (event)
   "Run the appropriate double-click action for the current node.
 In the default configuration this means to do the same as `treemacs-RET-action'.
@@ -74,6 +101,7 @@ Must be bound to a mouse click, or EVENT will not be supplied."
         (treemacs-pulse-on-failure "No double click action defined for node of type %s."
           (propertize (format "%s" state) 'face 'font-lock-type-face))))))
 
+;;;###autoload
 (defun treemacs-single-click-expand-action (event)
   "A modified single-leftclick action that expands the clicked nodes.
 Can be bound to <mouse1> if you prefer to expand nodes with a single click
@@ -100,6 +128,7 @@ Clicking on icons will expand a file's tags, just like
         (funcall (cdr (assoc state treemacs-doubleclick-actions-config)))))
     (treemacs--evade-image)))
 
+;;;###autoload
 (defun treemacs-dragleftclick-action (event)
   "Drag a file/dir node to be opened in a window.
 Must be bound to a mouse click, or EVENT will not be supplied."
@@ -113,6 +142,7 @@ Must be bound to a mouse click, or EVENT will not be supplied."
                               (find-file path))
           :no-match-action (ignore))))))
 
+;;;###autoload
 (defun treemacs-define-doubleclick-action (state action)
   "Define the behaviour of `treemacs-doubleclick-action'.
 Determines that a button with a given STATE should lead to the execution of
@@ -196,6 +226,7 @@ and ignore any prefix argument."
                           (propertize (treemacs-with-button-buffer btn (treemacs--get-label-of btn)) 'face 'treemacs-tags-face)))
           (_ (error "[Treemacs] '%s' is an invalid value for treemacs-goto-tag-strategy" treemacs-goto-tag-strategy)))))))
 
+;;;###autoload
 (defun treemacs-rightclick-menu (event)
   "Show a contextual right click menu based on click EVENT."
   (interactive "e")
@@ -232,15 +263,20 @@ and ignore any prefix argument."
                 ["--" #'ignore                         :visible ,(check node)]
                 ["Rename"           treemacs-rename    :visible ,(check node)]
                 ["Delete"           treemacs-delete    :visible ,(check node)]
-                ["Copy"             treemacs-copy-file :visible ,(check node)]
                 ["Move"             treemacs-move-file :visible ,(check node)]
+                ("Copy"
+                 ["Copy File"          treemacs-copy-file                   :visible ,(check node)]
+                 ["Copy Absolute Path" treemacs-copy-absolute-path-at-point :visible ,(check node)]
+                 ["Copy Relative Path" treemacs-copy-relative-path-at-point :visible ,(check node)]
+                 ["Copy Project Path"  treemacs-copy-project-path-at-point  :visible ,(check node)])
 
                 ["--" #'ignore t]
                 ("Projects"
-                 ["Add Project"            treemacs-add-project]
-                 ["Add Projectile Project" treemacs-projectile                    :visible (featurep 'treemacs-projectile)]
-                 ["Remove Project"         treemacs-remove-project-from-workspace :visible ,(check project)]
-                 ["Rename Project"         treemacs-rename-project                :visible ,(check project)])
+                 ["Add Project" treemacs-add-project]
+                 ,@(--map `(,(car it) ,@(funcall (cdr it)))
+                          treemacs--mouse-project-list-functions)
+                 ["Remove Project" treemacs-remove-project-from-workspace :visible ,(check project)]
+                 ["Rename Project" treemacs-rename-project                :visible ,(check project)])
                 ("Workspaces"
                  ["Edit Workspaces"        treemacs-edit-workspaces]
                  ["Create Workspace"       treemacs-create-workspace]
@@ -265,8 +301,18 @@ and ignore any prefix argument."
                  ["Show Helpful Hydra"     treemacs-helpful-hydra]
                  ["Show Active Extensions" treemacs-show-extensions]
                  ["Show Changelog"         treemacs-show-changelog]))))
-            (choice (x-popup-menu event menu)))
-       (when choice (call-interactively (lookup-key menu (apply 'vector choice))))
+            (choice (x-popup-menu event menu))
+            (cmd (lookup-key menu (apply 'vector choice))))
+       ;; In the terminal clicking on a nested menu item does not expand it, but actually
+       ;; selects it as the chosen use option.  So as a workaround we need to manually go
+       ;; thtough the menus until we land on an executable command.
+       (while (and (not (commandp cmd))
+                   (not (eq cmd menu)))
+         (setf menu choice
+               choice (x-popup-menu event cmd)
+               cmd (lookup-key cmd (apply 'vector choice))))
+       (when (and cmd (commandp cmd))
+         (call-interactively cmd))
        (hl-line-highlight)))))
 
 (provide 'treemacs-mouse-interface)

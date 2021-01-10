@@ -1,6 +1,6 @@
 ;;; treemacs.el --- A tree style file viewer package -*- lexical-binding: t -*-
 
-;; Copyright (C) 2020 Alexander Miller
+;; Copyright (C) 2021 Alexander Miller
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -53,11 +53,11 @@
     (pcase (face-attribute 'default :background nil t)
       ('unspecified
        (prog1 "#2d2d31"
-         (unless (boundp 'treemacs-no-load-time-warnings)
+         (unless (or noninteractive (boundp 'treemacs-no-load-time-warnings))
            (message "[Treemacs] Warning: coudn't find default background colour for icons, falling back on #2d2d31."))))
       ('unspecified-bg
        (prog1 "#2d2d31"
-         (unless (boundp 'treemacs-no-load-time-warnings)
+         (unless (or  noninteractive (boundp 'treemacs-no-load-time-warnings))
            (message "[Treemacs] Warning: background colour is unspecified, icons will likely look wrong. Falling back on #2d2d31."))))
       (other other)))
   "Background for non-selected icons.")
@@ -67,7 +67,7 @@
     (-let [bg (face-attribute 'hl-line :background nil t)]
       (if (memq bg '(unspecified unspecified-b))
           (prog1 treemacs--not-selected-icon-background
-            (unless (boundp 'treemacs-no-load-time-warnings)
+            (unless (or noninteractive (boundp 'treemacs-no-load-time-warnings))
               (message "[Treemacs] Warning: couldn't find hl-line-mode's background color for icons, falling back on %s."
                        treemacs--not-selected-icon-background)))
         bg)))
@@ -106,13 +106,24 @@ does not exist."
                     `(treemacs-theme->gui-icons theme))))
      (ht-get icons ,ext)))
 
+(define-inline treemacs--get-local-face-background (face)
+  "Get the `:background' of the given face.
+Unlike `face-attribute' this will take the `faces-remapping-alist' into
+account."
+  (declare (side-effect-free t))
+  (inline-letevals (face)
+    (inline-quote
+     (--if-let (car (alist-get ,face face-remapping-alist))
+         (plist-get it :background)
+       (face-attribute ,face :background nil t)))))
+
 (defun treemacs--setup-icon-background-colors (&rest _)
   "Align icon backgrounds with current Emacs theme.
 Fetch the current Emacs theme's background & hl-line colours and inject them
 into the gui icons of every theme in `treemacs--themes'.
 Also called as advice after `load-theme', hence the ignored argument."
-  (let* ((default-background (face-attribute 'default :background nil t))
-         (hl-line-background (face-attribute hl-line-face :background nil t))
+  (let* ((default-background (treemacs--get-local-face-background 'default))
+         (hl-line-background (treemacs--get-local-face-background 'hl-line))
          (test-icon          (treemacs-get-icon-value 'dir-open))
          (icon-background    (treemacs--get-img-property (get-text-property 0 'img-unselected test-icon) :background))
          (icon-hl-background (treemacs--get-img-property (get-text-property 0 'img-selected test-icon) :background)))
@@ -181,7 +192,7 @@ Necessary since root icons are not rectangular."
      (let ((height treemacs--icon-size)
            (width treemacs--icon-size))
        (when (and (integerp treemacs--icon-size)
-                  (s-ends-with? "root.png" ,file-path))
+                  (s-starts-with? "root-" ,file-path))
          (treemacs--root-icon-size-adjust width height))
        (if (and (integerp treemacs--icon-size) (image-type-available-p 'imagemagick))
            (create-image ,file-path 'imagemagick nil :ascent 'center :width width :height height)
@@ -258,25 +269,28 @@ Necessary since root icons are not rectangular."
   :config
   (progn
     ;; directory and other icons
-    (treemacs-create-icon :file "vsc/root-closed.png"   :extensions (root)       :fallback "")
-    (treemacs-create-icon :file "vsc/dir-closed.png"    :extensions (dir-closed) :fallback (propertize "+ " 'face 'treemacs-term-node-face))
-    (treemacs-create-icon :file "vsc/dir-open.png"      :extensions (dir-open)   :fallback (propertize "- " 'face 'treemacs-term-node-face))
-    (treemacs-create-icon :file "tags-leaf.png"         :extensions (tag-leaf)   :fallback (propertize "• " 'face 'font-lock-constant-face))
-    (treemacs-create-icon :file "tags-open.png"         :extensions (tag-open)   :fallback (propertize "▸ " 'face 'font-lock-string-face))
-    (treemacs-create-icon :file "tags-closed.png"       :extensions (tag-closed) :fallback (propertize "▾ " 'face 'font-lock-string-face))
-    (treemacs-create-icon :file "error.png"             :extensions (error)      :fallback (propertize "• " 'face 'font-lock-string-face))
-    (treemacs-create-icon :file "warning.png"           :extensions (warning)    :fallback (propertize "• " 'face 'font-lock-string-face))
-    (treemacs-create-icon :file "info.png"              :extensions (info)       :fallback (propertize "• " 'face 'font-lock-string-face))
-    (treemacs-create-icon :file "mail.png"              :extensions (mail)       :fallback " ")
-    (treemacs-create-icon :file "bookmark.png"          :extensions (bookmark)   :fallback " ")
-    (treemacs-create-icon :file "svgrepo/screen.png"    :extensions (screen)     :fallback " ")
-    (treemacs-create-icon :file "svgrepo/house.png"     :extensions (house)      :fallback " ")
-    (treemacs-create-icon :file "svgrepo/list.png"      :extensions (list)       :fallback " ")
-    (treemacs-create-icon :file "svgrepo/repeat.png"    :extensions (repeat)     :fallback " ")
-    (treemacs-create-icon :file "svgrepo/suitcase.png"  :extensions (suitcase)   :fallback " ")
-    (treemacs-create-icon :file "svgrepo/close.png"     :extensions (close)      :fallback " ")
-    (treemacs-create-icon :file "svgrepo/cal.png"       :extensions (calendar)   :fallback " ")
-    (treemacs-create-icon :file "svgrepo/briefcase.png" :extensions (briefcase)  :fallback " ")
+    ;; TODO(2020/12/30): temporary workaround for issues like #752, to be removed in 2 months
+    (treemacs-create-icon :file "vsc/root-closed.png"   :extensions (root)        :fallback "")
+    (treemacs-create-icon :file "vsc/root-closed.png"   :extensions (root-closed) :fallback "")
+    (treemacs-create-icon :file "vsc/root-open.png"     :extensions (root-open)   :fallback "")
+    (treemacs-create-icon :file "vsc/dir-closed.png"    :extensions (dir-closed)  :fallback (propertize "+ " 'face 'treemacs-term-node-face))
+    (treemacs-create-icon :file "vsc/dir-open.png"      :extensions (dir-open)    :fallback (propertize "- " 'face 'treemacs-term-node-face))
+    (treemacs-create-icon :file "tags-leaf.png"         :extensions (tag-leaf)    :fallback (propertize "• " 'face 'font-lock-constant-face))
+    (treemacs-create-icon :file "tags-open.png"         :extensions (tag-open)    :fallback (propertize "▸ " 'face 'font-lock-string-face))
+    (treemacs-create-icon :file "tags-closed.png"       :extensions (tag-closed)  :fallback (propertize "▾ " 'face 'font-lock-string-face))
+    (treemacs-create-icon :file "error.png"             :extensions (error)       :fallback (propertize "• " 'face 'font-lock-string-face))
+    (treemacs-create-icon :file "warning.png"           :extensions (warning)     :fallback (propertize "• " 'face 'font-lock-string-face))
+    (treemacs-create-icon :file "info.png"              :extensions (info)        :fallback (propertize "• " 'face 'font-lock-string-face))
+    (treemacs-create-icon :file "mail.png"              :extensions (mail)        :fallback " ")
+    (treemacs-create-icon :file "bookmark.png"          :extensions (bookmark)    :fallback " ")
+    (treemacs-create-icon :file "svgrepo/screen.png"    :extensions (screen)      :fallback " ")
+    (treemacs-create-icon :file "svgrepo/house.png"     :extensions (house)       :fallback " ")
+    (treemacs-create-icon :file "svgrepo/list.png"      :extensions (list)        :fallback " ")
+    (treemacs-create-icon :file "svgrepo/repeat.png"    :extensions (repeat)      :fallback " ")
+    (treemacs-create-icon :file "svgrepo/suitcase.png"  :extensions (suitcase)    :fallback " ")
+    (treemacs-create-icon :file "svgrepo/close.png"     :extensions (close)       :fallback " ")
+    (treemacs-create-icon :file "svgrepo/cal.png"       :extensions (calendar)    :fallback " ")
+    (treemacs-create-icon :file "svgrepo/briefcase.png" :extensions (briefcase)   :fallback " ")
 
     ;; file icons
     (treemacs-create-icon :file "txt.png"           :extensions (fallback))

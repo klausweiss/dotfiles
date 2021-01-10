@@ -1,6 +1,6 @@
 ;;; treemacs.el --- A tree style file viewer package -*- lexical-binding: t -*-
 
-;; Copyright (C) 2020 Alexander Miller
+;; Copyright (C) 2021 Alexander Miller
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -30,7 +30,7 @@
 (require 'treemacs-core-utils)
 (require 'treemacs-async)
 (require 'treemacs-dom)
-(require 'treemacs-tags)
+(require 'treemacs-rendering)
 (eval-when-compile
   (require 'treemacs-macros)
   (require 'inline))
@@ -61,6 +61,14 @@ buffers watching that path, its cdr is the watch descriptor.")
 (defvar treemacs--refresh-timer nil
   "Timer that will run a refresh after `treemacs-file-event-delay' ms.
 Stored here to allow it to be cancelled by a manual refresh.")
+
+(define-inline treemacs--start-filewatch-timer ()
+  "Start the filewatch timer if it is not already running."
+  (inline-quote
+   (unless treemacs--refresh-timer
+     (setf treemacs--refresh-timer
+           (run-with-timer (/ treemacs-file-event-delay 1000) nil
+                           #'treemacs--process-file-events)))))
 
 (define-inline treemacs--cancel-refresh-timer ()
   "Cancel a the running refresh timer if it is active."
@@ -170,10 +178,8 @@ Also start the refresh timer if it's not started already."
               ('changed
                (when (eq ,type 'deleted)
                  (setf (cdr current-flag) 'deleted))))))
-        (unless treemacs--refresh-timer
-          (setf treemacs--refresh-timer
-                (run-with-timer (/ treemacs-file-event-delay 1000) nil
-                                #'treemacs--process-file-events))))))))
+        (treemacs--start-filewatch-timer))))))
+
 
 (defun treemacs--filewatch-callback (event)
   "Add EVENT to the list of file change events.
@@ -283,6 +289,7 @@ turn off all existing file watch processes and outstanding refresh actions."
   :init-value nil
   :global     t
   :lighter    nil
+  :group      'treemacs
   (unless treemacs-filewatch-mode
     (treemacs--tear-down-filewatch-mode)))
 

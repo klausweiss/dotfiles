@@ -1,9 +1,9 @@
 ;;; treemacs-all-the-icons.el --- all-the-icons integration for treemacs -*- lexical-binding: t -*-
 
-;; Copyright (C) 2020 Alexander Miller
+;; Copyright (C) 2021 Alexander Miller
 
 ;; Author: Eric Dallo <ercdll1337@gmail.com>
-;; Package-Requires: ((emacs "25") (all-the-icons "4.0.1") (treemacs "0.0"))
+;; Package-Requires: ((emacs "26.1") (all-the-icons "4.0.1") (treemacs "0.0"))
 ;; Version: 0
 ;; Homepage: https://github.com/Alexander-Miller/treemacs
 
@@ -47,7 +47,7 @@
   (progn
     ;; directory and other icons
     (treemacs-create-icon :icon (format "%s%s" (all-the-icons-octicon "repo" :height 1.2 :v-adjust -0.1 :face 'treemacs-all-the-icons-root-face) treemacs-all-the-icons-tab)
-                          :extensions (root)
+                          :extensions (root-closed root-open)
                           :fallback "")
     (treemacs-create-icon :icon (format "%s%s%s%s"
                                         (all-the-icons-octicon "chevron-down" :height 0.75 :v-adjust 0.1 :face 'treemacs-all-the-icons-file-face)

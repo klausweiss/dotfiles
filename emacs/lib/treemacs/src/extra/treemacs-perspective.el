@@ -1,10 +1,10 @@
 ;;; treemacs-perspective.el --- Perspective integration for treemacs -*- lexical-binding: t -*-
 
-;; Copyright (C) 2020 Alexander Miller
+;; Copyright (C) 2021 Alexander Miller
 
 ;; Author: Alexander Miller <alexanderm@web.de>
 ;;   Jason Dufair <jase@dufair.org>
-;; Package-Requires: ((emacs "25.2") (treemacs "0.0") (perspective "2.8") (dash "2.11.0"))
+;; Package-Requires: ((emacs "26.1") (treemacs "0.0") (perspective "2.8") (dash "2.11.0"))
 ;; Version: 0
 ;; Homepage: https://github.com/Alexander-Miller/treemacs
 

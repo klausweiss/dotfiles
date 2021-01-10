@@ -1816,7 +1816,7 @@ currently checked out."
   "Switch to `counsel-file-jump' from `counsel-find-file'."
   (interactive)
   (ivy-quit-and-run
-    (counsel-file-jump ivy-text)))
+    (counsel-file-jump ivy-text (ivy-state-directory ivy-last))))
 
 (when (executable-find "git")
   (add-to-list 'ivy-ffap-url-functions 'counsel-github-url-p)
@@ -2026,14 +2026,14 @@ The preselect behavior can be customized via user options
               :caller caller)))
 
 ;;;###autoload
-(defun counsel-find-file (&optional initial-input)
+(defun counsel-find-file (&optional initial-input initial-directory)
   "Forward to `find-file'.
 When INITIAL-INPUT is non-nil, use it in the minibuffer during completion."
   (interactive)
-  (counsel--find-file-1
-   "Find file: " initial-input
-   #'counsel-find-file-action
-   'counsel-find-file))
+  (let ((default-directory (or initial-directory default-directory)))
+    (counsel--find-file-1 "Find file: " initial-input
+                          #'counsel-find-file-action
+                          'counsel-find-file)))
 
 (ivy-configure 'counsel-find-file
   :parent 'read-file-name-internal
@@ -2841,6 +2841,18 @@ FZF-PROMPT, if non-nil, is passed as `ivy-read' prompt argument."
   :type '(repeat string))
 
 ;;** `counsel-file-jump'
+(defvar counsel-file-jump-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "`") #'counsel-find-file-from-jump)
+    map)
+  "Key bindings to be used when in a file-jump minibuffer.")
+
+(defun counsel-find-file-from-jump ()
+  "Switch to `counsel-find-file' from `counsel-file-jump'."
+  (interactive)
+  (ivy-quit-and-run
+    (counsel-find-file ivy-text (ivy-state-directory ivy-last))))
+
 ;;;###autoload
 (defun counsel-file-jump (&optional initial-input initial-directory)
   "Jump to a file below the current directory.
@@ -2861,6 +2873,7 @@ INITIAL-DIRECTORY, if non-nil, is used as the root directory for search."
               :preselect (counsel--preselect-file)
               :require-match 'confirm-after-completion
               :history 'file-name-history
+              :keymap counsel-file-jump-map
               :caller 'counsel-file-jump)))
 
 (ivy-set-actions
@@ -4078,7 +4091,7 @@ Obeys `widen-automatically', which see."
             (cons (copy-marker (mark-marker)) marks)))
          (candidates (counsel-mark--get-candidates marks)))
     (if candidates
-        (counsel-mark--ivy-read candidates 'counsel-mark-ring)
+        (counsel-mark--ivy-read "Mark: " candidates 'counsel-mark-ring)
       (message "Mark ring is empty"))))
 
 (defun counsel-mark--get-candidates (marks)
@@ -4102,7 +4115,7 @@ point to indicarte where the candidate mark is."
                       (propertize (format fmt linum line) 'point (point))))
                   marks))))))
 
-(defun counsel-mark--ivy-read (candidates caller)
+(defun counsel-mark--ivy-read (prompt candidates caller)
   "call `ivy-read' with sane defaults for traversing marks.
 CANDIDATES should be an alist with the `car' of the list being
 the string displayed by ivy and the `cdr' being the point that
@@ -4110,7 +4123,7 @@ mark should take you to.
 
 NOTE This has been abstracted out into it's own method so it can
 be used by both `counsel-mark-ring' and `counsel-evil-marks'"
-  (ivy-read "Mark: " candidates
+  (ivy-read prompt candidates
             :require-match t
             :update-fn #'counsel--mark-ring-update-fn
             :action (lambda (cand)
@@ -4191,8 +4204,8 @@ When ARG is non-nil, display all active evil registers."
       (let* ((counsel--mark-ring-calling-point (point))
              (candidates (counsel-mark--get-evil-candidates arg)))
         (if candidates
-            (counsel-mark--ivy-read candidates 'counsel-evil-marks)
-          (message "no evil marks are active")))
+            (counsel-mark--ivy-read "Evil mark: " candidates 'counsel-evil-marks)
+          (message "No evil marks are active")))
     (user-error "Required feature `evil' not installed or loaded")))
 
 ;;** `counsel-package'
@@ -4770,9 +4783,11 @@ An extra action allows to switch to the process buffer."
 (defvar eshell-history-index)
 (defvar slime-repl-input-history-position)
 
-(defvar counsel-esh--index-last)
-(defvar counsel-shell-history--index-last)
-(defvar counsel-slime-repl-history--index-last)
+(defvar counsel-esh--index-last nil
+  "Index corresponding to last selection with `counsel-esh-history'.")
+
+(defvar counsel-shell-history--index-last nil
+  "Index corresponding to last selection with `counsel-shell-history'.")
 
 (defun counsel--browse-history-action (pair)
   (let ((snd (cdr pair)))
@@ -4783,9 +4798,12 @@ An extra action allows to switch to the process buffer."
       (counsel-shell-history
        (setq comint-input-ring-index snd
              counsel-shell-history--index-last snd))
+      ;; Leave this as a no-op. If someone decides to patch
+      ;; `slime-repl-previous-input' or one of its utility functions,
+      ;; or to add history-replay to Slime, then this section can be
+      ;; updated to add the relevant support for those commands.
       (counsel-slime-repl-history
-       (setq slime-repl-input-history-position snd
-             counsel-slime-repl-history--index-last snd)))
+       nil))
     (ivy-completion-in-region-action (car pair))))
 
 (cl-defun counsel--browse-history (ring &key caller)
@@ -4808,9 +4826,6 @@ An extra action allows to switch to the process buffer."
 (defvar eshell-history-ring)
 (defvar eshell-matching-input-from-input-string)
 
-(defvar counsel-esh--index-last nil
-  "Index corresponding to last selection with `counsel-esh-history'.")
-
 ;;;###autoload
 (defun counsel-esh-history ()
   "Browse Eshell history."
@@ -4830,9 +4845,6 @@ An extra action allows to switch to the process buffer."
 (defvar comint-input-ring)
 (defvar comint-matching-input-from-input-string)
 
-(defvar counsel-shell-history--index-last nil
-  "Index corresponding to last selection with `counsel-shell-history'.")
-
 ;;;###autoload
 (defun counsel-shell-history ()
   "Browse shell history."
@@ -4851,9 +4863,6 @@ An extra action allows to switch to the process buffer."
 
 (defvar slime-repl-input-history)
 
-(defvar counsel-slime-repl-history--index-last nil
-  "Index corresponding to last selection with `counsel-slime-repl-history'.")
-
 ;;;###autoload
 (defun counsel-slime-repl-history ()
   "Browse Slime REPL history."
@@ -4863,7 +4872,9 @@ An extra action allows to switch to the process buffer."
                            :caller #'counsel-slime-repl-history))
 
 ;; TODO: add advice for slime-repl-input-previous/next to properly
-;; reassign the ring index and match string
+;; reassign the ring index and match string.  This requires a case for
+;; `counsel-slime-repl-history' within
+;; `counsel--browse-history-action'.
 
 ;;** `counsel-hydra-heads'
 (defvar hydra-curr-body-fn)
@@ -6807,7 +6818,7 @@ We update it in the callback with `ivy-update-candidates'."
   (browse-url
    (concat
     (nth 2 (assoc counsel-search-engine counsel-search-engines-alist))
-    x)))
+    (url-hexify-string x))))
 
 (defun counsel-search ()
   "Ivy interface for dynamically querying a search engine."

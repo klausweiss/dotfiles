@@ -122,6 +122,7 @@ This will help minimize popup flickering issue in `company-mode'."
 
 (defvar yas-indent-line)
 (defvar company-backends)
+(defvar company-abort-on-unique-match)
 
 (defvar lsp-completion--no-reordering nil
   "Dont do client-side reordering completion items when set.")
@@ -399,9 +400,7 @@ The MARKERS and PREFIX value will be attached to each candidate."
             (lambda ()
               (lsp--catch 'input
                   (let ((lsp--throw-on-input lsp-completion-use-last-result)
-                        (same-session? (and (not done?)
-                                            (not result)
-                                            lsp-completion--cache
+                        (same-session? (and lsp-completion--cache
                                             (equal (cl-first lsp-completion--cache) bounds-start)
                                             (s-prefix?
                                              (plist-get (cddr lsp-completion--cache) :prefix)
@@ -444,7 +443,7 @@ The MARKERS and PREFIX value will be attached to each candidate."
                                                           (cond
                                                            ((and done? (not (seq-empty-p items)))
                                                             (lsp-completion--to-internal items))
-                                                            ((not done?) :incomplete))
+                                                           ((not done?) :incomplete))
                                                           :lsp-items nil
                                                           :markers markers
                                                           :prefix prefix)
@@ -530,7 +529,7 @@ Others: CANDIDATES"
         (when lsp-completion-enable-additional-text-edit
           (if (or (get-text-property 0 'lsp-completion-resolved candidate)
                   additional-text-edits?)
-              (lsp--apply-text-edits additional-text-edits?)
+              (lsp--apply-text-edits additional-text-edits? 'completion)
             (-let [(callback cleanup-fn) (lsp--create-apply-text-edits-handlers)]
               (lsp-completion--resolve-async
                item
@@ -675,8 +674,9 @@ The CLEANUP-FN will be called to cleanup."
   :lighter ""
   (let ((completion-started-fn (lambda (&rest _)
                                  (setq-local lsp-inhibit-lsp-hooks t)))
-        (after-completion-fn (lambda (&rest _)
-                               (lsp-completion--clear-cache)
+        (after-completion-fn (lambda (result)
+                               (when (stringp result)
+                                 (lsp-completion--clear-cache))
                                (setq-local lsp-inhibit-lsp-hooks nil))))
     (cond
      (lsp-completion-mode
@@ -689,6 +689,7 @@ The CLEANUP-FN will be called to cleanup."
        ((equal lsp-completion-provider :none))
        ((and (member lsp-completion-provider '(:capf nil t))
              (fboundp 'company-mode))
+        (setq-local company-abort-on-unique-match nil)
         (company-mode 1)
         (when (or (null lsp-completion-provider)
                   (member 'company-lsp company-backends))

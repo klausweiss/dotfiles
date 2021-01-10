@@ -1,6 +1,6 @@
 ;;; magit-log.el --- inspect Git history  -*- lexical-binding: t -*-
 
-;; Copyright (C) 2010-2020  The Magit Project Contributors
+;; Copyright (C) 2010-2021  The Magit Project Contributors
 ;;
 ;; You should have received a copy of the AUTHORS.md file which
 ;; lists all contributors.  If not, see http://magit.vc/authors.
@@ -1121,7 +1121,7 @@ Do not add this to a hook variable."
 
 (defconst magit-log-bisect-log-re
   (concat "^# "
-          "\\(?3:bad:\\|skip:\\|good:\\) "         ; "refs"
+          "\\(?3:[^: \n]+:\\) "                    ; "refs"
           "\\[\\(?1:[^]\n]+\\)\\] "                ; sha1
           "\\(?2:.*\\)$"))                         ; msg
 

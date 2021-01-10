@@ -1,9 +1,9 @@
 ;;; treemacs-evil.el --- Evil mode integration for treemacs -*- lexical-binding: t -*-
 
-;; Copyright (C) 2020 Alexander Miller
+;; Copyright (C) 2021 Alexander Miller
 
 ;; Author: Alexander Miller <alexanderm@web.de>
-;; Package-Requires: ((emacs "25") (evil "1.2.12") (treemacs "0.0"))
+;; Package-Requires: ((emacs "26.1") (evil "1.2.12") (treemacs "0.0"))
 ;; Version: 0
 ;; Homepage: https://github.com/Alexander-Miller/treemacs
 
@@ -27,6 +27,10 @@
 
 (require 'evil)
 (require 'treemacs)
+
+(treemacs-import-functions-from "treemacs-hydras"
+  treemacs-common-helpful-hydra
+  treemacs-advanced-helpful-hydra)
 
 (declare-function treemacs-add-bookmark "treemacs-bookmarks.el")
 
@@ -79,14 +83,16 @@ Then call ORIG-FUN with its ARGS and reopen treemacs if it was open before."
 (define-key evil-treemacs-state-map (kbd "tg")  #'treemacs-git-mode)
 (define-key evil-treemacs-state-map (kbd "w")   #'treemacs-set-width)
 (define-key evil-treemacs-state-map (kbd "b")   #'treemacs-add-bookmark)
-(define-key evil-treemacs-state-map (kbd "?")   #'treemacs-helpful-hydra)
+(define-key evil-treemacs-state-map (kbd "?")   #'treemacs-common-helpful-hydra)
+(define-key evil-treemacs-state-map (kbd "C-?") #'treemacs-advanced-helpful-hydra)
 (define-key evil-treemacs-state-map (kbd "RET") #'treemacs-RET-action)
 (define-key evil-treemacs-state-map (kbd "TAB") #'treemacs-TAB-action)
 (define-key evil-treemacs-state-map (kbd "H")   #'treemacs-collapse-parent-node)
 (define-key evil-treemacs-state-map (kbd "!")   #'treemacs-run-shell-command-for-current-node)
 
-(evil-define-key 'treemacs treemacs-mode-map (kbd "yr")     #'treemacs-copy-project-root)
-(evil-define-key 'treemacs treemacs-mode-map (kbd "yy")     #'treemacs-copy-path-at-point)
+(evil-define-key 'treemacs treemacs-mode-map (kbd "yp")     #'treemacs-copy-project-path-at-point)
+(evil-define-key 'treemacs treemacs-mode-map (kbd "ya")     #'treemacs-copy-absolute-path-at-point)
+(evil-define-key 'treemacs treemacs-mode-map (kbd "yr")     #'treemacs-copy-relative-path-at-point)
 (evil-define-key 'treemacs treemacs-mode-map (kbd "yf")     #'treemacs-copy-file)
 (evil-define-key 'treemacs treemacs-mode-map (kbd "gr")     #'treemacs-refresh)
 (evil-define-key 'treemacs treemacs-mode-map [down-mouse-1] #'treemacs-leftclick-action)

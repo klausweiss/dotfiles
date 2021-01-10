@@ -1,6 +1,6 @@
 ;;; magit-remote.el --- transfer Git commits  -*- lexical-binding: t -*-
 
-;; Copyright (C) 2008-2020  The Magit Project Contributors
+;; Copyright (C) 2008-2021  The Magit Project Contributors
 ;;
 ;; You should have received a copy of the AUTHORS.md file which
 ;; lists all contributors.  If not, see http://magit.vc/authors.
@@ -332,16 +332,18 @@ Delete the symbolic-ref \"refs/remotes/<remote>/HEAD\"."
 (defun magit--select-push-remote (prompt-suffix)
   (let* ((branch (or (magit-get-current-branch)
                      (user-error "No branch is checked out")))
-         (remote (magit-get-push-remote branch)))
+         (remote (magit-get-push-remote branch))
+         (changed nil))
     (when (or current-prefix-arg
               (not remote)
               (not (member remote (magit-list-remotes))))
+      (setq changed t)
       (setq remote
             (magit-read-remote (format "Set %s and %s"
                                        (magit--push-remote-variable)
                                        prompt-suffix)))
       (setf (magit-get (magit--push-remote-variable branch)) remote))
-    (list branch remote)))
+    (list branch remote changed)))
 
 ;;; _
 (provide 'magit-remote)

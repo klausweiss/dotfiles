@@ -1,6 +1,6 @@
 ;;; treemacs-bookmarks.el --- A tree style file viewer package -*- lexical-binding: t -*-
 
-;; Copyright (C) 2020 Alexander Miller
+;; Copyright (C) 2021 Alexander Miller
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
 
 ;;; Commentary:
 ;;; Integrates treemacs with bookmark.el.
+;;; NOTE: This module is lazy-loaded.
 
 ;;; Code:
 
@@ -192,13 +193,13 @@ treemacs node is pointing to a valid buffer position."
    "There is nothing to bookmark here."
    (pcase (treemacs-button-get current-btn :state)
      ((or 'file-node-open 'file-node-closed 'dir-node-open 'dir-node-closed)
-      (-let [name (read-string "Bookmark name: ")]
+      (-let [name (treemacs--read-string "Bookmark name: ")]
         (bookmark-store name `((filename . ,(treemacs-button-get current-btn :path))) nil)))
      ('tag-node
       (-let [(tag-buffer . tag-pos) (treemacs--extract-position (treemacs-button-get current-btn :marker))]
         (if (buffer-live-p tag-buffer)
             (bookmark-store
-             (read-string "Bookmark name: ")
+             (treemacs--read-string "Bookmark name: ")
              `((filename . ,(buffer-file-name tag-buffer))
                (position . ,tag-pos))
              nil)

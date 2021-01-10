@@ -82,8 +82,8 @@ overview looks as follows:
  * Ease of use :: Treemacs offers many configuration options, but comes with a set of (what hopefully should be) sane
    defaults. Installation aside there are two obligatory pieces of setup: 1) Choosing convenient keybindings to run
    treemacs and 2) If you use evil: requiring ~treemacs-evil~ to integrate treemacs with evil and enable j/k navigation.
-   More on both below. You can also summon a helpful hydra with ~?~ that will remind you of treemacs' many keybindings
-   and features.
+   More on both below. You can also summon helpful hydras with ~?~ and ~C-?~ that will remind you of treemacs' many
+   keybindings and features.
  * Bookmark integration :: Running ~bookmark-set~ on a Treemacs item will store a bookmark to Treemacs buffer for that item.
 
 ** Fancy Gifs!
@@ -141,8 +141,9 @@ the current root's parent. Another restriction is that the same part of the file
 part of the workspace. For example it is not possible to have both /Documents and /Documents/ProjectX as projects in the
 same workspace, since internally treemacs heavily relies on every node having a unique natural key in its absolute path.
 Nonetheless the pros certainly outweigh the cons, as a multiroot setup allows to work on multiple projects with any
-combination concern/buffer separating frameworks, be it persp/perspective, eyebrowse, or projectile. It also opens the potential for
-concurrent display not only of the file system, but e.g. the currently open buffers.
+combination concern/buffer separating frameworks, be it persp/perspective, eyebrowse, or projectile. It also opens the
+potential for concurrent display not only of the file system, but e.g. the currently open buffers.
+
 *** Workspace Selection
 When a workspace is first needed, treemacs will select a workspace in the following manner:
 
@@ -155,6 +156,12 @@ interactively set the fall backback workspace by calling ~treemacs-set-fallback-
 
 This selection will happen when treemacs is first started (with a command like ~treemacs-select-window~) or when a
 function that requires the current workspace to be known is used (like adding or removing a project).
+*** Disabling projects
+It is possible to disable a project so it won't appear in treemacs, but still remains a part of your workspace, keeping
+it visible when you go edit your workspace layout. To do so simply start the project's name with "COMMENT":
+
+[[file:screenshots/disable-project.png]]
+
 ** Conveniently Editing Your Projects and Workspaces
 There are two ways to edit your projects and workspaces: call up single add/remove/rename/switch commands under either
 the ~C-c C-p~ or ~C-c C-w~ prefix, or call ~treemacs-edit-workspaces~ and edit your entire layout in the form of a
@@ -228,8 +235,11 @@ will reset ~blink-cursor-mode~'s timer if it is enabled. This will result in the
 short time and giving the appearance of the tag follow action lasting much longer than it really does.
 
 ** Fringe-indicator-mode
-~treemacs-fringe-indicator-mode~ is a global minor mode that displays a little icon in the fringe that moves with the cursor.
-It can make the selected line more visible if ~hl-line-mode~ doesn't stand out with your theme.
+~treemacs-fringe-indicator-mode~ is a global minor mode that displays a little icon in the fringe that moves with the
+cursor.  It can make the selected line more visible if ~hl-line-mode~ doesn't stand out with your theme.
+
+The indicator can either be permanently visible, or be only shown when the treemacs window is selected by calling it
+either with the ~always~ or ~only-when-focused~ argument.
 ** Git-mode
 ~treemacs-git-mode~ is a global minor mode which enables treemacs to check for files' and directories' git status
 information and highlight them accordingly (see also the ~treemacs-git-...~ faces). The mode is available in 3 variants:
@@ -405,6 +415,7 @@ setting. Setting them all yourself is not necessary, they are only listed here t
             treemacs-project-follow-cleanup        nil
             treemacs-persist-file                  (expand-file-name ".cache/treemacs-persist" user-emacs-directory)
             treemacs-position                      'left
+            treemacs-read-string-input             'from-child-frame
             treemacs-recenter-distance             0.1
             treemacs-recenter-after-file-follow    nil
             treemacs-recenter-after-tag-follow     nil
@@ -429,7 +440,7 @@ setting. Setting them all yourself is not necessary, they are only listed here t
 
       (treemacs-follow-mode t)
       (treemacs-filewatch-mode t)
-      (treemacs-fringe-indicator-mode t)
+      (treemacs-fringe-indicator-mode 'always)
       (pcase (cons (not (null (executable-find "git")))
                    (not (null treemacs-python-executable)))
         (`(t . t)
@@ -462,7 +473,7 @@ setting. Setting them all yourself is not necessary, they are only listed here t
     :after treemacs magit
     :ensure t)
 
-  (use-package treemacs-persp ;;treemacs-persective if you use perspective.el vs. persp-mode
+  (use-package treemacs-persp ;;treemacs-perspective if you use perspective.el vs. persp-mode
     :after treemacs persp-mode ;;or perspective vs. persp-mode
     :ensure t
     :config (treemacs-set-scope-type 'Perspectives))
@@ -527,7 +538,11 @@ Treemacs offers the following configuration options (~describe-variable~ will us
 | treemacs-user-mode-line-format         | nil                                              | When non-nil treemacs will use it as a mode line format (otherwise format provided by ~spaceline~, ~moody-mode-line~ and ~doom-modeline~ will be used or, finally, "Treemacs" text will be displayed)                                |
 | treemacs-user-header-line-format       | nil                                              | When non-nil treemacs will use it as a header line format                                                                                                                                                                            |
 | treemacs-move-forward-on-expand        | nil                                              | When non-nil treemacs will move to the first child of an expanded node.                                                                                                                                                              |
-| treemacs-workspace-switch-cleanup      | nil                                              | Indicates which, if any, buffers should be deleted on a workspace switch. Valid values are ~nil~, ~files~, ~all~.                                                                                                                                                                                             |
+| treemacs-workspace-switch-cleanup      | nil                                              | Indicates which, if any, buffers should be deleted on a workspace switch. Valid values are ~nil~, ~files~, ~all~.                                                                                                                    |
+| treemacs-read-string-input             | 'from-child-frame                                | Indicates whether simple string input like project names should be read from a child frame or the minibuffer.                                                                                                                        |
+| treemacs-expand-added-projects         | t                                                | Indicates whether newly added projects should be expanded.                                                                                                                                                                           |
+| treemacs-imenu-scope                   | 'everything                                      | Determines which items treemacs' imenu function will collect.                                                                                                                                                                        |
+| treemacs-window-background-color       | nil                                              | Background color for the treemacs window.                                                                                                                                                                                          |
 
 ** Faces
 Treemacs defines and uses the following faces:
@@ -567,9 +582,10 @@ nothing but calls to ~treemacs-create-icon~:
     :icon-directory (f-join treemacs-dir "icons/default")
     :config
     (progn
-      (treemacs-create-icon :file "root.png"   :fallback ""            :extensions (root))
-      (treemacs-create-icon :file "emacs.png"  :fallback "🗏 "          :extensions ("el" "elc"))
-      (treemacs-create-icon :file "readme.png" :fallback "🗏 "          :extensions ("readme.md"))
+      (treemacs-create-icon :file "root-open.png"   :fallback ""       :extensions (root-open))
+      (treemacs-create-icon :file "root-closed.png" :fallback ""       :extensions (root-closed))
+      (treemacs-create-icon :file "emacs.png"       :fallback "🗏 "     :extensions ("el" "elc"))
+      (treemacs-create-icon :file "readme.png"      :fallback "🗏 "     :extensions ("readme.md"))
       (treemacs-create-icon :icon (all-the-icons-icon-for-file "yaml") :extensions ("yml" "yaml"))))
 #+END_SRC
 
@@ -587,7 +603,8 @@ Instead of a string extension a symbol can also be used. In this case treemacs w
 named ~treemacs-icon-$symbol~. Treemacs uses several such icon variables and any new theme should define their own
 versions (it it's not extending the default theme). The following icons are used:
 
- - root
+ - root-open
+ - root-closed
  - dir-closed
  - dir-open
  - fallback
@@ -614,7 +631,7 @@ to access their values directly. When you need to programmatically access some o
 ~treemacs-get-icon-value~:
 
 #+BEGIN_SRC emacs-lisp
-  (treemacs-get-icon-value 'root nil "Default")
+  (treemacs-get-icon-value 'root-closed nil "Default")
   (treemacs-get-icon-value "org" t)
 #+END_SRC
 
@@ -756,17 +773,19 @@ Treemacs' keybindings are distributed to several keymaps, based on common keybin
 
 *** Copy Keybinds (Prefix ~y~)
 
-| Key | Action                      | Description                                                       |
-|-----+-----------------------------+-------------------------------------------------------------------|
-| yy  | treemacs-copy-path-at-point | Copy the absolute path of the node at point.                      |
-| yr  | treemacs-copy-project-root  | Copy the absolute path of the project root for the node at point. |
-| yf  | treemacs-copy-file          | Copy the file at point.                                           |
+| Key | Action                               | Description                                                       |
+|-----+--------------------------------------+-------------------------------------------------------------------|
+| ya  | treemacs-copy-absolute-path-at-point | Copy the absolute path of the node at point.                      |
+| yr  | treemacs-copy-relative-path-at-point | Copy the path of the node at point relative to the project root.  |
+| yp  | treemacs-copy-project-path-at-point  | Copy the absolute path of the project root for the node at point. |
+| yf  | treemacs-copy-file                   | Copy the file at point.                                           |
 
 *** General Keybinds
 
 | Key      | Action                                      | Description                                                                                            |
 |----------+---------------------------------------------+--------------------------------------------------------------------------------------------------------|
-| ?        | treemacs-helpful-hydra                      | Summon the helpful hydra to show you the treemacs keymap.                                              |
+| ?        | treemacs-common-helpful-hydra               | Summon a helpful hydra to show you treemacs' most commonly used keybinds.                              |
+| C-?      | treemacs-advanced-helpful-hydra             | Summon a helpful hydra to show you treemacs' rarely used, advanced keybinds.                           |
 | j/n      | treemacs-next-line                          | Go to the next line.                                                                                   |
 | k/p      | treemacs-previous-line                      | Go to the previous line.                                                                               |
 | M-J/N    | treemacs-next-line-other-window             | Go to the next line in ~next-window~.                                                                  |
@@ -789,8 +808,9 @@ Treemacs' keybindings are distributed to several keymaps, based on common keybin
 | q        | treemacs-quit                               | Hide the treemacs window.                                                                              |
 | Q        | treemacs-kill-buffer                        | Delete the treemacs buffer.                                                                            |
 | P        | treemacs-peek                               | Peek at the file (or tag) at point without fully opening it.                                           |
-| yy       | treemacs-copy-path-at-point                 | Copy the absolute path of the node at point.                                                           |
-| yr       | treemacs-copy-project-root                  | Copy the absolute path of the project root for the node at point.                                      |
+| ya       | treemacs-copy-absolute-path-at-point        | Copy the absolute path of the node at point.                                                           |
+| yr       | treemacs-copy-relative-path-at-point        | Copy the path of the node at point relative to the project root.                                       |
+| yp       | treemacs-copy-project-path-at-point         | Copy the absolute path of the project root for the node at point.                                      |
 | yf       | treemacs-copy-file                          | Copy the file at point.                                                                                |
 | m        | treemacs-move-file                          | Move the file at point.                                                                                |
 | s        | treemacs-resort                             | Set a new value for ~treemacs-sorting~.                                                                |
@@ -925,7 +945,7 @@ into their own module in ~treemacs-icons.el~).
 If you want to delve into the treemacs' code base, check out [[https://github.com/Alexander-Miller/treemacs/wiki][the wiki]] for some general pointers.
 
 * Dependencies
- * emacs >= 25.2
+ * emacs >= 26.1
  * f.el
  * s.el
  * dash

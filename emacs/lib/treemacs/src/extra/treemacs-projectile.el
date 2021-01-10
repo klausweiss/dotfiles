@@ -1,9 +1,9 @@
 ;;; treemacs-projectile.el --- Projectile integration for treemacs -*- lexical-binding: t -*-
 
-;; Copyright (C) 2020 Alexander Miller
+;; Copyright (C) 2021 Alexander Miller
 
 ;; Author: Alexander Miller <alexanderm@web.de>
-;; Package-Requires: ((emacs "25.2") (projectile "0.14.0") (treemacs "0.0"))
+;; Package-Requires: ((emacs "26.1") (projectile "0.14.0") (treemacs "0.0"))
 ;; Version: 0
 ;; Homepage: https://github.com/Alexander-Miller/treemacs
 
@@ -40,7 +40,7 @@ the project's root directory."
   (if (and (bound-and-true-p projectile-known-projects)
            (listp projectile-known-projects)
            projectile-known-projects)
-      (let* ((projects (--reject (treemacs-is-path (treemacs--canonical-path it) :in-workspace (treemacs-current-workspace))
+      (let* ((projects (--reject (treemacs-is-path (treemacs-canonical-path it) :in-workspace (treemacs-current-workspace))
                                  (-map #'treemacs--unslash projectile-known-projects)))
              (path (completing-read "Project: " projects))
              (name (unless arg (treemacs--filename path))))
@@ -75,7 +75,7 @@ the current dir."
 (defun treemacs--projectile-current-user-project-function ()
   "Get the current projectile project root."
   (declare (side-effect-free t))
-  (-some-> (projectile-project-root) (file-truename) (treemacs--canonical-path)))
+  (-some-> (projectile-project-root) (file-truename) (treemacs-canonical-path)))
 
 (defun treemacs-projectile--add-file-to-projectile-cache (path)
   "Add created file PATH to projectile's cache."
@@ -88,8 +88,27 @@ the current dir."
       (projectile-find-file-hook-function))
     (when kill? (kill-buffer file-buffer))))
 
+(defun treemacs--projectile-project-mouse-selection-menu ()
+  "Build a mouse selection menu for projectile projects."
+  (if (null projectile-known-projects)
+      (list (vector "Projectile list is empty" #'ignore))
+    (-let [projects
+           (->> projectile-known-projects
+                (-map #'treemacs-canonical-path)
+                (--reject (treemacs-is-path it :in-workspace))
+                (-sort #'string<))]
+      (if (null projects)
+          (list (vector "All Projectile projects are alread in the workspace" #'ignore))
+        (--map (vector it (lambda () (interactive) (treemacs-add-project-to-workspace it))) projects)))))
+
 (add-to-list 'treemacs--find-user-project-functions #'treemacs--projectile-current-user-project-function)
 (add-hook 'treemacs-create-file-functions #'treemacs-projectile--add-file-to-projectile-cache)
+
+(with-eval-after-load 'treemacs-mouse-interface
+  (add-to-list
+   (with-no-warnings 'treemacs--mouse-project-list-functions)
+   '("Add Projectile project" . treemacs--projectile-project-mouse-selection-menu)
+   :append))
 
 (provide 'treemacs-projectile)
 

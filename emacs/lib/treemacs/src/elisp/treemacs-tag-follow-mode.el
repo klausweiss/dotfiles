@@ -1,6 +1,6 @@
 ;;; treemacs.el --- A tree style file viewer package -*- lexical-binding: t -*-
 
-;; Copyright (C) 2020 Alexander Miller
+;; Copyright (C) 2021 Alexander Miller
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@
 ;; * Find the last tag whose position begins before point
 ;; * Jump to that tag path
 ;; * No jump when there's no buffer file, or no imenu, or buffer file is not seen in treemacs etc.
+;;; NOTE: This module is lazy-loaded.
 
 ;;; Code:
 
@@ -302,6 +303,7 @@ PROJECT: Project Struct"
   (when treemacs--tag-follow-timer
     (cancel-timer treemacs--tag-follow-timer)))
 
+;;;###autoload
 (define-minor-mode treemacs-tag-follow-mode
   "Toggle `treemacs-tag-follow-mode'.
 
@@ -327,6 +329,7 @@ longer than it really does."
   :init-value nil
   :global     t
   :lighter    nil
+  :group      'treemacs
   (if treemacs-tag-follow-mode
       (treemacs--setup-tag-follow-mode)
     (treemacs--tear-down-tag-follow-mode)))

@@ -139,200 +139,13 @@ the buffer when it becomes large."
   :type 'boolean
   :package-version '(lsp-mode . "6.1"))
 
-(defcustom lsp-enable-semantic-highlighting nil
-  "Enable/disable support for semantic highlighting as defined by
-the Language Server Protocol 3.16."
+(define-obsolete-variable-alias 'lsp-enable-semantic-highlighting 'lsp-semantic-tokens-enable "lsp-mode 7.1")
+
+(defcustom lsp-semantic-tokens-enable nil
+  "Enable/disable support for semantic tokens.
+As defined by the Language Server Protocol 3.16."
   :group 'lsp-mode
   :type 'boolean)
-
-(defcustom lsp-semantic-highlighting-warn-on-missing-face nil
-  "When non-nil, this option will emit a warning any time a token
-or modifier type returned by a language server has no face associated with it."
-  :group 'lsp-mode
-  :type 'boolean)
-
-(defcustom lsp-semantic-tokens-apply-modifiers nil
-  "Determines whether semantic highlighting should take token
-modifiers into account."
-  :group 'lsp-mode
-  :type 'boolean)
-
-(defface lsp-face-semhl-constant
-  '((t :inherit font-lock-constant-face))
-  "Face used for semantic highlighting scopes matching constant scopes."
-  :group 'lsp-faces)
-
-(defface lsp-face-semhl-variable
-  '((t :inherit font-lock-variable-name-face))
-  "Face used for semantic highlighting scopes matching variable.*,
-unless overridden by a more specific face association."
-  :group 'lsp-faces)
-
-(defface lsp-face-semhl-function
-  '((t :inherit font-lock-function-name-face))
-  "Face used for semantic highlighting scopes matching entity.name.function.*,
-unless overridden by a more specific face association."
-  :group 'lsp-faces)
-
-(defface lsp-face-semhl-method
-  '((t :inherit lsp-face-semhl-function))
-  "Face used for semantic highlighting scopes matching entity.name.function.method.*,
-unless overridden by a more specific face association."
-  :group 'lsp-faces)
-
-(defface lsp-face-semhl-namespace
-  '((t :inherit font-lock-type-face :weight bold))
-  "Face used for semantic highlighting scopes matching entity.name.namespace.*,
-unless overridden by a more specific face association."
-  :group 'lsp-faces)
-
-(defun lsp--semhl-scope-matchp (matchspec scopes)
-  "Returns t if there is an element M in MATCHSPEC s.t. every N in M
- is a prefix of, or identical to, one of the scopes contained in SCOPES"
-  (-any? (lambda (or-matchspec)
-           (-all? (lambda (and-matchspec)
-                    (let ((re (format "^%s\\(\\..*\\)?$" (regexp-quote and-matchspec))))
-                      (seq-some (lambda (s) (s-matches-p re s)) scopes)))
-                  or-matchspec))
-         matchspec))
-
-(defface lsp-face-semhl-comment
-  '((t (:inherit font-lock-comment-face)))
-  "Face used for comments."
-  :group 'lsp-faces)
-
-(defface lsp-face-semhl-keyword
-  '((t (:inherit font-lock-keyword-face)))
-  "Face used for keywords."
-  :group 'lsp-faces)
-
-(defface lsp-face-semhl-string
-  '((t (:inherit font-lock-string-face)))
-  "Face used for keywords."
-  :group 'lsp-faces)
-
-(defface lsp-face-semhl-number
-  '((t (:inherit font-lock-constant-face)))
-  "Face used for numbers."
-  :group 'lsp-faces)
-
-(defface lsp-face-semhl-regexp
-  '((t (:inherit font-lock-string-face :slant italic)))
-  "Face used for regexps."
-  :group 'lsp-faces)
-
-(defface lsp-face-semhl-operator
-  '((t (:inherit font-lock-function-name-face)))
-  "Face used for operators."
-  :group 'lsp-faces)
-
-(defface lsp-face-semhl-namespace
-  '((t (:inherit font-lock-keyword-face)))
-  "Face used for namespaces."
-  :group 'lsp-faces)
-
-(defface lsp-face-semhl-type
-  '((t (:inherit font-lock-type-face)))
-  "Face used for types."
-  :group 'lsp-faces)
-
-(defface lsp-face-semhl-struct
-  '((t (:inherit font-lock-type-face)))
-  "Face used for structs."
-  :group 'lsp-faces)
-
-(defface lsp-face-semhl-class
-  '((t (:inherit font-lock-type-face)))
-  "Face used for classes."
-  :group 'lsp-faces)
-
-(defface lsp-face-semhl-interface
-  '((t (:inherit font-lock-type-face)))
-  "Face used for interfaces."
-  :group 'lsp-faces)
-
-(defface lsp-face-semhl-enum
-  '((t (:inherit font-lock-variable-name-face)))
-  "Face used for enums."
-  :group 'lsp-faces)
-
-(defface lsp-face-semhl-type-parameter
-  '((t (:inherit font-lock-type-face)))
-  "Face used for type parameters."
-  :group 'lsp-faces)
-
-;; function face already defined, move here when support
-;; for theia highlighting gets removed
-(defface lsp-face-semhl-member
-  '((t (:inherit font-lock-variable-name-face)))
-  "Face used for members."
-  :group 'lsp-faces)
-
-(defface lsp-face-semhl-property
-  '((t (:inherit font-lock-variable-name-face)))
-  "Face used for properties."
-  :group 'lsp-faces)
-
-(defface lsp-face-semhl-macro
-  '((t (:inherit font-lock-preprocessor-face)))
-  "Face used for macros."
-  :group 'lsp-faces)
-
-(defface lsp-face-semhl-variable
-  '((t (:inherit font-lock-variable-name-face)))
-  "Face used for variables."
-  :group 'lsp-faces)
-
-(defface lsp-face-semhl-parameter
-  '((t (:inherit font-lock-variable-name-face)))
-  "Face used for parameters."
-  :group 'lsp-faces)
-
-(defface lsp-face-semhl-label
-  '((t (:inherit font-lock-comment-face)))
-  "Face used for labels."
-  :group 'lsp-faces)
-
-(defvar lsp-semantic-token-faces
-  '(("comment" . lsp-face-semhl-comment)
-    ("keyword" . lsp-face-semhl-keyword)
-    ("string" . lsp-face-semhl-string)
-    ("number" . lsp-face-semhl-number)
-    ("regexp" . lsp-face-semhl-regexp)
-    ("operator" . lsp-face-semhl-operator)
-    ("namespace" . lsp-face-semhl-namespace)
-    ("type" . lsp-face-semhl-type)
-    ("struct" . lsp-face-semhl-struct)
-    ("class" . lsp-face-semhl-class)
-    ("interface" . lsp-face-semhl-interface)
-    ("enum" . lsp-face-semhl-enum)
-    ("typeParameter" . lsp-face-semhl-type-parameter)
-    ("function" . lsp-face-semhl-function)
-    ("member" . lsp-face-semhl-member)
-    ("property" . lsp-face-semhl-property)
-    ("macro" . lsp-face-semhl-macro)
-    ("variable" . lsp-face-semhl-variable)
-    ("parameter" . lsp-face-semhl-parameter)
-    ("label" . lsp-face-semhl-label)
-    ("enumConstant" . lsp-face-semhl-constant)
-    ("dependent" . lsp-face-semhl-type)
-    ("concept" . lsp-face-semhl-interface))
-  "Faces to use for semantic highlighting.")
-
-(defvar lsp-semantic-token-modifier-faces
-  ;; TODO: add default definitions
-  '(("declaration" . lsp-face-semhl-interface)
-    ("readonly" . lsp-face-semhl-constant))
-  "Faces to use for semantic token modifiers if
-`lsp-semantic-tokens-apply-modifiers' is non-nil.")
-
-(defvar lsp--semantic-tokens-idle-timer nil)
-
-(defvar-local lsp--semantic-tokens-cache nil)
-
-(defvar-local lsp--semantic-tokens-teardown nil)
-
-(defvar-local lsp--semantic-tokens-use-ranged-requests nil)
 
 (defcustom lsp-folding-range-limit nil
   "The maximum number of folding ranges to receive from the language server."
@@ -509,6 +322,10 @@ the server has requested that."
     "[/\\\\]build-aux\\'"
     "[/\\\\]autom4te.cache\\'"
     "[/\\\\]\\.reference\\'"
+    ;; Clojure
+    "[/\\\\]\\.lsp\\'"
+    "[/\\\\]\\.clj-kondo\\'"
+    "[/\\\\]\\.cpcache\\'"
     ;; .Net Core build-output
     "[/\\\\]bin/Debug\\'"
     "[/\\\\]obj\\'")
@@ -663,6 +480,13 @@ If this is set to nil, `eldoc' will show only the symbol information."
   "If non-nil, `lsp-mode' will apply edits suggested by the language server before saving a document."
   :type 'boolean
   :group 'lsp-mode)
+
+(defcustom lsp-after-apply-edits-hook nil
+  "Hooks to run when text edit is applied.
+It contains the operation source."
+  :type 'hook
+  :group 'lsp-mode
+  :package-version '(lsp-mode . "7.1"))
 
 (defcustom lsp-modeline-code-actions-enable t
   "Whether to show code actions on modeline."
@@ -900,6 +724,7 @@ Changes take effect only when a new session is started."
                                         (erlang-mode . "erlang")
                                         (dockerfile-mode . "dockerfile")
                                         (csharp-mode . "csharp")
+                                        (csharp-tree-sitter-mode . "csharp")
                                         (plain-tex-mode . "plaintex")
                                         (latex-mode . "latex")
                                         (vhdl-mode . "vhdl")
@@ -1649,6 +1474,9 @@ etc."
 (lsp-defun lsp--range-to-region ((&RangeToPoint :start :end))
   (cons start end))
 
+(lsp-defun lsp--range-text ((&RangeToPoint :start :end))
+  (buffer-substring start end))
+
 (lsp-defun lsp--find-wrapping-range ((&SelectionRange :parent? :range (&RangeToPoint :start :end)))
   (cond
    ((and
@@ -2180,26 +2008,26 @@ WORKSPACE is the workspace that contains the diagnostics."
 
 (cl-defun lsp--get-current-innermost-folding-range (&optional (point (point)))
   "Return the innermost folding range POINT lies in."
-  (let (inner)
-    (seq-doseq (range (lsp--get-folding-ranges))
-      (when (lsp--point-inside-range-p point range)
-        (if inner
-            (when (lsp--range-inside-p inner range)
-              (setq inner range))
-          (setq inner range))))
-    inner))
+  (seq-reduce (lambda (innermost-range curr-range)
+                (if (and (lsp--point-inside-range-p point curr-range)
+                         (or (null innermost-range)
+                             (lsp--range-inside-p curr-range innermost-range)))
+                    curr-range
+                  innermost-range))
+              (lsp--get-folding-ranges)
+              nil))
 
 (cl-defun lsp--get-current-outermost-folding-range (&optional (point (point)))
   "Return the outermost folding range POINT lies in."
-  (let (outer width)
-    (seq-doseq (range (lsp--get-folding-ranges))
-      (when (lsp--point-inside-range-p point range)
-        (setq width (lsp--folding-range-width range))
-        (if outer
-            (when (> width (car outer))
-              (setq outer (cons width range)))
-          (setq outer (cons width range)))))
-    (cdr outer)))
+  (cdr (seq-reduce (-lambda ((best-pair &as outermost-width . _) curr-range)
+                     (let ((curr-width (lsp--folding-range-width curr-range)))
+                       (if (and (lsp--point-inside-range-p point curr-range)
+                                (or (null best-pair)
+                                    (> curr-width outermost-width)))
+                           (cons curr-width curr-range)
+                         best-pair)))
+                   (lsp--get-folding-ranges)
+                   nil)))
 
 (defun lsp--folding-range-at-point-bounds ()
   (if (and (or (lsp--capability :foldingRangeProvider)
@@ -2794,14 +2622,14 @@ and end-of-string meta-characters."
   ;; ‘buffers’ is a list of buffers associated with this workspace.
   (buffers nil)
 
-  ;; if semantic highlighting is enabled, `semantic-highlighting-faces' contains
+  ;; if semantic tokens is enabled, `semantic-tokens-faces' contains
   ;; one face (or nil) for each token type supported by the language server.
-  (semantic-highlighting-faces nil)
+  (semantic-tokens-faces nil)
 
-  ;; If semantic highlighting is enabled, `semantic-highlighting-modifier-faces'
+  ;; If semantic highlighting is enabled, `semantic-tokens-modifier-faces'
   ;; contains one face (or nil) for each modifier type supported by the language
   ;; server
-  (semantic-highlighting-modifier-faces nil)
+  (semantic-tokens-modifier-faces nil)
 
   ;; Extra client capabilities provided by third-party packages using
   ;; `lsp-register-client-capabilities'. It's value is an alist of (PACKAGE-NAME
@@ -3359,14 +3187,9 @@ disappearing, unset all the variables related to it."
                                          (hierarchicalDocumentSymbolSupport . t)))
                       (formatting . ((dynamicRegistration . t)))
                       (rangeFormatting . ((dynamicRegistration . t)))
-                      ,@(when lsp-enable-semantic-highlighting
-                          `((semanticTokens
-                             . ((dynamicRegistration . t)
-                                (requests . ((range . t) (full . t)))
-                                (tokenModifiers . ,(if lsp-semantic-tokens-apply-modifiers
-                                                       (apply 'vector (mapcar #'car lsp-semantic-token-modifier-faces)) []))
-                                (tokenTypes . ,(apply 'vector (mapcar #'car lsp-semantic-token-faces)))
-                                (formats . ["relative"])))))
+                      ,@(when (and lsp-semantic-tokens-enable
+                                   (boundp 'lsp-semantic-tokens-capabilities))
+                          lsp-semantic-tokens-capabilities)
                       (rename . ((dynamicRegistration . t) (prepareSupport . t)))
                       (codeAction . ((dynamicRegistration . t)
                                      (isPreferredSupport . t)
@@ -3683,24 +3506,6 @@ in that particular folder."
                    (memq :on-trigger-char lsp-signature-auto-activate))))
       (remove-hook 'post-self-insert-hook signature-help-handler t)))))
 
-(defun lsp--semantic-highlighting-warn-about-deprecated-setting ()
-  (when (boundp 'lsp-semantic-highlighting)
-    (pcase lsp-semantic-highlighting
-      (:semantic-tokens
-       (lsp-warn "It seems you wish to use semanticTokens-based
- highlighting. To do so, please remove any references to the
- deprecated variable `lsp-semantic-highlighting' from your
- configuration and set `lsp-enable-semantic-highlighting' to `t'
- instead.")
-       (setq lsp-enable-semantic-highlighting t))
-      ((or :immediate :deferred)
-       (lsp-warn "It seems you wish to use Theia-based semantic
- highlighting. This protocol has been superseded by the
- semanticTokens protocol specified by LSP v3.16 and is no longer
- supported by lsp-mode. If your language server provides
- semanticToken support, please set
- `lsp-enable-semantic-highlighting' to `t' to use it.")))))
-
 (define-minor-mode lsp-managed-mode
   "Mode for source buffers managed by lsp-mode."
   nil nil nil
@@ -3721,8 +3526,6 @@ in that particular folder."
 
     (lsp--update-on-type-formatting-hook)
     (lsp--update-signature-help-hook)
-
-    (lsp--semantic-highlighting-warn-about-deprecated-setting)
 
     (when lsp-enable-xref
       (add-hook 'xref-backend-functions #'lsp--xref-backend nil t))
@@ -3801,14 +3604,7 @@ in that particular folder."
 
       (when (and lsp-enable-dap-auto-configure
                  (functionp 'dap-mode))
-        (dap-auto-configure-mode 1))
-
-      (when (and lsp-enable-semantic-highlighting
-                 (lsp-feature? "textDocument/semanticTokens"))
-        (mapc #'lsp--semantic-tokens-initialize-workspace
-              (lsp--find-workspaces-for "textDocument/semanticTokens"))
-        (lsp--semantic-tokens-initialize-buffer
-         (lsp-feature? "textDocument/semanticTokensRangeProvider"))))
+        (dap-auto-configure-mode 1)))
     (run-hooks 'lsp-configure-hook)))
 
 (defun lsp-unconfig-buffer ()
@@ -3907,24 +3703,26 @@ in that particular folder."
            document-changes)
     (error "Document changes cannot be applied")))
 
-(lsp-defun lsp--apply-workspace-edit ((&WorkspaceEdit :document-changes? :changes?))
-  "Apply the WorkspaceEdit object EDIT."
-  (if-let ((document-changes (seq-reverse document-changes?)))
-      (progn
-        (lsp--check-document-changes-version document-changes)
-        (->> document-changes
-             (seq-filter (-lambda ((&CreateFile :kind))
-                           (or (not kind) (equal kind "edit"))))
-             (seq-do #'lsp--apply-text-document-edit))
-        (->> document-changes
-             (seq-filter (-lambda ((&CreateFile :kind))
-                           (not (or (not kind) (equal kind "edit")))))
-             (seq-do #'lsp--apply-text-document-edit)))
-    (lsp-map
-     (lambda (uri text-edits)
-       (with-current-buffer (-> uri lsp--uri-to-path find-file-noselect)
-         (lsp--apply-text-edits text-edits)))
-     changes?)))
+(defun lsp--apply-workspace-edit (workspace-edit &optional operation)
+  "Apply the WorkspaceEdit object WORKSPACE-EDIT.
+OPERATION is symbol representing the source of this text edit."
+  (-let (((&WorkspaceEdit :document-changes? :changes?) workspace-edit))
+    (if-let ((document-changes (seq-reverse document-changes?)))
+        (progn
+          (lsp--check-document-changes-version document-changes)
+          (->> document-changes
+               (seq-filter (-lambda ((&CreateFile :kind))
+                             (or (not kind) (equal kind "edit"))))
+               (seq-do (lambda (change) (lsp--apply-text-document-edit change operation))))
+          (->> document-changes
+               (seq-filter (-lambda ((&CreateFile :kind))
+                             (not (or (not kind) (equal kind "edit")))))
+               (seq-do (lambda (change) (lsp--apply-text-document-edit change operation)))))
+      (lsp-map
+       (lambda (uri text-edits)
+         (with-current-buffer (-> uri lsp--uri-to-path find-file-noselect)
+           (lsp--apply-text-edits text-edits operation)))
+       changes?))))
 
 (defmacro lsp-with-filename (file &rest body)
   "Execute BODY with FILE as a context.
@@ -3935,8 +3733,9 @@ Need to handle the case when FILE indicates virtual buffer."
          ,@body)
      ,@body))
 
-(defun lsp--apply-text-document-edit (edit)
+(defun lsp--apply-text-document-edit (edit &optional operation)
   "Apply the TextDocumentEdit object EDIT.
+OPERATION is symbol representing the source of this text edit.
 If the file is not being visited by any buffer, it is opened with
 `find-file-noselect'.
 Because lsp-mode does not store previous document versions, the edit is only
@@ -3978,7 +3777,7 @@ interface TextDocumentEdit {
                              (lsp--uri-to-path))))
          (lsp-with-current-buffer (find-buffer-visiting file-name)
            (lsp-with-filename file-name
-             (lsp--apply-text-edits (lsp:text-document-edit-edits edit))))))))
+             (lsp--apply-text-edits (lsp:text-document-edit-edits edit) operation)))))))
 
 (lsp-defun lsp--position-compare ((&Position :line left-line
                                              :character left-character)
@@ -4067,8 +3866,8 @@ The method uses `replace-buffer-contents'."
 
 (defun lsp--to-yasnippet-snippet (snippet)
   "Convert LSP SNIPPET to yasnippet snippet."
-  ;; LSP snippet doesn't escape "{", but yasnippet requires escaping it.
-  (replace-regexp-in-string (rx (or bos (not (any "$" "\\"))) (group "{"))
+  ;; LSP snippet doesn't escape "{" and "`", but yasnippet requires escaping it.
+  (replace-regexp-in-string (rx (or bos (not (any "$" "\\"))) (group (or "{" "`")))
                             (rx "\\" (backref 1))
                             snippet
                             nil nil 1))
@@ -4099,8 +3898,9 @@ LSP server result."
      (lsp--to-yasnippet-snippet snippet)
      start end expand-env)))
 
-(defun lsp--apply-text-edits (edits)
-  "Apply the EDITS described in the TextEdit[] object."
+(defun lsp--apply-text-edits (edits &optional operation)
+  "Apply the EDITS described in the TextEdit[] object.
+OPERATION is symbol representing the source of this text edit."
   (unless (seq-empty-p edits)
     (atomic-change-group
       (run-hooks 'lsp-before-apply-edits-hook)
@@ -4124,7 +3924,8 @@ LSP server result."
                            (-when-let ((&SnippetTextEdit :range (&RangeToPoint :start)
                                                          :insert-text-format? :new-text) edit)
                              (when (eq insert-text-format? lsp/insert-text-format-snippet)
-                               (lsp--expand-snippet new-text start (+ start (length new-text)))))))))
+                               (lsp--expand-snippet new-text start (+ start (length new-text))))))
+                         (run-hook-with-args 'lsp-after-apply-edits-hook operation))))
           (undo-amalgamate-change-group change-group)
           (progress-reporter-done reporter))))))
 
@@ -4145,7 +3946,7 @@ Only works when mode is 'tick or 'alive."
                             (> end first-edited))
                           edits))
            (lsp--warn "TextEdits will not be applied since document has been modified before of them.")
-         (lsp--apply-text-edits edits)))
+         (lsp--apply-text-edits edits 'completion-cleanup)))
      (lambda ()
        (remove-hook 'before-change-functions func t)))))
 
@@ -4336,7 +4137,8 @@ Added to `after-change-functions'."
                                          (lsp--full-change-event)))))
                 (with-lsp-workspace workspace
                   (lsp-notify "textDocument/didChange"
-                              (list :contentChanges (vector (lsp--full-change-event)))))))
+                              (list :contentChanges (vector (lsp--full-change-event))
+                                    :textDocument (lsp--versioned-text-document-identifier))))))
              (2
               (with-lsp-workspace workspace
                 (lsp-notify
@@ -4444,7 +4246,7 @@ Applies on type formatting."
                                     :insert-spaces (if indent-tabs-mode :json-false t))
                           :ch (char-to-string ch)
                           :position (lsp--cur-position))
-                         #'lsp--apply-text-edits
+                         (lambda (data) (lsp--apply-text-edits data 'format))
                          :mode 'tick))))
 
 
@@ -4562,7 +4364,8 @@ if it's closing the last buffer in the workspace."
           (condition-case nil
               (lsp--apply-text-edits
                (lsp-request "textDocument/willSaveWaitUntil"
-                            params))
+                            params)
+               'before-save)
             (error)))))))
 
 (defun lsp--on-auto-save ()
@@ -4650,12 +4453,13 @@ and the position respectively."
   "Return a list of `xref-item' given LOCATIONS, which can be of
 type Location, LocationLink, Location[] or LocationLink[]."
   (setq locations
-        (if (and (sequencep locations)
-                 (let ((fst (lsp-seq-first locations)))
-                   (or (lsp-location? fst)
-                       (lsp-location-link? fst))))
-            (append locations nil)
-          (when locations (list locations))))
+        (pcase locations
+          ((seq (or (Location)
+                    (LocationLink)))
+           (append locations nil))
+          ((or (Location)
+               (LocationLink))
+           (list locations))))
 
   (cl-labels ((get-xrefs-in-file
                (file-locs)
@@ -4923,17 +4727,15 @@ When language is nil render as markup if `markdown-mode' is loaded."
   "Render CONTENT element."
   (let ((inhibit-message t))
     (or
-     (cond
-      ((lsp-marked-string? content)
-       (-let [(&MarkedString :language :value) content]
-         (lsp--render-string value language)))
-      ((lsp-markup-content? content)
-       (-let [(&MarkupContent :value :kind) content]
-         (lsp--render-string value kind)))
-      ;; plain string
-      ((stringp content) (lsp--render-string content "markdown"))
-      ((null content) "")
-      (t (error "Failed to handle %s" content)))
+     (pcase content
+       ((MarkedString :value :language)
+        (lsp--render-string value language))
+       ((MarkupContent :value :kind)
+        (lsp--render-string value kind))
+       ;; plain string
+       ((pred stringp) (lsp--render-string content "markdown"))
+       ((pred null) "")
+       (_ (error "Failed to handle %s" content)))
      "")))
 
 (defun lsp--create-unique-string-fn ()
@@ -5168,7 +4970,7 @@ It will show up only if current point has signature help."
       (when text-edit?
         (lsp--apply-text-edit text-edit?))
       (when additional-text-edits?
-        (lsp--apply-text-edits additional-text-edits?)))))
+        (lsp--apply-text-edits additional-text-edits? 'color-presentation)))))
 
 (defun lsp--number->color (number)
   (let ((result (format "%x"
@@ -5306,7 +5108,7 @@ It will show up only if current point has signature help."
 If ACTION is not set it will be selected from `lsp-code-actions-at-point'."
   (interactive (list (lsp--select-action (lsp-code-actions-at-point))))
   (when edit?
-    (lsp--apply-workspace-edit edit?))
+    (lsp--apply-workspace-edit edit? 'code-action))
 
   (cond
    ((stringp command?) (lsp--execute-command action))
@@ -5344,6 +5146,7 @@ If ACTION is not set it will be selected from `lsp-code-actions-at-point'."
     (rustic-mode        . rustic-indent-offset)      ; Rust
     (scala-mode         . scala-indent:step)         ; Scala
     (powershell-mode    . powershell-indent)         ; PowerShell
+    (ess-mode           . ess-indent-offset)         ; ESS (R)
 
     (default            . standard-indent))          ; default fallback
   "A mapping from `major-mode' to its indent variable.")
@@ -5369,7 +5172,7 @@ If ACTION is not set it will be selected from `lsp-code-actions-at-point'."
                                    (lsp--make-document-formatting-params))))
            (if (seq-empty-p edits)
                (lsp--info "No formatting changes provided")
-             (lsp--apply-text-edits edits))))
+             (lsp--apply-text-edits edits 'format))))
         ((lsp-feature? "textDocument/rangeFormatting")
          (save-restriction
            (widen)
@@ -5384,7 +5187,7 @@ If ACTION is not set it will be selected from `lsp-code-actions-at-point'."
                 (lsp--make-document-range-formatting-params s e))))
     (if (seq-empty-p edits)
         (lsp--info "No formatting changes provided")
-      (lsp--apply-text-edits edits))))
+      (lsp--apply-text-edits edits 'format))))
 
 (defmacro lsp-make-interactive-code-action (func-name code-action-kind)
   "Define an interactive function FUNC-NAME that attempts to
@@ -5450,162 +5253,6 @@ A reference is highlighted only if it is visible in a window."
                 (overlay-put 'lsp-highlight t)))))
         wins-visible-pos))
      highlights)))
-
-(defun lsp--build-face-map (identifiers faces category varname)
-  (apply 'vector
-         (mapcar (lambda (id)
-                   (let ((maybe-face (cdr (assoc id faces))))
-                     (when (and lsp-semantic-highlighting-warn-on-missing-face (not maybe-face))
-                       (lsp-warn "No face has been associated to the %s '%s': consider adding a corresponding definition to %s"
-                                 category id varname)) maybe-face)) identifiers)))
-
-(defun lsp--semantic-tokens-initialize-workspace (workspace)
-  (cl-assert workspace)
-  (when-let ((token-capabilities
-              (or
-               (-some->
-                   (lsp--registered-capability "textDocument/semanticTokens")
-                 (lsp--registered-capability-options))
-               (lsp:server-capabilities-semantic-tokens-provider?
-                (lsp--workspace-server-capabilities workspace)))))
-    (-let* (((&SemanticTokensOptions :legend) token-capabilities))
-      (setf (lsp--workspace-semantic-highlighting-faces workspace)
-            (lsp--build-face-map (lsp:semantic-tokens-legend-token-types legend)
-                                 lsp-semantic-token-faces
-                                 "semantic token"
-                                 "lsp-semantic-token-faces"))
-      (setf (lsp--workspace-semantic-highlighting-modifier-faces workspace)
-            (lsp--build-face-map (lsp:semantic-tokens-legend-token-modifiers legend)
-                                 lsp-semantic-token-modifier-faces
-                                 "semantic token modifier"
-                                 "lsp-semantic-token-modifier-faces")))))
-
-(defun lsp--semantic-tokens-request-update ()
-  (lsp--semantic-tokens-request
-   (when lsp--semantic-tokens-use-ranged-requests (cons (window-start) (window-end))) t))
-
-(defun lsp--semantic-tokens-initialize-buffer (is-range-provider)
-  (let* ((old-extend-region-functions font-lock-extend-region-functions)
-         ;; make sure font-lock always fontifies entire lines (TODO: do we also have
-         ;; to change some jit-lock-...-region functions/variables?)
-         (new-extend-region-functions
-          (if (memq 'font-lock-extend-region-wholelines old-extend-region-functions)
-              old-extend-region-functions
-            (cons 'font-lock-extend-region-wholelines old-extend-region-functions))))
-    (setq lsp--semantic-tokens-use-ranged-requests is-range-provider)
-    (setq font-lock-extend-region-functions new-extend-region-functions)
-    (add-function :around (local 'font-lock-fontify-region-function) #'lsp--semantic-tokens-fontify)
-    (add-hook 'lsp-on-change-hook #'lsp--semantic-tokens-request-update nil t)
-    (lsp--semantic-tokens-request-update)
-    (setq lsp--semantic-tokens-teardown
-          (lambda ()
-            (setq font-lock-extend-region-functions old-extend-region-functions)
-            (when lsp--semantic-tokens-idle-timer
-              (cancel-timer lsp--semantic-tokens-idle-timer)
-              (setq lsp--semantic-tokens-idle-timer nil))
-            (setq lsp--semantic-tokens-use-ranged-requests nil)
-            (setq lsp--semantic-tokens-cache nil)
-            (remove-function (local 'font-lock-fontify-region-function)
-                             #'lsp--semantic-tokens-fontify)
-            (remove-hook 'lsp-on-change-hook #'lsp--semantic-tokens-request-update t)))))
-
-(defun lsp--semantic-tokens-fontify (old-fontify-region beg end &optional loudly)
-  ;; TODO: support multiple language servers per buffer?
-  (let ((faces (seq-some #'lsp--workspace-semantic-highlighting-faces lsp--buffer-workspaces))
-        (modifier-faces
-         (when lsp-semantic-tokens-apply-modifiers
-           (seq-some #'lsp--workspace-semantic-highlighting-modifier-faces lsp--buffer-workspaces))))
-    (if (or (eq nil lsp--semantic-tokens-cache)
-            (eq nil faces)
-            ;; delay fontification until we have fresh tokens
-            (not (= lsp--cur-version (lsp-get lsp--semantic-tokens-cache :_documentVersion))))
-        '(jit-lock-bounds 0 . 0)
-      (funcall old-fontify-region beg end loudly)
-      (-let* ((inhibit-field-text-motion t)
-              ((&SematicTokensPartialResult :data) lsp--semantic-tokens-cache)
-              (i0 0)
-              (i-max (1- (length data)))
-              (current-line 1)
-              (line-delta)
-              (column 0)
-              (face)
-              (line-start-pos)
-              (line-min)
-              (line-max-inclusive)
-              (text-property-beg)
-              (text-property-end))
-        (save-mark-and-excursion
-          (save-restriction
-            (widen)
-            (goto-char beg)
-            (goto-char (line-beginning-position))
-            (setq line-min (line-number-at-pos))
-            (with-silent-modifications
-              (goto-char end)
-              (goto-char (line-end-position))
-              (setq line-max-inclusive (line-number-at-pos))
-              (forward-line (- line-min line-max-inclusive))
-              (let ((skip-lines (- line-min current-line)))
-                (while (and (<= i0 i-max) (< (aref data i0) skip-lines))
-                  (setq skip-lines (- skip-lines (aref data i0)))
-                  (setq i0 (+ i0 5)))
-                (setq current-line (- line-min skip-lines)))
-              (forward-line (- current-line line-min))
-              (setq line-start-pos (point))
-              (cl-loop
-               for i from i0 to i-max by 5 do
-               (setq line-delta (aref data i))
-               (unless (= line-delta 0)
-                 (forward-line line-delta)
-                 (setq line-start-pos (point))
-                 (setq column 0)
-                 (setq current-line (+ current-line line-delta)))
-               (setq column (+ column (aref data (1+ i))))
-               (setq face (aref faces (aref data (+ i 3))))
-               (setq text-property-beg (+ line-start-pos column))
-               (setq text-property-end (+ text-property-beg (aref data (+ i 2))))
-               (when face (put-text-property text-property-beg text-property-end 'face face))
-               (cl-loop for j from 0 to (1- (length modifier-faces)) do
-                        (when (and (aref modifier-faces j)
-                                   (> (logand (aref data (+ i 4)) (lsh 1 j)) 0))
-                          (add-face-text-property text-property-beg text-property-end
-                                                  (aref modifier-faces j))))
-               when (> current-line line-max-inclusive) return nil)))))
-      (let ((token-region (lsp-get lsp--semantic-tokens-cache :_region)))
-        (if token-region
-            `(jit-lock-bounds ,(max beg (car token-region)) . ,(min end (cdr token-region)))
-          `(jit-lock-bounds ,beg . ,end))))))
-
-(defun lsp--semantic-tokens-request (region fontify-immediately)
-  (let ((request-full-token-set
-         (lambda (fontify-immediately)
-           (when lsp--semantic-tokens-idle-timer
-             (cancel-timer lsp--semantic-tokens-idle-timer))
-           (setq lsp--semantic-tokens-idle-timer
-                 (run-with-idle-timer
-                  lsp-idle-delay
-                  nil
-                  (lambda () (lsp--semantic-tokens-request nil fontify-immediately)))))))
-    (when lsp--semantic-tokens-idle-timer
-      (cancel-timer lsp--semantic-tokens-idle-timer))
-    (lsp-request-async
-     (cond
-      (region "textDocument/semanticTokens/range")
-      ((lsp-feature? "textDocument/semanticTokensFull")
-       "textDocument/semanticTokens/full")
-      (t "textDocument/semanticTokens"))
-     `( :textDocument ,(lsp--text-document-identifier)
-        ,@(if region (list :range (lsp--region-to-range (car region) (cdr region))) '()))
-     (lambda (response)
-       (setq lsp--semantic-tokens-cache response)
-       (lsp-put lsp--semantic-tokens-cache :_documentVersion lsp--cur-version)
-       (lsp-put lsp--semantic-tokens-cache :_region region)
-       (when fontify-immediately (font-lock-flush))
-       ;; request full token set to improve fontification speed when scrolling
-       (when region (funcall request-full-token-set nil)))
-     :error-handler (lambda (&rest _) (funcall request-full-token-set t))
-     :mode 'tick
-     :cancel-token (format "semantic-tokens-%s" (lsp--buffer-uri)))))
 
 (defconst lsp--symbol-kind
   '((1 . "File")
@@ -5862,7 +5509,7 @@ relied upon."
                                  `( :textDocument ,(lsp--text-document-identifier)
                                     :position ,(lsp--cur-position)
                                     :newName ,newname))))
-    (lsp--apply-workspace-edit edits)))
+    (lsp--apply-workspace-edit edits 'rename)))
 
 (defun lsp-show-xrefs (xrefs display-action references?)
   (unless (region-active-p) (push-mark nil t))
@@ -5886,7 +5533,7 @@ REFERENCES? t when METHOD returns references."
   (let ((loc (lsp-request method
                           (append (lsp--text-document-position-params) extra))))
     (if (seq-empty-p loc)
-        (lsp--error "Not found for: %s" (thing-at-point 'symbol t))
+        (lsp--error "Not found for: %s" (or (thing-at-point 'symbol t) ""))
       (lsp-show-xrefs (lsp--locations-to-xref-items loc) display-action references?))))
 
 (cl-defun lsp-find-declaration (&key display-action)
@@ -5961,17 +5608,20 @@ REFERENCES? t when METHOD returns references."
   (lsp--execute-command (lsp-make-command :command (symbol-name command)
                                           :arguments? arguments)))
 
-(defun lsp--send-execute-command (command &optional args)
-  "Create and send a 'workspace/executeCommand' message having command COMMAND and optional ARGS."
+(defun lsp-workspace-command-execute (command &optional args)
+  "Execute workspace COMMAND with ARGS."
   (let ((params (if args
                     (list :command command :arguments args)
                   (list :command command))))
-    (condition-case-unless-debug err
-        (lsp-request "workspace/executeCommand" params)
-      (error
-       (lsp--error "Please open an issue in lsp-mode for implementing `%s'.\n\n%S"
-                   command
-                   err)))))
+    (lsp-request "workspace/executeCommand" params)))
+
+(defun lsp--send-execute-command (command &optional args)
+  "Execute workspace COMMAND with ARGS showing error if command is not mapped client-side."
+  (condition-case-unless-debug err
+      (lsp-workspace-command-execute command args)
+    (error
+     (lsp--error "Please open an issue in lsp-mode for implementing `%s'.\n\n%S"
+                 command err))))
 
 (defalias 'lsp-point-to-position #'lsp--point-to-position)
 (defalias 'lsp-text-document-identifier #'lsp--text-document-identifier)
@@ -6143,7 +5793,7 @@ WORKSPACE is the active workspace."
                      ((equal method "workspace/applyEdit")
                       (list :applied (condition-case err
                                          (prog1 t
-                                           (lsp--apply-workspace-edit (lsp:apply-workspace-edit-params-edit params)))
+                                           (lsp--apply-workspace-edit (lsp:apply-workspace-edit-params-edit params) 'server-requested))
                                        (error
                                         (lsp--error "Failed to apply edits with message %s"
                                                     (error-message-string err))
@@ -6856,6 +6506,8 @@ returns the command to execute."
     (add-hook 'lsp-configure-hook 'lsp-modeline-workspace-status-mode))
   (when lsp-lens-enable
     (add-hook 'lsp-configure-hook 'lsp-lens--enable))
+  (when lsp-semantic-tokens-enable
+    (add-hook 'lsp-configure-hook 'lsp-semantic-tokens--enable))
 
   ;; yas-snippet config
   (setq-local yas-inhibit-overlay-modification-protection t))
@@ -7142,10 +6794,21 @@ Check `*lsp-install*' and `*lsp-log*' buffer."
       (error
        (done nil (error-message-string err))))))
 
+(defun lsp--require-packages ()
+  "Load `lsp-client-packages' if needed."
+  (when (and lsp-auto-configure (not lsp--client-packages-required))
+    (seq-do (lambda (package)
+              ;; loading client is slow and `lsp' can be called repeatedly
+              (unless (featurep package)
+                (require package nil t)))
+            lsp-client-packages)
+    (setq lsp--client-packages-required t)))
+
 (defun lsp-install-server (update?)
   "Interactively install server.
 When prefix UPDATE? is t force installation even if the server is present."
   (interactive "P")
+  (lsp--require-packages)
   (lsp--install-server-internal
    (lsp--completing-read
     "Select server to install: "
@@ -7951,13 +7614,7 @@ server if there is such. When `lsp' is called with prefix
 argument ask the user to select which language server to start."
   (interactive "P")
 
-  (when (and lsp-auto-configure (not lsp--client-packages-required))
-    (seq-do (lambda (package)
-              ;; loading client is slow and `lsp' can be called repeatedly
-              (unless (featurep package)
-                (require package nil t)))
-            lsp-client-packages)
-    (setq lsp--client-packages-required t))
+  (lsp--require-packages)
 
   (when (buffer-file-name)
     (let (clients

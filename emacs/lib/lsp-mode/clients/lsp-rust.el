@@ -586,15 +586,16 @@ The command should include `--message=format=json` or similar option."
                                       (lsp--region-to-range (region-beginning) (region-end))
                                     (lsp--region-to-range (point) (point))))))
          (result (lsp-send-request (lsp-make-request "experimental/joinLines" params))))
-    (lsp--apply-text-edits result)))
+    (lsp--apply-text-edits result 'code-action)))
 
 (defcustom lsp-rust-analyzer-download-url
-  (format "https://github.com/rust-analyzer/rust-analyzer/releases/latest/download/%s"
+  (format "https://github.com/rust-analyzer/rust-analyzer/releases/download/2020-12-14/%s"
           (pcase system-type
             ('gnu/linux "rust-analyzer-linux")
             ('darwin "rust-analyzer-mac")
             ('windows-nt "rust-analyzer-windows.exe")))
-  "Automatic download url for Rust Analyzer"
+  "Automatic download url for Rust Analyzer.
+Force 12/14 release until we fix https://github.com/emacs-lsp/lsp-mode/issues/2436"
   :type 'string
   :group 'lsp-rust
   :package-version '(lsp-mode . "7.1"))
