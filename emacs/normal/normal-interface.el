@@ -26,6 +26,8 @@
 	dashboard-items '((projects . 5)
 			  (recents  . 5)
 			  )
+	dashboard-set-heading-icons t
+	dashboard-set-file-icons t
 	)
   )
 
