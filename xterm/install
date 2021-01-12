@@ -2,3 +2,4 @@
 
 [symlink]
 ./Xresources.conf: ~/.Xresources.d/xterm.conf
+./bin/xterm-select-url: ~/.local/bin/xterm-select-url
