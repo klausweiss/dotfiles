@@ -206,15 +206,8 @@ This function's anaphoric counterpart is `--map'."
 Each element of LIST in turn is bound to `it' before evaluating
 BODY.
 This is the anaphoric counterpart to `-map'."
-  (declare (debug (form form)))
-  (let ((l (make-symbol "list"))
-        (r (make-symbol "res")))
-    `(let ((,l ,list) ,r it)
-       (ignore it)
-       (while ,l
-         (setq it (pop ,l))
-         (push ,form ,r))
-       (nreverse ,r))))
+  (declare (debug (def-form form)))
+  `(mapcar (lambda (it) (ignore it) ,form) ,list))
 
 (defmacro --reduce-from (form init list)
   "Accumulate a value by evaluating FORM across LIST.
@@ -1187,28 +1180,29 @@ This function can be thought of as a generalization of
   "Return a list of ((-filter PRED LIST) (-remove PRED LIST)), in one pass through the list."
   (--separate (funcall pred it) list))
 
-(defun ---partition-all-in-steps-reversed (n step list)
-  "Private: Used by -partition-all-in-steps and -partition-in-steps."
+(defun dash--partition-all-in-steps-reversed (n step list)
+  "Used by `-partition-all-in-steps' and `-partition-in-steps'."
   (when (< step 1)
-    (error "Step must be a positive number, or you're looking at some juicy infinite loops."))
-  (let ((result nil))
+    (signal 'wrong-type-argument
+            `("Step size < 1 results in juicy infinite loops" ,step)))
+  (let (result)
     (while list
-      (!cons (-take n list) result)
-      (setq list (-drop step list)))
+      (push (-take n list) result)
+      (setq list (nthcdr step list)))
     result))
 
 (defun -partition-all-in-steps (n step list)
   "Return a new list with the items in LIST grouped into N-sized sublists at offsets STEP apart.
 The last groups may contain less than N items."
   (declare (pure t) (side-effect-free t))
-  (nreverse (---partition-all-in-steps-reversed n step list)))
+  (nreverse (dash--partition-all-in-steps-reversed n step list)))
 
 (defun -partition-in-steps (n step list)
   "Return a new list with the items in LIST grouped into N-sized sublists at offsets STEP apart.
 If there are not enough items to make the last group N-sized,
 those items are discarded."
   (declare (pure t) (side-effect-free t))
-  (let ((result (---partition-all-in-steps-reversed n step list)))
+  (let ((result (dash--partition-all-in-steps-reversed n step list)))
     (while (and result (< (length (car result)) n))
       (!cdr result))
     (nreverse result)))
@@ -1682,7 +1676,7 @@ last item in second form, etc."
 Insert X at the position signified by the symbol `it' in the first
 form.  If there are more forms, insert the first form at the position
 signified by `it' in in second form, etc."
-  (declare (debug (form body)))
+  (declare (debug (form body)) (indent 1))
   `(-as-> ,x it ,@forms))
 
 (defmacro -as-> (value variable &rest forms)
@@ -2294,27 +2288,28 @@ such that:
   (-lambda (x y ...) body)
 
 has the usual semantics of `lambda'.  Furthermore, these get
-translated into normal lambda, so there is no performance
+translated into normal `lambda', so there is no performance
 penalty.
 
-See `-let' for the description of destructuring mechanism."
+See `-let' for a description of the destructuring mechanism."
   (declare (doc-string 2) (indent defun)
            (debug (&define sexp
                            [&optional stringp]
                            [&optional ("interactive" interactive)]
                            def-body)))
   (cond
-   ((not (consp match-form))
-    (signal 'wrong-type-argument "match-form must be a list"))
-   ;; no destructuring, so just return regular lambda to make things faster
-   ((-all? 'symbolp match-form)
+   ((nlistp match-form)
+    (signal 'wrong-type-argument (list #'listp match-form)))
+   ;; No destructuring, so just return regular `lambda' for speed.
+   ((-all? #'symbolp match-form)
     `(lambda ,match-form ,@body))
-   (t
-    (let* ((inputs (--map-indexed (list it (make-symbol (format "input%d" it-index))) match-form)))
-      ;; TODO: because inputs to the lambda are evaluated only once,
-      ;; -let* need not to create the extra bindings to ensure that.
+   ((let ((inputs (--map-indexed
+                   (list it (make-symbol (format "input%d" it-index)))
+                   match-form)))
+      ;; TODO: because inputs to the `lambda' are evaluated only once,
+      ;; `-let*' need not create the extra bindings to ensure that.
       ;; We should find a way to optimize that.  Not critical however.
-      `(lambda ,(--map (cadr it) inputs)
+      `(lambda ,(mapcar #'cadr inputs)
          (-let* ,inputs ,@body))))))
 
 (defmacro -setq (&rest forms)
@@ -2341,7 +2336,7 @@ multiple assignments it does not cause unexpected side effects.
   (declare (debug (&rest sexp form))
            (indent 1))
   (when (= (mod (length forms) 2) 1)
-    (error "Odd number of arguments"))
+    (signal 'wrong-number-of-arguments (list '-setq (1+ (length forms)))))
   (let* ((forms-and-sources
           ;; First get all the necessary mappings with all the
           ;; intermediate bindings.
@@ -2618,12 +2613,18 @@ if the first element should sort before the second."
   (declare (debug (form form)))
   `(-sort (lambda (it other) ,form) ,list))
 
-(defun -list (&rest args)
-  "Return a list based on ARGS.
-If the first item of ARGS is already a list, simply return it.
-Otherwise, return a list with ARGS as elements."
-  (declare (pure t) (side-effect-free t))
-  (if (listp (car args)) (car args) args))
+(defun -list (&optional arg &rest args)
+  "Ensure ARG is a list.
+If ARG is already a list, return it as is (not a copy).
+Otherwise, return a new list with ARG as its only element.
+
+Another supported calling convention is (-list &rest ARGS).
+In this case, if ARG is not a list, a new list with all of
+ARGS as elements is returned.  This use is supported for
+backward compatibility and is otherwise deprecated."
+  (declare (advertised-calling-convention (arg) "2.18.0")
+           (pure t) (side-effect-free t))
+  (if (listp arg) arg (cons arg args)))
 
 (defun -repeat (n x)
   "Return a new list of length N with each element being X.
@@ -2638,12 +2639,10 @@ Return nil if N is less than 1."
 
 (defun -running-sum (list)
   "Return a list with running sums of items in LIST.
-
 LIST must be non-empty."
   (declare (pure t) (side-effect-free t))
-  (unless (consp list)
-    (error "LIST must be non-empty"))
-  (-reductions '+ list))
+  (or list (signal 'wrong-type-argument (list #'consp list)))
+  (-reductions #'+ list))
 
 (defun -product (list)
   "Return the product of LIST."
@@ -2652,12 +2651,10 @@ LIST must be non-empty."
 
 (defun -running-product (list)
   "Return a list with running products of items in LIST.
-
 LIST must be non-empty."
   (declare (pure t) (side-effect-free t))
-  (unless (consp list)
-    (error "LIST must be non-empty"))
-  (-reductions '* list))
+  (or list (signal 'wrong-type-argument (list #'consp list)))
+  (-reductions #'* list))
 
 (defun -max (list)
   "Return the largest value from LIST of numbers or markers."
