@@ -17,6 +17,10 @@
 (set-face-attribute 'default nil :font font)
 (set-frame-font font nil t)
 
+(autoload-all "../lib/page-break-lines"
+	      #'page-break-lines-mode
+	      )
+
 (require 'dashboard)
 (with-eval-after-load 'dashboard
   (dashboard-setup-startup-hook)

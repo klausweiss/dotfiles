@@ -1,8 +1,8 @@
 ;;; dashboard.el --- A startup screen extracted from Spacemacs  -*- lexical-binding: t -*-
 
 ;; Copyright (c) 2016-2020 Rakan Al-Hneiti <rakan.alhneiti@gmail.com>
-;; Copyright (c) 2019-2020 Jesús Martínez <jesusmartinez93@gmail.com>
-;; Copyright (c) 2020 Shen, Jen-Chieh <jcs090218@gmail.com>
+;; Copyright (c) 2019-2021 Jesús Martínez <jesusmartinez93@gmail.com>
+;; Copyright (c) 2020-2021 Shen, Jen-Chieh <jcs090218@gmail.com>
 ;;
 ;; Author: Rakan Al-Hneiti
 ;; URL: https://github.com/emacs-dashboard/emacs-dashboard
@@ -23,7 +23,6 @@
 ;;; Code:
 
 (require 'seq)
-(require 'page-break-lines)
 (require 'recentf)
 
 (require 'dashboard-widgets)
@@ -41,7 +40,7 @@
     (define-key map (kbd "C-i") 'widget-forward)
     (define-key map [backtab] 'widget-backward)
     (define-key map (kbd "RET") 'dashboard-return)
-    (define-key map [down-mouse-1] 'widget-button-click)
+    (define-key map [mouse-1] 'dashboard-mouse-1)
     (define-key map (kbd "g") #'dashboard-refresh-buffer)
     (define-key map (kbd "}") #'dashboard-next-section)
     (define-key map (kbd "{") #'dashboard-previous-section)
@@ -160,6 +159,13 @@ Optional prefix ARG says how many lines to move; default is one line."
         (widget-button-press entry-pt)
       (call-interactively #'widget-button-press))))
 
+(defun dashboard-mouse-1 ()
+  "Key for keymap `mouse-1'."
+  (interactive)
+  (let ((old-track-mouse track-mouse))
+    (when (call-interactively #'widget-button-click)
+      (setq track-mouse old-track-mouse))))
+
 (defun dashboard-maximum-section-length ()
   "For the just-inserted section, calculate the length of the longest line."
   (let ((max-line-length 0))
@@ -221,8 +227,8 @@ Optional prefix ARG says how many lines to move; default is one line."
                   (insert (make-string margin ?\ )))
                 (forward-line 1))))
           (dashboard-insert-footer))
-        (dashboard-mode)
-        (goto-char (point-min))))
+        (goto-char (point-min))
+        (dashboard-mode)))
     (when recentf-is-on
       (setq recentf-list origial-recentf-list))))
 
