@@ -161,7 +161,7 @@ As defined by the Language Server Protocol 3.16."
   :package-version '(lsp-mode . "6.1"))
 
 (defcustom lsp-client-packages
-  '(ccls lsp-ada lsp-angular lsp-bash lsp-clangd lsp-clojure lsp-cmake
+  '(ccls lsp-actionscript lsp-ada lsp-angular lsp-bash lsp-clangd lsp-clojure lsp-cmake
          lsp-crystal lsp-csharp lsp-css lsp-dart lsp-dhall lsp-dockerfile lsp-elm
          lsp-elixir lsp-erlang lsp-eslint lsp-fortran lsp-fsharp lsp-gdscript lsp-go
          lsp-hack lsp-groovy lsp-haskell lsp-haxe lsp-java lsp-javascript lsp-json
@@ -744,7 +744,8 @@ Changes take effect only when a new session is started."
                                         (racket-mode . "racket")
                                         (nix-mode . "nix")
                                         (prolog-mode . "prolog")
-                                        (vala-mode . "vala"))
+                                        (vala-mode . "vala")
+                                        (actionscript-mode . "actionscript"))
   "Language id configuration.")
 
 (defvar lsp--last-active-workspaces nil
@@ -755,6 +756,11 @@ directory")
 (defvar lsp-method-requirements
   '(("textDocument/callHierarchy" :capability :callHierarchyProvider)
     ("textDocument/codeAction" :capability :codeActionProvider)
+    ("codeAction/resolve"
+     :check-command (lambda (workspace)
+                      (with-lsp-workspace workspace
+                        (lsp:code-action-options-resolve-provider?
+                         (lsp--capability :codeActionProvider)))))
     ("textDocument/codeLens" :capability :codeLensProvider)
     ("textDocument/completion" :capability :completionProvider)
     ("textDocument/declaration" :capability :declarationProvider)
@@ -1030,6 +1036,9 @@ Deprecated. Use `lsp-repeatable-vector' instead. "
 
 (make-obsolete 'lsp-string-vector nil "lsp-mode 7.1")
 
+(defvar lsp--show-message t
+  "If non-nil, show debug message from `lsp-mode'.")
+
 (defun lsp--message  (format &rest args)
   "Wrapper for `message'
 
@@ -1041,9 +1050,10 @@ minibuffer prompt. The issue with async messages is already fixed
 in emacs 27.
 
 See #2049"
-  (let ((inhibit-message (and (minibufferp)
-                              (version< emacs-version "27.0"))))
-    (apply #'message format args)))
+  (when lsp--show-message
+    (let ((inhibit-message (and (minibufferp)
+                                (version< emacs-version "27.0"))))
+      (apply #'message format args))))
 
 (defun lsp--info (format &rest args)
   "Display lsp info message with FORMAT with ARGS."
@@ -3168,7 +3178,7 @@ disappearing, unset all the variables related to it."
     (lsp-diagnostics--workspace-cleanup lsp--cur-workspace)))
 
 (defun lsp--client-capabilities (&optional custom-capabilities)
-  "Return the client capabilities."
+  "Return the client capabilities appending CUSTOM-CAPABILITIES."
   (append
    `((workspace . ((workspaceEdit . ((documentChanges . t)
                                      (resourceOperations . ["create" "rename" "delete"])))
@@ -3200,7 +3210,9 @@ disappearing, unset all the variables related to it."
                                                                                                   "refactor.inline"
                                                                                                   "refactor.rewrite"
                                                                                                   "source"
-                                                                                                  "source.organizeImports"])))))))
+                                                                                                  "source.organizeImports"])))))
+                                     (resolveSupport . ((properties . ["edit" "command"])))
+                                     (dataSupport . t)))
                       (completion . ((completionItem . ((snippetSupport . ,(cond
                                                                             ((and lsp-enable-snippet (not (featurep 'yasnippet)) t)
                                                                              (lsp--warn (concat
@@ -5083,11 +5095,12 @@ It will show up only if current point has signature help."
                     ,@(when kind (list :only (vector kind))))))
 
 (defun lsp-code-actions-at-point (&optional kind)
-  "Retrieve the code actions for the active region or the current line."
+  "Retrieve the code actions for the active region or the current line.
+It will filter by KIND if non nil."
   (lsp-request "textDocument/codeAction" (lsp--text-document-code-action-params kind)))
 
 (defun lsp-execute-code-action-by-kind (command-kind)
-  "Execute code action by name."
+  "Execute code action by COMMAND-KIND."
   (if-let ((action (->> (lsp-get-or-calculate-code-actions command-kind)
                         (-filter (-lambda ((&CodeAction :kind?))
                                    (and kind? (equal command-kind kind?))))
@@ -5105,8 +5118,17 @@ It will show up only if current point has signature help."
 
 (lsp-defun lsp-execute-code-action ((action &as &CodeAction :command? :edit?))
   "Execute code action ACTION.
-If ACTION is not set it will be selected from `lsp-code-actions-at-point'."
+If ACTION is not set it will be selected from `lsp-code-actions-at-point'.
+Request codeAction/resolve for more info if server supports."
   (interactive (list (lsp--select-action (lsp-code-actions-at-point))))
+  (if (and (lsp-feature? "codeAction/resolve")
+           (not command?)
+           (not edit?))
+      (lsp--execute-code-action (lsp-request "codeAction/resolve" action))
+    (lsp--execute-code-action action)))
+
+(lsp-defun lsp--execute-code-action ((action &as &CodeAction :command? :edit?))
+  "Execute code action ACTION."
   (when edit?
     (lsp--apply-workspace-edit edit? 'code-action))
 

@@ -1,10 +1,10 @@
-;;; all-the-icons.el --- A library for inserting Developer icons
+;;; all-the-icons.el --- A library for inserting Developer icons -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2016  Dominic Charlesworth <dgc336@gmail.com>
 
 ;; Author: Dominic Charlesworth <dgc336@gmail.com>
 ;; Version: 4.0.0
-;; Package-Requires: ((emacs "24.3") (memoize "1.0.1"))
+;; Package-Requires: ((emacs "24.3"))
 ;; URL: https://github.com/domtronn/all-the-icons.el
 ;; Keywords: convenient, lisp
 
@@ -86,7 +86,6 @@
 ;; All the alist variables are prefixed with `all-the-icons-data/'
 
 ;;; Code:
-(require 'memoize)
 (require 'cl-lib)
 
 (require 'data-alltheicons  "./data/data-alltheicons.el")
@@ -129,7 +128,7 @@
     ;; Meta
     ("\\.tags"          all-the-icons-octicon "tag"                     :height 1.0 :v-adjust 0.0 :face all-the-icons-blue)
     ("^TAGS$"           all-the-icons-octicon "tag"                     :height 1.0 :v-adjust 0.0 :face all-the-icons-blue)
-    ("\\.log"           all-the-icons-octicon "bug"                     :height 1.0 :v-adjust 0.0 :face all-the-icons-maroon)
+    ("\\.log$"          all-the-icons-octicon "bug"                     :height 1.0 :v-adjust 0.0 :face all-the-icons-maroon)
 
     ;;
     ("\\.key$"          all-the-icons-octicon "key"                     :v-adjust 0.0 :face all-the-icons-lblue)
@@ -143,18 +142,18 @@
     ("^LICENSE$"        all-the-icons-octicon "book"                    :height 1.0 :v-adjust 0.0 :face all-the-icons-blue)
     ("^readme"          all-the-icons-octicon "book"                    :height 1.0 :v-adjust 0.0 :face all-the-icons-lcyan)
 
-    ("\\.fish"          all-the-icons-alltheicon "terminal"             :face all-the-icons-lpink)
-    ("\\.zsh"           all-the-icons-alltheicon "terminal"             :face all-the-icons-lcyan)
-    ("\\.sh"            all-the-icons-alltheicon "terminal"             :face all-the-icons-purple)
+    ("\\.fish$"         all-the-icons-alltheicon "terminal"             :face all-the-icons-lpink)
+    ("\\.zsh$"          all-the-icons-alltheicon "terminal"             :face all-the-icons-lcyan)
+    ("\\.sh$"           all-the-icons-alltheicon "terminal"             :face all-the-icons-purple)
 
     ;; Config
-    ("\\.node"          all-the-icons-alltheicon "nodejs"               :height 1.0  :face all-the-icons-green)
+    ("\\.node$"         all-the-icons-alltheicon "nodejs"               :height 1.0  :face all-the-icons-green)
     ("\\.babelrc$"      all-the-icons-fileicon "babel"                  :face all-the-icons-yellow)
     ("\\.bashrc$"       all-the-icons-alltheicon "script"               :height 0.9  :face all-the-icons-dpink)
     ("\\.bowerrc$"      all-the-icons-alltheicon "bower"                :height 1.0 :v-adjust 0.0 :face all-the-icons-silver)
     ("^bower.json$"     all-the-icons-alltheicon "bower"                :height 1.0 :v-adjust 0.0 :face all-the-icons-lorange)
     ("\\.ini$"          all-the-icons-octicon "settings"                :v-adjust 0.0 :face all-the-icons-yellow)
-    ("\\.eslintignore"  all-the-icons-fileicon "eslint"                 :height 0.9  :face all-the-icons-purple)
+    ("\\.eslintignore$" all-the-icons-fileicon "eslint"                 :height 0.9  :face all-the-icons-purple)
     ("\\.eslint"        all-the-icons-fileicon "eslint"                 :height 0.9  :face all-the-icons-lpurple)
     ("\\.git"           all-the-icons-alltheicon "git"                  :height 1.0  :face all-the-icons-lred)
     ("nginx"            all-the-icons-fileicon "nginx"                  :height 0.9  :face all-the-icons-dgreen)
@@ -165,7 +164,7 @@
     ("\\.dockerignore$" all-the-icons-fileicon "dockerfile"             :height 1.2  :face all-the-icons-dblue)
     ("^\\.?Dockerfile"  all-the-icons-fileicon "dockerfile"             :face all-the-icons-blue)
     ("^Brewfile$"       all-the-icons-faicon "beer"                     :face all-the-icons-lsilver)
-    ("\\.npmignore"     all-the-icons-fileicon "npm"                    :face all-the-icons-dred)
+    ("\\.npmignore$"    all-the-icons-fileicon "npm"                    :face all-the-icons-dred)
     ("^package.json$"   all-the-icons-fileicon "npm"                    :face all-the-icons-red)
     ("^package.lock.json$" all-the-icons-fileicon "npm"                 :face all-the-icons-dred)
     ("^yarn\\.lock"     all-the-icons-fileicon "yarn"                   :face all-the-icons-blue-alt)
@@ -201,7 +200,7 @@
     ("\\.scpt$"         all-the-icons-fileicon "apple"                  :face all-the-icons-pink)
     ("\\.aup$"          all-the-icons-fileicon "audacity"               :face all-the-icons-yellow)
 
-    ("\\.elm"           all-the-icons-fileicon "elm"                    :face all-the-icons-blue)
+    ("\\.elm$"          all-the-icons-fileicon "elm"                    :face all-the-icons-blue)
 
     ("\\.erl$"          all-the-icons-alltheicon "erlang"               :face all-the-icons-red :v-adjust -0.1 :height 0.9)
     ("\\.hrl$"          all-the-icons-alltheicon "erlang"               :face all-the-icons-dred :v-adjust -0.1 :height 0.9)
@@ -411,19 +410,21 @@
     ("\\.svg$"          all-the-icons-alltheicon "svg"                  :height 0.9  :face all-the-icons-lgreen)
 
     ;; Video
-    ("\\.mov"           all-the-icons-faicon "film"                     :face all-the-icons-blue)
-    ("\\.mp4"           all-the-icons-faicon "film"                     :face all-the-icons-blue)
-    ("\\.ogv"           all-the-icons-faicon "film"                     :face all-the-icons-dblue)
-    ("\\.mkv"           all-the-icons-faicon "film"                     :face all-the-icons-blue)
-    ("\\.webm"          all-the-icons-faicon "film"                     :face all-the-icons-blue)
+    ("\\.mov$"          all-the-icons-faicon "film"                     :face all-the-icons-blue)
+    ("\\.mp4$"          all-the-icons-faicon "film"                     :face all-the-icons-blue)
+    ("\\.mpg$"          all-the-icons-faicon "film"                     :face all-the-icons-blue)
+    ("\\.mpeg$"         all-the-icons-faicon "film"                     :face all-the-icons-blue)
+    ("\\.ogv$"          all-the-icons-faicon "film"                     :face all-the-icons-dblue)
+    ("\\.mkv$"          all-the-icons-faicon "film"                     :face all-the-icons-blue)
+    ("\\.webm$"         all-the-icons-faicon "film"                     :face all-the-icons-blue)
 
     ;; Fonts
     ("\\.ttf$"          all-the-icons-fileicon "font"                   :v-adjust 0.0 :face all-the-icons-dcyan)
     ("\\.woff2?$"       all-the-icons-fileicon "font"                   :v-adjust 0.0 :face all-the-icons-cyan)
 
     ;; Doc
-    ("\\.pdf"           all-the-icons-octicon "file-pdf"                :v-adjust 0.0 :face all-the-icons-dred)
-    ("\\.te?xt"         all-the-icons-octicon "file-text"               :v-adjust 0.0 :face all-the-icons-cyan)
+    ("\\.pdf$"          all-the-icons-octicon "file-pdf"                :v-adjust 0.0 :face all-the-icons-dred)
+    ("\\.te?xt$"        all-the-icons-octicon "file-text"               :v-adjust 0.0 :face all-the-icons-cyan)
     ("\\.doc[xm]?$"     all-the-icons-fileicon "word"                   :face all-the-icons-blue)
     ("\\.texi?$"        all-the-icons-fileicon "tex"                    :face all-the-icons-lred)
     ("\\.md$"           all-the-icons-octicon "markdown"                :v-adjust 0.0 :face all-the-icons-lblue)
@@ -868,10 +869,31 @@ inserting functions."
     (when arg-overrides (setq args (append `(,(car args)) arg-overrides (cdr args))))
     (apply (car icon) args)))
 
-(memoize 'all-the-icons-icon-for-dir)
-(memoize 'all-the-icons-icon-for-file)
-(memoize 'all-the-icons-icon-for-mode)
-(memoize 'all-the-icons-icon-for-url)
+(defcustom all-the-icons--cache-limit 2048
+  "Maximum cache size for functions cached by `all-the-icons-cache'."
+  :type 'integer)
+
+(defun all-the-icons-cache (func)
+  "Set a cache for FUNC. Does not work on interactive functions."
+  (unless (get func 'all-the-icons--cached)
+    (let ((cache (make-hash-table :test #'equal
+                                  :size all-the-icons--cache-limit))
+          (orig-fn (symbol-function func)))
+      (fset func
+            (lambda (&rest args)
+              (or (gethash args cache)
+                  (progn
+                    (when (> (hash-table-count cache)
+                             all-the-icons--cache-limit)
+                      (clrhash cache))
+                    (puthash args (apply orig-fn args) cache)))))))
+
+  (put func 'all-the-icons--cached t))
+
+(all-the-icons-cache #'all-the-icons-icon-for-dir)
+(all-the-icons-cache #'all-the-icons-icon-for-file)
+(all-the-icons-cache #'all-the-icons-icon-for-mode)
+(all-the-icons-cache #'all-the-icons-icon-for-url)
 
 ;; Family Face Functions
 (defun all-the-icons-icon-family-for-file (file)
@@ -888,9 +910,9 @@ inserting functions."
   "Get a propertized ICON family programmatically."
   (plist-get (get-text-property 0 'face icon) :family))
 
-(memoize 'all-the-icons-icon-family-for-file)
-(memoize 'all-the-icons-icon-family-for-mode)
-(memoize 'all-the-icons-icon-family)
+(all-the-icons-cache #'all-the-icons-icon-family-for-file)
+(all-the-icons-cache #'all-the-icons-icon-family-for-mode)
+(all-the-icons-cache #'all-the-icons-icon-family)
 
 (defun all-the-icons--icon-info-for-buffer (&optional f)
   "Get icon info for the current buffer.
