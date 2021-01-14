@@ -10,4 +10,6 @@
 (setq expand-region-fast-keys-enabled nil
       expand-region-subword-enabled t)
 
+(transient-mark-mode -1)
+
 (provide 'normal-text)
