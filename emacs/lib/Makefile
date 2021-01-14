@@ -1,7 +1,6 @@
 SHELL := /bin/bash
 
 ALL_THE_ICONS_REPO := https://github.com/domtronn/all-the-icons.el
-	MEMOIZE_URL := https://raw.githubusercontent.com/skeeto/emacs-memoize/master/memoize.el
 CMAKE_MODE_URL := https://raw.githubusercontent.com/Kitware/CMake/master/Auxiliary/cmake-mode.el
 COMPANY_REPO := https://github.com/company-mode/company-mode.git
 DASHBOARD_REPO := https://github.com/emacs-dashboard/emacs-dashboard.git
@@ -119,7 +118,7 @@ define download-from-repo
 endef
 
 
-update-all-the-icons: update-memoize
+update-all-the-icons:
 	$(call download-from-repo, $(ALL_THE_ICONS_REPO), data/)
 
 update-company:
@@ -196,9 +195,6 @@ update-magit: \
 
 update-markdown:
 	$(call download-from-url, $(MARKDOWN_URL))
-
-update-memoize:
-	$(call download-from-url, $(MEMOIZE_URL))
 
 update-mini-modeline:
 	$(call download-from-url, $(MINI_MODELINE_URL))
