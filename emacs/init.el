@@ -29,7 +29,7 @@
 (require 'normal-menu)
 (require 'normal-project-integration)
 (require 'normal-search)
-(require 'normal-smart-shift)
+(require 'normal-text)
 (require 'normal-undo)
 (require 'normal-which-key)
 (require 'normal-winum)

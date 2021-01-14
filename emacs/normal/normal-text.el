@@ -7,4 +7,7 @@
   (defun smart-shift-override-local-map ())
   )
 
-(provide 'normal-smart-shift)
+(setq expand-region-fast-keys-enabled nil
+      expand-region-subword-enabled t)
+
+(provide 'normal-text)
