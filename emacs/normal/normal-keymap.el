@@ -268,10 +268,12 @@
 (with-eval-after-load 'cc-mode
   (define-key c++-mode-map (kbd "C-d") nil))
 
-(setq cua-rectangle-mark-key (kbd "C-SPC"))
+(with-eval-after-load 'company
+  (define-key company-mode-map (kbd "C-SPC") #'company-complete))
+
+(setq cua-rectangle-mark-key nil)
 (with-eval-after-load 'cua-base
   (define-key cua-global-keymap [(control return)] nil)
-  (define-key cua-global-keymap (kbd "C-SPC") #'cua-set-rectangle-mark)
   )
 
 (use-global-map normal-global-map)
