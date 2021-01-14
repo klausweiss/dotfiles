@@ -18,7 +18,7 @@
 	company-quickhelp-delay 0.5
 	completion-function #'company-complete-common-or-cycle
 	)
-  (define-key company-mode-map [escape] #'company-abort)
+  (define-key company-active-map [escape] #'company-abort)
 
   (global-company-mode t)
   )
