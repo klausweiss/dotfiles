@@ -54,6 +54,9 @@
 	      #'flycheck-next-error
 	      #'flycheck-previous-error
 	      )
+(autoload-all "../lib/format-all"
+	      #'format-all-buffer
+	      )
 (autoload-all "../lib/lsp-mode/lsp"
 	      #'lsp-rename
 	      #'lsp-execute-code-action

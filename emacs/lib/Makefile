@@ -9,6 +9,8 @@ DOCKERFILE_MODE_URL := https://raw.githubusercontent.com/spotify/dockerfile-mode
 EXEC_PATH_FROM_SHELL_URL := https://raw.githubusercontent.com/purcell/exec-path-from-shell/master/exec-path-from-shell.el
 EXPAND_REGION_REPO := https://github.com/magnars/expand-region.el.git
 FLYCHECK_REPO := https://github.com/flycheck/flycheck.git
+FORMAT_ALL_THE_CODE_URL := https://raw.githubusercontent.com/lassik/emacs-format-all-the-code/master/format-all.el
+	LANGUAGE_ID_URL := https://raw.githubusercontent.com/lassik/emacs-language-id/master/language-id.el
 LSP_MODE_REPO := https://github.com/emacs-lsp/lsp-mode.git
 	F_URL := https://raw.githubusercontent.com/rejeep/f.el/master/f.el
 	HT_URL := https://raw.githubusercontent.com/Wilfred/ht.el/master/ht.el
@@ -146,11 +148,19 @@ update-expand-region:
 update-f:
 	$(call download-from-url, $(F_URL))
 
+update-format-all: \
+	update-language-id \
+
+	$(call download-from-url, $(FORMAT_ALL_THE_CODE_URL))
+
 update-flycheck:
 	$(call download-from-repo, $(FLYCHECK_REPO))
 
 update-ht:
 	$(call download-from-url, $(HT_URL))
+
+update-language-id:
+	$(call download-from-url, $(LANGUAGE_ID_URL))
 
 update-lsp-mode: \
 	update-dash \
