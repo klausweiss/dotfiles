@@ -30,6 +30,7 @@
 
 ;;; Code:
 
+(require 'lsp-ui-util)
 (require 'lsp-protocol)
 (require 'lsp-mode)
 (require 'flycheck nil 'noerror)
@@ -319,11 +320,10 @@ is set to t."
                (equal (cadr win-fringes) 0))
            2
          0))
-     (if (and (bound-and-true-p display-line-numbers-mode)
-              (< emacs-major-version 27))
+     (if (< emacs-major-version 27)
          ;; This was necessary with emacs < 27, recent versions take
          ;; into account the display-line width with :align-to
-         (+ 2 (line-number-display-width))
+         (lsp-ui-util-line-number-display-width)
        0)
      (if (or
           (bound-and-true-p whitespace-mode)
@@ -334,11 +334,10 @@ is set to t."
 (defun lsp-ui-sideline--window-width ()
   (- (min (window-text-width) (window-body-width))
      (lsp-ui-sideline--margin-width)
-     (or (and (bound-and-true-p display-line-numbers-mode)
-              (>= emacs-major-version 27)
+     (or (and (>= emacs-major-version 27)
               ;; We still need this number when calculating available space
               ;; even with emacs >= 27
-              (+ (line-number-display-width) 2))
+              (lsp-ui-util-line-number-display-width))
          0)))
 
 (defun lsp-ui-sideline--display-all-info (buffer list-infos tag bol eol)
