@@ -12,6 +12,7 @@ FLYCHECK_REPO := https://github.com/flycheck/flycheck.git
 FORMAT_ALL_THE_CODE_URL := https://raw.githubusercontent.com/lassik/emacs-format-all-the-code/master/format-all.el
 	LANGUAGE_ID_URL := https://raw.githubusercontent.com/lassik/emacs-language-id/master/language-id.el
 HASKELL_MODE_REPO := https://github.com/haskell/haskell-mode.git
+JUMP_TREE_MODE_REPO := https://github.com/yangwen0228/jump-tree
 LSP_MODE_REPO := https://github.com/emacs-lsp/lsp-mode.git
 	F_URL := https://raw.githubusercontent.com/rejeep/f.el/master/f.el
 	HT_URL := https://raw.githubusercontent.com/Wilfred/ht.el/master/ht.el
@@ -166,6 +167,9 @@ update-haskell-mode:
 
 update-ht:
 	$(call download-from-url, $(HT_URL))
+
+update-jump-tree-mode:
+	$(call download-from-repo, $(JUMP_TREE_MODE_REPO))
 
 update-language-id:
 	$(call download-from-url, $(LANGUAGE_ID_URL))
