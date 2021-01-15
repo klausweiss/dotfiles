@@ -69,4 +69,16 @@ With numeric prefix arg, copy to register 0-9 instead."
 	(cua--keep-active)
       (cua--deactivate))))
 
+;; undo
+(setq undo-tree-map 'invalid-keymap)
+
+(with-eval-after-load 'undo-tree
+  (global-undo-tree-mode)
+  )
+
+;; position history
+(require 'jump-tree)
+(global-jump-tree-mode)
+(defalias 'remove-if #'cl-remove-if)
+
 (provide 'normal-behavior)

@@ -30,7 +30,6 @@
 (require 'normal-project-integration)
 (require 'normal-search)
 (require 'normal-text)
-(require 'normal-undo)
 (require 'normal-which-key)
 (require 'normal-winum)
 
