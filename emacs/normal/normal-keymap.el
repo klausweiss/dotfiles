@@ -249,7 +249,7 @@
     (define-key map (kbd "C-<left>") #'left-word)
     (define-key map (kbd "C-<up>") #'backward-paragraph)
     (define-key map (kbd "C-<down>") #'forward-paragraph)
-    (define-key map (kbd "C-h") #'pop-global-mark)
+    (define-key map (kbd "C-S-h") #'pop-global-mark)
     (define-key map (kbd "<deletechar>") #'delete-char)
     (define-key map (kbd "DEL") #'backward-delete-char)
     (define-key map (kbd "RET") #'newline)
@@ -279,6 +279,10 @@
 (setq cua-rectangle-mark-key nil)
 (with-eval-after-load 'cua-base
   (define-key cua-global-keymap [(control return)] nil)
+  )
+
+(with-eval-after-load 'haskell-mode
+  (define-key haskell-mode-map (kbd "C-h") #'haskell-hoogle-lookup-from-local)
   )
 
 (use-global-map normal-global-map)

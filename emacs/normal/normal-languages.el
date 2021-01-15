@@ -43,6 +43,18 @@
   (add-hook 'dockerfile-mode-hook #'lsp)
   )
 
+(require 'haskell-mode-autoloads)
+(add-to-list 'Info-default-directory-list "~/.dotfiles/emacs/lib/haskell-mode/")
+(with-eval-after-load 'haskell-mode
+  (add-hook 'haskell-mode-hook #'lsp)
+  (setq haskell-hoogle-server-command (lambda (port)
+                                        (list "stack" "hoogle" "--" "server"
+                                            "--local"
+                                            "-p"
+                                            (number-to-string port))))
+  (setq lsp-haskell-formatting-provider "brittany")
+  )
+
 (add-to-list 'auto-mode-alist '("CMakeLists.txt" . cmake-mode))
 (with-eval-after-load 'cmake-mode
   (add-hook 'cmake-mode-hook #'lsp)

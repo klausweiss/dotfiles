@@ -11,6 +11,7 @@ EXPAND_REGION_REPO := https://github.com/magnars/expand-region.el.git
 FLYCHECK_REPO := https://github.com/flycheck/flycheck.git
 FORMAT_ALL_THE_CODE_URL := https://raw.githubusercontent.com/lassik/emacs-format-all-the-code/master/format-all.el
 	LANGUAGE_ID_URL := https://raw.githubusercontent.com/lassik/emacs-language-id/master/language-id.el
+HASKELL_MODE_REPO := https://github.com/haskell/haskell-mode.git
 LSP_MODE_REPO := https://github.com/emacs-lsp/lsp-mode.git
 	F_URL := https://raw.githubusercontent.com/rejeep/f.el/master/f.el
 	HT_URL := https://raw.githubusercontent.com/Wilfred/ht.el/master/ht.el
@@ -19,6 +20,7 @@ LSP_MODE_REPO := https://github.com/emacs-lsp/lsp-mode.git
 	S_URL := https://raw.githubusercontent.com/magnars/s.el/master/s.el
 	SPINNER_URL := https://raw.githubusercontent.com/Malabarba/spinner.el/master/spinner.el
 LSP_UI_REPO := https://github.com/emacs-lsp/lsp-ui.git
+LSP_HASKELL_URL := https://raw.githubusercontent.com/emacs-lsp/lsp-haskell/master/lsp-haskell.el
 LSP_IVY_URL := https://raw.githubusercontent.com/emacs-lsp/lsp-ivy/master/lsp-ivy.el
 LUA_MODE_URL := https://raw.githubusercontent.com/immerrr/lua-mode/master/lua-mode.el
 	DASH_FUNCTIONAL_URL := https://raw.githubusercontent.com/magnars/dash.el/master/dash-functional.el
@@ -156,6 +158,12 @@ update-format-all: \
 update-flycheck:
 	$(call download-from-repo, $(FLYCHECK_REPO))
 
+update-haskell-mode:
+	$(call clone-repo, $(HASKELL_MODE_REPO))
+	make -C $(DIR)
+	$(call update-lib-files, haskell-mode)
+	$(call clean-repo-dir)
+
 update-ht:
 	$(call download-from-url, $(HT_URL))
 
@@ -172,6 +180,12 @@ update-lsp-mode: \
 	update-spinner \
 
 	$(call download-from-repo, $(LSP_MODE_REPO), scripts/* clients/)
+
+update-lsp-haskell: \
+	update-lsp-mode \
+	update-haskell-mode \
+
+	$(call download-from-url, $(LSP_HASKELL_URL))
 
 update-lsp-ivy: \
 	update-lsp-mode \
