@@ -53,4 +53,9 @@
   (newline-and-indent)
   (previous-line))
 
+(defun join-next-line ()
+  (interactive)
+  (next-line)
+  (delete-indentation))
+
 (provide 'normal-text-manipulation)

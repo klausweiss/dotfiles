@@ -24,6 +24,7 @@
 (autoload-all "lib/normal-text-manipulation"
 	      #'comment-dwim-line
 	      #'duplicate-current-region-or-line
+	      #'join-next-line
 	      #'newline-above
 	      #'newline-below
 	      )
@@ -121,6 +122,7 @@
     (define-key map (kbd "C-k") #'kill-whole-line)
     (define-key map (kbd "C-<backspace>") #'backward-kill-word)
     (define-key map (kbd "<C-delete>") #'kill-word)
+    (define-key map (kbd "C-j") #'join-next-line)
     (define-key map (kbd "C-<return>") #'newline-above)
     (define-key map (kbd "S-<return>") #'newline-below)
     (define-key map (kbd "C-S-a") #'counsel-M-x)
