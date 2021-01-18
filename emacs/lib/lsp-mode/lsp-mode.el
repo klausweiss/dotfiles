@@ -96,7 +96,7 @@
 (define-obsolete-variable-alias 'lsp-print-io 'lsp-log-io "lsp-mode 6.1")
 
 (defcustom lsp-log-io nil
-  "If non-nil, log all messages to and from the language server to a *lsp-log* buffer."
+  "If non-nil, log all messages from the language server to a *lsp-log* buffer."
   :group 'lsp-mode
   :type 'boolean)
 
@@ -265,12 +265,14 @@ When nil, all registered clients are considered candidates.")
   "Last request id.")
 
 (defcustom lsp-before-initialize-hook nil
-  "List of functions to be called before a Language Server has been initialized for a new workspace."
+  "List of functions to be called before a Language Server has been initialized
+for a new workspace."
   :type 'hook
   :group 'lsp-mode)
 
 (defcustom lsp-after-initialize-hook nil
-  "List of functions to be called after a Language Server has been initialized for a new workspace."
+  "List of functions to be called after a Language Server has been initialized
+for a new workspace."
   :type 'hook
   :group 'lsp-mode)
 
@@ -329,7 +331,8 @@ the server has requested that."
     ;; .Net Core build-output
     "[/\\\\]bin/Debug\\'"
     "[/\\\\]obj\\'")
-  "List of regexps matching directory paths which won't be monitored when creating file watches."
+  "List of regexps matching directory paths which won't be monitored when
+creating file watches."
   :group 'lsp-mode
   :type '(repeat string)
   :package-version '(lsp-mode . "7.1.0"))
@@ -415,13 +418,15 @@ This flag affects only servers which do not support incremental updates."
   :group 'lsp-mode)
 
 (defcustom lsp-enable-links t
-  "If non-nil, all references to links in a file will be made clickable, if supported by the language server."
+  "If non-nil, all references to links in a file will be made clickable, if
+supported by the language server."
   :type 'boolean
   :group 'lsp-mode
   :package-version '(lsp-mode . "6.1"))
 
 (defcustom lsp-enable-imenu t
-  "If non-nil, automatically enable `imenu' integration when server provides `textDocument/documentSymbol'."
+  "If non-nil, automatically enable `imenu' integration when server provides
+`textDocument/documentSymbol'."
   :type 'boolean
   :group 'lsp-mode
   :package-version '(lsp-mode . "6.2"))
@@ -462,7 +467,8 @@ If this is set to nil, `eldoc' will show only the symbol information."
   :group 'lsp-mode)
 
 (defcustom lsp-enable-indentation t
-  "Indent regions using the file formatting functionality provided by the language server."
+  "Indent regions using the file formatting functionality provided by the
+language server."
   :type 'boolean
   :group 'lsp-mode)
 
@@ -477,7 +483,8 @@ If this is set to nil, `eldoc' will show only the symbol information."
   :group 'lsp-mode)
 
 (defcustom lsp-before-save-edits t
-  "If non-nil, `lsp-mode' will apply edits suggested by the language server before saving a document."
+  "If non-nil, `lsp-mode' will apply edits suggested by the language server
+before saving a document."
   :type 'boolean
   :group 'lsp-mode)
 
@@ -565,7 +572,8 @@ The hook will receive two parameters list of added and removed folders."
   :group 'lsp-imenu)
 
 (defcustom lsp-imenu-container-name-separator "/"
-  "Separator string to use to separate the container name from the symbol while displaying imenu entries."
+  "Separator string to use to separate the container name from the symbol while
+displaying imenu entries."
   :type 'string
   :group 'lsp-imenu)
 
@@ -612,7 +620,8 @@ are determined by the index of the element."
 
 ;; vibhavp: Should we use a lower value (5)?
 (defcustom lsp-response-timeout 10
-  "Number of seconds to wait for a response from the language server before timing out."
+  "Number of seconds to wait for a response from the language server before
+timing out."
   :type 'number
   :group 'lsp-mode)
 
@@ -903,9 +912,9 @@ called with nil the signature info must be cleared."
   "If non-nil, `lsp-client-packages' are yet to be required.")
 
 (defvar lsp--tcp-server-port 0
-  "The server socket which is opened when using `lsp-tcp-server' (a server socket
-is opened in Emacs and the language server connects to it). The default
-value of 0 ensures that a random high port is used. Set it to a positive
+  "The server socket which is opened when using `lsp-tcp-server' (a server
+socket is opened in Emacs and the language server connects to it).  The
+default value of 0 ensures that a random high port is used. Set it to a positive
 integer to use a specific port.")
 
 (defvar lsp--tcp-server-wait-seconds 10
@@ -2884,7 +2893,8 @@ alist mapping workspace->result."
                :no-merge no-merge))
 
 (defalias 'lsp-send-request 'lsp--send-request
-  "Send BODY as a request to the language server and return the response synchronously.
+  "Send BODY as a request to the language server and return the response
+synchronously.
 \n(fn BODY)")
 
 (cl-defun lsp-request (method params &key no-wait no-merge)
@@ -3885,7 +3895,8 @@ The method uses `replace-buffer-contents'."
                             nil nil 1))
 
 (defvar-local lsp-enable-relative-indentation nil
-  "Enable relative indentation when insert texts, snippets ... from language server.")
+  "Enable relative indentation when insert texts, snippets ...
+from language server.")
 
 (defun lsp--expand-snippet (snippet &optional start end expand-env keep-whitespace)
   "Wrapper of `yas-expand-snippet' with all of it arguments.
@@ -3980,8 +3991,8 @@ Only works when mode is 'tick or 'alive."
        cl-first))
 
 (defvar-local lsp--before-change-vals nil
-  "Store the positions from the `lsp-before-change' function
-  call, for validation and use in the `lsp-on-change' function.")
+  "Store the positions from the `lsp-before-change' function call, for
+validation and use in the `lsp-on-change' function.")
 
 (defun lsp--text-document-content-change-event (start end length)
   "Make a TextDocumentContentChangeEvent body for START to END, of length LENGTH."
@@ -6040,7 +6051,8 @@ deserialization.")
                  workspace)))))))))
 
 (defvar-local lsp--line-col-to-point-hash-table nil
-  "Hash table with keys (line . col) and values that are either point positions or markers.")
+  "Hash table with keys (line . col) and values that are either point positions
+or markers.")
 
 (defcustom lsp-imenu-detailed-outline t
   "Whether `lsp-imenu' should include signatures.
@@ -7025,7 +7037,9 @@ STORE-PATH to make it executable."
 
 (defcustom lsp-gunzip-script (cond ((executable-find "gzip") lsp-ext-gunzip-script)
                                    (t nil))
-  "The script to decompress a gzipped file. Should be a format string with one argument for the file to be decompressed in place."
+  "The script to decompress a gzipped file.
+Should be a format string with one argument for the file to be decompressed
+in place."
   :group 'lsp-mode
   :type 'string
   :package-version '(lsp-mode . "7.1"))
@@ -7053,6 +7067,35 @@ VERSION is the version of the extension, defaults to `latest'"
   (format lsp-vscode-ext-url publisher name (or version "latest")))
 
 
+
+;; Queueing prompts
+
+(defvar lsp--question-queue nil
+  "List of questions yet to be asked by `lsp-ask-question'.")
+
+(defun lsp-ask-question (question options callback)
+  "Prompt the user to answer the QUESTION with one of the OPTIONS from the
+minibuffer. Once the user selects an option, the CALLBACK function will be
+called, passing the selected option to it.
+
+If the user is currently being shown a question, the question will be stored in
+`lsp--question-queue', and will be asked once the user has answered the current
+question."
+  (add-to-list 'lsp--question-queue `(("question" . ,question)
+                                      ("options" . ,options)
+                                      ("callback" . ,callback)) t)
+  (when (eq (length lsp--question-queue) 1)
+    (lsp--process-question-queue)))
+
+(defun lsp--process-question-queue ()
+  "Take the first question from `lsp--question-queue', process it, then process
+the next question until the queue is empty."
+  (-let* (((&alist "question" "options" "callback") (car lsp--question-queue))
+         (answer (completing-read question options nil t)))
+    (pop lsp--question-queue)
+    (funcall callback answer)
+    (when lsp--question-queue
+      (lsp--process-question-queue))))
 
 (defun lsp--matching-clients? (client)
   (and
