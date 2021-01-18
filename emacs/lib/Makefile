@@ -39,6 +39,7 @@ SIMPLECLIP_URL := https://raw.githubusercontent.com/rolandwalker/simpleclip/mast
 SMART_SHIFT_URL := https://raw.githubusercontent.com/klausweiss/smart-shift/master/smart-shift.el
 SWIPER_REPO := https://github.com/abo-abo/swiper.git
 TREEMACS_REPO := https://github.com/Alexander-Miller/treemacs.git
+	PFUTURE_URL := https://raw.githubusercontent.com/Alexander-Miller/pfuture/master/pfuture.el
 UNDO_TREE_URL := http://www.dr-qubit.org/undo-tree/undo-tree.el
 VISUAL_REGEXP_URL := https://raw.githubusercontent.com/benma/visual-regexp.el/master/visual-regexp.el
 WHICH_KEY_URL := https://raw.githubusercontent.com/justbur/emacs-which-key/master/which-key.el
@@ -239,6 +240,9 @@ update-persp-projectile: \
 
 	$(call download-from-url, $(PERSPECTIVE_PROJECTILE_URL))
 
+update-pfuture:
+	$(call download-from-url, $(PFUTURE_URL))
+
 update-projectile:
 	$(call download-from-url, $(PROJECTILE_URL))
 
@@ -267,6 +271,7 @@ update-treemacs: \
 	update-dash \
 	update-f \
 	update-ht \
+	update-pfuture \
 	update-s \
 
 	$(call download-from-repo, $(TREEMACS_REPO), icons/ src/)
