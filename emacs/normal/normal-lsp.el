@@ -25,6 +25,7 @@
   (require 'lsp-ui)
   )
 
+(add-hook 'lsp-mode-hook #'lsp-lens-mode)
 (add-hook 'lsp-mode-hook #'flycheck-mode)
 (add-hook 'lsp-mode-hook #'yas-minor-mode)
 
