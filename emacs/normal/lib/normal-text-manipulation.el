@@ -58,4 +58,14 @@
   (next-line)
   (delete-indentation))
 
+(defun normal-backward-kill-word ()
+  (interactive)
+  (cond
+   ((looking-back (rx (char word)) 1)
+    (backward-kill-word 1))
+   ((looking-back (rx (char blank)) 1)
+    (delete-horizontal-space t))
+   (t
+    (backward-delete-char 1))))
+
 (provide 'normal-text-manipulation)

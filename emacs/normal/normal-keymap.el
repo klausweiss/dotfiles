@@ -27,6 +27,7 @@
 	      #'join-next-line
 	      #'newline-above
 	      #'newline-below
+	      #'normal-backward-kill-word
 	      )
 (autoload-all "lib/normal-themes"
 	      #'toggle-theme
@@ -126,7 +127,7 @@
     (define-key map (kbd "C-S-w") #'normal-close-window-with-buffer)
     (define-key map (kbd "C-d") #'duplicate-current-region-or-line)
     (define-key map (kbd "C-k") #'kill-whole-line)
-    (define-key map (kbd "C-<backspace>") #'backward-kill-word)
+    (define-key map (kbd "C-<backspace>") #'normal-backward-kill-word)
     (define-key map (kbd "<C-delete>") #'kill-word)
     (define-key map (kbd "C-j") #'join-next-line)
     (define-key map (kbd "C-<return>") #'newline-above)
