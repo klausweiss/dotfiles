@@ -1,24 +1,29 @@
-(autoload-all "lua-mode"
+(autoload-all "../lib/lua-mode"
 	      #'lua-mode
 	      )
-(autoload-all "lsp"
+(autoload-all "../lib/lsp-mode/lsp"
 	      #'lsp
 	      )
-(autoload-all "rustic"
+(autoload-all "../lib/rustic/rustic"
 	      #'rustic-mode
 	      )
-(autoload-all "dockerfile-mode"
+(autoload-all "../lib/dockerfile-mode"
 	      #'dockerfile-mode
 	      )
-(autoload-all "cmake-mode"
+(autoload-all "../lib/cmake-mode"
 	      #'cmake-mode
 	      )
-(autoload-all "yaml-mode"
+(autoload-all "../lib/yaml-mode"
 	      #'yaml-mode
+	      )
+(autoload-all "../lib/yafolding"
+	      #'yafolding-mode
 	      )
 
 (with-eval-after-load 'yasnippet
   (require 'yasnippet-snippets))
+
+(add-hook 'prog-mode-hook #'yafolding-mode)
 
 (add-to-list 'auto-mode-alist '("\\.lua$" . lua-mode))
 (add-to-list 'interpreter-mode-alist '("lua" . lua-mode))

@@ -44,6 +44,7 @@ UNDO_TREE_URL := http://www.dr-qubit.org/undo-tree/undo-tree.el
 VISUAL_REGEXP_URL := https://raw.githubusercontent.com/benma/visual-regexp.el/master/visual-regexp.el
 WHICH_KEY_URL := https://raw.githubusercontent.com/justbur/emacs-which-key/master/which-key.el
 WINUM_URL := https://raw.githubusercontent.com/deb0ch/emacs-winum/master/winum.el
+YAFOLDING_URL := https://raw.githubusercontent.com/zenozeng/yafolding.el/master/yafolding.el
 YAML_URL := https://raw.githubusercontent.com/yaml/yaml-mode/master/yaml-mode.el
 YASNIPPET_REPO := https://github.com/joaotavora/yasnippet.git
 YASNIPPET_SNIPPETS_REPO := https://github.com/AndreaCrotti/yasnippet-snippets.git
@@ -293,6 +294,9 @@ update-with-editor:
 
 update-xterm-color:
 	$(call download-from-url, $(XTERM_COLOR_URL))
+
+update-yafolding-mode:
+	$(call download-from-url, $(YAFOLDING_URL))
 
 update-yaml-mode:
 	$(call download-from-url, $(YAML_URL))

@@ -38,6 +38,9 @@
 	      #'switch-to-or-split-window-right
 	      #'switch-to-or-split-window-up
 	      )
+(autoload-all "lib/normal-yafolding"
+	      #'normal-yafolding-hide-element-or-parent
+	      )
 (autoload-all "normal-project-integration"
 	      #'persp-counsel-switch-buffer-force
 	      #'projectile-find-file-if-in-project
@@ -287,6 +290,17 @@
 
 (with-eval-after-load 'haskell-mode
   (define-key haskell-mode-map (kbd "C-h") #'haskell-hoogle-lookup-from-local)
+  )
+
+(with-eval-after-load 'yafolding
+  (define-key yafolding-mode-map (kbd "<C-return>") nil)
+  (define-key yafolding-mode-map (kbd "<C-M-return>") nil)
+  (define-key yafolding-mode-map (kbd "<C-S-return>") nil)
+
+  (define-key yafolding-mode-map (kbd "C--") #'normal-yafolding-hide-element-or-parent)
+  (define-key yafolding-mode-map (kbd "C-_") #'yafolding-hide-all)
+  (define-key yafolding-mode-map (kbd "C-=") #'yafolding-show-element)
+  (define-key yafolding-mode-map (kbd "C-+") #'yafolding-show-all)
   )
 
 (use-global-map normal-global-map)
