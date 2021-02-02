@@ -13,6 +13,9 @@
 (autoload-all "../lib/cmake-mode"
 	      #'cmake-mode
 	      )
+(autoload-all "../lib/markdown-mode"
+	      #'markdown-mode
+	      )
 (autoload-all "../lib/yaml-mode"
 	      #'yaml-mode
 	      )
@@ -64,6 +67,8 @@
 (with-eval-after-load 'cmake-mode
   (add-hook 'cmake-mode-hook #'lsp)
   )
+
+(add-to-list 'auto-mode-alist '("\\.md$" . markdown-mode))
 
 (add-to-list 'auto-mode-alist '("\\.ya?ml$" . yaml-mode))
 
