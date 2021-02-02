@@ -427,6 +427,13 @@ The car is used for subscript, the cdr is used for superscripts."
   :group 'markdown
   :type 'string)
 
+(defcustom markdown-ordered-list-enumeration t
+  "When non-nil, use enumerated numbers(1. 2. 3. etc.) for ordered list marker.
+While nil, always uses '1.' for the marker"
+  :group 'markdown
+  :type 'boolean
+  :package-version '(markdown-mode . "2.5"))
+
 (defcustom markdown-nested-imenu-heading-index t
   "Use nested or flat imenu heading index.
 A nested index may provide more natural browsing from the menu,
@@ -6048,7 +6055,7 @@ increase the indentation by one level."
                           (>= (forward-line -1) 0))))
             (let* ((old-prefix (match-string 1))
                    (old-spacing (match-string 2))
-                   (new-prefix (if old-prefix
+                   (new-prefix (if (and old-prefix markdown-ordered-list-enumeration)
                                    (int-to-string (1+ (string-to-number old-prefix)))
                                  "1"))
                    (space-adjust (- (length old-prefix) (length new-prefix)))
@@ -6173,7 +6180,10 @@ a list."
               (= (length cur-item) (length prev-item)))
           (save-excursion
             (replace-match
-             (concat pfx (number-to-string (setq idx (1+ idx))) ". ")))
+             (if (not markdown-ordered-list-enumeration)
+                 (concat pfx "1. ")
+               (cl-incf idx)
+               (concat pfx (number-to-string idx) ". "))))
           (setq sep nil))
          ;; indented a level
          ((< (length pfx) (length cpfx))
@@ -7829,35 +7839,37 @@ directory first, then in subdirectories if
 `markdown-wiki-link-search-subdirectories' is non-nil, and then
 in parent directories if
 `markdown-wiki-link-search-parent-directories' is non-nil."
-  (let* ((basename (replace-regexp-in-string
-                    "[[:space:]\n]" markdown-link-space-sub-char name))
-         (basename (if (derived-mode-p 'gfm-mode)
-                       (concat (upcase (substring basename 0 1))
-                               (downcase (substring basename 1 nil)))
-                     basename))
-         directory extension default candidates dir)
-    (when buffer-file-name
-      (setq directory (file-name-directory buffer-file-name)
-            extension (file-name-extension buffer-file-name)))
-    (setq default (concat basename
-                          (when extension (concat "." extension))))
-    (cond
-     ;; Look in current directory first.
-     ((or (null buffer-file-name)
-          (file-exists-p default))
-      default)
-     ;; Possibly search in subdirectories, next.
-     ((and markdown-wiki-link-search-subdirectories
-           (setq candidates
-                 (directory-files-recursively
-                  directory (concat "^" default "$"))))
-      (car candidates))
-     ;; Possibly search in parent directories as a last resort.
-     ((and markdown-wiki-link-search-parent-directories
-           (setq dir (locate-dominating-file directory default)))
-      (concat dir default))
-     ;; If nothing is found, return default in current directory.
-     (t default))))
+  (save-match-data
+    ;; This function must not overwrite match data(PR #590)
+    (let* ((basename (replace-regexp-in-string
+                      "[[:space:]\n]" markdown-link-space-sub-char name))
+           (basename (if (derived-mode-p 'gfm-mode)
+                         (concat (upcase (substring basename 0 1))
+                                 (downcase (substring basename 1 nil)))
+                       basename))
+           directory extension default candidates dir)
+      (when buffer-file-name
+        (setq directory (file-name-directory buffer-file-name)
+              extension (file-name-extension buffer-file-name)))
+      (setq default (concat basename
+                            (when extension (concat "." extension))))
+      (cond
+       ;; Look in current directory first.
+       ((or (null buffer-file-name)
+            (file-exists-p default))
+        default)
+       ;; Possibly search in subdirectories, next.
+       ((and markdown-wiki-link-search-subdirectories
+             (setq candidates
+                   (directory-files-recursively
+                    directory (concat "^" default "$"))))
+        (car candidates))
+       ;; Possibly search in parent directories as a last resort.
+       ((and markdown-wiki-link-search-parent-directories
+             (setq dir (locate-dominating-file directory default)))
+        (concat dir default))
+       ;; If nothing is found, return default in current directory.
+       (t default)))))
 
 (defun markdown-follow-wiki-link (name &optional other)
   "Follow the wiki link NAME.

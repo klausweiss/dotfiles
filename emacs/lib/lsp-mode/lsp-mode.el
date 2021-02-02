@@ -68,6 +68,7 @@
 (defvar company-backends)
 (defvar yas-inhibit-overlay-modification-protection)
 (defvar yas-indent-line)
+(defvar yas-wrap-around-region)
 (defvar yas-also-auto-indent-first-line)
 (defvar dap-auto-configure-mode)
 (defvar dap-ui-menu-items)
@@ -92,6 +93,13 @@
   "Alist of error codes to user friendly strings.")
 
 (defconst lsp--empty-ht (make-hash-table))
+
+(eval-and-compile
+  (defun dash-expand:&lsp-wks (key source)
+    `(,(intern-soft (format "lsp--workspace-%s" (eval key))) ,source))
+
+  (defun dash-expand:&lsp-cln (key source)
+    `(,(intern-soft (format "lsp--client-%s" (eval key))) ,source)))
 
 (define-obsolete-variable-alias 'lsp-print-io 'lsp-log-io "lsp-mode 6.1")
 
@@ -710,6 +718,7 @@ Changes take effect only when a new session is started."
                                         (hack-mode . "hack")
                                         (php-mode . "php")
                                         (powershell-mode . "powershell")
+                                        (powershell-mode . "PowerShell")
                                         (json-mode . "json")
                                         (jsonc-mode . "jsonc")
                                         (rjsx-mode . "javascript")
@@ -788,8 +797,8 @@ directory")
                       (with-lsp-workspace workspace
                         (lsp:rename-options-prepare-provider?
                          (or (lsp--capability :renameProvider)
-                             (lsp--registered-capability-options (lsp--registered-capability "textDocument/rename")))))))
-
+                             (when-let ((maybe-capability (lsp--registered-capability "textDocument/rename")))
+                               (lsp--registered-capability-options maybe-capability)))))))
     ("textDocument/rangeFormatting" :capability :documentRangeFormattingProvider)
     ("textDocument/references" :capability :referencesProvider)
     ("textDocument/rename" :capability :renameProvider)
@@ -909,7 +918,7 @@ called with nil the signature info must be cleared."
 (defvar lsp--tcp-port 10000)
 
 (defvar lsp--client-packages-required nil
-  "If non-nil, `lsp-client-packages' are yet to be required.")
+  "If nil, `lsp-client-packages' are yet to be required.")
 
 (defvar lsp--tcp-server-port 0
   "The server socket which is opened when using `lsp-tcp-server' (a server
@@ -1794,8 +1803,57 @@ PARAMS - the data sent from WORKSPACE."
         (completing-read (concat message " ") (seq-into choices 'list) nil t)
       (lsp-log message))))
 
-(lsp-defun lsp--on-progress (workspace (&ProgressParams :token :value
+(defcustom lsp-progress-prefix " ⌛ "
+  "Progress prefix."
+  :group 'lsp-mode
+  :type 'string
+  :package-version '(lsp-mode . "7.1.0"))
+
+(defcustom lsp-progress-function #'lsp-on-progress-modeline
+  "Function for handling the progress notifications."
+  :group 'lsp-mode
+  :type '(choice
+          (const :tag "Use modeline" lsp-on-progress-modeline)
+          (const :tag "Legacy(uses either `progress-reporter' or `spinner' based on `lsp-progress-via-spinner')"
+                 lsp-on-progress-legacy)
+          (const ignore :tag "Ignore")
+          (function :tag "Other function"))
+  :package-version '(lsp-mode . "7.1.0"))
+
+(defun lsp--progress-status ()
+  "Returns the status of the progress for the current workspaces."
+  (-let ((progress-status
+          (s-join
+           "|"
+           (-keep
+            (lambda (workspace)
+              (let ((tokens (lsp--workspace-work-done-tokens workspace)))
+                (unless (ht-empty? tokens)
+                  (mapconcat
+                   (-lambda ((&WorkDoneProgressBegin :message? :title :percentage?))
+                     (concat (if percentage?
+                                 (format "%s%%%% " percentage?)
+                               "")
+                             (or message? title)))
+                   (ht-values tokens)
+                   "|"))))
+            (lsp-workspaces)))))
+    (unless (s-blank? progress-status)
+      (concat lsp-progress-prefix progress-status))))
+
+(lsp-defun lsp-on-progress-modeline (workspace (&ProgressParams :token :value
                                                         (value &as &WorkDoneProgress :kind)))
+  "PARAMS contains the progress data.
+WORKSPACE is the workspace that contains the progress token."
+  (add-to-list 'global-mode-string '(t (:eval (lsp--progress-status))))
+  (pcase kind
+    ("begin" (lsp-workspace-set-work-done-token token value workspace))
+    ("report" (lsp-workspace-set-work-done-token token value workspace))
+    ("end" (lsp-workspace-rem-work-done-token token workspace)))
+  (force-mode-line-update))
+
+(lsp-defun lsp-on-progress-legacy (workspace (&ProgressParams :token :value
+                                                              (value &as &WorkDoneProgress :kind)))
   "PARAMS contains the progress data.
 WORKSPACE is the workspace that contains the progress token."
   (pcase kind
@@ -1812,7 +1870,7 @@ WORKSPACE is the workspace that contains the progress token."
                     ;; The progress relates to the server as a whole,
                     ;; display it on all buffers.
                     (mapcar (lambda (buffer)
-                              (with-current-buffer buffer
+                              (lsp-with-current-buffer buffer
                                 (spinner-start spinner-type))
                               buffer)
                             (lsp--workspace-buffers workspace)))
@@ -1831,7 +1889,7 @@ WORKSPACE is the workspace that contains the progress token."
        (if lsp-progress-via-spinner
            (mapc (lambda (buffer)
                    (when (lsp-buffer-live-p buffer)
-                     (with-current-buffer buffer
+                     (lsp-with-current-buffer buffer
                        (spinner-stop))))
                  reporter)
          (progress-reporter-done reporter))
@@ -2724,23 +2782,17 @@ If WORKSPACE is not provided current workspace will be used."
 
 (defalias 'lsp-workspace-get-metadata 'lsp-session-get-metadata)
 
-(defun lsp-workspace-set-work-done-token (token value &optional workspace)
-  "Associate TOKEN with VALUE in the WORKSPACE work-done-tokens.
-If WORKSPACE is not provided current workspace will be used."
-  (puthash token value
-           (lsp--workspace-work-done-tokens (or workspace lsp--cur-workspace))))
+(defun lsp-workspace-set-work-done-token (token value workspace)
+  "Associate TOKEN with VALUE in the WORKSPACE work-done-tokens."
+  (puthash token value (lsp--workspace-work-done-tokens workspace)))
 
-(defun lsp-workspace-get-work-done-token (token &optional workspace)
-  "Lookup TOKEN in the WORKSPACE work-done-tokens.
-If WORKSPACE is not provided current workspace will be used."
-  (gethash token
-           (lsp--workspace-work-done-tokens (or workspace lsp--cur-workspace))))
+(defun lsp-workspace-get-work-done-token (token workspace)
+  "Lookup TOKEN in the WORKSPACE work-done-tokens."
+  (gethash token (lsp--workspace-work-done-tokens workspace)))
 
-(defun lsp-workspace-rem-work-done-token (token &optional workspace)
-  "Remove TOKEN from the WORKSPACE work-done-tokens.
-If WORKSPACE is not provided current workspace will be used."
-  (remhash token
-           (lsp--workspace-work-done-tokens (or workspace lsp--cur-workspace))))
+(defun lsp-workspace-rem-work-done-token (token workspace)
+  "Remove TOKEN from the WORKSPACE work-done-tokens."
+  (remhash token (lsp--workspace-work-done-tokens workspace)))
 
 
 (defun lsp--make-notification (method &optional params)
@@ -3407,9 +3459,14 @@ in that particular folder."
     (cl-first (read-from-string (f-read-text file 'utf-8)))))
 
 (defun lsp--persist (file-name to-persist)
-  "Persist TO-PERSIST in FILE-NAME."
+  "Persist TO-PERSIST in FILE-NAME.
+
+This function creates the parent directories if they don't exist
+yet."
   (let ((print-length nil)
         (print-level nil))
+    ;; Create all parent directories:
+    (apply #'f-mkdir (f-split (f-parent file-name)))
     (f-write-text (prin1-to-string to-persist) 'utf-8 file-name)))
 
 (defun lsp-workspace-folders-add (project-root)
@@ -3909,6 +3966,7 @@ LSP server result."
                    (buffer-substring-no-properties
                     (line-beginning-position)
                     (point))))
+         (yas-wrap-around-region nil)
          (yas-indent-line (unless keep-whitespace 'auto))
          (yas-also-auto-indent-first-line nil)
          (indent-line-function (if (or lsp-enable-relative-indentation
@@ -4540,13 +4598,6 @@ If INCLUDE-DECLARATION is non-nil, request the server to include declarations."
   (run-hooks 'lsp-eldoc-hook)
   eldoc-last-message)
 
-(eval-and-compile
-  (defun dash-expand:&lsp-wks (key source)
-    `(,(intern-soft (format "lsp--workspace-%s" (eval key))) ,source))
-
-  (defun dash-expand:&lsp-cln (key source)
-    `(,(intern-soft (format "lsp--client-%s" (eval key))) ,source)))
-
 (defun lsp--point-on-highlight? ()
   (-some? (lambda (overlay)
             (overlay-get overlay 'lsp-highlight))
@@ -4738,13 +4789,13 @@ In addition, each can have property:
 (defun lsp--render-string (str language)
   "Render STR using `major-mode' corresponding to LANGUAGE.
 When language is nil render as markup if `markdown-mode' is loaded."
-  (setq str (or str ""))
+  (setq str (s-replace "\r" "" (or str "")))
   (if-let ((mode (-some (-lambda ((mode . lang))
-                          (when (and (equal lang language) (functionp mode))
-                            mode))
-                        lsp-language-id-configuration)))
+                           (when (and (equal lang language) (functionp mode))
+                             mode))
+                         lsp-language-id-configuration)))
       (lsp--fontlock-with-mode str mode)
-    (s-replace "\r" "" str)))
+    str))
 
 (defun lsp--render-element (content)
   "Render CONTENT element."
@@ -4867,6 +4918,30 @@ RENDER-ALL - nil if only the signature should be rendered."
         (let ((lv-force-update t))
           (lv-message "%s" message)))
     (lv-delete-window)))
+
+(declare-function posframe-show "ext:posframe")
+(declare-function posframe-hide "ext:posframe")
+(declare-function posframe-poshandler-point-bottom-left-corner-upward "ext:posframe")
+
+(defvar lsp-signature-posframe-params
+  (list :poshandler #'posframe-poshandler-point-bottom-left-corner-upward
+        :background-color (face-attribute 'tooltip :background)
+        :height 6
+        :width 60
+        :min-width 60)
+  "Params for signature and `posframe-show'.")
+
+(defun lsp-signature-posframe (str)
+  (if str
+      (apply #'posframe-show
+             (with-current-buffer (get-buffer-create "*lsp-signature*")
+               (erase-buffer)
+               (insert str)
+               (visual-line-mode 1)
+               (current-buffer))
+             :position (point)
+             lsp-signature-posframe-params)
+    (posframe-hide "*lsp-signature*")))
 
 (defun lsp--handle-signature-update (signature)
   (let ((message
@@ -5413,17 +5488,14 @@ perform the request synchronously."
 (defun lsp--xref-elements-index (symbols path)
   (-mapcat
    (-lambda (sym)
-     (cond
-      ((lsp-document-symbol? sym)
-       (-let [(&DocumentSymbol :name :children? :selection-range (&RangeToPoint :start))
-              sym]
-         (cons (cons (concat path name) start)
-               (lsp--xref-elements-index children? (concat path name " / ")))))
-      (t
-       (-let [(&SymbolInformation :name :location (&RangeToPoint :start)) sym]
-         (cons (cons (concat path name)
-                     (lsp--position-to-point start))
-               (lsp--xref-elements-index nil (concat path name " / ")))))))
+     (pcase-exhaustive sym
+       ((DocumentSymbol :name :children? :selection-range (Range :start))
+        (cons (cons (concat path name)
+                    (lsp--position-to-point start))
+              (lsp--xref-elements-index children? (concat path name " / "))))
+       ((SymbolInformation :name :location (Location :range (Range :start)))
+        (list (cons (concat path name)
+                    (lsp--position-to-point start))))))
    symbols))
 
 (defvar-local lsp--symbols-cache nil)
@@ -5730,11 +5802,13 @@ textDocument/didOpen for the new file."
 (defconst lsp--default-notification-handlers
   (ht ("window/showMessage" #'lsp--window-show-message)
       ("window/logMessage" #'lsp--window-log-message)
+      ("workspace/semanticTokens/refresh" #'ignore)
       ("textDocument/publishDiagnostics" #'lsp--on-diagnostics)
       ("textDocument/diagnosticsEnd" #'ignore)
       ("textDocument/diagnosticsBegin" #'ignore)
       ("telemetry/event" #'ignore)
-      ("$/progress" #'lsp--on-progress)))
+      ("$/progress" (lambda (workspace params)
+                      (funcall lsp-progress-function workspace params)))))
 
 (lsp-defun lsp--on-notification (workspace (&JSONNotification :params :method))
   "Call the appropriate handler for NOTIFICATION."
@@ -7329,12 +7403,12 @@ When ALL is t, erase all log buffers of the running session."
   "Visual representation WORKSPACE."
   (let* ((proc (lsp--workspace-cmd-proc workspace))
          (status (lsp--workspace-status workspace))
-         (server-id (-> workspace lsp--workspace-client lsp--client-server-id symbol-name (propertize 'face 'bold-italic)))
-         (pid (propertize (format "%s" (process-id proc)) 'face 'italic)))
+         (server-id (-> workspace lsp--workspace-client lsp--client-server-id symbol-name))
+         (pid (process-id proc)))
 
     (if (eq 'initialized status)
         (format "%s:%s" server-id pid)
-      (format "%s:%s status:%s" server-id pid status))))
+      (format "%s:%s/%s" server-id pid status))))
 
 (defun lsp--map-tree-widget (m)
   "Build `tree-widget' from a hash-table M."
