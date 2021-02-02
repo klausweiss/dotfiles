@@ -24,11 +24,10 @@
 
 ;;; Code:
 
-(eval-when-compile
-  (require 'subr-x))
-
 (require 'magit)
 
+(declare-function change-log-insert-entries "add-log" (changelogs))
+(declare-function diff-add-log-current-defuns "diff-mode" ())
 (declare-function dired-read-shell-command "dired-aux" (prompt arg files))
 ;; For `magit-project-status'.
 (declare-function project-root "project" (project))

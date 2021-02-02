@@ -74,13 +74,13 @@
 
 ;;; Code:
 
-(require 'dash)
+(require 'magit)
+
 (require 'easymenu)
 (require 'server)
 (require 'with-editor)
-(require 'magit)
 
-(eval-when-compile (require 'recentf))
+(defvar recentf-exclude)
 
 ;;; Options
 ;;;; Variables

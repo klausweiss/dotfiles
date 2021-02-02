@@ -40,9 +40,9 @@
 
 (require 'cl-lib)
 (require 'dash)
-
-(eval-when-compile
-  (require 'subr-x))
+(require 'eieio)
+(require 'seq)
+(require 'subr-x)
 
 (require 'crm)
 
@@ -687,9 +687,11 @@ This is similar to `read-string', but
            (debug (form form &rest (characterp form body))))
   `(prog1 (pcase (read-char-choice
                   (concat ,prompt
-                          ,(concat (mapconcat 'cadr clauses ", ")
-                                   (and verbose ", or [C-g] to abort") " "))
-                  ',(mapcar 'car clauses))
+                          (mapconcat #'identity
+                                     (list ,@(mapcar #'cadr clauses))
+                                     ", ")
+                          ,(if verbose ", or [C-g] to abort " " "))
+                  ',(mapcar #'car clauses))
             ,@(--map `(,(car it) ,@(cddr it)) clauses))
      (message "")))
 

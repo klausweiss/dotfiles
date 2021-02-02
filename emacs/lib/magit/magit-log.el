@@ -53,9 +53,6 @@
 (require 'crm)
 (require 'which-func)
 
-(eval-when-compile
-  (require 'subr-x))
-
 ;;; Options
 ;;;; Log Mode
 
@@ -1069,6 +1066,7 @@ Do not add this to a hook variable."
           (setq args (cons "--decorate=full" (remove "--decorate" args))))
         (when (member "--reverse" args)
           (setq args (remove "--graph" args)))
+        (setq args (magit-diff--maybe-add-stat-arguments args))
         args)
       "--use-mailmap" "--no-prefix" revs "--" files)))
 

@@ -113,18 +113,19 @@
 ;;;; Dependencies
 
 (require 'dash)
-(require 'log-edit)
+(require 'subr-x)
+
 (require 'magit-git nil t)
 (require 'magit-utils nil t)
+
+(require 'log-edit)
 (require 'ring)
 (require 'rx)
 (require 'server)
 (require 'transient)
 (require 'with-editor)
 
-(eval-when-compile
-  (require 'recentf)
-  (require 'subr-x))
+(defvar recentf-exclude)
 
 ;;;; Declarations
 
