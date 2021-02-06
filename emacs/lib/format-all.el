@@ -3,7 +3,7 @@
 ;; Author: Lassi Kortela <lassi@lassi.io>
 ;; URL: https://github.com/lassik/emacs-format-all-the-code
 ;; Version: 0.3.0
-;; Package-Requires: ((emacs "24.3") (language-id "0.10") (inheritenv "0.1"))
+;; Package-Requires: ((emacs "24.3") (language-id "0.11") (inheritenv "0.1"))
 ;; Keywords: languages util
 ;; SPDX-License-Identifier: MIT
 ;;
@@ -26,8 +26,9 @@
 ;; - Assembly (asmfmt)
 ;; - ATS (atsfmt)
 ;; - Bazel Starlark (buildifier)
-;; - BibTeX (emacs)
-;; - C/C++/Objective-C (clang-format)
+;; - BibTeX (Emacs)
+;; - C/C++/Objective-C (clang-format, astyle)
+;; - C# (clang-format, astyle)
 ;; - Cabal (cabal-fmt)
 ;; - Clojure/ClojureScript (node-cljfmt)
 ;; - CMake (cmake-format)
@@ -39,15 +40,16 @@
 ;; - Dockerfile (dockfmt)
 ;; - Elixir (mix format)
 ;; - Elm (elm-format)
-;; - Emacs Lisp (emacs)
+;; - Emacs Lisp (Emacs)
 ;; - Fish Shell (fish_indent)
 ;; - Fortran 90 (fprettify)
 ;; - Gleam (gleam format)
+;; - GLSL (clang-format)
 ;; - Go (gofmt, goimports)
 ;; - GraphQL (prettier)
 ;; - Haskell (brittany, hindent, stylish-haskell)
 ;; - HTML/XHTML/XML (tidy)
-;; - Java (clang-format)
+;; - Java (clang-format, astyle)
 ;; - JavaScript/JSON/JSX (prettier, standard)
 ;; - Jsonnet (jsonnetfmt)
 ;; - Kotlin (ktlint)
@@ -55,7 +57,7 @@
 ;; - Ledger (ledger-mode)
 ;; - Lua (lua-fmt, prettier plugin-lua)
 ;; - Markdown (prettier)
-;; - Nix (nixfmt)
+;; - Nix (nixpkgs-fmt, nixfmt)
 ;; - OCaml (ocp-indent)
 ;; - Perl (perltidy)
 ;; - PHP (prettier plugin-php)
@@ -94,6 +96,7 @@
 
 (require 'cl-lib)
 (require 'language-id)
+(require 'inheritenv)
 
 (defgroup format-all nil
   "Lets you auto-format source code."
@@ -110,12 +113,13 @@
     ("Bazel" buildifier)
     ("BibTeX" bibtex-mode)
     ("C" clang-format)
+    ("C#" clang-format)
     ("C++" clang-format)
-    ("CMake" cmake-format)
-    ("CSS" prettier)
     ("Cabal Config" cabal-fmt)
     ("Clojure" cljfmt)
+    ("CMake" cmake-format)
     ("Crystal" crystal)
+    ("CSS" prettier)
     ("D" dfmt)
     ("Dart" dartfmt)
     ("Dhall" dhall)
@@ -127,24 +131,24 @@
     ("GLSL" clang-format)
     ("Go" gofmt)
     ("GraphQL" prettier)
-    ("HTML" html-tidy)
     ("Haskell" brittany)
-    ("JSON" prettier)
-    ("JSX" prettier)
+    ("HTML" html-tidy)
     ("Java" clang-format)
     ("JavaScript" prettier)
+    ("JSON" prettier)
     ("Jsonnet" jsonnetfmt)
+    ("JSX" prettier)
     ("Kotlin" ktlint)
     ("LaTeX" latexindent)
     ("Less" prettier)
     ("Literate Haskell" brittany)
     ("Lua" lua-fmt)
     ("Markdown" prettier)
-    ("Nix" nixfmt)
-    ("OCaml" ocp-indent)
+    ("Nix" nixpkgs-fmt)
     ("Objective-C" clang-format)
-    ("PHP" prettier)
+    ("OCaml" ocp-indent)
     ("Perl" perltidy)
+    ("PHP" prettier)
     ("Protocol Buffer" clang-format)
     ("PureScript" purty)
     ("Python" black)
@@ -152,20 +156,21 @@
     ("Reason" bsrefmt)
     ("Ruby" rufo)
     ("Rust" rustfmt)
-    ("SCSS" prettier)
-    ("SQL" sqlformat)
     ("Scala" scalafmt)
+    ("SCSS" prettier)
     ("Shell" shfmt)
     ("Solidity" prettier)
+    ("SQL" sqlformat)
     ("Swift" swiftformat)
+    ("Terraform" terraform-fmt)
     ("TOML" prettier)
     ("TSX" prettier)
-    ("Terraform" terraform-fmt)
     ("TypeScript" prettier)
     ("Verilog" istyle-verilog)
     ("Vue" prettier)
     ("XML" html-tidy)
     ("YAML" prettier)
+
     ("_Angular" prettier)
     ("_Flow" prettier)
     ("_Fortran 90" fprettify)
@@ -337,6 +342,12 @@ functions to avoid warnings from the Emacs byte compiler."
      (format-all--fix-trailing-whitespace)
      (list nil ""))))
 
+(defun format-all--locate-file (filename)
+  "Internal helper to locate dominating copy of FILENAME for current buffer."
+    (let* ((dir (and (buffer-file-name)
+                     (locate-dominating-file (buffer-file-name) filename))))
+      (when dir (expand-file-name (concat dir filename)))))
+
 (defun format-all--locate-default-directory (root-files)
   "Internal helper function to find working directory for formatter.
 
@@ -474,6 +485,15 @@ Consult the existing formatters for examples of BODY."
   (:languages "Assembly")
   (:format (format-all--buffer-easy executable)))
 
+(define-format-all-formatter astyle
+  (:executable "astyle")
+  (:install (macos "brew install astyle"))
+  (:languages "C" "C++" "C#" "Java")
+  (:format (format-all--buffer-easy
+            executable
+            (let ((astylerc (format-all--locate-file ".astylerc")))
+              (when astylerc (concat "--options=" astylerc))))))
+
 (define-format-all-formatter atsfmt
   (:executable "atsfmt")
   (:install "cabal new-install ats-format --happy-options='-gcsa' -O2")
@@ -533,7 +553,7 @@ Consult the existing formatters for examples of BODY."
   (:install
    (macos "brew install clang-format")
    (windows "scoop install llvm"))
-  (:languages "C" "C++" "GLSL" "Java" "Objective-C" "Protocol Buffer")
+  (:languages "C" "C#" "C++" "GLSL" "Java" "Objective-C" "Protocol Buffer")
   (:format
    (format-all--buffer-easy
     executable
@@ -541,6 +561,7 @@ Consult the existing formatters for examples of BODY."
             (or (buffer-file-name)
                 (cdr (assoc language
                             '(("C"               . ".c")
+                              ("C#"              . ".cs")
                               ("C++"             . ".cpp")
                               ("GLSL"            . ".glsl")
                               ("Java"            . ".java")
@@ -713,13 +734,19 @@ Consult the existing formatters for examples of BODY."
     nil nil '("mix.exs")
     executable
     "format"
-    (let ((config-file (format-all--find-file ".formatter.exs")))
+    (let ((config-file (format-all--locate-file ".formatter.exs")))
       (when config-file (list "--dot-formatter" config-file)))
     "-")))
 
 (define-format-all-formatter nixfmt
   (:executable "nixfmt")
   (:install "nix-env -f https://github.com/serokell/nixfmt/archive/master.tar.gz -i")
+  (:languages "Nix")
+  (:format (format-all--buffer-easy executable)))
+
+(define-format-all-formatter nixpkgs-fmt
+  (:executable "nixpkgs-fmt")
+  (:install "nix-env -f https://github.com/nix-community/nixpkgs-fmt/archive/master.tar.gz -i")
   (:languages "Nix")
   (:format (format-all--buffer-easy executable)))
 
@@ -760,7 +787,7 @@ Consult the existing formatters for examples of BODY."
                                     ("TSX"        . "typescript")))))
                  (if pair (cdr pair) (downcase language)))
     (when (buffer-file-name) (list "--stdin-filepath" (buffer-file-name)))
-    (let ((ignore-file (format-all--find-file ".prettierignore")))
+    (let ((ignore-file (format-all--locate-file ".prettierignore")))
       (when ignore-file (list "--ignore-path" ignore-file))))))
 
 (define-format-all-formatter purty
@@ -1055,12 +1082,6 @@ format buffers on save. This is a lenient version of
 an error if the current buffer has no formatter."
   (let ((language (format-all--language-id-buffer)))
     (format-all--run-chain language (format-all--get-chain language))))
-
-(defun format-all--find-file (filename)
-  "Internal helper function to locate a dominating file for the current buffer."
-    (let* ((dir (and (buffer-file-name)
-                     (locate-dominating-file (buffer-file-name) filename))))
-      (when dir (expand-file-name (concat dir filename)))))
 
 ;;;###autoload
 (defun format-all-buffer (&optional prompt)

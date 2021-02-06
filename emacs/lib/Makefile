@@ -10,6 +10,7 @@ EXEC_PATH_FROM_SHELL_URL := https://raw.githubusercontent.com/purcell/exec-path-
 EXPAND_REGION_REPO := https://github.com/magnars/expand-region.el.git
 FLYCHECK_REPO := https://github.com/flycheck/flycheck.git
 FORMAT_ALL_THE_CODE_URL := https://raw.githubusercontent.com/lassik/emacs-format-all-the-code/master/format-all.el
+	INHERITENV_URL := https://raw.githubusercontent.com/purcell/inheritenv/main/inheritenv.el
 	LANGUAGE_ID_URL := https://raw.githubusercontent.com/lassik/emacs-language-id/master/language-id.el
 HASKELL_MODE_REPO := https://github.com/haskell/haskell-mode.git
 JUMP_TREE_MODE_REPO := https://github.com/yangwen0228/jump-tree
@@ -154,6 +155,7 @@ update-f:
 	$(call download-from-url, $(F_URL))
 
 update-format-all: \
+	update-inheritenv \
 	update-language-id \
 
 	$(call download-from-url, $(FORMAT_ALL_THE_CODE_URL))
@@ -169,6 +171,9 @@ update-haskell-mode:
 
 update-ht:
 	$(call download-from-url, $(HT_URL))
+
+update-inheritenv:
+	$(call download-from-url, $(INHERITENV_URL))
 
 update-jump-tree-mode:
 	$(call download-from-repo, $(JUMP_TREE_MODE_REPO))
