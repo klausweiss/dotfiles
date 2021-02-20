@@ -1,6 +1,6 @@
 ;;; magit-version.el --- the Magit version you are using
 
-(setq magit-version "5ae42a5bb8a764c648be2af58c5843469dd8cf1")
+(setq magit-version "3505b6934b8d5133d1bdb7e3d6ace147532ccc1")
 
 (provide 'magit-version)
 

@@ -171,11 +171,12 @@ itself from the hook, to avoid further futile attempts."
     "Please enter the passphrase for the ssh key"
     "Please enter the passphrase to unlock the OpenPGP secret key"
     "^.*'s password: ?$"
+    "^Token: $" ; For git-credential-manager-core (#4318).
     "^Yubikey for .*: ?$"
     "^Enter PIN for .*: ?$")
   "List of regexps matching password prompts of Git and its subprocesses.
 Also see `magit-process-find-password-functions'."
-  :package-version '(magit . "2.8.0")
+  :package-version '(magit . "3.0.0")
   :group 'magit-process
   :type '(repeat (regexp)))
 
@@ -580,7 +581,7 @@ Magit status buffer."
     (process-put process 'section section)
     (process-put process 'command-buf (current-buffer))
     (process-put process 'default-dir default-directory)
-    (when inhibit-magit-refresh
+    (when magit-inhibit-refresh
       (process-put process 'inhibit-refresh t))
     (oset section process process)
     (with-current-buffer process-buf
@@ -786,13 +787,38 @@ To use this function add it to the appropriate hook
             'magit-process-password-auth-source)
 
 KEY typically derives from a prompt such as:
-  Password for 'https://tarsius@bitbucket.org'
+  Password for 'https://yourname@github.com'
 in which case it would be the string
-  tarsius@bitbucket.org
+  yourname@github.com
 which matches the ~/.authinfo.gpg entry
-  machine bitbucket.org login tarsius password 12345
+  machine github.com login yourname password 12345
 or iff that is undefined, for backward compatibility
-  machine tarsius@bitbucket.org password 12345"
+  machine yourname@github.com password 12345
+
+On github.com you should not use your password but a
+personal access token, see [1].  For information about
+the peculiarities of other forges, please consult the
+respective documentation.
+
+After manually editing ~/.authinfo.gpg you must reset
+the cache using
+  M-x auth-source-forget-all-cached RET
+
+The above will save you from having to repeatedly type
+your token or password, but you might still repeatedly
+be asked for your username.  To prevent that, change an
+URL like
+  https://github.com/foo/bar.git
+to
+  https://yourname@github.com/foo/bar.git
+
+Instead of changing all such URLs manually, they can
+be translated on the fly by doing this once
+  git config --global \
+    url.https://yourname@github.com.insteadOf \
+    https://github.com
+
+[1]: https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token."
   (require 'auth-source)
   (and (string-match "\\`\\(.+\\)@\\([^@]+\\)\\'" key)
        (let* ((user (match-string 1 key))
@@ -805,6 +831,19 @@ or iff that is undefined, for backward compatibility
          (if (functionp secret)
              (funcall secret)
            secret))))
+
+(defun magit-process-git-credential-manager-core (process string)
+  "Authenticate using `git-credential-manager-core'.
+
+To use this function add it to the appropriate hook
+  (add-hook 'magit-process-prompt-functions
+            'magit-process-git-credential-manager-core)"
+  (and (string-match "^option (enter for default): $" string)
+       (progn
+         (magit-process-buffer)
+         (process-send-string
+          process
+          (format "%c" (read-char-choice "Option: " '(?\r ?\j ?1 ?2)))))))
 
 (defun magit-process-password-prompt (process string)
   "Find a password based on prompt STRING and send it to git.
@@ -967,8 +1006,8 @@ If STR is supplied, it replaces the `mode-line-process' text."
       ;; The following closure captures the repokey value, and is
       ;; added to `pre-command-hook'.
       (cl-labels ((enable-magit-process-unset-mode-line
-                   () ;; Remove ourself from the hook variable, so
-                      ;; that we only run once.
+                   () ;;; Remove ourself from the hook variable, so
+                      ;;; that we only run once.
                    (remove-hook 'pre-command-hook
                                 #'enable-magit-process-unset-mode-line)
                    ;; Clear the inhibit flag for the repository in

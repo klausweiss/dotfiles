@@ -59,6 +59,20 @@ Each element of the list will be passed as a separate
   :type '(repeat string)
   :group 'dockerfile)
 
+(defcustom dockerfile-use-buildkit nil
+  "If t use Docker buildkit for building images
+
+This is the new buildsystem for docker, and in time it will replace the old one
+but for now it has to be explicitly enabled to work.
+It is supported from docker 18.09"
+  :type 'boolean)
+
+(defcustom dockerfile-indent-offset (or standard-indent 2)
+  "Dockerfile number of columns for margin-changing functions to indent."
+  :type 'integer
+  :safe #'integerp
+  :group 'dockerfile)
+
 (defface dockerfile-image-name
   '((t (:inherit (font-lock-type-face bold))))
   "Face to highlight the base image name after FROM instruction.")
@@ -122,7 +136,7 @@ Each element of the list will be passed as a separate
   "Indent lines in a Dockerfile.
 
 Lines beginning with a keyword are ignored, and any others are
-indented by one `tab-width'."
+indented by one `dockerfile-indent-offset'."
   (unless (member (get-text-property (point-at-bol) 'face)
                   '(font-lock-comment-delimiter-face font-lock-keyword-face))
     (save-excursion
@@ -131,7 +145,7 @@ indented by one `tab-width'."
       (unless (equal (point) (point-at-eol)) ; Ignore empty lines.
         ;; Delete existing whitespace.
         (delete-char (- (point-at-bol) (point)))
-        (indent-to tab-width)))))
+        (indent-to dockerfile-indent-offset)))))
 
 (defun dockerfile-build-arg-string ()
   "Create a --build-arg string for each element in `dockerfile-build-args'."
@@ -176,7 +190,8 @@ The build string will be of the format:
   (save-buffer)
     (compilation-start
         (format
-            "%s%s build %s %s %s -f %s %s"
+            "%s%s%s build %s %s %s -f %s %s"
+            (if dockerfile-use-buildkit "DOCKER_BUILDKIT=1 " "")
             (if dockerfile-use-sudo "sudo " "")
             dockerfile-mode-command
             (if no-cache "--no-cache" "")
@@ -226,7 +241,10 @@ returned, otherwise the base image name is used."
   (set (make-local-variable 'indent-line-function) #'dockerfile-indent-line-function))
 
 ;;;###autoload
-(add-to-list 'auto-mode-alist '("Dockerfile\\(?:\\..*\\)?\\'" . dockerfile-mode))
+(add-to-list 'auto-mode-alist '("/Dockerfile\\(?:\\..*\\)?\\'" . dockerfile-mode))
+
+;;;###autoload
+(add-to-list 'auto-mode-alist '("\\.dockerfile\\'" . dockerfile-mode))
 
 (provide 'dockerfile-mode)
 

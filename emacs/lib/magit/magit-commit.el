@@ -144,27 +144,45 @@ Also see `git-commit-post-finish-hook'."
   :shortarg "-S"
   :argument "--gpg-sign="
   :allow-empty t
-  :reader 'magit-read-gpg-secret-key)
+  :reader 'magit-read-gpg-signing-key)
 
 (defvar magit-gpg-secret-key-hist nil)
 
-(defun magit-read-gpg-secret-key (prompt &optional initial-input history)
+(defun magit-read-gpg-secret-key
+    (prompt &optional initial-input history predicate)
   (require 'epa)
-  (let* ((keys (mapcar
-                (lambda (obj)
-                  (let ((key (epg-sub-key-id (car (epg-key-sub-key-list obj))))
-                        (author
-                         (when-let ((id-obj (car (epg-key-user-id-list obj))))
-                           (let ((id-str (epg-user-id-string id-obj)))
-                             (if (stringp id-str)
-                                 id-str
-                               (epg-decode-dn id-obj))))))
-                    (propertize key 'display (concat key " " author))))
+  (let* ((keys (mapcan
+                (lambda (cert)
+                  (and (or (not predicate)
+                           (funcall predicate cert))
+                       (let* ((key (car (epg-key-sub-key-list cert)))
+                              (fpr (epg-sub-key-fingerprint key))
+                              (id  (epg-sub-key-id key))
+                              (author
+                               (when-let ((id-obj
+                                           (car (epg-key-user-id-list cert))))
+                                 (let ((id-str (epg-user-id-string id-obj)))
+                                   (if (stringp id-str)
+                                       id-str
+                                     (epg-decode-dn id-obj))))))
+                         (list
+                          (propertize fpr 'display
+                                      (concat (substring fpr 0 (- (length id)))
+                                              (propertize id 'face 'highlight)
+                                              " " author))))))
                 (epg-list-keys (epg-make-context epa-protocol) nil t)))
          (choice (completing-read prompt keys nil nil nil
                                   history nil initial-input)))
     (set-text-properties 0 (length choice) nil choice)
     choice))
+
+(defun magit-read-gpg-signing-key (prompt &optional initial-input history)
+  (magit-read-gpg-secret-key
+   prompt initial-input history
+   (lambda (cert)
+     (cl-some (lambda (key)
+                (memq 'sign (epg-sub-key-capability key)))
+              (epg-key-sub-key-list cert)))))
 
 (transient-define-argument magit-commit:--reuse-message ()
   :description "Reuse commit message"
@@ -390,29 +408,37 @@ depending on the value of option `magit-commit-squash-confirm'."
 (defvar magit--reshelve-history nil)
 
 ;;;###autoload
-(defun magit-commit-reshelve (date)
+(defun magit-commit-reshelve (date update-author &optional args)
   "Change the committer date and possibly the author date of `HEAD'.
 
-If you are the author of `HEAD', then both dates are changed,
-otherwise only the committer date.  The current time is used
-as the initial minibuffer input and the original author (if
-that is you) or committer date is available as the previous
-history element."
+The current time is used as the initial minibuffer input and the
+original author or committer date is available as the previous
+history element.
+
+Both the author and the committer dates are changes, unless one
+of the following is true, in which case only the committer date
+is updated:
+- You are not the author of the commit that is being reshelved.
+- The command was invoked with a prefix argument.
+- Non-interactively if UPDATE-AUTHOR is nil."
   (interactive
-   (let ((author-p (magit-rev-author-p "HEAD")))
-     (push (magit-rev-format (if author-p "%ad" "%cd") "HEAD"
+   (let ((update-author (and (magit-rev-author-p "HEAD")
+                             (not current-prefix-arg))))
+     (push (magit-rev-format (if update-author "%ad" "%cd") "HEAD"
                              (concat "--date=format:%F %T %z"))
            magit--reshelve-history)
-     (list (read-string (if author-p
+     (list (read-string (if update-author
                             "Change author and committer dates to: "
                           "Change committer date to: ")
                         (cons (format-time-string "%F %T %z") 17)
-                        'magit--reshelve-history))))
+                        'magit--reshelve-history)
+           update-author
+           (magit-commit-arguments))))
   (let ((process-environment process-environment))
     (push (concat "GIT_COMMITTER_DATE=" date) process-environment)
     (magit-run-git "commit" "--amend" "--no-edit"
-                   (and (magit-rev-author-p "HEAD")
-                        (concat "--date=" date)))))
+                   (and update-author (concat "--date=" date))
+                   args)))
 
 ;;;###autoload
 (defun magit-commit-absorb-modules (phase commit)

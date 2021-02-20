@@ -128,7 +128,7 @@
     ;; Meta
     ("\\.tags"          all-the-icons-octicon "tag"                     :height 1.0 :v-adjust 0.0 :face all-the-icons-blue)
     ("^TAGS$"           all-the-icons-octicon "tag"                     :height 1.0 :v-adjust 0.0 :face all-the-icons-blue)
-    ("\\.log$"          all-the-icons-octicon "bug"                     :height 1.0 :v-adjust 0.0 :face all-the-icons-maroon)
+    ("\\.log$"          all-the-icons-faicon "file-o"                   :v-adjust 0.0 :face all-the-icons-dsilver)
 
     ;;
     ("\\.key$"          all-the-icons-octicon "key"                     :v-adjust 0.0 :face all-the-icons-lblue)
@@ -269,7 +269,11 @@
     ("-?spec\\."        all-the-icons-fileicon "test-generic"           :height 1.0 :v-adjust 0.0 :face all-the-icons-dgreen)
     ("-?test\\."        all-the-icons-fileicon "test-generic"           :height 1.0 :v-adjust 0.0 :face all-the-icons-dgreen)
 
+    ("\\.tcl$"          all-the-icons-fileicon "tcl"                    :height 1.0 :face all-the-icons-dred)
+
     ("\\.tf\\(vars\\|state\\)?$" all-the-icons-fileicon "terraform"     :height 1.0 :face all-the-icons-purple-alt)
+
+    ("\\.asm$"          all-the-icons-fileicon "assembly"               :height 1.0 :face all-the-icons-blue)
 
     ;; Verilog(-AMS) and SystemVerilog(-AMS)
     ("\\.v$"             all-the-icons-fileicon "verilog"               :height 1.0 :v-adjust -0.2 :face all-the-icons-red)
@@ -531,7 +535,7 @@
     (org-agenda-mode           all-the-icons-octicon "checklist"           :v-adjust 0.0 :face all-the-icons-lgreen)
     (cfw:calendar-mode         all-the-icons-octicon "calendar"            :v-adjust 0.0)
     (ibuffer-mode              all-the-icons-faicon "files-o"              :v-adjust 0.0 :face all-the-icons-dsilver)
-    (messages-buffer-mode      all-the-icons-faicon "stack-overflow"       :v-adjust -0.1)
+    (messages-buffer-mode      all-the-icons-faicon "file-o"               :v-adjust 0.0 :face all-the-icons-dsilver)
     (help-mode                 all-the-icons-faicon "info"                 :v-adjust -0.1 :face all-the-icons-purple)
     (benchmark-init/tree-mode  all-the-icons-octicon "dashboard"           :v-adjust 0.0)
     (jenkins-mode              all-the-icons-fileicon "jenkins"            :face all-the-icons-blue)
@@ -636,6 +640,9 @@
     (latex-mode                         all-the-icons-fileicon "tex"              :face all-the-icons-lred)
     (dart-mode                          all-the-icons-fileicon "dart"             :height 1.0  :face all-the-icons-blue)
     (fsharp-mode                        all-the-icons-fileicon "fsharp"           :height 1.0  :face all-the-icons-blue)
+    (asm-mode                           all-the-icons-fileicon "assembly"         :height 1.0  :face all-the-icons-blue)
+    (nasm-mode                          all-the-icons-fileicon "assembly"         :height 1.0  :face all-the-icons-blue)
+    (tcl-mode                           all-the-icons-fileicon "tcl"              :height 1.0  :face all-the-icons-dred)
     ))
 
 (defvar all-the-icons-url-alist
@@ -995,12 +1002,15 @@ When PFX is non-nil, ignore the prompt and just install"
   (interactive "P")
   (when (or pfx (yes-or-no-p "This will download and install fonts, are you sure you want to do this?"))
     (let* ((url-format "https://raw.githubusercontent.com/domtronn/all-the-icons.el/master/fonts/%s")
-           (font-dest (cl-case window-system
-                        (x  (concat (or (getenv "XDG_DATA_HOME")            ;; Default Linux install directories
-                                        (concat (getenv "HOME") "/.local/share"))
-                                    "/fonts/"))
-                        (mac (concat (getenv "HOME") "/Library/Fonts/" ))
-                        (ns (concat (getenv "HOME") "/Library/Fonts/" ))))  ;; Default MacOS install directory
+           (font-dest (cond
+                       ;; Default Linux install directories
+                       ((member system-type '(gnu gnu/linux gnu/kfreebsd))
+                        (concat (or (getenv "XDG_DATA_HOME")
+                                    (concat (getenv "HOME") "/.local/share"))
+                                "/fonts/"))
+                       ;; Default MacOS install directory
+                       ((eq system-type 'darwin)
+                        (concat (getenv "HOME") "/Library/Fonts/"))))
            (known-dest? (stringp font-dest))
            (font-dest (or font-dest (read-directory-name "Font installation directory: " "~/"))))
 

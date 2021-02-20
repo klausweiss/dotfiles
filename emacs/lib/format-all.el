@@ -3,7 +3,7 @@
 ;; Author: Lassi Kortela <lassi@lassi.io>
 ;; URL: https://github.com/lassik/emacs-format-all-the-code
 ;; Version: 0.3.0
-;; Package-Requires: ((emacs "24.3") (language-id "0.11") (inheritenv "0.1"))
+;; Package-Requires: ((emacs "24.3") (inheritenv "0.1") (language-id "0.12"))
 ;; Keywords: languages util
 ;; SPDX-License-Identifier: MIT
 ;;
@@ -47,7 +47,7 @@
 ;; - GLSL (clang-format)
 ;; - Go (gofmt, goimports)
 ;; - GraphQL (prettier)
-;; - Haskell (brittany, hindent, stylish-haskell)
+;; - Haskell (brittany, hindent, ormolu, stylish-haskell)
 ;; - HTML/XHTML/XML (tidy)
 ;; - Java (clang-format, astyle)
 ;; - JavaScript/JSON/JSX (prettier, standard)
@@ -66,6 +66,7 @@
 ;; - Python (black, yapf)
 ;; - R (styler)
 ;; - Reason (bsrefmt)
+;; - ReScript (resfmt)
 ;; - Ruby (rufo)
 ;; - Rust (rustfmt)
 ;; - Scala (scalafmt)
@@ -95,8 +96,8 @@
 ;;; Code:
 
 (require 'cl-lib)
-(require 'language-id)
 (require 'inheritenv)
+(require 'language-id)
 
 (defgroup format-all nil
   "Lets you auto-format source code."
@@ -154,6 +155,7 @@
     ("Python" black)
     ("R" styler)
     ("Reason" bsrefmt)
+    ("ReScript" resfmt)
     ("Ruby" rufo)
     ("Rust" rustfmt)
     ("Scala" scalafmt)
@@ -238,6 +240,53 @@ You'll probably want to set this in a \".dir-locals.el\" file or
 in a hook function. Any number of buffers can share the same
 association list. Using \".dir-locals.el\" is convenient since
 the rules for an entire source tree can be given in one file.")
+
+(defun format-all--proper-list-p (object)
+  "Return t if OBJECT is a proper list, nil otherwise."
+  ;; If we could depend on Emacs 27.1 this function would be built in.
+  (and (listp object) (not (null (cl-list-length object)))))
+
+(defun format-all--normalize-formatter (formatter)
+  "Internal function to convert FORMATTER spec into normal form."
+  (let ((formatter (if (listp formatter) formatter (list formatter))))
+    (when (cdr (last formatter))
+      (error "Formatter is not a proper list: %S" formatter))
+    (when (null formatter)
+      (error "Formatter name missing"))
+    (unless (symbolp (car formatter))
+      (error "Formatter name is not a symbol: %S" (car formatter)))
+    (unless (cl-every #'stringp (cdr formatter))
+      (error "Formatter command line arguments are not all strings: %S"
+             formatter))
+    formatter))
+
+(defun format-all--normalize-chain (chain)
+  "Internal function to convert CHAIN spec into normal form."
+  (when (or (not (listp chain)) (cdr (last chain)))
+    (error "Formatter chain is not a proper list: %S" chain))
+  (mapcar #'format-all--normalize-formatter chain))
+
+(defun format-all-valid-formatters-p (formatters)
+  "Return t if FORMATTERS is a valid value for `format-all-formatters'."
+  (and (format-all--proper-list-p formatters)
+       (cl-every
+        (lambda (chain)
+          (and (not (null chain))
+               (format-all--proper-list-p chain)
+               (stringp (car chain))
+               (cl-every
+                (lambda (formatter)
+                  (and (not (null formatter))
+                       (or (symbolp formatter)
+                           (and (format-all--proper-list-p formatter)
+                                (and (symbolp (car formatter))
+                                     (not (null (car formatter))))
+                                (cl-every #'stringp (cdr formatter))))))
+                (cdr chain))))
+        formatters)))
+
+(put 'format-all-formatters 'safe-local-variable
+     'format-all-valid-formatters-p)
 
 (eval-and-compile
   (defconst format-all--system-type
@@ -756,6 +805,12 @@ Consult the existing formatters for examples of BODY."
   (:languages "OCaml")
   (:format (format-all--buffer-easy executable)))
 
+(define-format-all-formatter ormolu
+  (:executable "ormolu")
+  (:install "stack install ormolu")
+  (:languages "Haskell" "Literate Haskell")
+  (:format (format-all--buffer-easy executable)))
+
 (define-format-all-formatter perltidy
   (:executable "perltidy")
   (:install "cpan install Perl::Tidy")
@@ -795,6 +850,12 @@ Consult the existing formatters for examples of BODY."
   (:install "npm install --global purty")
   (:languages "PureScript")
   (:format (format-all--buffer-easy executable "-")))
+
+(define-format-all-formatter resfmt
+  (:executable "resfmt")
+  (:install "pip install resfmt")
+  (:languages "ReScript")
+  (:format (format-all--buffer-easy executable)))
 
 (define-format-all-formatter rufo
   (:executable "rufo")
@@ -898,7 +959,11 @@ Consult the existing formatters for examples of BODY."
   (:executable "swiftformat")
   (:install (macos "brew install swiftformat"))
   (:languages "Swift")
-  (:format (format-all--buffer-easy executable "--quiet")))
+  (:format
+   (format-all--buffer-easy
+    executable "--quiet"
+    (let ((config (format-all--locate-file ".swiftformat")))
+      (when config (list "--config" config))))))
 
 (define-format-all-formatter terraform-fmt
   (:executable "terraform")
@@ -975,26 +1040,6 @@ STATUS and ERROR-OUTPUT come from the formatter."
     (forward-line (1- old-line-number))
     (let ((line-length (- (point-at-eol) (point-at-bol))))
       (goto-char (+ (point) (min old-column line-length))))))
-
-(defun format-all--normalize-formatter (formatter)
-  "Internal function to convert FORMATTER spec into normal form."
-  (let ((formatter (if (listp formatter) formatter (list formatter))))
-    (when (cdr (last formatter))
-      (error "Formatter is not a proper list: %S" formatter))
-    (when (null formatter)
-      (error "Formatter name missing"))
-    (unless (symbolp (car formatter))
-      (error "Formatter name is not a symbol: %S" (car formatter)))
-    (unless (cl-every #'stringp (cdr formatter))
-      (error "Formatter command line arguments are not all strings: %S"
-             formatter))
-    formatter))
-
-(defun format-all--normalize-chain (chain)
-  "Internal function to convert CHAIN spec into normal form."
-  (when (or (not (listp chain)) (cdr (last chain)))
-    (error "Formatter chain is not a proper list: %S" chain))
-  (mapcar #'format-all--normalize-formatter chain))
 
 (defun format-all--run-chain (language chain)
   "Internal function to run a formatter CHAIN on the current buffer.

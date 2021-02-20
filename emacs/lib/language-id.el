@@ -2,7 +2,7 @@
 ;;
 ;; Author: Lassi Kortela <lassi@lassi.io>
 ;; URL: https://github.com/lassik/emacs-language-id
-;; Version: 0.11
+;; Version: 0.12
 ;; Package-Requires: ((emacs "24") (cl-lib "0.5"))
 ;; Keywords: languages util
 ;; SPDX-License-Identifier: ISC
@@ -67,6 +67,13 @@
       (web-mode-content-type "javascript")
       (web-mode-engine "none")
       (language-id--file-name-extension ".ts")))
+
+    ;; ReScript needs to come before Reason because in reason-mode
+    ;; we can tell them apart by file name extension only.
+    ("ReScript"
+     (reason-mode
+      (language-id--file-name-extension ".res")))
+    ("Reason" reason-mode)
 
     ;; vue-html-mode is derived from html-mode.
     ("Vue"
@@ -135,7 +142,6 @@
     ("Python" python-mode)
     ("R" ess-r-mode (ess-mode (ess-dialect "R")))
     ("Racket" racket-mode)
-    ("Reason" reason-mode)
     ("Ruby" enh-ruby-mode ruby-mode)
     ("Rust" rust-mode rustic-mode)
     ("Scala" scala-mode)

@@ -4,7 +4,7 @@
 
 ;; Author: Vibhav Pant, Fangrui Song, Ivan Yonchovski
 ;; Keywords: languages
-;; Package-Requires: ((emacs "26.1") (dash "2.14.1") (dash-functional "2.14.1") (f "0.20.0") (ht "2.0") (spinner "1.7.3") (markdown-mode "2.3") (lv "0"))
+;; Package-Requires: ((emacs "26.1") (dash "2.18.0") (f "0.20.0") (ht "2.3") (spinner "1.7.3") (markdown-mode "2.3") (lv "0"))
 ;; Version: 7.1.0
 
 ;; URL: https://github.com/emacs-lsp/lsp-mode
@@ -32,7 +32,6 @@
 (require 'cl-lib)
 (require 'compile)
 (require 'dash)
-(require 'dash-functional)
 (require 'ewoc)
 (require 'f)
 (require 'filenotify)
@@ -355,6 +354,8 @@ creating file watches."
 
 (defcustom lsp-file-watch-ignored-files
   '(
+    ;; Flycheck tempfiles
+    "[/\\\\]flycheck_[^/\\\\]+\\'"
     ;; lockfiles
     "[/\\\\]\\.#[^/\\\\]+\\'"
     ;; backup files
@@ -681,6 +682,7 @@ Changes take effect only when a new session is started."
                                         (".*\\.lua$" . "lua")
                                         (".*\\.sql$" . "sql")
                                         (".*\\.html$" . "html")
+                                        (".*/settings.json$" . "jsonc")
                                         (".*\\.json$" . "json")
                                         (".*\\.jsonc$" . "jsonc")
                                         (ada-mode . "ada")
@@ -1900,6 +1902,16 @@ WORKSPACE is the workspace that contains the progress token."
 
 ;; diagnostics
 
+(defvar lsp-diagnostic-filter nil
+  "A a function which will be called with
+  `&PublishDiagnosticsParams' and `workspace' which can be used
+  to filter out the diagnostics. The function should return
+  `&PublishDiagnosticsParams'.
+
+Common usecase are:
+1. Filter the diagnostics for a particular language server.
+2. Filter out the diagnostics under specific level.")
+
 (defvar lsp-diagnostic-stats (ht))
 
 (defun lsp-diagnostics (&optional current-workspace?)
@@ -1951,8 +1963,7 @@ The result format is vector [_ errors warnings infos hints] or nil."
                                           (directory-file-name path)))))
       (lsp-diagnostics--update-path path new-stats))))
 
-(lsp-defun lsp--on-diagnostics (workspace (params &as
-                                                  &PublishDiagnosticsParams :uri :diagnostics))
+(defun lsp--on-diagnostics (workspace params)
   "Callback for textDocument/publishDiagnostics.
 interface PublishDiagnosticsParams {
     uri: string;
@@ -1960,10 +1971,15 @@ interface PublishDiagnosticsParams {
 }
 PARAMS contains the diagnostics data.
 WORKSPACE is the workspace that contains the diagnostics."
+  (when lsp-diagnostic-filter
+    (setf params (funcall lsp-diagnostic-filter params workspace)))
+
   (lsp--on-diagnostics-update-stats workspace params)
-  (let* ((lsp--virtual-buffer-mappings (ht))
-         (file (lsp--fix-path-casing (lsp--uri-to-path uri)))
-         (workspace-diagnostics (lsp--workspace-diagnostics workspace)))
+
+  (-let* (((&PublishDiagnosticsParams :uri :diagnostics) params)
+          (lsp--virtual-buffer-mappings (ht))
+          (file (lsp--fix-path-casing (lsp--uri-to-path uri)))
+          (workspace-diagnostics (lsp--workspace-diagnostics workspace)))
 
     (if (seq-empty-p diagnostics)
         (remhash file workspace-diagnostics)
@@ -1983,14 +1999,6 @@ WORKSPACE is the workspace that contains the diagnostics."
   (clrhash (lsp--workspace-diagnostics workspace)))
 
 
-
-(defun lsp--ht-get (tbl &rest keys)
-  "Get nested KEYS in TBL."
-  (let ((val tbl))
-    (while (and keys val)
-      (setq val (ht-get val (cl-first keys)))
-      (setq keys (cl-rest keys)))
-    val))
 
 ;; textDocument/foldingRange support
 
@@ -4406,9 +4414,10 @@ one of the LANGUAGES."
                (file-name (lsp-f-canonical file-name)))
     (->> (lsp-session)
          (lsp-session-folders)
-         (--first (and (lsp--files-same-host it file-name)
+         (--filter (and (lsp--files-same-host it file-name)
                        (or (lsp-f-ancestor-of? it file-name)
-                           (equal it file-name)))))))
+                           (equal it file-name))))
+         (--max-by (> (length it) (length other))))))
 
 (defun lsp-on-revert ()
   "Executed when a file is reverted.
@@ -5161,12 +5170,13 @@ It will show up only if current point has signature help."
   "Handler for editor.action.triggerSuggest."
   (cond
    ((and company-mode
-         (fboundp 'company-complete)
+         (fboundp 'company-auto-begin)
          (fboundp 'company-post-command))
-    (run-at-time nil nil
+    (run-at-time 0 nil
                  (lambda ()
-                   (company-complete)
-                   (company-post-command))))
+                   (company-auto-begin)
+                   (let ((this-command 'company-idle-begin))
+                     (company-post-command)))))
    (t
     (completion-at-point))))
 
@@ -5376,7 +5386,7 @@ A reference is highlighted only if it is visible in a window."
         wins-visible-pos))
      highlights)))
 
-(defconst lsp--symbol-kind
+(defcustom lsp-symbol-kinds
   '((1 . "File")
     (2 . "Module")
     (3 . "Namespace")
@@ -5402,14 +5412,23 @@ A reference is highlighted only if it is visible in a window."
     (23 . "Struct")
     (24 . "Event")
     (25 . "Operator")
-    (26 . "Type Parameter")))
+    (26 . "Type Parameter"))
+  "Alist mapping SymbolKinds to human-readable strings.
+Various Symbol objects in the LSP protocol have an integral type,
+specifying what they are. This alist maps such type integrals to
+readable representations of them. See
+`https://microsoft.github.io/language-server-protocol/specifications/specification-current/',
+namespace SymbolKind."
+  :group 'lsp-mode
+  :type '(alist :key-type integer :value-type string))
+(defalias 'lsp--symbol-kind 'lsp-symbol-kinds)
 
 (lsp-defun lsp--symbol-information-to-xref
   ((&SymbolInformation :kind :name
                        :location (&Location :uri :range (&Range :start
                                                                 (&Position :line :character)))))
   "Return a `xref-item' from SYMBOL information."
-  (xref-make (format "[%s] %s" (alist-get kind lsp--symbol-kind) name)
+  (xref-make (format "[%s] %s" (alist-get kind lsp-symbol-kinds) name)
              (xref-make-file-location (lsp--uri-to-path uri)
                                       line
                                       character)))
@@ -6236,10 +6255,7 @@ an alist
 
 (lsp-defun lsp--get-symbol-type ((&SymbolInformation :kind))
   "The string name of the kind of SYM."
-  (-> kind
-      (assoc lsp--symbol-kind)
-      (cl-rest)
-      (or "Other")))
+  (alist-get kind lsp-symbol-kinds "Other"))
 
 (defun lsp--get-line-and-col (sym)
   "Obtain the line and column corresponding to SYM."
@@ -6287,15 +6303,144 @@ representation to point representation."
                   (< c1 c2))
                  (c1 t)))))
 
-(defun lsp--imenu-create-index ()
-  "Create imenu index from document symbols."
-  (let* ((filtered-symbols (lsp--imenu-filter-symbols (lsp--get-document-symbols)))
-         (lsp--line-col-to-point-hash-table (-> filtered-symbols
+(defun lsp-imenu-create-uncategorized-index (symbols)
+  "Create imenu index from document SYMBOLS.
+This function, unlike `lsp-imenu-create-categorized-index', does
+not categorize by type, but instead returns an `imenu' index
+corresponding to the symbol hierarchy returned by the server
+directly."
+  (let* ((lsp--line-col-to-point-hash-table (-> symbols
                                                 lsp--collect-lines-and-cols
                                                 lsp--convert-line-col-to-points-batch)))
-    (if (lsp--imenu-hierarchical-p filtered-symbols)
-        (lsp--imenu-create-hierarchical-index filtered-symbols)
-      (lsp--imenu-create-non-hierarchical-index filtered-symbols))))
+    (if (lsp--imenu-hierarchical-p symbols)
+        (lsp--imenu-create-hierarchical-index symbols)
+      (lsp--imenu-create-non-hierarchical-index symbols))))
+
+(defcustom lsp-imenu-symbol-kinds
+  '((1 . "Files")
+    (2 . "Modules")
+    (3 . "Namespaces")
+    (4 . "Packages")
+    (5 . "Classes")
+    (6 . "Methods")
+    (7 . "Properties")
+    (8 . "Fields")
+    (9 . "Constructors")
+    (10 . "Enums")
+    (11 . "Interfaces")
+    (12 . "Functions")
+    (13 . "Variables")
+    (14 . "Constants")
+    (15 . "Strings")
+    (16 . "Numbers")
+    (17 . "Booleans")
+    (18 . "Arrays")
+    (19 . "Objects")
+    (20 . "Keys")
+    (21 . "Nulls")
+    (22 . "Enum Members")
+    (23 . "Structs")
+    (24 . "Events")
+    (25 . "Operators")
+    (26 . "Type Parameters"))
+  "`lsp-symbol-kinds', but only used by `imenu'.
+A new variable is needed, as it is `imenu' convention to use
+pluralized categories, which `lsp-symbol-kinds' doesn't. If the
+non-pluralized names are preferred, this can be set to
+`lsp-symbol-kinds'."
+  :type '(alist :key-type integer :value-type string))
+
+(defun lsp--imenu-kind->name (kind)
+  (alist-get kind lsp-imenu-symbol-kinds "?"))
+
+(defun lsp-imenu-create-top-level-categorized-index (symbols)
+  "Create an `imenu' index categorizing SYMBOLS by type.
+Only root symbols are categorized.
+
+See `lsp-symbol-kinds' to customize the category naming. SYMBOLS
+shall be a list of DocumentSymbols or SymbolInformation."
+  (mapcan
+   (-lambda ((type . symbols))
+     (let ((cat (lsp--imenu-kind->name type))
+           (symbols (lsp-imenu-create-uncategorized-index symbols)))
+       ;; If there is no :kind (this is being defensive), or we couldn't look it
+       ;; up, just display the symbols inline, without categories.
+       (if cat (list (cons cat symbols)) symbols)))
+   (sort (seq-group-by #'lsp:document-symbol-kind symbols)
+         (-lambda ((kinda) (kindb)) (< kinda kindb)))))
+
+(lsp-defun lsp--symbol->imenu ((sym &as &DocumentSymbol :selection-range (&RangeToPoint :start)))
+  "Convert an `&DocumentSymbol' to an `imenu' entry."
+  (cons (lsp-render-symbol sym lsp-imenu-detailed-outline) start))
+
+(defun lsp--imenu-create-categorized-index-1 (symbols)
+  "Returns an `imenu' index from SYMBOLS categorized by type.
+The result looks like this: ((\"Variables\" . (...)))."
+  (->>
+   symbols
+   (mapcan
+    (-lambda ((sym &as &DocumentSymbol :kind :children?))
+      (if (seq-empty-p children?)
+          (list (list kind (lsp--symbol->imenu sym)))
+        (let ((parent (lsp-render-symbol sym lsp-imenu-detailed-outline)))
+          (cons
+           (list kind (lsp--symbol->imenu sym))
+           (mapcar (-lambda ((type .  imenu-items))
+                     (list type (cons parent (mapcan #'cdr imenu-items))))
+                   (-group-by #'car (lsp--imenu-create-categorized-index-1 children?))))))))
+   (-group-by #'car)
+   (mapcar
+    (-lambda ((kind . syms))
+      (cons kind (mapcan #'cdr syms))))))
+
+(defun lsp--imenu-create-categorized-index (symbols)
+  (let ((syms (lsp--imenu-create-categorized-index-1 symbols)))
+    (dolist (sym syms)
+      (setcar sym (lsp--imenu-kind->name (car sym))))
+    syms))
+
+(lsp-defun lsp--symbol-information->imenu ((sym &as &SymbolInformation :location (&Location :range (&RangeToPoint :start))))
+  (cons (lsp-render-symbol-information sym nil) start))
+
+(defun lsp--imenu-create-categorized-index-flat (symbols)
+  "Create a kind-categorized index for SymbolInformation."
+  (mapcar (-lambda ((kind . syms))
+            (cons (lsp--imenu-kind->name kind)
+                  (mapcan (-lambda ((parent . children))
+                            (let ((children (mapcar #'lsp--symbol-information->imenu children)))
+                              (if parent (list (cons parent children)) children)))
+                          (-group-by #'lsp:symbol-information-container-name? syms))))
+          (seq-group-by #'lsp:symbol-information-kind symbols)))
+
+(defun lsp-imenu-create-categorized-index (symbols)
+  (if (lsp--imenu-hierarchical-p symbols)
+      (lsp--imenu-create-categorized-index symbols)
+    (lsp--imenu-create-categorized-index-flat symbols)))
+
+(defcustom lsp-imenu-index-function #'lsp-imenu-create-uncategorized-index
+  "Function that should create an `imenu' index.
+It will be called with a list of SymbolInformation or
+DocumentSymbols, whose first level is already filtered. It shall
+then return an appropriate `imenu' index (see
+`imenu-create-index-function').
+
+Note that this interface is not stable, and subject to change any
+time."
+  :group 'lsp-imenu
+  :type '(radio
+          (const :tag "Categorize by type"
+                 lsp-imenu-create-categorized-index)
+          (const :tag "Categorize root symbols by type"
+                 lsp-imenu-create-top-level-categorized-index)
+          (const :tag "Uncategorized, inline entries"
+                 lsp-imenu-create-uncategorized-index)
+          (function :tag "Custom function")))
+
+(defun lsp--imenu-create-index ()
+  "Create an `imenu' index based on the language server.
+Respects `lsp-imenu-index-function'."
+  (let ((symbols (lsp--imenu-filter-symbols (lsp--get-document-symbols))))
+    (funcall lsp-imenu-index-function symbols)))
 
 (defun lsp--imenu-filter-symbols (symbols)
   "Filter out unsupported symbols from SYMBOLS."
@@ -6642,9 +6787,10 @@ returns the command to execute."
   (when (or (eq lsp-restart 'auto-restart)
             (eq (lsp--workspace-shutdown-action workspace) 'restart)
             (and (eq lsp-restart 'interactive)
-                 (let ((query (format "Server %s exited with status %s. Do you want to restart it?"
-                                      (lsp--workspace-print workspace)
-                                      (process-status (lsp--workspace-proc workspace)))))
+                 (let ((query (format
+                               "Server %s exited with status %s(check corresponding stderr buffer for details). Do you want to restart it?"
+                               (lsp--workspace-print workspace)
+                               (process-status (lsp--workspace-proc workspace)))))
                    (y-or-n-p query))))
     (--each (lsp--workspace-buffers workspace)
       (when (lsp-buffer-live-p it)
@@ -7077,7 +7223,7 @@ nil."
                (pcase decompress
                  (:gzip
                   (lsp-gunzip download-path))
-                 (:zip (lsp-unzip download-path store-path)))
+                 (:zip (lsp-unzip download-path (f-parent store-path))))
                (lsp--info "Decompressed %s..." store-path))
              (funcall callback))
          (error (funcall error-callback err)))))))
@@ -7113,7 +7259,7 @@ STORE-PATH to make it executable."
   :package-version '(lsp-mode . "7.1"))
 
 (defun lsp-unzip (zip-file dest)
-  "Get extension from URL and extract to DEST."
+  "Unzip ZIP-FILE to DEST."
   (unless lsp-unzip-script
     (error "Unable to find `unzip' or `powershell' on the path, please customize `lsp-unzip-script'"))
   (shell-command (format lsp-unzip-script zip-file dest)))
@@ -7133,7 +7279,7 @@ in place."
   :package-version '(lsp-mode . "7.1"))
 
 (defun lsp-gunzip (gz-file)
-  "Decompress file in place."
+  "Decompress GZ-FILE in place."
   (unless lsp-gunzip-script
     (error "Unable to find `gzip' on the path, please either customize `lsp-gunzip-script' or manually decompress %s" gz-file))
   (shell-command (format lsp-gunzip-script gz-file)))
@@ -8044,9 +8190,11 @@ This avoids overloading the server with many files when starting Emacs."
 
 (declare-function flycheck-checker-supports-major-mode-p "ext:flycheck")
 (declare-function flycheck-add-mode "ext:flycheck")
+(declare-function lsp-diagnostics-lsp-checker-if-needed "lsp-diagnostics")
 
 (defun lsp-flycheck-add-mode (mode)
   "Register flycheck support for MODE."
+  (lsp-diagnostics-lsp-checker-if-needed)
   (unless (flycheck-checker-supports-major-mode-p 'lsp mode)
     (flycheck-add-mode 'lsp mode)))
 
