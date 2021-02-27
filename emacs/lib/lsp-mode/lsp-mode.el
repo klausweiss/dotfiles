@@ -2218,27 +2218,34 @@ WORKSPACE is the workspace that contains the diagnostics."
 
 
 ;; keybindings
+(defvar lsp--binding-descriptions nil
+  "List of key binding/short description pair.")
 
-(defmacro lsp-define-conditional-key (keymap key def cond &rest bindings)
+(defmacro lsp-define-conditional-key (keymap key def desc cond &rest bindings)
   "In KEYMAP, define key sequence KEY as DEF conditionally.
 This is like `define-key', except the definition disappears
 whenever COND evaluates to nil.
-BINDINGS is a list of (key def cond)."
+DESC is the short-description for the binding.
+BINDINGS is a list of (key def desc cond)."
   (declare (indent defun)
-           (debug (form form form form &rest sexp)))
-  (->> (cl-list* key def cond bindings)
-       (-partition 3)
-       (-map (-lambda ((key def cond))
-               `(define-key ,keymap ,key
-                  '(menu-item
-                    ,(format "maybe-%s" def)
-                    ,def
-                    :filter (lambda (item)
-                              (when (with-current-buffer (or (when (buffer-live-p lsp--describe-buffer)
-                                                               lsp--describe-buffer)
-                                                             (current-buffer))
-                                      ,cond)
-                                item))))))
+           (debug (form form form form form &rest sexp)))
+  (->> (cl-list* key def desc cond bindings)
+       (-partition 4)
+       (-mapcat (-lambda ((key def desc cond))
+                  `((define-key ,keymap ,key
+                      '(menu-item
+                        ,(format "maybe-%s" def)
+                        ,def
+                        :filter
+                        (lambda (item)
+                          (when (with-current-buffer (or (when (buffer-live-p lsp--describe-buffer)
+                                                           lsp--describe-buffer)
+                                                         (current-buffer))
+                                  ,cond)
+                            item))))
+                    (when (stringp ,key)
+                      (setq lsp--binding-descriptions
+                            (nconc lsp--binding-descriptions '(,key ,desc)))))))
        macroexp-progn))
 
 (defvar lsp--describe-buffer nil)
@@ -2261,70 +2268,76 @@ BINDINGS is a list of (key def cond)."
   (-doto (make-sparse-keymap)
     (lsp-define-conditional-key
       ;; sessions
-      "sr" lsp-workspace-restart (lsp-workspaces)
-      "ss" lsp t
-      "sq" lsp-workspace-shutdown (lsp-workspaces)
-      "sd" lsp-describe-session t
-      "sD" lsp-disconnect (lsp-workspaces)
+      "sD" lsp-disconnect "disconnect" (lsp-workspaces)
+      "sd" lsp-describe-session "describe session" t
+      "sq" lsp-workspace-shutdown "shutdown server" (lsp-workspaces)
+      "sr" lsp-workspace-restart "restart server" (lsp-workspaces)
+      "ss" lsp "start server" t
 
       ;; formatting
-      "==" lsp-format-buffer (or (lsp-feature? "textDocument/rangeFormatting")
-                                 (lsp-feature? "textDocument/formatting"))
-      "=r" lsp-format-region (lsp-feature? "textDocument/rangeFormatting")
+      "==" lsp-format-buffer "format buffer" (or (lsp-feature? "textDocument/rangeFormatting")
+                                                 (lsp-feature? "textDocument/formatting"))
+      "=r" lsp-format-region "format region" (lsp-feature? "textDocument/rangeFormatting")
 
       ;; folders
-      "Fa" lsp-workspace-folders-add t
-      "Fr" lsp-workspace-folders-remove t
-      "Fb" lsp-workspace-blacklist-remove t
+      "Fa" lsp-workspace-folders-add "add folder" t
+      "Fb" lsp-workspace-blacklist-remove "un-blacklist folder" t
+      "Fr" lsp-workspace-folders-remove "remove folder" t
 
       ;; toggles
-      "Tl" lsp-lens-mode (lsp-feature? "textDocument/codeLens")
-      "TL" lsp-toggle-trace-io t
-      "Th" lsp-toggle-symbol-highlight (lsp-feature? "textDocument/documentHighlight")
-      "Tb" lsp-headerline-breadcrumb-mode (lsp-feature? "textDocument/documentSymbol")
-      "Ta" lsp-modeline-code-actions-mode (lsp-feature? "textDocument/codeAction")
-      "TD" lsp-modeline-diagnostics-mode (lsp-feature? "textDocument/publishDiagnostics")
-      "TS" lsp-ui-sideline-mode (featurep 'lsp-ui-sideline)
-      "Td" lsp-ui-doc-mode (featurep 'lsp-ui-doc)
-      "Ts" lsp-toggle-signature-auto-activate (lsp-feature? "textDocument/signatureHelp")
-      "Tf" lsp-toggle-on-type-formatting (lsp-feature? "textDocument/onTypeFormatting")
-      "TT" lsp-treemacs-sync-mode (featurep 'lsp-treemacs)
+      "TD" lsp-modeline-diagnostics-mode "toggle modeline diagnostics" (lsp-feature?
+                                                                        "textDocument/publishDiagnostics")
+      "TL" lsp-toggle-trace-io "toggle log io" t
+      "TS" lsp-ui-sideline-mode "toggle sideline" (featurep 'lsp-ui-sideline)
+      "TT" lsp-treemacs-sync-mode "toggle treemacs integration" (featurep 'lsp-treemacs)
+      "Ta" lsp-modeline-code-actions-mode "toggle modeline code actions" (lsp-feature?
+                                                                          "textDocument/codeAction")
+      "Tb" lsp-headerline-breadcrumb-mode "toggle breadcrumb" (lsp-feature?
+                                                               "textDocument/documentSymbol")
+      "Td" lsp-ui-doc-mode "toggle documentation popup" (featurep 'lsp-ui-doc)
+      "Tf" lsp-toggle-on-type-formatting "toggle on type formatting" (lsp-feature?
+                                                                      "textDocument/onTypeFormatting")
+      "Th" lsp-toggle-symbol-highlight "toggle highlighting" (lsp-feature? "textDocument/documentHighlight")
+      "Tl" lsp-lens-mode "toggle lenses" (lsp-feature? "textDocument/codeLens")
+      "Ts" lsp-toggle-signature-auto-activate "toggle signature" (lsp-feature? "textDocument/signatureHelp")
 
       ;; goto
-      "gg" lsp-find-definition (lsp-feature? "textDocument/definition")
-      "gr" lsp-find-references (lsp-feature? "textDocument/references")
-      "gi" lsp-find-implementation (lsp-feature? "textDocument/implementation")
-      "gt" lsp-find-type-definition (lsp-feature? "textDocument/typeDefinition")
-      "gd" lsp-find-declaration (lsp-feature? "textDocument/declaration")
-      "gh" lsp-treemacs-call-hierarchy (and (lsp-feature? "callHierarchy/incomingCalls")
-                                            (fboundp 'lsp-treemacs-call-hierarchy))
-      "ga" xref-find-apropos (lsp-feature? "workspace/symbol")
-      "ge" lsp-treemacs-errors-list (fboundp 'lsp-treemacs-errors-list)
+      "ga" xref-find-apropos "find symbol in workspace" (lsp-feature? "workspace/symbol")
+      "gd" lsp-find-declaration "find declarations" (lsp-feature? "textDocument/declaration")
+      "ge" lsp-treemacs-errors-list "show errors" (fboundp 'lsp-treemacs-errors-list)
+      "gg" lsp-find-definition "find definitions" (lsp-feature? "textDocument/definition")
+      "gh" lsp-treemacs-call-hierarchy "call hierarchy" (and (lsp-feature? "callHierarchy/incomingCalls")
+                                                             (fboundp 'lsp-treemacs-call-hierarchy))
+      "gi" lsp-find-implementation "find implementations" (lsp-feature? "textDocument/implementation")
+      "gr" lsp-find-references "find references" (lsp-feature? "textDocument/references")
+      "gt" lsp-find-type-definition "find type definition" (lsp-feature? "textDocument/typeDefinition")
 
       ;; help
-      "hh" lsp-describe-thing-at-point (lsp-feature? "textDocument/hover")
-      "hs" lsp-signature-activate (lsp-feature? "textDocument/signatureHelp")
-      "hg" lsp-ui-doc-glance (and (featurep 'lsp-ui-doc)
-                                  (lsp-feature? "textDocument/hover"))
+      "hg" lsp-ui-doc-glance "glance symbol" (and (featurep 'lsp-ui-doc)
+                                                  (lsp-feature? "textDocument/hover"))
+      "hh" lsp-describe-thing-at-point "describe symbol at point" (lsp-feature? "textDocument/hover")
+      "hs" lsp-signature-activate "signature help" (lsp-feature? "textDocument/signatureHelp")
 
       ;; refactoring
-      "rr" lsp-rename (lsp-feature? "textDocument/rename")
-      "ro" lsp-organize-imports (lsp-feature? "textDocument/codeAction")
+      "ro" lsp-organize-imports "organize imports" (lsp-feature? "textDocument/codeAction")
+      "rr" lsp-rename "rename" (lsp-feature? "textDocument/rename")
 
       ;; actions
-      "aa" lsp-execute-code-action (lsp-feature? "textDocument/codeAction")
-      "al" lsp-avy-lens (and (bound-and-true-p lsp-lens-mode) (featurep 'avy))
-      "ah" lsp-document-highlight (lsp-feature? "textDocument/documentHighlight")
+      "aa" lsp-execute-code-action "code actions" (lsp-feature? "textDocument/codeAction")
+      "ah" lsp-document-highlight "highlight symbol" (lsp-feature? "textDocument/documentHighlight")
+      "al" lsp-avy-lens "lens" (and (bound-and-true-p lsp-lens-mode) (featurep 'avy))
 
       ;; peeks
-      "Gg" lsp-ui-peek-find-definitions (and (lsp-feature? "textDocument/definition")
-                                             (fboundp 'lsp-ui-peek-find-definitions))
-      "Gr" lsp-ui-peek-find-references (and (fboundp 'lsp-ui-peek-find-references)
-                                            (lsp-feature? "textDocument/references"))
-      "Gi" lsp-ui-peek-find-implementation (and (fboundp 'lsp-ui-peek-find-implementation)
-                                                (lsp-feature? "textDocument/implementation"))
-      "Gs" lsp-ui-peek-find-workspace-symbol (and (fboundp 'lsp-ui-peek-find-workspace-symbol)
-                                                  (lsp-feature? "workspace/symbol")))))
+      "Gg" lsp-ui-peek-find-definitions "peek definitions" (and (lsp-feature? "textDocument/definition")
+                                                                (fboundp 'lsp-ui-peek-find-definitions))
+      "Gi" lsp-ui-peek-find-implementation "peek implementations" (and
+                                                                   (fboundp 'lsp-ui-peek-find-implementation)
+                                                                   (lsp-feature? "textDocument/implementation"))
+      "Gr" lsp-ui-peek-find-references "peek references" (and (fboundp 'lsp-ui-peek-find-references)
+                                                              (lsp-feature? "textDocument/references"))
+      "Gs" lsp-ui-peek-find-workspace-symbol "peek workspace symbol" (and (fboundp
+                                                                           'lsp-ui-peek-find-workspace-symbol)
+                                                                          (lsp-feature? "workspace/symbol")))))
 
 
 ;; which-key integration
@@ -2341,65 +2354,18 @@ active `major-mode', or for all major modes when ALL-MODES is t."
     (apply
      #'which-key-fn
      (lsp--prepend-prefix
-      (list
+      (cl-list*
        ""    "lsp"
        "s"   "sessions"
-       "s s" "start server"
-       "s r" "restart server"
-       "s q" "shutdown server"
-       "s d" "describe session"
-       "s D" "disconnect"
-
        "F"   "folders"
-       "F a" "add folder"
-       "F r" "remove folder"
-       "F b" "un-blacklist folder"
-
        "="   "formatting"
-       "= r" "format region"
-       "= =" "format buffer"
-
        "T"   "toggle"
-       "T l" "toggle lenses"
-       "T h" "toggle highlighting"
-       "T L" "toggle log io"
-       "T s" "toggle signature"
-       "T a" "toggle modeline code actions"
-       "T S" "toggle sideline"
-       "T d" "toggle documentation popup"
-       "T p" "toggle signature help"
-       "T f" "toggle on type formatting"
-       "T T" "toggle treemacs integration"
-
        "g"   "goto"
-       "g g" "find definitions"
-       "g r" "find references"
-       "g i" "find implementations"
-       "g d" "find declarations"
-       "g t" "find type definition"
-       "g h" "call hierarchy"
-       "g a" "find symbol in workspace"
-       "g A" "find symbol in all workspaces"
-       "g e" "show errors"
-
        "h"   "help"
-       "h h" "describe symbol at point"
-       "h s" "signature help"
-
        "r"   "refactor"
-       "r r" "rename"
-       "r o" "organize imports"
-
        "a"   "code actions"
-       "a a" "code actions"
-       "a l" "lens"
-       "a h" "highlight symbol"
-
        "G"   "peek"
-       "G g" "peek definitions"
-       "G r" "peek references"
-       "G i" "peek implementations"
-       "G s" "peek workspace symbol")))))
+       lsp--binding-descriptions)))))
 
 
 ;; Globbing syntax
@@ -3595,6 +3561,10 @@ yet."
                    (memq :on-trigger-char lsp-signature-auto-activate))))
       (remove-hook 'post-self-insert-hook signature-help-handler t)))))
 
+(defun lsp--after-set-visited-file-name ()
+  (lsp-disconnect)
+  (lsp))
+
 (define-minor-mode lsp-managed-mode
   "Mode for source buffers managed by lsp-mode."
   nil nil nil
@@ -3624,6 +3594,7 @@ yet."
     ;; make sure we turn off lsp-mode in case major mode changes, because major
     ;; mode change will wipe the buffer locals.
     (add-hook 'change-major-mode-hook #'lsp-disconnect nil t)
+    (add-hook 'after-set-visited-file-name-hook #'lsp--after-set-visited-file-name nil t)
 
     (let ((buffer (lsp-current-buffer)))
       (run-with-idle-timer
@@ -3660,7 +3631,9 @@ yet."
     (lsp--remove-overlays 'lsp-links)
 
     (remove-hook 'xref-backend-functions #'lsp--xref-backend t)
-    (remove-hook 'change-major-mode-hook #'lsp-disconnect t))))
+    (remove-hook 'change-major-mode-hook #'lsp-disconnect t)
+    (remove-hook 'after-set-visited-file-name-hook #'lsp--after-set-visited-file-name t)
+    (setq-local lsp-buffer-uri nil))))
 
 (defun lsp-configure-buffer ()
   "Configure LSP features for current buffer."
@@ -4399,7 +4372,9 @@ Applies on type formatting."
                             (s-matches? mode-or-pattern (buffer-file-name))) language)
                       ((eq mode-or-pattern major-mode) language))))
            cl-rest)
-      (lsp-warn "Unable to calculate the languageId for current buffer. Take a look at lsp-language-id-configuration.")))
+      (lsp-warn "Unable to calculate the languageId for buffer `%s'. Take a look at `lsp-language-id-configuration'. The `major-mode' is %s"
+                (buffer-name)
+                major-mode)))
 
 (defun lsp-activate-on (&rest languages)
   "Returns language activation function.
@@ -4946,10 +4921,13 @@ RENDER-ALL - nil if only the signature should be rendered."
         :background-color (face-attribute 'tooltip :background)
         :height 6
         :width 60
+        :border-width 10
+        :border-color (face-attribute 'tooltip :background)
         :min-width 60)
   "Params for signature and `posframe-show'.")
 
 (defun lsp-signature-posframe (str)
+  "Use posframe to show the STR signatureHelp string."
   (if str
       (apply #'posframe-show
              (with-current-buffer (get-buffer-create "*lsp-signature*")
@@ -4980,22 +4958,30 @@ It will show up only if current point has signature help."
   (add-hook 'post-command-hook #'lsp-signature)
   (lsp-signature-mode t))
 
+(defcustom lsp-signature-cycle t
+  "Whether `lsp-signature-next' and prev should cycle."
+  :type 'boolean
+  :group 'lsp-mode)
+
 (defun lsp-signature-next ()
   "Show next signature."
   (interactive)
-  (when (and lsp--signature-last-index
-             lsp--signature-last
-             (< (1+ lsp--signature-last-index) (length (lsp:signature-help-signatures lsp--signature-last))))
-    (setq lsp--signature-last-index (1+ lsp--signature-last-index))
-    (funcall lsp-signature-function (lsp--signature->message lsp--signature-last))))
+  (let ((nsigs (length (lsp:signature-help-signatures lsp--signature-last))))
+    (when (and lsp--signature-last-index
+               lsp--signature-last
+               (or lsp-signature-cycle (< (1+ lsp--signature-last-index) nsigs)))
+      (setq lsp--signature-last-index (% (1+ lsp--signature-last-index) nsigs))
+      (funcall lsp-signature-function (lsp--signature->message lsp--signature-last)))))
 
 (defun lsp-signature-previous ()
   "Next signature."
   (interactive)
   (when (and lsp--signature-last-index
              lsp--signature-last
-             (not (zerop lsp--signature-last-index)))
-    (setq lsp--signature-last-index (1- lsp--signature-last-index))
+             (or lsp-signature-cycle (not (zerop lsp--signature-last-index))))
+    (setq lsp--signature-last-index (1- (if (zerop lsp--signature-last-index)
+                                            (length (lsp:signature-help-signatures lsp--signature-last))
+                                          lsp--signature-last-index)))
     (funcall lsp-signature-function (lsp--signature->message lsp--signature-last))))
 
 (defun lsp-signature-toggle-full-docs ()
@@ -5019,11 +5005,13 @@ It will show up only if current point has signature help."
             (active-signature? (or lsp--signature-last-index active-signature? 0))
             (_ (setq lsp--signature-last-index active-signature?))
             ((signature &as &SignatureInformation? :label :parameters?) (seq-elt signatures active-signature?))
-            (prefix (concat (propertize (format " %s/%s"
-                                                (1+ active-signature?)
-                                                (length signatures))
-                                        'face 'success)
-                            " │ "))
+            (prefix (if (= (length signatures) 1)
+                        ""
+                      (concat (propertize (format " %s/%s"
+                                                  (1+ active-signature?)
+                                                  (length signatures))
+                                          'face 'success)
+                              " ")))
             (method-docs (when
                              (and lsp-signature-render-documentation
                                   (or (not (numberp lsp-signature-doc-lines)) (< 0 lsp-signature-doc-lines)))
@@ -8085,9 +8073,6 @@ This avoids overloading the server with many files when starting Emacs."
   (interactive)
   (lsp--doctor
    "Checking for Native JSON support" (functionp 'json-serialize)
-   "Using company-capf" (--find (or (equal it 'company-capf)
-                                    (and (listp it) (-contains? it 'company-capf)))
-                                company-backends)
    "Check emacs supports `read-process-output-max'" (boundp 'read-process-output-max)
    "Check `read-process-output-max' default has been changed from 4k"
    (and (boundp 'read-process-output-max)

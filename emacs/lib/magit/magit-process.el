@@ -577,7 +577,7 @@ Magit status buffer."
     (when (eq system-type 'windows-nt)
       ;; On w32, git expects UTF-8 encoded input, ignore any user
       ;; configuration telling us otherwise.
-      (set-process-coding-system process 'utf-8-unix))
+      (set-process-coding-system process nil 'utf-8-unix))
     (process-put process 'section section)
     (process-put process 'command-buf (current-buffer))
     (process-put process 'default-dir default-directory)
@@ -654,7 +654,10 @@ Magit status buffer."
     (concat (propertize (file-name-nondirectory program)
                         'font-lock-face 'magit-section-heading)
             " "
-            (propertize (char-to-string magit-ellipsis)
+            (propertize (if (stringp magit-ellipsis)
+                            magit-ellipsis
+                          ;; For backward compatibility.
+                          (char-to-string magit-ellipsis))
                         'font-lock-face 'magit-section-heading
                         'help-echo (mapconcat #'identity (car args) " "))
             " "

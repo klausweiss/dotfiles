@@ -579,7 +579,7 @@ nothing but calls to ~treemacs-create-icon~:
 
 #+BEGIN_SRC emacs-lisp
   (treemacs-create-theme "Default"
-    :icon-directory (f-join treemacs-dir "icons/default")
+    :icon-directory (treemacs-join-path treemacs-dir "icons/default")
     :config
     (progn
       (treemacs-create-icon :file "root-open.png"   :fallback ""       :extensions (root-open))
@@ -946,7 +946,6 @@ If you want to delve into the treemacs' code base, check out [[https://github.co
 
 * Dependencies
  * emacs >= 26.1
- * f.el
  * s.el
  * dash
  * cl-lib
