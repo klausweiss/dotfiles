@@ -31,6 +31,7 @@ add_rule({
       rule_any =  {
 	 class = {
 	    "Emacs",
+	    "Codium",
 	    "jetbrains-idea-ce",
 	    "jetbrains-pycharm",
 	    "jetbrains-pycharm-ce",
