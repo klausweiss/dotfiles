@@ -1,0 +1,4 @@
+#!/usr/bin/env -S perl ${HOME}/.dotfiles/install --file
+
+[symlink]
+./settings.json: ~/.config/VSCodium/User/settings.json

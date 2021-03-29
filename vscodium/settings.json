@@ -1,0 +1,8 @@
+{
+    "workbench.colorTheme": "Gruvbox Material Dark",
+    "editor.multiCursorModifier": "ctrlCmd",
+    "haskell.formattingProvider": "fourmolu",
+    "editor.fontLigatures": true,
+    "editor.fontFamily": "'JetBrains Mono','Fira Code', 'Source Code Pro', 'Droid Sans Mono', 'monospace', monospace, 'Droid Sans Fallback'"
+}
+
