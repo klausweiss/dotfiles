@@ -2,3 +2,4 @@
 
 [symlink]
 ./settings.json: ~/.config/VSCodium/User/settings.json
+./keybindings.json: ~/.config/VSCodium/User/keybindings.json
