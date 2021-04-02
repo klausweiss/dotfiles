@@ -129,10 +129,16 @@ setkey { ALT, SHIFT, "e",
 	 fun = run(programs.file_manager) }
 setkey { ALT, SHIFT, "w",
 	 fun = run(programs.internet_browser) }
+setkey { ALT, SHIFT, "m",
+	 fun = run(programs.mail_client) }
+setkey { ALT, SHIFT, "i",
+	 fun = run("signal-desktop") }
 setkey { ALT, SHIFT, "l",
 	 fun = run(programs.screen_lock) }
 setkey { ALT, SHIFT, "x",
 	 fun = run("emacs") }
+setkey { ALT, SHIFT, "d",
+	 fun = run("codium") }
 setkey { ALT, SHIFT, "k",
 	 fun = run("zim") }
 
