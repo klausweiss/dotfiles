@@ -30,7 +30,6 @@
 
 (add-to-list 'auto-mode-alist '("\\.lua$" . lua-mode))
 (add-to-list 'interpreter-mode-alist '("lua" . lua-mode))
-(add-hook 'lua-mode-hook #'lsp)
 
 (add-to-list 'auto-mode-alist '("\\.rs$" . rustic-mode))
 (add-hook 'rustic-mode-hook #'lsp)
