@@ -95,7 +95,7 @@ setkey { ALT, SHIFT, DOWN,
 setkey { ALT, SHIFT, "r",
 	 fun = awesome.restart  }
 setkey { ALT, SHIFT, "q",
-	 fun = awesome.quit }
+	 fun = run(programs.power_menu) }
 -- keyboard action keys
 setkey { "Print",
 	 fun = run(programs.screenshooter) }
