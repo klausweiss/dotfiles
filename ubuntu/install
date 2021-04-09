@@ -18,6 +18,7 @@ sudo apt install -y
      uswsusp
      vim
      xclip
+     xss-lock
      xterm
 
 # Allowing everyone to suspend to ram

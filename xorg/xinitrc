@@ -10,6 +10,9 @@ if [ -n "$DESKTOP_SESSION" ];then
     export SSH_AUTH_SOCK
 fi
 
+# use slock for locking screen
+xss-lock slock &
+
 setxkbmap pl
 setxkbmap -option shift:both_capslock
 setxkbmap -option caps:ctrl_modifier
