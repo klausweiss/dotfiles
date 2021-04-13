@@ -47,11 +47,26 @@ end)
 require("awful.autofocus")
 local handler_mouse_enter = function (client_)
    if awful.layout.get(client_.screen) ~= awful.layout.suit.magnifier
-   and awful.client.focus.filter(client_) then
+      and awful.client.focus.filter(client_) then
       client.focus = client_
    end
 end
 client.connect_signal("mouse::enter", handler_mouse_enter)
+
+local floatingontopbutton = function(c)
+   local fbut = awful.titlebar.widget.floatingbutton(c)
+   local otbut = awful.titlebar.widget.ontopbutton(c)
+   fbut:buttons(gears.table.join(
+		   otbut:buttons(),
+		   fbut:buttons()
+   ))
+   c.ontop = c.floating
+   c:connect_signal("property::floating_geometry", function()
+		       c.ontop = true
+   end)
+   return fbut
+end
+
 
 -- Add a titlebar if titlebars_enabled is set to true in the rules.
 local handler_request_titlebars = function(c)
@@ -83,8 +98,7 @@ local handler_request_titlebars = function(c)
 	 layout  = wibox.layout.flex.vertical,
       },
       { -- Right
-	 awful.titlebar.widget.floatingbutton (c),
-	 awful.titlebar.widget.ontopbutton    (c),
+	 floatingontopbutton (c),
 	 awful.titlebar.widget.stickybutton   (c),
 	 layout = wibox.layout.fixed.vertical,
       },
