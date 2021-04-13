@@ -4,7 +4,7 @@
 
 ;; Author: Oleh Krehel <ohwoeowho@gmail.com>
 ;; URL: https://github.com/abo-abo/swiper
-;; Version: 0.13.2
+;; Version: 0.13.4
 ;; Package-Requires: ((emacs "24.5"))
 ;; Keywords: matching
 
@@ -2520,7 +2520,9 @@ The previous string is between `ivy-completion-beg' and `ivy-completion-end'."
         (delete-region beg end))
       (setq ivy-completion-beg (point))
       (insert (substring-no-properties str))
-      (completion--done str 'exact)
+      (completion--done str (if (eq ivy-exit 'done)
+                                'finished
+                              'exact))
       (setq ivy-completion-end (point))
       (save-excursion
         (dolist (cursor fake-cursors)

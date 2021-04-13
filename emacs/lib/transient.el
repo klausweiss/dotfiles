@@ -550,7 +550,7 @@ If `transient-save-history' is nil, then do nothing."
    (transient-suffix     :initarg :transient-suffix     :initform nil)
    (transient-non-suffix :initarg :transient-non-suffix :initform nil)
    (incompatible         :initarg :incompatible         :initform nil)
-   (suffix-description   :initarg :suffix-description   :initform nil))
+   (suffix-description   :initarg :suffix-description))
   "Transient prefix command.
 
 Each transient prefix command consists of a command, which is
@@ -1394,7 +1394,10 @@ of the transient-specific keymaps), `transient-edit-map' and
 If you change a binding here, then you might also have to edit
 `transient-sticky-map' and `transient-common-commands'.  While
 the latter isn't a proper transient prefix command, it can be
-edited using the same functions as used for transients.")
+edited using the same functions as used for transients.
+
+If you add a new command here, then you must also add a binding
+to `transient-predicate-map'.")
 
 (defvar transient-map
   (let ((map (make-sparse-keymap)))
@@ -1408,7 +1411,10 @@ edited using the same functions as used for transients.")
     (define-key map (kbd "C-M-p") 'transient-history-prev)
     (define-key map (kbd "C-M-n") 'transient-history-next)
     map)
-  "Top-level keymap used by all transients.")
+  "Top-level keymap used by all transients.
+
+If you add a new command here, then you must also add a binding
+to `transient-predicate-map'.  Also see `transient-base-map'.")
 
 (defvar transient-edit-map
   (let ((map (make-sparse-keymap)))
@@ -2513,6 +2519,14 @@ stand-alone command."
     (transient-infix-read (get command 'transient--suffix))))
 
 ;;;; Readers
+
+(defun transient-read-file (prompt _initial-input _history)
+  "Read a file."
+  (file-local-name (expand-file-name (read-file-name prompt))))
+
+(defun transient-read-existing-file (prompt _initial-input _history)
+  "Read an existing file."
+  (file-local-name (expand-file-name (read-file-name prompt nil nil t))))
 
 (defun transient-read-directory (prompt _initial-input _history)
   "Read a directory."

@@ -840,6 +840,7 @@ problems at github. If DISABLE is non-nil disable support."
       (setq-local cursor-type nil)
       (setq-local cursor-in-non-selected-windows nil)
       (setq-local mode-line-format nil)
+      (setq-local header-line-format nil)
       (setq-local word-wrap nil)
       (setq-local show-trailing-whitespace nil)
       (run-hooks 'which-key-init-buffer-hook))))
@@ -964,8 +965,7 @@ In the second case, the second string is used to provide a longer
 name for the keys under a prefix.
 
 MORE allows you to specifcy additional KEY REPLACEMENT pairs.  All
-replacements are added to
-`which-key-key-based-description-replacement-alist'."
+replacements are added to `which-key-replacement-alist'."
   ;; TODO: Make interactive
   (while key-sequence
     ;; normalize key sequences before adding

@@ -218,6 +218,8 @@ Optional prefix ARG says how many lines to move; default is one line."
                           (cdr-safe (assoc el dashboard-item-generators))))
                     (add-to-list 'dashboard--section-starts (point))
                     (funcall item-generator list-size)
+                    (when recentf-is-on
+                      (setq recentf-list origial-recentf-list))
                     (setq max-line-length
                           (max max-line-length (dashboard-maximum-section-length)))
                     (dashboard-insert-page-break)))
@@ -265,11 +267,11 @@ assume a filename and skip displaying Dashboard."
     (add-hook 'after-init-hook (lambda ()
                                  ;; Display useful lists of items
                                  (dashboard-insert-startupify-lists)))
-    (add-hook 'emacs-startup-hook '(lambda ()
-                                     (switch-to-buffer dashboard-buffer-name)
-                                     (goto-char (point-min))
-                                     (redisplay)
-                                     (run-hooks 'dashboard-after-initialize-hook)))))
+    (add-hook 'emacs-startup-hook (lambda ()
+                                    (switch-to-buffer dashboard-buffer-name)
+                                    (goto-char (point-min))
+                                    (redisplay)
+                                    (run-hooks 'dashboard-after-initialize-hook)))))
 
 (provide 'dashboard)
 ;;; dashboard.el ends here

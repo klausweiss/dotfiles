@@ -108,7 +108,8 @@ alphabetical order, depending on your version of Ivy."
     (forge-edit-topic-note    nil t)
     (forge-pull-pullreq       nil t)
     (forge-visit-issue        nil t)
-    (forge-visit-pullreq      nil t))
+    (forge-visit-pullreq      nil t)
+    (forge-visit-topic        nil t))
   "When not to offer alternatives and ask for confirmation.
 
 Many commands by default ask the user to select from a list of
@@ -161,6 +162,7 @@ The value has the form ((COMMAND nil|PROMPT DEFAULT)...).
     (const abort-merge)
     (const merge-dirty)
     (const delete-unmerged-branch)
+    (const delete-branch-on-remote)
     (const delete-pr-remote)
     (const drop-stashes)
     (const set-and-push)
@@ -240,6 +242,13 @@ References:
   to confirm the deletion of a branch by accepting the default
   choice (or selecting another branch), but when a branch has
   not been merged yet, also make sure the user is aware of that.
+
+  `delete-branch-on-remote' Deleting a \"remote branch\" may mean
+  deleting the (local) \"remote-tracking\" branch only, or also
+  removing it from the remote itself.  The latter often makes more
+  sense because otherwise simply fetching from the remote would
+  restore the remote-tracking branch, but doing that can be
+  surprising and hard to recover from, so we ask.
 
   `delete-pr-remote' When deleting a branch that was created from
   a pull-request and if no other branches still exist on that
@@ -821,7 +830,11 @@ as STRING."
         (i 0))
     `(let ((,s ,string))
        (let ,(save-match-data
-               (--map (list it (list 'match-string (cl-incf i) s)) varlist))
+               (cl-mapcan (lambda (sym)
+                            (cl-incf i)
+                            (and (not (eq (aref (symbol-name sym) 0) ?_))
+                                 (list (list sym (list 'match-string i s)))))
+                          varlist))
          ,@body))))
 
 (defun magit-delete-line ()

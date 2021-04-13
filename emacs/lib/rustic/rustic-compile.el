@@ -393,8 +393,8 @@ This hook checks if there's a line number at the beginning of the
 current line in an error section."
   (-if-let* ((rustic-p (eq major-mode 'rustic-compilation-mode))
              (line-contents (buffer-substring-no-properties
-			                 (line-beginning-position)
-			                 (line-end-position)))
+                             (line-beginning-position)
+                             (line-end-position)))
              (line-number-p (string-match "^[0-9]+\s+\|" line-contents))
              (line-number (car (split-string line-contents))))
       (save-excursion
@@ -408,9 +408,9 @@ current line in an error section."
                (file (caar (compilation--loc->file-struct loc))))
           ;; open file of error and goto line number that we parsed from the line we are on
           (with-current-buffer (find-file-other-window file)
-	        (save-restriction
-	          (widen)
-	          (goto-char (point-min))
+            (save-restriction
+              (widen)
+              (goto-char (point-min))
               (forward-line (1- (string-to-number line-number)))))))
     (apply orig-fun args)))
 
@@ -479,18 +479,23 @@ buffer."
 ;;;###autoload
 (defun rustic-compile (&optional arg)
   "Compile rust project.
-If called without arguments use `rustic-compile-command'.
 
-Otherwise use provided argument ARG and store it in
-`compilation-arguments'."
+If `compilation-read-command' is non-nil or if called with prefix
+argument ARG then read the command in the minibuffer.  Otherwise
+use `rustic-compile-command'.
+
+In either store the used command in `compilation-arguments'."
   (interactive "P")
-  (let* ((command (setq compilation-arguments
-                        (if (or compilation-read-command arg)
-                            (read-from-minibuffer "Compile command: ")
-                          rustic-compile-command)))
-         (dir (setq compilation-directory (rustic-buffer-workspace))))
-    (rustic-compilation-process-live)
-    (rustic-compilation-start (split-string command) (list :directory dir))))
+  (setq compilation-arguments
+        (if (or compilation-read-command arg)
+            (read-from-minibuffer "Compile command: "
+                                  (or compilation-arguments
+                                      rustic-compile-command))
+          rustic-compile-command))
+  (setq compilation-directory (rustic-buffer-workspace))
+  (rustic-compilation-process-live)
+  (rustic-compilation-start (split-string compilation-arguments)
+                            (list :directory compilation-directory)))
 
 ;;;###autoload
 (defun rustic-recompile ()

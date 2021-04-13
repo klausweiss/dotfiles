@@ -46,6 +46,7 @@
   cfrs-read)
 
 (treemacs-import-functions-from "treemacs"
+  treemacs-find-file
   treemacs-select-window)
 
 (treemacs-import-functions-from "treemacs-tags"
@@ -490,14 +491,17 @@ itself, using $HOME when there is no path at or near point to grab."
                 (if treemacs-show-hidden-files "displayed." "hidden.")))
 
 (defun treemacs-toggle-fixed-width ()
-  "Toggle whether the treemacs buffer should have a fixed width.
+  "Toggle whether the local treemacs buffer should have a fixed width.
 See also `treemacs-width.'"
   (interactive)
-  (setq treemacs--width-is-locked (not treemacs--width-is-locked)
-        window-size-fixed (when treemacs--width-is-locked 'width))
-  (treemacs-log "Window width has been %s."
-                (propertize (if treemacs--width-is-locked "locked" "unlocked")
-                            'face 'font-lock-string-face)))
+  (-if-let (buffer (treemacs-get-local-buffer))
+      (with-current-buffer buffer
+        (setq treemacs--width-is-locked (not treemacs--width-is-locked)
+              window-size-fixed (when treemacs--width-is-locked 'width))
+        (treemacs-log "Window width has been %s."
+          (propertize (if treemacs--width-is-locked "locked" "unlocked")
+                      'face 'font-lock-string-face)))
+    (treemacs-log-failure "There is no treemacs buffer in the current scope.")))
 
 (defun treemacs-set-width (&optional arg)
   "Select a new value for `treemacs-width'.
@@ -1097,6 +1101,8 @@ Only works with a single project in the workspace."
   "Finish editing your workspaces and apply the change."
   (interactive)
   (treemacs-block
+   (treemacs-error-return-if (not (equal (buffer-name) treemacs--org-edit-buffer-name))
+     "This is not a valid treemacs workspace edit buffer")
    (treemacs--org-edit-remove-validation-msg)
    (widen)
    (whitespace-cleanup)
@@ -1113,14 +1119,17 @@ Only works with a single project in the workspace."
          nil
          treemacs-persist-file
          nil :silent)
-        (kill-buffer)
         (treemacs--restore)
         (-if-let (ws (treemacs--select-workspace-by-name
                       (treemacs-workspace->name (treemacs-current-workspace))))
             (setf (treemacs-current-workspace) ws)
           (treemacs--find-workspace))
         (treemacs--consolidate-projects)
-        (-some-> (get-buffer treemacs--org-edit-buffer-name) (kill-buffer))
+        (if (and (treemacs-get-local-window)
+                 (= 2 (length (window-list))))
+            (kill-buffer)
+          (quit-window)
+          (kill-buffer-and-window))
         (run-hooks 'treemacs-workspace-edit-hook)
         (treemacs-log "Edit completed successfully."))))))
 
@@ -1228,6 +1237,20 @@ absolute path of the node (if it is present)."
         (treemacs-log-failure "Shell command failed with exit code %s and output:" (process-exit-status process))
         (message "%s" (pfuture-callback-output))
         (kill-buffer buffer)))))
+
+(defun treemacs-narrow-to-current-file ()
+  "Close everything except the view on the current file.
+This command is best understood as a combination of
+`treemacs-collapse-all-projects' followed by `treemacs-find-file'."
+  (interactive)
+  (treemacs-unless-let (buffer (treemacs-get-local-buffer))
+      (treemacs-log-failure "There is no treemacs buffer")
+    (let* ((treemacs-pulse-on-success nil)
+           (treemacs-pulse-on-failure nil)
+           (treemacs--no-messages t))
+      (with-current-buffer buffer
+        (treemacs-collapse-all-projects :forget-all))
+      (treemacs-find-file))))
 
 (defun treemacs-select-scope-type ()
   "Select the scope for treemacs buffers.

@@ -4,8 +4,8 @@
 
 ;; Author: Oleh Krehel <ohwoeowho@gmail.com>
 ;; URL: https://github.com/abo-abo/swiper
-;; Version: 0.13.2
-;; Package-Requires: ((emacs "24.5") (ivy "0.13.2"))
+;; Version: 0.13.4
+;; Package-Requires: ((emacs "24.5") (ivy "0.13.4"))
 ;; Keywords: matching
 
 ;; This file is part of GNU Emacs.
@@ -1536,10 +1536,19 @@ When not running `swiper-isearch' already, start it."
           (setq thing (ivy-thing-at-point))))
       (swiper-isearch thing))))
 
+(defun swiper-isearch-C-r (&optional arg)
+  "Move cursor vertically up ARG candidates.
+When the input is empty, browse the search history instead."
+  (interactive "p")
+  (if (string= ivy-text "")
+      (ivy-reverse-i-search)
+    (ivy-previous-line arg)))
+
 (defvar swiper-isearch-map
   (let ((map (make-sparse-keymap)))
     (set-keymap-parent map swiper-map)
     (define-key map (kbd "M-n") 'swiper-isearch-thing-at-point)
+    (define-key map (kbd "C-r") 'swiper-isearch-C-r)
     map)
   "Keymap for `swiper-isearch'.")
 

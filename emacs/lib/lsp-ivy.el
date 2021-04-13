@@ -87,7 +87,11 @@
    ("Evnt" . font-lock-builtin-face)        ; Event - 24
    ("Op  " . font-lock-function-name-face)  ; Operator - 25
    ("TPar" . font-lock-type-face)]          ; TypeParameter - 26
-  "A vector of 26 cons cells, where the ith cons cell contains the string representation and face to use for the i+1th SymbolKind (defined in the LSP)."
+  "Mapping between eacho of LSP's SymbolKind and a face.
+
+A vector of 26 cons cells, where the ith cons cell contains
+the string representation and face to use for the i+1th
+SymbolKind (defined in the LSP)."
   :group 'lsp-ivy
   :type '(vector
           (cons string face)
@@ -219,6 +223,19 @@ When called with prefix ARG the default selection will be symbol at point."
    (-uniq (-flatten (ht-values (lsp-session-folder->servers (lsp-session)))))
    "Global workspace symbols: "
    (when arg (thing-at-point 'symbol))))
+
+
+
+;;;###autoload
+(defun lsp-ivy-workspace-folders-remove ()
+  "Remove a project-root from the list of workspace folders."
+  (interactive)
+  (let ((session (lsp-session)))
+    (ivy-read "Select workspace folder to remove: " (lsp-session-folders session)
+              :preselect (-some->> default-directory (lsp-find-session-folder session))
+              :action (lambda (folder)
+                        (lsp-workspace-folders-remove folder)
+                        (ivy--kill-current-candidate)))))
 
 (provide 'lsp-ivy)
 ;;; lsp-ivy.el ends here

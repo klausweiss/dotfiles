@@ -266,9 +266,6 @@
     ("-?spec\\.jsx$"    all-the-icons-fileicon "test-react"             :height 1.0 :v-adjust 0.0 :face all-the-icons-blue-alt)
     ("-?test\\.jsx$"    all-the-icons-fileicon "test-react"             :height 1.0 :v-adjust 0.0 :face all-the-icons-blue-alt)
 
-    ("-?spec\\."        all-the-icons-fileicon "test-generic"           :height 1.0 :v-adjust 0.0 :face all-the-icons-dgreen)
-    ("-?test\\."        all-the-icons-fileicon "test-generic"           :height 1.0 :v-adjust 0.0 :face all-the-icons-dgreen)
-
     ("\\.tcl$"          all-the-icons-fileicon "tcl"                    :height 1.0 :face all-the-icons-dred)
 
     ("\\.tf\\(vars\\|state\\)?$" all-the-icons-fileicon "terraform"     :height 1.0 :face all-the-icons-purple-alt)
@@ -324,6 +321,18 @@
 
     ;; Vagrant
     ("\\.vagrantfile$"   all-the-icons-fileicon "vagrant"               :face all-the-icons-blue)
+
+    ;; GLSL
+    ("\\.glsl$"          all-the-icons-fileicon "vertex-shader"         :face all-the-icons-blue)
+    ("\\.vert$"          all-the-icons-fileicon "vertex-shader"         :face all-the-icons-blue)
+    ("\\.tesc$"          all-the-icons-fileicon "vertex-shader"         :face all-the-icons-purple)
+    ("\\.tese$"          all-the-icons-fileicon "vertex-shader"         :face all-the-icons-dpurple)
+    ("\\.geom$"          all-the-icons-fileicon "vertex-shader"         :face all-the-icons-green)
+    ("\\.frag$"          all-the-icons-fileicon "vertex-shader"         :face all-the-icons-red)
+    ("\\.comp$"          all-the-icons-fileicon "vertex-shader"         :face all-the-icons-dblue)
+
+    ;; CUDA
+    ("\\.cuh?$"          all-the-icons-fileicon "nvidia"                :face all-the-icons-green)
 
     ;; There seems to be a a bug with this font icon which does not
     ;; let you propertise it without it reverting to being a lower
@@ -402,8 +411,8 @@
     ("\\.js$"           all-the-icons-alltheicon "javascript"           :height 1.0 :v-adjust 0.0 :face all-the-icons-yellow)
     ("\\.es[0-9]$"      all-the-icons-alltheicon "javascript"           :height 1.0 :v-adjust 0.0 :face all-the-icons-yellow)
     ("\\.jsx$"          all-the-icons-fileicon "jsx-2"                  :height 1.0 :v-adjust -0.1 :face all-the-icons-cyan-alt)
-    ("\\.njs$"          all-the-icons-alltheicon "nodejs"               :height 1.2  :face all-the-icons-lgreen)
     ("\\.vue$"          all-the-icons-fileicon "vue"                    :face all-the-icons-lgreen)
+    ("\\.ejs$"          all-the-icons-fileicon "ejs"                    :face all-the-icons-red)
 
     ;; F#
     ("\\.fs[ix]?$"      all-the-icons-fileicon "fsharp"                 :face all-the-icons-blue-alt)
@@ -413,13 +422,15 @@
     ("\\.png$"          all-the-icons-octicon "file-media"              :v-adjust 0.0 :face all-the-icons-orange)
     ("\\.gif$"          all-the-icons-octicon "file-media"              :v-adjust 0.0 :face all-the-icons-green)
     ("\\.jpe?g$"        all-the-icons-octicon "file-media"              :v-adjust 0.0 :face all-the-icons-dblue)
+    ("\\.cr2$"          all-the-icons-octicon "file-media"              :v-adjust 0.0 :face all-the-icons-dblue)
     ("\\.svg$"          all-the-icons-alltheicon "svg"                  :height 0.9  :face all-the-icons-lgreen)
 
     ;; Video
     ("\\.mov$"          all-the-icons-faicon "film"                     :face all-the-icons-blue)
     ("\\.mp4$"          all-the-icons-faicon "film"                     :face all-the-icons-blue)
-    ("\\.mpg$"          all-the-icons-faicon "film"                     :face all-the-icons-blue)
-    ("\\.mpeg$"         all-the-icons-faicon "film"                     :face all-the-icons-blue)
+    ("\\.m4v$"          all-the-icons-faicon "film"                     :face all-the-icons-blue)
+    ("\\.mpe?g$"        all-the-icons-faicon "film"                     :face all-the-icons-blue)
+    ("\\.flv$"          all-the-icons-faicon "film"                     :face all-the-icons-blue)
     ("\\.ogv$"          all-the-icons-faicon "film"                     :face all-the-icons-dblue)
     ("\\.mkv$"          all-the-icons-faicon "film"                     :face all-the-icons-blue)
     ("\\.webm$"         all-the-icons-faicon "film"                     :face all-the-icons-blue)
@@ -433,7 +444,7 @@
     ("\\.te?xt$"        all-the-icons-octicon "file-text"               :v-adjust 0.0 :face all-the-icons-cyan)
     ("\\.doc[xm]?$"     all-the-icons-fileicon "word"                   :face all-the-icons-blue)
     ("\\.texi?$"        all-the-icons-fileicon "tex"                    :face all-the-icons-lred)
-    ("\\.md$"           all-the-icons-octicon "markdown"                :v-adjust 0.0 :face all-the-icons-lblue)
+    ("\\.r?md$"         all-the-icons-octicon "markdown"                :v-adjust 0.0 :face all-the-icons-lblue)
     ("\\.bib$"          all-the-icons-fileicon "bib"                    :face all-the-icons-maroon)
     ("\\.org$"          all-the-icons-fileicon "org"                    :face all-the-icons-lgreen)
 
@@ -546,6 +557,7 @@
     (mu4e-headers-mode         all-the-icons-octicon "mail"                :v-adjust 0.0)
     (mu4e-main-mode            all-the-icons-octicon "mail"                :v-adjust 0.0)
     (mu4e-view-mode            all-the-icons-octicon "mail-read"           :v-adjust 0.0)
+    (package-menu-mode         all-the-icons-faicon "archive"              :height 1.0 :v-adjust 0.0 :face all-the-icons-silver)
     (paradox-menu-mode         all-the-icons-faicon "archive"              :height 1.0 :v-adjust 0.0 :face all-the-icons-silver)
     (Custom-mode               all-the-icons-octicon "settings"            :v-adjust -0.1)
 
@@ -643,7 +655,8 @@
     (asm-mode                           all-the-icons-fileicon "assembly"         :height 1.0  :face all-the-icons-blue)
     (nasm-mode                          all-the-icons-fileicon "assembly"         :height 1.0  :face all-the-icons-blue)
     (tcl-mode                           all-the-icons-fileicon "tcl"              :height 1.0  :face all-the-icons-dred)
-    ))
+    (cuda-mode                          all-the-icons-fileicon "nvidia"           :face all-the-icons-green)
+    (glsl-mode                          all-the-icons-fileicon "vertex-shader"    :face all-the-icons-green)))
 
 (defvar all-the-icons-url-alist
   '(
@@ -667,7 +680,7 @@
     ("tumblr\\.com" all-the-icons-faicon "tumblr")
     ("^wordpress\\.com" all-the-icons-faicon "wordpress")
     ;; Programming
-    ("^\\(https?://\\)?\\(www\\.\\)?bitbucket\\.org" all-the-icons-octicon "bitbucket")
+    ("^\\(https?://\\)?\\(www\\.\\)?bitbucket\\.org" all-the-icons-faicon "bitbucket")
     ("^\\(https?://\\)?\\(www\\.\\)?codepen\\.io" all-the-icons-faicon "codepen")
     ("^\\(https?://\\)?\\(www\\.\\)?codiepie\\.com" all-the-icons-faicon "codiepie")
     ("^\\(https?://\\)?\\(www\\.\\)?gist\\.github\\.com" all-the-icons-octicon "gist")

@@ -36,13 +36,8 @@
   :prefix "dockerfile-"
   :group 'languages)
 
-(defcustom dockerfile-mode-hook nil
-  "*Hook called by `dockerfile-mode'."
-  :type 'hook
-  :group 'dockerfile)
-
 (defcustom dockerfile-mode-command "docker"
-  "Which binary to use to build images"
+  "Which binary to use to build images."
   :group 'dockerfile
   :type 'string)
 
@@ -60,7 +55,7 @@ Each element of the list will be passed as a separate
   :group 'dockerfile)
 
 (defcustom dockerfile-use-buildkit nil
-  "If t use Docker buildkit for building images
+  "Use Docker buildkit for building images?
 
 This is the new buildsystem for docker, and in time it will replace the old one
 but for now it has to be explicitly enabled to work.
@@ -165,10 +160,11 @@ file name.  Otherwise, uses Emacs' standard conversion function."
   "Return a --tag shell-quoted IMAGE-NAME string or an empty string if image-name is blank."
     (if (string= image-name "") "" (format "--tag %s " (shell-quote-argument image-name))))
 
+(define-obsolete-variable-alias 'docker-image-name 'dockerfile-image-name "2017-10-22")
+
 (defvar dockerfile-image-name nil
   "Name of the dockerfile currently being used.
 This can be set in file or directory-local variables.")
-(define-obsolete-variable-alias 'docker-image-name 'dockerfile-image-name "2017-10-22")
 
 (defvar dockerfile-image-name-history nil
   "History of image names read by `dockerfile-read-image-name'.")
@@ -197,8 +193,12 @@ The build string will be of the format:
             (if no-cache "--no-cache" "")
             (dockerfile-tag-string image-name)
             (dockerfile-build-arg-string)
-            (shell-quote-argument (dockerfile-standard-filename (buffer-file-name)))
-            (shell-quote-argument (dockerfile-standard-filename default-directory)))
+            (shell-quote-argument (dockerfile-standard-filename
+				   (or (file-remote-p (buffer-file-name) 'localname)
+				       (buffer-file-name))))
+            (shell-quote-argument (dockerfile-standard-filename
+				   (or (file-remote-p default-directory 'localname)
+				       default-directory))))
     nil
     (lambda (_) (format "*docker-build-output: %s *" image-name))))
 
@@ -241,7 +241,8 @@ returned, otherwise the base image name is used."
   (set (make-local-variable 'indent-line-function) #'dockerfile-indent-line-function))
 
 ;;;###autoload
-(add-to-list 'auto-mode-alist '("/Dockerfile\\(?:\\..*\\)?\\'" . dockerfile-mode))
+(add-to-list 'auto-mode-alist '("/Dockerfile\\(?:\\.[^/\\]*\\)?\\'" .
+                                dockerfile-mode))
 
 ;;;###autoload
 (add-to-list 'auto-mode-alist '("\\.dockerfile\\'" . dockerfile-mode))

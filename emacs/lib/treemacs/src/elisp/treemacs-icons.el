@@ -148,7 +148,7 @@ Also called as advice after `load-theme', hence the ignored argument."
   "Will return non-nil when Emacs is unable to create images.
 In this scenario (usually caused by running Emacs without a graphical
 environment) treemacs will not create any of its icons and will be forced to
-permanently use its simple string icon fallack."
+permanently use its simple string icon fallback."
   (declare (pure t) (side-effect-free t))
   (inline-quote (not (image-type-available-p 'png))))
 
@@ -228,7 +228,7 @@ Necessary since root icons are not rectangular."
 - FILE is a file path relative to the icon directory of the current theme.
 - ICON is a string of an already created icon.  Mutually exclusive with FILE.
 - FALLBACK is the fallback string for situations where png images are
-  unavailable.
+  unavailable.  Can be set to `same-as-icon' to use the same value as ICON.
 - ICONS-DIR can optionally be used to overwrite the path used to find icons.
   Normally the current theme's icon-path is used, but it may be convenient to
   use another when calling `treemacs-modify-theme'.
@@ -241,10 +241,13 @@ Necessary since root icons are not rectangular."
   accessible."
   (treemacs-static-assert (or (null icon) (null file))
     "FILE and ICON arguments are mutually exclusive")
-  `(let* ((icons-dir ,(if icons-dir icons-dir `(treemacs-theme->path treemacs--current-theme)))
+  `(let* ((fallback  ,(if (equal fallback (quote 'same-as-icon))
+                          icon
+                        fallback))
+          (icons-dir ,(if icons-dir icons-dir `(treemacs-theme->path treemacs--current-theme)))
           (icon-path ,(if file `(treemacs-join-path icons-dir ,file) nil))
-          (icon-pair ,(if file `(treemacs--create-icon-strings icon-path ,fallback)
-                        `(cons ,(treemacs--splice-icon icon) ,fallback)))
+          (icon-pair ,(if file `(treemacs--create-icon-strings icon-path fallback)
+                        `(cons ,(treemacs--splice-icon icon) fallback)))
           (gui-icons (treemacs-theme->gui-icons treemacs--current-theme))
           (tui-icons (treemacs-theme->tui-icons treemacs--current-theme))
           (gui-icon  (car icon-pair))
@@ -320,6 +323,7 @@ Necessary since root icons are not rectangular."
     (treemacs-create-icon :file "jar.png"           :extensions ("jar"))
     (treemacs-create-icon :file "kotlin.png"        :extensions ("kt"))
     (treemacs-create-icon :file "scala.png"         :extensions ("scala"))
+    (treemacs-create-icon :file "gradle.png"        :extensions ("gradle"))
     (treemacs-create-icon :file "sbt.png"           :extensions ("sbt"))
     (treemacs-create-icon :file "go.png"            :extensions ("go"))
     (treemacs-create-icon :file "systemd.png"       :extensions ("service" "timer"))
@@ -529,6 +533,20 @@ down-cased state."
     (ht-set! (treemacs-theme->gui-icons treemacs--current-theme)
              (downcase ext)
              (concat icon " "))))
+
+;;;###autoload
+(defun treemacs-define-custom-image-icon (file &rest file-extensions)
+  "Same as `treemacs-define-custom-icon' but for image icons instead of strings.
+FILE is the path to an icon image (and not the actual icon string).
+FILE-EXTENSIONS are all the (not case-sensitive) file extensions the icon
+should be used for."
+  (unless file
+    (user-error "Custom icon cannot be nil"))
+  (-let [icon (car (treemacs--create-icon-strings file " "))]
+    (dolist (ext file-extensions)
+      (ht-set! (treemacs-theme->gui-icons treemacs--current-theme)
+               (downcase ext)
+               icon))))
 
 ;;;###autoload
 (defun treemacs-map-icons-with-auto-mode-alist (extensions mode-icon-alist)

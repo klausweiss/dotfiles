@@ -187,8 +187,17 @@ The major mode configured here is turned on by the minor mode
   :type '(choice (function-item text-mode)
                  (function-item markdown-mode)
                  (function-item org-mode)
+                 (function-item fundamental-mode)
+                 (function-item git-commit-elisp-text-mode)
                  (function :tag "Another mode")
                  (const :tag "No major mode")))
+;;;###autoload(put 'git-commit-major-mode 'safe-local-variable
+;;;###autoload     (lambda (val)
+;;;###autoload       (memq val '(text-mode
+;;;###autoload                   markdown-mode
+;;;###autoload                   org-mode
+;;;###autoload                   fundamental-mode
+;;;###autoload                   git-commit-elisp-text-mode))))
 
 (defcustom git-commit-setup-hook
   '(git-commit-save-message
@@ -935,7 +944,7 @@ Added to `font-lock-extend-region-functions'."
      ;; Your branch is up to date with 'master'.
      ;; Your branch and 'master' have diverged,
      . `(,(format
-           "^%s Your branch \\(?:is up-to-date with\\|and\\) '%s'"
+           "^%s Your branch \\(?:is up[- ]to[- ]date with\\|and\\) '%s'"
            comment-start git-commit--branch-name-regexp)
          (1 'git-commit-comment-branch-local t)
          (2 'git-commit-comment-branch-remote t)))
@@ -947,7 +956,7 @@ Added to `font-lock-extend-region-functions'."
          (1 'bold t)
          (2 'bold t)))))
 
-(defvar git-commit-font-lock-keywords git-commit-font-lock-keywords-2
+(defvar git-commit-font-lock-keywords git-commit-font-lock-keywords-3
   "Font-Lock keywords for Git-Commit mode.")
 
 (defun git-commit-setup-font-lock ()
@@ -979,17 +988,14 @@ Added to `font-lock-extend-region-functions'."
                   (progn
                     ;; Make sure the below functions are available.
                     (require 'magit)
-                    ;; Font-Lock wants every submatch to succeed,
-                    ;; so also match the empty string.  Do not use
-                    ;; `regexp-quote' because that is slow if there
-                    ;; are thousands of branches outweighing the
-                    ;; benefit of an efficient regep.
-                    (format "\\(\\(?:%s\\)\\|\\)\\(\\(?:%s\\)\\|\\)"
+                    ;; Font-Lock wants every submatch to succeed, so
+                    ;; also match the empty string.  Avoid listing
+                    ;; remote branches and using `regexp-quote',
+                    ;; because in repositories have thousands of
+                    ;; branches that would be very slow.  See #4353.
+                    (format "\\(\\(?:%s\\)\\|\\)\\([^']+\\)"
                             (mapconcat #'identity
                                        (magit-list-local-branch-names)
-                                       "\\|")
-                            (mapconcat #'identity
-                                       (magit-list-remote-branch-names)
                                        "\\|")))
                 "\\([^']*\\)"))
   (setq-local font-lock-multiline t)

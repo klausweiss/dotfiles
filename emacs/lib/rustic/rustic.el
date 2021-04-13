@@ -4,7 +4,7 @@
 ;; Author: Mozilla
 ;;
 ;; Keywords: languages
-;; Package-Requires: ((emacs "26.1") (xterm-color "1.6") (dash "2.13.0") (s "1.10.0") (f "0.18.2") (markdown-mode "2.3") (spinner "1.7.3") (let-alist "1.0.4") (seq "2.3") (ht "2.0"))
+;; Package-Requires: ((emacs "26.1") (xterm-color "1.6") (dash "2.13.0") (s "1.10.0") (f "0.18.2") (markdown-mode "2.3") (spinner "1.7.3") (let-alist "1.0.4") (seq "2.3") (ht "2.0") (project "0.3.0"))
 
 ;; This file is distributed under the terms of both the MIT license and the
 ;; Apache License (version 2.0).
@@ -30,9 +30,8 @@
 
 ;;; Code:
 
-(eval-when-compile (require 'rx)
-                   (require 'compile)
-                   (require 'url-vars))
+(eval-when-compile (require 'rx))
+(eval-when-compile (require 'url-vars))
 
 (require 'json)
 
@@ -76,11 +75,11 @@ When nil, `where' will be aligned with `fn' or `trait'."
   :type 'boolean
   :group 'rustic)
 
-(defcustom rust-indent-return-type-to-arguments t
+(defcustom rustic-indent-return-type-to-arguments t
   "Indent a line starting with the `->' (RArrow) following a function, aligning
 to the function arguments.  When nil, `->' will be indented one level."
   :type 'boolean
-  :group 'rust-mode
+  :group 'rustic
   :safe #'booleanp)
 
 ;;; Faces
@@ -462,16 +461,49 @@ symbols."
   (let ((beg-of-symbol (save-excursion (forward-thing 'symbol -1) (point))))
     (looking-back rustic-re-ident beg-of-symbol)))
 
+(defun rustic-looking-back-macro ()
+  "Non-nil if looking back at an ident followed by a !
+
+This is stricter than rust syntax which allows a space between
+the ident and the ! symbol. If this space is allowed, then we
+would also need a keyword check to avoid `if !(condition)` being
+seen as a macro."
+  (if (> (- (point) (point-min)) 1)
+      (save-excursion
+        (backward-char)
+        (and (= ?! (char-after))
+             (rustic-looking-back-ident)))))
+
+(defun rustic-paren-level () (nth 0 (syntax-ppss)))
+(defun rustic-in-str () (nth 3 (syntax-ppss)))
+(defun rustic-in-str-or-cmnt () (nth 8 (syntax-ppss)))
+(defun rustic-rewind-past-str-cmnt () (goto-char (nth 8 (syntax-ppss))))
+
+(defun rustic-rewind-irrelevant ()
+  (let ((continue t))
+    (while continue
+      (let ((starting (point)))
+        (skip-chars-backward "[:space:]\n")
+        (when (rustic-looking-back-str "*/")
+          (backward-char))
+        (when (rustic-in-str-or-cmnt)
+          (rustic-rewind-past-str-cmnt))
+        ;; Rewind until the point no longer moves
+        (setq continue (/= starting (point)))))))
+
 (defvar-local rustic-macro-scopes nil
   "Cache for the scopes calculated by `rustic-macro-scope'.
+
 This variable can be `let' bound directly or indirectly around
 `rustic-macro-scope' as an optimization but should not be otherwise
 set.")
 
 (defun rustic-macro-scope (start end)
   "Return the scope of macros in the buffer.
+
 The return value is a list of (START END) positions in the
 buffer.
+
 If set START and END are optimizations which limit the return
 value to scopes which are approximately with this range."
   (save-excursion
@@ -520,40 +552,12 @@ value to scopes which are approximately with this range."
       ;; macros at all.
       (or scope 'empty))))
 
-(defun rustic-looking-back-macro ()
-  "Non-nil if looking back at an ident followed by a !"
-  "Non-nil if looking back at an ident followed by a !
-This is stricter than rust syntax which allows a space between
-the ident and the ! symbol. If this space is allowed, then we
-would also need a keyword check to avoid `if !(condition)` being
-seen as a macro."
-  (if (> (- (point) (point-min)) 1)
-      (save-excursion
-        (backward-char)
-        (and (= ?! (char-after))
-             (rustic-looking-back-ident)))))
-
-(defun rustic-paren-level () (nth 0 (syntax-ppss)))
-(defun rustic-in-str () (nth 3 (syntax-ppss)))
-(defun rustic-in-str-or-cmnt () (nth 8 (syntax-ppss)))
-(defun rustic-rewind-past-str-cmnt () (goto-char (nth 8 (syntax-ppss))))
-
-(defun rustic-rewind-irrelevant ()
-  (let ((continue t))
-    (while continue
-      (let ((starting (point)))
-        (skip-chars-backward "[:space:]\n")
-        (when (rustic-looking-back-str "*/")
-          (backward-char))
-        (when (rustic-in-str-or-cmnt)
-          (rustic-rewind-past-str-cmnt))
-        ;; Rewind until the point no longer moves
-        (setq continue (/= starting (point)))))))
-
 (defun rustic-in-macro (&optional start end)
   "Return non-nil when point is within the scope of a macro.
+
 If START and END are set, minimize the buffer analysis to
 approximately this location as an optimization.
+
 Alternatively, if `rustic-macro-scopes' is a list use the scope
 information in this variable. This last is an optimization and
 the caller is responsible for ensuring that the data in
@@ -951,7 +955,6 @@ should be considered a paired angle bracket."
    ;; This is a cheap check so we do it early.
    ;; Don't treat the > in -> or => as an angle bracket
    ((and (= (following-char) ?>) (memq (preceding-char) '(?- ?=))) t)
-
 
    ;; We don't take < or > in strings or comments to be angle brackets
    ((rustic-in-str-or-cmnt) t)
