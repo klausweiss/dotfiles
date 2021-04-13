@@ -23,8 +23,8 @@ function swap_icon_for_gtk(c)
    local icon_candidates = {
       c.class,
       c.instance,
-      c.class:lower(),
-      c.instance:lower(),
+      c.class and c.class:lower(),
+      c.instance and c.instance:lower(),
    }
 
    for _, icon_name in ipairs(icon_candidates) do
