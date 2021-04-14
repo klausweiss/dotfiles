@@ -20,7 +20,7 @@ local function mk_widget()
    }
 
    local date_widget = wibox.widget.textclock()
-   date_widget.format = "<b>%d.%m.%Y</b>"
+   date_widget.format = "%a, %d.%m.%Y"
 
    local tooltip = awful.tooltip {
       objects = { clock_widget },
