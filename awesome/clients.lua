@@ -34,7 +34,7 @@ function swap_icon_for_gtk(c)
 	 return
       end
    end
-   c.icon = gears.surface(menubar.utils.lookup_icon("application-default-icon"))._native
+   -- c.icon = gears.surface(menubar.utils.lookup_icon("application-default-icon"))._native
 end
 
 client.connect_signal(
