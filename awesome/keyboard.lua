@@ -111,6 +111,8 @@ setkey { "XF86AudioMute",
 	 fun = sound_api.toggle_mute_output }
 setkey { SHIFT, "XF86AudioMute",
 	 fun = sound_api.toggle_mute_input}
+setkey { "XF86AudioMicMute",
+	 fun = sound_api.toggle_mute_input}
 setkey { "XF86Launch5",
 	 fun = sound_api.set_output_type_to_headphones }
 setkey { "XF86Launch6",
