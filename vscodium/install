@@ -3,3 +3,12 @@
 [symlink]
 ./settings.json: ~/.config/VSCodium/User/settings.json
 ./keybindings.json: ~/.config/VSCodium/User/keybindings.json
+
+[run]
+# Installing vscodium extensions
+codium --install-extension kahole.magit
+codium --install-extension elmtooling.elm-ls-vscode
+codium --install-extension sainnhe.gruvbox-material
+codium --install-extension haskell.haskell
+codium --install-extension k--kato.intellij-idea-keybindings
+codium --install-extension esbenp.prettier-vscode
