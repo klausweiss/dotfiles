@@ -53,5 +53,13 @@
     {
         "key": "ctrl+delete",
         "command": "deleteWordPartRight"
+    },
+    {
+        "key": "ctrl+shift+g",
+        "command": "magit.status"
+    },
+    {
+        "key": "alt+x g",
+        "command": "-magit.status"
     }
 ]
