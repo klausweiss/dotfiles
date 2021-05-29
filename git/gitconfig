@@ -4,6 +4,10 @@
 [core]
     autocrlf = input
     editor = vim
+[commit]
+    gpgSign = true
+[tag]
+    gpgSign = true
 [push]
     default = matching
 [alias]
