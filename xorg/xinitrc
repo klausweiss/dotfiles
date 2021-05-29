@@ -5,8 +5,12 @@ export PATH=~/.local/bin:$PATH
 xrdb -I"$HOME" -load ~/.Xresources -cpp m4
 
 # set keyring variables
-if [ -n "$DESKTOP_SESSION" ];then
-    eval $(gnome-keyring-daemon --start)
+if command -v gpgconf &> /dev/null; then
+	export GPG_TTY="$(tty)"
+	export SSH_AUTH_SOCK=$(gpgconf --list-dirs agent-ssh-socket)
+	gpgconf --launch gpg-agent
+elif [ -n "$DESKTOP_SESSION" ];then
+    #eval $(gnome-keyring-daemon --start)
     export SSH_AUTH_SOCK
 fi
 
