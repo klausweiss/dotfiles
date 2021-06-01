@@ -1,3 +1,3 @@
-esyscmd(find ~/.Xresources.d -name *.conf -exec cat {} +)
+esyscmd(find ~/.Xresources.d -name "*.conf" -exec cat {} +)
 
 *TkTheme: clam
