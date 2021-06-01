@@ -16,8 +16,10 @@
 ;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ;;; Commentary:
-;;; Integrates treemacs with bookmark.el.
-;;; NOTE: This module is lazy-loaded.
+
+;; Integrates treemacs with bookmark.el.
+
+;; NOTE: This module is lazy-loaded.
 
 ;;; Code:
 
@@ -47,6 +49,7 @@ fashion to `treemacs-find-file'.
 With a prefix argument ARG treemacs will also open the bookmarked location."
   (interactive "P")
   (treemacs-block
+   (bookmark-maybe-load-default-file)
    (-let [bookmarks
           (cl-loop
            for b in bookmark-alist

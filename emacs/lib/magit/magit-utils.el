@@ -11,6 +11,8 @@
 ;; Contains code from GNU Emacs https://www.gnu.org/software/emacs,
 ;; released under the GNU General Public License version 3 or later.
 
+;; SPDX-License-Identifier: GPL-3.0-or-later
+
 ;; Magit is free software; you can redistribute it and/or modify it
 ;; under the terms of the GNU General Public License as published by
 ;; the Free Software Foundation; either version 3, or (at your option)
@@ -804,11 +806,10 @@ See info node `(magit)Debugging Tools' for more information."
                        "with-editor"
                        ;; Obviously `magit' itself is needed too.
                        "magit"
-                       ;; While this is part of the Magit repository,
-                       ;; it is distributed as a separate package.
+                       ;; While these are part of the Magit repository,
+                       ;; they are distributed as separate packages.
+                       "magit-section"
                        "git-commit"
-                       ;; Even though `async' is a dependency of the
-                       ;; `magit' package, it is not required here.
                        ))))
                 ;; Avoid Emacs bug#16406 by using full path.
                 "-l" ,(file-name-sans-extension (locate-library "magit")))

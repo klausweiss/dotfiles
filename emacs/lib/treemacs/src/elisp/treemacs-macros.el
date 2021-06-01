@@ -16,9 +16,10 @@
 ;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ;;; Commentary:
-;;; General purpose macros, and those used in, but defined outside of
-;;; treemacs-core-utils.el are put here, to prevent using them before their
-;;; definition, hopefully preventing issues like #97.
+
+;; General purpose macros, and those used in, but defined outside of
+;; treemacs-core-utils.el are put here, to prevent using them before
+;; their definition, hopefully preventing issues like #97.
 
 ;;; Code:
 
@@ -277,7 +278,7 @@ not work keep it on the same line."
          (treemacs-goto-file-node curr-file))
         ((or 'dir-node-open 'dir-node-closed 'file-node-open 'file-node-closed)
          ;; stay on the same file
-         (if (and (file-exists-p curr-file)
+         (if (and (treemacs-is-path-visible? curr-file)
                   (or treemacs-show-hidden-files
                       (not (s-matches? treemacs-dotfiles-regex (treemacs--filename curr-file)))))
              (treemacs-goto-file-node curr-file)
@@ -285,7 +286,7 @@ not work keep it on the same line."
            ;; try dodging to our immediate neighbours, if they are no longer visible either
            ;; keep going up
            (cl-labels
-               ((can-move-to (it) (and (file-exists-p it)
+               ((can-move-to (it) (and (treemacs-is-path-visible? it)
                                        (or treemacs-show-hidden-files
                                            (not (s-matches? treemacs-dotfiles-regex (treemacs--filename it)))))))
              (cond
@@ -315,7 +316,8 @@ not work keep it on the same line."
         (-let [buffer-point (point)]
           (with-selected-window curr-window
             ;; recenter starts counting at 0
-            (recenter (1- curr-win-line))
+            (-let [scroll-margin 0]
+              (recenter (1- curr-win-line)))
             (set-window-point (selected-window) buffer-point))))
       ,@final-form)))
 
@@ -529,6 +531,15 @@ Based on a timer GUARD variable run function with the given DELAY and BODY."
             (lambda ()
               ,@body
               (setf ,guard nil))))))
+
+(defmacro treemacs-without-recenter (&rest body)
+  "Run BODY without the usual recentering for expanded nodes.
+Specifically `treemacs--no-recenter' will be set to 't' so that
+`treemacs--maybe-recenter' will have no effect during non-interactive updates
+triggered by e.g. filewatch-mode."
+  (declare (debug t))
+  `(let ((treemacs--no-recenter t))
+     ,@body))
 
 (provide 'treemacs-macros)
 

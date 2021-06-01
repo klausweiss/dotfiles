@@ -16,7 +16,8 @@
 ;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ;;; Commentary:
-;;; Customize interface definitions.
+
+;; Customize interface definitions.
 
 ;;; Code:
 
@@ -116,6 +117,16 @@ indentation will be a space INTEGER pixels wide."
                  (list :tag "Pixels"
                        (integer :tag "Pixels" :value 16)
                        (const :tag "" px)))
+  :group 'treemacs)
+
+(defcustom treemacs-litter-directories '("/node_modules" "/.venv" "/.cask")
+  "List of directories affected by `treemacs-cleanup-litter'.
+Every item in the list is a regular expression, to be recognised a directory
+must be matched with `string-match-p'.
+
+Regexp-quoting the items in this list is *not* necessary, the quoting will
+happen automatically when needed."
+  :type 'list
   :group 'treemacs)
 
 (defcustom treemacs-read-string-input 'from-child-frame
@@ -226,6 +237,23 @@ To keep the alist clean changes should not be made directly, but with
 `treemacs-define-RET-action', for example like this:
 \(treemacs-define-RET-action 'file-node-closed #'treemacs-visit-node-ace\)"
   :type '(alist :key-type symbol :value-type treemacs-ret-action)
+  :group 'treemacs)
+
+(defcustom treemacs-COLLAPSE-actions-config
+  '((root-node-open   . treemacs-toggle-node)
+    (root-node-closed . treemacs-goto-parent-node)
+    (dir-node-open    . treemacs-toggle-node)
+    (dir-node-closed  . treemacs-goto-parent-node)
+    (file-node-open   . treemacs-toggle-node)
+    (file-node-closed . treemacs-goto-parent-node)
+    (tag-node-open    . treemacs-toggle-node)
+    (tag-node-closed  . treemacs-goto-parent-node)
+    (tag-node         . treemacs-goto-parent-node))
+  "Defines the behaviour of `treemacs-COLLAPSE-action'.
+
+See the doc string of `treemacs-RET-actions-config' for a detailed description
+of how this config works and how to modify it."
+  :type '(alist :key-type symbol :value-type treemacs-collapse-action)
   :group 'treemacs)
 
 (defcustom treemacs-dotfiles-regex (rx bol "." (1+ any))
@@ -390,6 +418,12 @@ To disable all refresh messages use `treemacs-silent-refresh'."
 (defcustom treemacs-no-png-images nil
   "When non-nil treemacs will use TUI string icons even when running in a GUI.
 The change will apply the next time a treemacs buffer is created."
+  :type 'boolean
+  :group 'treemacs)
+
+(defcustom treemacs-expand-after-init t
+  "When non-nil expand the first project after treemacs is first initialised.
+Might be superseded by `treemacs-follow-after-init'."
   :type 'boolean
   :group 'treemacs)
 
@@ -591,10 +625,8 @@ Note that this does *not* take `scroll-margin' into account."
   :group 'treemacs-follow)
 
 (defcustom treemacs-follow-after-init nil
-  "When t always find and focus the current file when treemacs is built.
-
-A treemacs buffer is built when after calling `treemacs-init' or
-`treemacs-projectle-init'.  This will ignore `treemacs-follow-mode'."
+  "When non-nil find the current file in treemacs after it is first initialised.
+Might supersede `treemacs-expand-after-init'."
   :type 'boolean
   :group 'treemacs-follow)
 
@@ -689,7 +721,7 @@ used to reduce the size of the output to a manageable volume for treemacs."
 (defcustom treemacs-is-never-other-window nil
   "When non-nil treemacs will use the `no-other-window' parameter.
 
-In practice means that treemacs will become invisible to commands like
+In practice it means that treemacs will become invisible to commands like
 `other-window' or `evil-window-left'."
   :type 'boolean
   :group 'treemacs-window)

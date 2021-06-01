@@ -8,6 +8,8 @@
 ;; Author: Jonas Bernoulli <jonas@bernoul.li>
 ;; Maintainer: Jonas Bernoulli <jonas@bernoul.li>
 
+;; SPDX-License-Identifier: GPL-3.0-or-later
+
 ;; Magit is free software; you can redistribute it and/or modify it
 ;; under the terms of the GNU General Public License as published by
 ;; the Free Software Foundation; either version 3, or (at your option)
@@ -292,7 +294,7 @@ what this command will do.  For example:
   (let ((default (magit-get "push.default")))
     (unless (equal default "nothing")
       (or (when-let ((remote (or (magit-get-remote)
-                                 (magit-remote-p "origin")))
+                                 (magit-primary-remote)))
                      (refspec (magit-get "remote" remote "push")))
             (format "%s using %s"
                     (magit--propertize-face remote 'magit-branch-remote)

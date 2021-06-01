@@ -6,20 +6,20 @@
 ;; lists all contributors.  If not, see http://magit.vc/authors.
 
 ;; Author: Marius Vollmer <marius.vollmer@gmail.com>
+;;      Jonas Bernoulli <jonas@bernoul.li>
 ;; Maintainer: Jonas Bernoulli <jonas@bernoul.li>
-;;	Kyle Meyer        <kyle@kyleam.com>
-;;	Noam Postavsky    <npostavs@users.sourceforge.net>
+;;      Kyle Meyer <kyle@kyleam.com>
+;;      Noam Postavsky <npostavs@users.sourceforge.net>
 ;; Former-Maintainers:
-;;	Nicolas Dudebout  <nicolas.dudebout@gatech.edu>
-;;	Peter J. Weisberg <pj@irregularexpressions.net>
-;;	Phil Jackson      <phil@shellarchive.co.uk>
-;;	Rémi Vanicat      <vanicat@debian.org>
-;;	Yann Hodique      <yann.hodique@gmail.com>
+;;      Nicolas Dudebout <nicolas.dudebout@gatech.edu>
+;;      Peter J. Weisberg <pj@irregularexpressions.net>
+;;      Phil Jackson <phil@shellarchive.co.uk>
+;;      Rémi Vanicat <vanicat@debian.org>
+;;      Yann Hodique <yann.hodique@gmail.com>
 
 ;; Keywords: git tools vc
 ;; Homepage: https://github.com/magit/magit
-
-;; Magit requires at least GNU Emacs 25.1 and Git 2.2.0.
+;; SPDX-License-Identifier: GPL-3.0-or-later
 
 ;; Magit is free software; you can redistribute it and/or modify it
 ;; under the terms of the GNU General Public License as published by
@@ -34,16 +34,20 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with Magit.  If not, see http://www.gnu.org/licenses.
 
+;; Magit requires at least GNU Emacs 25.1 and Git 2.2.0.
+
 ;;; Commentary:
 
-;; Magit is an interface to the version control system Git,
-;; implemented as an Emacs package.  Magit aspires to be a complete
-;; Git porcelain.  While we cannot (yet) claim, that Magit wraps and
-;; improves upon each and every Git command, it is complete enough to
-;; allow even experienced Git users to perform almost all of their
-;; daily version control tasks directly from within Emacs.  While many
-;; fine Git clients exist, only Magit and Git itself deserve to be
-;; called porcelains.
+;; Magit is a text-based Git user interface that puts an unmatched focus
+;; on streamlining workflows.  Commands are invoked using short mnemonic
+;; key sequences that take the cursor’s position in the highly actionable
+;; interface into account to provide context-sensitive behavior.
+
+;; With Magit you can do nearly everything that you can do when using Git
+;; on the command-line, but at greater speed and while taking advantage
+;; of advanced features that previously seemed too daunting to use on a
+;; daily basis.  Many users will find that by using Magit they can become
+;; more effective Git user.
 
 ;;; Code:
 
@@ -659,8 +663,8 @@ For X11 something like ~/.xinitrc should work.\n"
     (require 'magit-imenu)
     (require 'magit-bookmark)))
 
-(eval-after-load 'bookmark
-  '(require 'magit-bookmark))
+(with-eval-after-load 'bookmark
+  (require 'magit-bookmark))
 
 (if after-init-time
     (progn (magit-startup-asserts)

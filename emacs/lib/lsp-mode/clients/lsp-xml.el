@@ -229,8 +229,7 @@ Newlines and excess whitespace are removed."
 
 (lsp-register-client
  (make-lsp-client :new-connection (lsp-xml--create-connection)
-                  :activation-fn (lambda (file-name _mode)
-                                   (string= (f-ext file-name) "xml"))
+                  :activation-fn (lsp-activate-on "xml")
                   :priority 0
                   :server-id 'xmlls
                   :multi-root t
@@ -239,6 +238,8 @@ Newlines and excess whitespace are removed."
                                       (lsp--set-configuration (lsp-configuration-section "xml"))))
                   :download-server-fn (lambda (_client callback error-callback _update?)
                                         (lsp-package-ensure 'xmlls callback error-callback))))
+
+(lsp-consistency-check lsp-xml)
 
 (provide 'lsp-xml)
 ;;; lsp-xml.el ends here

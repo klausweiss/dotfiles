@@ -16,8 +16,10 @@
 ;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ;;; Commentary:
-;;; Functions relating to using the mouse in treemacs.
-;;; NOTE: This module is lazy-loaded.
+
+;; Functions relating to using the mouse in treemacs.
+
+;; NOTE: This module is lazy-loaded.
 
 ;;; Code:
 
@@ -43,11 +45,11 @@
 
 (defun treemacs--builtin-project-mouse-selection-menu ()
   "Build a mouse selection menu for project.el projects."
-  (pcase (if (not (fboundp 'project-known-project-roots))
-             'unavailable
-           (->> (project-known-project-roots)
-                (-map #'treemacs-canonical-path)
-                (-sort #'string<)))
+  (pcase (if (fboundp 'project-known-project-roots)
+             (->> (project-known-project-roots)
+                  (-map #'treemacs-canonical-path)
+                  (-sort #'string<))
+           'unavailable)
     (`unavailable
      (list (vector "Project.el api is not available" #'ignore)))
     (`nil
