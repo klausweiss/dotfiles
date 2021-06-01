@@ -2,17 +2,12 @@
 
 ;;; Code:
 
-(eval-when-compile
-  (require 'pcase)
-  (require 'let-alist)
-  (require 'subr-x))
+(eval-when-compile (require 'let-alist))
 
-(require 'dash)
 (require 'flycheck)
-(require 'seq)
 (require 'json)
 
-(require 'rustic-common)
+(require 'rustic)
 
 (defcustom rustic-flycheck-clippy-params "--message-format=json -Zunstable-options"
   "Parameters for the flycheck clippy checker `rustic-clippy'."

@@ -2,15 +2,14 @@
 
 ;;; Code:
 
-(require 'dash)
-(require 'etags)
-(require 's)
 (require 'f)
-(require 'thingatpt)
-(require 'button)
-(require 'help-mode)
+(require 's)
 
-(require 'rustic-common)
+(require 'button)
+(require 'etags)
+(require 'help-mode)
+(require 'thingatpt)
+
 (require 'rustic)
 
 (defvar rustic-racer-args nil)

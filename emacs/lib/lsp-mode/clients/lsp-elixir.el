@@ -75,8 +75,8 @@ If value is `\"\"` then defaults to the workspace rootUri."
   :package-version '(lsp-mode . "7.1"))
 
 (defcustom lsp-elixir-suggest-specs t
-  "Suggest @spec annotations inline using Dialyzer's inferred success typings
-(Requires Dialyzer)."
+  "Suggest @spec annotations inline using Dialyzer's inferred success typings.
+This requires Dialyzer."
   :type 'boolean
   :group 'lsp-elixir
   :package-version '(lsp-mode . "7.1"))
@@ -167,6 +167,8 @@ Leave as default to let `executable-find' search for it."
                                      (ht ("save" t)
                                          ("change" 2))
                                      (lsp--workspace-server-capabilities workspace)))))
+
+(lsp-consistency-check lsp-elixir)
 
 (provide 'lsp-elixir)
 ;;; lsp-elixir.el ends here

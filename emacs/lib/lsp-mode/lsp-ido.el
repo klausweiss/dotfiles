@@ -28,7 +28,8 @@
 
 (defgroup lsp-ido nil
   "LSP support for ido-based symbol completion"
-  :group 'lsp-mode)
+  :group 'lsp-mode
+  :tag "LSP ido")
 
 (defcustom lsp-ido-symbol-kind-to-string
   ["    "          ; Unknown - 0
@@ -134,6 +135,8 @@ When called with prefix ARG the default selection will be symbol at point."
                   nil
                   (when arg (thing-at-point 'symbol)))))
     (lsp-ido--jump-selected-candidate (gethash choice hash-table-candidates))))
+
+(lsp-consistency-check lsp-ido)
 
 (provide 'lsp-ido)
 ;;; lsp-ido.el ends here

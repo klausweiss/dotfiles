@@ -30,7 +30,7 @@
 (defgroup lsp-bash nil
   "Settings for the Bash Language Server."
   :group 'lsp-mode
-  :tag "Language Server"
+  :link '(url-link "https://github.com/bash-lsp/bash-language-server")
   :package-version '(lsp-mode . "6.2"))
 
 (defcustom lsp-bash-explainshell-endpoint nil
@@ -83,6 +83,8 @@ This prevents the Bash server from being turned on in zsh files."
   :server-id 'bash-ls
   :download-server-fn (lambda (_client callback error-callback _update?)
                         (lsp-package-ensure 'bash-language-server callback error-callback))))
+
+(lsp-consistency-check lsp-bash)
 
 (provide 'lsp-bash)
 ;;; lsp-bash.el ends here

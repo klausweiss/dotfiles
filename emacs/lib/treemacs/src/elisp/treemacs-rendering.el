@@ -16,9 +16,10 @@
 ;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ;;; Commentary:
-;;; Code in this file is considered performance critical.
-;;; The usual restrictions w.r.t quality, readability and maintainability are
-;;; lifted here.
+
+;; Code in this file is considered performance critical.  The usual
+;; restrictions w.r.t quality, readability and maintainability are
+;; lifted here.
 
 ;;; Code:
 
@@ -69,6 +70,10 @@ for new projects.")
 
 (defvar treemacs--file-name-handler-alist nil
   "Value of `file-name-handler-alist' when treemacs loads a directory's content.")
+
+(defvar treemacs--no-recenter nil
+  "Set for non-interactive updates.
+When non-nil `treemacs--maybe-recenter' will have no effect.")
 
 (define-inline treemacs--projects-end ()
   "Importable accessor for `treemacs--projects-end'."
@@ -236,7 +241,8 @@ and apply `insert' on the items returned from OPEN-ACTION.  If it is nil either
 OPEN-ACTION or POST-OPEN-ACTION are expected to take over insertion."
   `(prog1
      (save-excursion
-       (-let [p (point)]
+       (let ((p (point))
+             lines)
          (treemacs-with-writable-buffer
           (treemacs-button-put ,button :state ,new-state)
           ,@(when new-icon
@@ -247,8 +253,9 @@ OPEN-ACTION or POST-OPEN-ACTION are expected to take over insertion."
                 `((progn
                     (insert (apply #'concat ,open-action))))
               `(,open-action))
-          ,post-open-action)
-         (count-lines p (point))))
+          (setf lines (count-lines p (point)))
+          ,post-open-action
+          lines)))
      (when treemacs-move-forward-on-expand
        (let* ((parent (treemacs-current-button))
               (child (next-button parent)))
@@ -481,8 +488,12 @@ Run POST-CLOSE-ACTION after everything else is done."
             (delete-region pos-start pos-end))))
       ,post-close-action)))
 
-(defun treemacs--expand-root-node (btn)
-  "Expand the given root BTN."
+(defun treemacs--expand-root-node (btn &optional recursive)
+  "Expand the given root BTN.
+Open every child-directory as well when RECURSIVE is non-nil.
+
+BTN: Button
+RECURSIVE: Bool"
   (let ((project (treemacs-button-get btn :project)))
     (treemacs-with-writable-buffer
      (treemacs-project->refresh-path-status! project))
@@ -499,8 +510,7 @@ Run POST-CLOSE-ACTION after everything else is done."
            :immediate-insert nil
            :button btn
            :new-state 'root-node-open
-           ;; TODO(2020/12/30): temporary workaround for issues like #752, to be removed in 2 months
-           :new-icon (or treemacs-icon-root-open treemacs-icon-root)
+           :new-icon treemacs-icon-root-open
            :open-action
            (progn
              ;; TODO(2019/10/14): go back to post open
@@ -513,7 +523,12 @@ Run POST-CLOSE-ACTION after everything else is done."
              ;; Performing FS ops on a disconnected Tramp project
              ;; might have changed the state to connected.
              (treemacs-with-writable-buffer
-              (treemacs-project->refresh-path-status! project)))))))))
+              (treemacs-project->refresh-path-status! project))
+             (when (and recursive (treemacs-project->is-readable? project))
+               (--each (treemacs-collect-child-nodes btn)
+                 (when (eq 'dir-node-closed (treemacs-button-get it :state))
+                   (goto-char (treemacs-button-start it))
+                   (treemacs--expand-dir-node it :git-future git-future :recursive t)))))))))))
 
 (defun treemacs--collapse-root-node (btn &optional recursive)
   "Collapse the given root BTN.
@@ -521,8 +536,7 @@ Remove all open entries below BTN when RECURSIVE is non-nil."
   (treemacs--button-close
    :button btn
    :new-state 'root-node-closed
-   ;; TODO(2020/12/30): temporary workaround for issues like #752, to be removed in 2 months
-   :new-icon (or treemacs-icon-root-closed treemacs-icon-root)
+   :new-icon treemacs-icon-root-closed
    :post-close-action
    (-let [path (treemacs-button-get btn :path)]
      (treemacs--stop-watching path)
@@ -587,8 +601,7 @@ Remove all open dir and tag entries under BTN when RECURSIVE."
   "Insert a new root node for the given PROJECT node.
 
 PROJECT: Project Struct"
-  ;; TODO(2020/12/30): temporary workaround for issues like #752, to be removed in 2 months
-  (insert (or treemacs-icon-root-closed treemacs-icon-root))
+  (insert treemacs-icon-root-closed)
   (let* ((pos (point-marker))
          (path (treemacs-project->path project))
          (dom-node (treemacs-dom-node->create! :key path :position pos)))
@@ -642,20 +655,21 @@ PATH: Node Path
 FORCE-EXPAND: Boolean"
   (inline-letevals (path force-expand)
     (inline-quote
-     (-if-let (btn (if ,force-expand
-                       (treemacs-goto-node ,path)
-                     (-some-> (treemacs-find-visible-node ,path)
-                              (goto-char))))
-         (if (treemacs-is-node-expanded? btn)
-             (-let [close-func (alist-get (treemacs-button-get btn :state) treemacs-TAB-actions-config)]
-               (funcall close-func)
-               ;; close node again if no new lines were rendered
-               (when (eq 1 (funcall (alist-get (treemacs-button-get btn :state) treemacs-TAB-actions-config)))
-                 (funcall close-func)))
-           (when ,force-expand
-             (funcall (alist-get (treemacs-button-get btn :state) treemacs-TAB-actions-config))))
-       (-when-let (dom-node (treemacs-find-in-dom ,path))
-         (setf (treemacs-dom-node->refresh-flag dom-node) t))))))
+     (treemacs-without-recenter
+      (-if-let (btn (if ,force-expand
+                        (treemacs-goto-node ,path)
+                      (-some-> (treemacs-find-visible-node ,path)
+                        (goto-char))))
+          (if (treemacs-is-node-expanded? btn)
+              (-let [close-func (alist-get (treemacs-button-get btn :state) treemacs-TAB-actions-config)]
+                (funcall close-func)
+                ;; close node again if no new lines were rendered
+                (when (eq 1 (funcall (alist-get (treemacs-button-get btn :state) treemacs-TAB-actions-config)))
+                  (funcall close-func)))
+            (when ,force-expand
+              (funcall (alist-get (treemacs-button-get btn :state) treemacs-TAB-actions-config))))
+        (-when-let (dom-node (treemacs-find-in-dom ,path))
+          (setf (treemacs-dom-node->refresh-flag dom-node) t)))))))
 
 (defun treemacs-update-node (path &optional force-expand)
   "Update the node identified by its PATH.
@@ -966,7 +980,8 @@ WHEN can take the following values:
  * on-visibility: Special case for projects: recentering depends on whether the
    newly rendered number of NEW-LINES fits the view."
   (declare (indent 1))
-  (when (treemacs-is-treemacs-window? (selected-window))
+  (when (and (null treemacs--no-recenter)
+             (treemacs-is-treemacs-window? (selected-window)))
     (let* ((current-line (float (treemacs--current-screen-line)))
            (all-lines (float (treemacs--lines-in-window))))
       (pcase when
@@ -977,24 +992,16 @@ WHEN can take the following values:
              ;; if possible recenter only as much as is needed to bring all new lines
              ;; into view
              (recenter (max 0 (round (- current-line (- new-lines lines-left))))))))
-        ((guard (memq when '(t on-distance))) ;; TODO(2019/02/20): t for backward compatibility, remove eventually
+        ('on-distance
          (let* ((distance-from-top (/ current-line all-lines))
                 (distance-from-bottom (- 1.0 distance-from-top)))
            (when (or (> treemacs-recenter-distance distance-from-top)
                      (> treemacs-recenter-distance distance-from-bottom))
              (recenter))))))))
 
-(defun treemacs--recursive-refresh ()
-  "Recursively descend the dom, updating only the refresh-marked nodes."
-  (pcase-dolist (`(,_ . ,shelf) treemacs--scope-storage)
-    (-let [workspace (treemacs-scope-shelf->workspace shelf)]
-      (dolist (project (treemacs-workspace->projects workspace))
-        (-when-let (root-node (-> project (treemacs-project->path) (treemacs-find-in-dom)))
-          (treemacs--recursive-refresh-descent root-node project))))))
-
 ;; TODO(201/10/30): update of parents
 (defun treemacs--recursive-refresh-descent (node project)
-  "The recursive descent implementation of `treemacs--recursive-refresh'.
+  "Recursively refresh by descending the dom starting from NODE.
 If NODE under PROJECT is marked for refresh and in an open state (since it could
 have been collapsed in the meantime) it will simply be collapsed and
 re-expanded.  If NODE is node marked its children will be recursively

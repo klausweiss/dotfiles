@@ -9,8 +9,7 @@
 (require 'ob-ref)
 (require 'ob-core)
 
-(require 'rustic-common)
-(require 'rustic-compile)
+(require 'rustic-rustfmt)
 
 ;; FIXME This variable doesn't exist in noninteractive emacs sessions,
 ;; which probably means that it is internal and we shouldn't use it.

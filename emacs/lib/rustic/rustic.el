@@ -4,7 +4,7 @@
 ;; Author: Mozilla
 ;;
 ;; Keywords: languages
-;; Package-Requires: ((emacs "26.1") (xterm-color "1.6") (dash "2.13.0") (s "1.10.0") (f "0.18.2") (markdown-mode "2.3") (spinner "1.7.3") (let-alist "1.0.4") (seq "2.3") (ht "2.0") (project "0.3.0"))
+;; Package-Requires: ((emacs "26.1") (dash "2.13.0") (f "0.18.2") (let-alist "1.0.4") (markdown-mode "2.3") (project "0.3.0") (s "1.10.0") (seq "2.3") (spinner "1.7.3") (xterm-color "1.6"))
 
 ;; This file is distributed under the terms of both the MIT license and the
 ;; Apache License (version 2.0).
@@ -30,20 +30,25 @@
 
 ;;; Code:
 
+(require 'cl-lib)
+(require 'pcase)
+(require 'seq)
+(require 'subr-x)
+
+(require 'dash)
+
 (eval-when-compile (require 'rx))
-(eval-when-compile (require 'url-vars))
-
-(require 'json)
-
-(require 'rustic-common)
 
 (defvar electric-pair-inhibit-predicate)
+(defvar electric-pair-skip-self)
 (defvar electric-indent-chars)
 
-(defvar rustic-buffer-workspace-dir nil)
-(make-variable-buffer-local 'rustic-buffer-workspace-dir)
-
 ;;; Customization
+
+(defgroup rustic nil
+  "Support for Rust code."
+  :link '(url-link "https://www.rustic-lang.org/")
+  :group 'languages)
 
 (defcustom rustic-indent-offset 4
   "Indent Rust code by this number of spaces."
@@ -68,11 +73,6 @@ When nil, `where' will be aligned with `fn' or `trait'."
   "Whether to enable angle bracket (`<' and `>') matching where appropriate."
   :type 'boolean
   :safe #'booleanp
-  :group 'rustic)
-
-(defcustom rustic-always-locate-project-on-open nil
-  "Whether to run `cargo locate-project' every time `rustic-mode' is activated."
-  :type 'boolean
   :group 'rustic)
 
 (defcustom rustic-indent-return-type-to-arguments t
@@ -113,7 +113,26 @@ to the function arguments.  When nil, `->' will be indented one level."
   "Face for interpolating braces in builtin formatting macro strings."
   :group 'rustic)
 
-;;; Rust-mode
+;;; Workspace
+
+(defvar-local rustic--buffer-workspace nil
+  "Use function `rustic-buffer-workspace' instead.")
+
+(defun rustic-buffer-workspace (&optional nodefault)
+  "Return the Rust workspace for the current buffer.
+This is the directory containing the file \"Cargo.lock\".  When
+called outside a Rust project, then return `default-directory',
+or if NODEFAULT is non-nil, then fall back to returning nil."
+  (or rustic--buffer-workspace
+      (let ((dir (locate-dominating-file default-directory "Cargo.toml")))
+        (when dir
+          (setq dir (expand-file-name dir)))
+        (setq rustic--buffer-workspace dir)
+        (or dir
+            (and (not nodefault)
+                 default-directory)))))
+
+;;; Syntax
 
 (defconst rustic-re-ident "[[:word:][:multibyte:]_][[:word:][:multibyte:]_[:digit:]]*")
 (defconst rustic-re-lc-ident "[[:lower:][:multibyte:]_][[:word:][:multibyte:]_[:digit:]]*")
@@ -184,6 +203,8 @@ Use idomenu (imenu with `ido-mode') for best mileage.")
     table)
   "Syntax definitions and helpers.")
 
+;;; Mode
+
 (defvar rustic-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "C-c C-p") 'rustic-popup)
@@ -213,17 +234,18 @@ Use idomenu (imenu with `ido-mode') for best mileage.")
   :group 'rustic
   :syntax-table rustic-mode-syntax-table
 
-  ;; Syntax.
+  ;; Syntax
   (setq-local syntax-propertize-function #'rustic-syntax-propertize)
 
   ;; Indentation
   (setq-local indent-line-function 'rustic-indent-line)
 
   ;; Fonts
-  (setq-local font-lock-defaults '(rustic-font-lock-keywords
-                                   nil nil nil nil
-                                   (font-lock-syntactic-face-function
-                                    . rustic-syntactic-face-function)))
+  (setq-local font-lock-defaults
+              '(rustic-font-lock-keywords
+                nil nil nil nil
+                (font-lock-syntactic-face-function
+                 . rustic-syntactic-face-function)))
 
   ;; Misc
   (setq-local comment-start "// ")
@@ -231,14 +253,16 @@ Use idomenu (imenu with `ido-mode') for best mileage.")
   (setq-local open-paren-in-column-0-is-defun-start nil)
 
   ;; Auto indent on }
-  (setq-local
-   electric-indent-chars (cons ?} (and (boundp 'electric-indent-chars)
-                                       electric-indent-chars)))
+  (setq-local electric-indent-chars
+              (cons ?} (and (boundp 'electric-indent-chars)
+                            electric-indent-chars)))
 
   ;; Allow paragraph fills for comments
   (setq-local comment-start-skip "\\(?://[/!]*\\|/\\*[*!]?\\)[[:space:]]*")
   (setq-local paragraph-start
-              (concat "[[:space:]]*\\(?:" comment-start-skip "\\|\\*/?[[:space:]]*\\|\\)$"))
+              (concat "[[:space:]]*\\(?:"
+                      comment-start-skip
+                      "\\|\\*/?[[:space:]]*\\|\\)$"))
   (setq-local paragraph-separate paragraph-start)
   (setq-local normal-auto-fill-function 'rustic-do-auto-fill)
   (setq-local fill-paragraph-function 'rustic-fill-paragraph)
@@ -252,17 +276,13 @@ Use idomenu (imenu with `ido-mode') for best mileage.")
   (setq-local beginning-of-defun-function 'rustic-beginning-of-defun)
   (setq-local end-of-defun-function 'rustic-end-of-defun)
   (setq-local parse-sexp-lookup-properties t)
-  (setq-local electric-pair-inhibit-predicate 'rustic-electric-pair-inhibit-predicate-wrap)
+  (setq-local electric-pair-inhibit-predicate
+              'rustic-electric-pair-inhibit-predicate-wrap)
+  (setq-local electric-pair-skip-self 'rustic-electric-pair-skip-self-wrap)
 
-  (add-hook 'before-save-hook 'rustic-before-save-hook nil t)
-  (add-hook 'after-save-hook 'rustic-after-save-hook nil t)
-
-  (setq-local rustic-buffer-workspace-dir nil)
-
-  (when rustic-always-locate-project-on-open
-    (setq-local rustic-buffer-workspace-dir (rustic-buffer-workspace)))
-  (when rustic-lsp-setup-p
-    (rustic-setup-lsp)))
+  (when (fboundp 'rustic-before-save-hook)
+    (add-hook 'before-save-hook 'rustic-before-save-hook nil t)
+    (add-hook 'after-save-hook 'rustic-after-save-hook nil t)))
 
 ;;;###autoload
 (add-to-list 'auto-mode-alist '("\\.rs\\'" . rustic-mode))
@@ -435,6 +455,13 @@ Does not match type annotations of the form \"foo::<\"."
              ("use" . font-lock-constant-face)
              ("fn" . font-lock-function-name-face)))))
 
+(defun rustic-end-of-string ()
+  "Skip to the end of the current string."
+  (save-excursion
+    (skip-syntax-forward "^\"|")
+    (skip-syntax-forward "\"|")
+    (point)))
+
 (defun rustic-looking-back-str (str)
   "Return non-nil if there's a match on the text before point and STR.
 Like `looking-back' but for fixed strings rather than regexps (so
@@ -473,6 +500,8 @@ seen as a macro."
         (backward-char)
         (and (= ?! (char-after))
              (rustic-looking-back-ident)))))
+
+;;; Syntax definitions and helpers
 
 (defun rustic-paren-level () (nth 0 (syntax-ppss)))
 (defun rustic-in-str () (nth 3 (syntax-ppss)))
@@ -594,6 +623,8 @@ buffer."
 (defconst rustic-re-pre-expression-operators "[-=!%&*/:<>[{(|.^;}]")
 
 (defconst rustic-re-special-types (regexp-opt rustic-special-types 'symbols))
+
+;;; Font-locking definitions and helpers
 
 (defun rustic-next-string-interpolation (limit)
   "Search forward from point for next Rust interpolation marker before LIMIT.
@@ -942,6 +973,13 @@ This wraps the default defined by `electric-pair-inhibit-predicate'."
        (rustic-is-lt-char-operator)))
    (funcall (default-value 'electric-pair-inhibit-predicate) char)))
 
+(defun rustic-electric-pair-skip-self-wrap (char)
+  "Skip CHAR instead of inserting a second closing character.
+This wraps the default defined by `electric-pair-skip-self'."
+  (or
+   (= ?> char)
+   (funcall (default-value 'electric-pair-skip-self) char)))
+
 (defun rustic-ordinary-lt-gt-p ()
   "Test whether the `<' or `>' at point is an ordinary operator of some kind.
 
@@ -1182,28 +1220,6 @@ This handles multi-line comments with a * prefix on each line."
   (rustic-with-comment-fill-prefix
    (lambda () (comment-indent-new-line arg))))
 
-(defun rustic-end-of-string ()
-  "Skip to the end of the current string."
-  (save-excursion
-    (skip-syntax-forward "^\"|")
-    (skip-syntax-forward "\"|")
-    (point)))
-
-(defun rustic-before-save-hook ()
-  "Don't throw error if rustfmt isn't installed, as it makes saving impossible."
-  (when (and (rustic-format-on-save-p) (not (rustic-compilation-process-live t)))
-    (condition-case nil
-        (progn
-          (rustic-format-file)
-          (sit-for 0.1))
-      (error nil))))
-
-(defun rustic-after-save-hook ()
-  "Check if rustfmt is installed after saving the file."
-  (when (rustic-format-on-save-p)
-    (unless (executable-find rustic-rustfmt-bin)
-      (error "Could not locate executable \"%s\"" rustic-rustfmt-bin))))
-
 ;;; _
 
 (defun rustic-reload ()
@@ -1215,18 +1231,23 @@ This handles multi-line comments with a * prefix on each line."
 
 (provide 'rustic)
 
-(require 'rustic-util)
-(require 'rustic-compile)
-(require 'rustic-popup)
-(require 'rustic-cargo)
-(require 'rustic-babel)
-(require 'rustic-racer)
 (require 'rustic-interaction)
 
-(with-eval-after-load 'flycheck
-  (require 'rustic-flycheck))
+(defvar rustic-load-optional-libraries t
+  "Whether loading `rustic' also loads optional libraries.
+This variable might soon be remove again.")
 
-(with-eval-after-load 'eglot
-  (rustic-setup-eglot))
+(when rustic-load-optional-libraries
+  (require 'rustic-compile)
+  (require 'rustic-popup)
+  (require 'rustic-cargo)
+  (require 'rustic-babel)
+  (require 'rustic-racer)
+  (require 'rustic-rustfmt)
+  (require 'rustic-rustfix)
+  (require 'rustic-playpen)
+  (require 'rustic-lsp)
+  (with-eval-after-load 'flycheck
+    (require 'rustic-flycheck)))
 
 ;;; rustic.el ends here

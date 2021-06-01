@@ -3426,7 +3426,7 @@ SEQ may be an atom or a sequence."
               font-lock-multiline t
               ,@(when (and markdown-hide-markup hr-char)
                   `(display ,(make-string
-                              (window-body-width) hr-char)))))
+                              (1- (window-body-width)) hr-char)))))
       t)))
 
 (defun markdown-fontify-sub-superscripts (last)
@@ -3585,13 +3585,26 @@ prefixed with an integer from 1 to the length of
          (insert (car markdown-hr-strings))))
   (markdown-ensure-blank-line-after))
 
-(defun markdown--insert-common (start-delim end-delim regex start-group end-group face)
+(defun markdown--insert-common (start-delim end-delim regex start-group end-group face
+                                            &optional skip-space)
   (if (use-region-p)
       ;; Active region
-      (let ((bounds (markdown-unwrap-things-in-region
-                     (region-beginning) (region-end)
-                     regex start-group end-group)))
-        (markdown-wrap-or-insert start-delim end-delim nil (car bounds) (cdr bounds)))
+      (let* ((bounds (markdown-unwrap-things-in-region
+                      (region-beginning) (region-end)
+                      regex start-group end-group))
+             (beg (car bounds))
+             (end (cdr bounds)))
+        (when (and beg skip-space)
+          (save-excursion
+            (goto-char beg)
+            (skip-chars-forward "[ \t]")
+            (setq beg (point))))
+        (when (and end skip-space)
+          (save-excursion
+            (goto-char end)
+            (skip-chars-backward "[ \t]")
+            (setq end (point))))
+        (markdown-wrap-or-insert start-delim end-delim nil beg end))
     (if (markdown--face-p (point) (list face))
         (save-excursion
           (while (and (markdown--face-p (point) (list face)) (not (bobp)))
@@ -3613,7 +3626,7 @@ bold word or phrase, remove the bold markup.  Otherwise, simply
 insert bold delimiters and place the point in between them."
   (interactive)
   (let ((delim (if markdown-bold-underscore "__" "**")))
-    (markdown--insert-common delim delim markdown-regex-bold 2 4 'markdown-bold-face)))
+    (markdown--insert-common delim delim markdown-regex-bold 2 4 'markdown-bold-face t)))
 
 (defun markdown-insert-italic ()
   "Insert markup to make a region or word italic.
@@ -3623,7 +3636,7 @@ italic word or phrase, remove the italic markup.  Otherwise, simply
 insert italic delimiters and place the point in between them."
   (interactive)
   (let ((delim (if markdown-italic-underscore "_" "*")))
-    (markdown--insert-common delim delim markdown-regex-italic 1 3 'markdown-italic-face)))
+    (markdown--insert-common delim delim markdown-regex-italic 1 3 'markdown-italic-face t)))
 
 (defun markdown-insert-strike-through ()
   "Insert markup to make a region or word strikethrough.
@@ -3633,7 +3646,7 @@ strikethrough word or phrase, remove the strikethrough markup.  Otherwise,
 simply insert bold delimiters and place the point in between them."
   (interactive)
   (markdown--insert-common
-   "~~" "~~" markdown-regex-strike-through 2 4 'markdown-strike-through-face))
+   "~~" "~~" markdown-regex-strike-through 2 4 'markdown-strike-through-face t))
 
 (defun markdown-insert-code ()
   "Insert markup to make a region or word an inline code fragment.
@@ -6995,7 +7008,7 @@ demote."
       (markdown-backward-same-level 1))))
 
 (defun markdown-outline-up ()
-  "Move to previous list item, when in a list, or next heading."
+  "Move to previous list item, when in a list, or previous heading."
   (interactive)
   (unless (markdown-up-list)
     (markdown-up-heading 1)))
@@ -9074,7 +9087,7 @@ This function assumes point is on a table."
             (indent (progn (looking-at "[ \t]*") (match-string 0)))
             ;; Split table in lines and save column format specifier
             (lines (mapcar (lambda (l)
-                             (if (string-match-p "\\`[ \t]*|[-:]" l)
+                             (if (string-match-p "\\`[ \t]*|[ \t]*[-:]" l)
                                  (progn (setq fmtspec (or fmtspec l)) nil) l))
                            (markdown--split-string (buffer-substring begin end) "\n")))
             ;; Split lines in cells

@@ -20,11 +20,12 @@
 ;;  LSP icons management
 ;;
 ;;; Code:
+(require 'lsp-mode)
 
 (defgroup lsp-icons nil
   "LSP icons"
   :group 'lsp-mode
-  :tag "Icons")
+  :tag "LSP Icons")
 
 (defcustom lsp-headerline-breadcrumb-icons-enable t
   "If non-nil, icons support is enabled for headerline-breadcrumb."
@@ -88,6 +89,8 @@ if its enabled."
       (all-the-icons-material icon-name
                               :face face)
     (propertize fallback 'face face)))
+
+(lsp-consistency-check lsp-icons)
 
 (provide 'lsp-icons)
 ;;; lsp-icons.el ends here

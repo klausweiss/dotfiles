@@ -8,6 +8,8 @@
 ;; Author: Jonas Bernoulli <jonas@bernoul.li>
 ;; Maintainer: Jonas Bernoulli <jonas@bernoul.li>
 
+;; SPDX-License-Identifier: GPL-3.0-or-later
+
 ;; Magit is free software; you can redistribute it and/or modify it
 ;; under the terms of the GNU General Public License as published by
 ;; the Free Software Foundation; either version 3, or (at your option)
@@ -844,9 +846,10 @@ To use this function add it to the appropriate hook
   (and (string-match "^option (enter for default): $" string)
        (progn
          (magit-process-buffer)
-         (process-send-string
-          process
-          (format "%c" (read-char-choice "Option: " '(?\r ?\j ?1 ?2)))))))
+         (let ((option (format "%c\n"
+                               (read-char-choice "Option: " '(?\r ?\j ?1 ?2)))))
+           (insert-before-markers-and-inherit option)
+           (process-send-string process option)))))
 
 (defun magit-process-password-prompt (process string)
   "Find a password based on prompt STRING and send it to git.
