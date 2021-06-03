@@ -8,11 +8,11 @@ sudo apt install -y
      awesome
      emacs
      fish
+     i3lock
      moreutils
      nemo
      redshift
      rofi
-     slock
      tmux
      tmuxinator
      uswsusp

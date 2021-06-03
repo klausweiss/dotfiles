@@ -14,12 +14,12 @@ sudo xbps-install -Sy
     epiphany
     elogind
     fish-shell
+    i3lock
     light
     m4
     nemo
     redshift
     rofi
-    slock
     tmux
     vim
     xmodmap
