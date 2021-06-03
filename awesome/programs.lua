@@ -5,7 +5,7 @@ return {
    internet_browser = "firefox",
    launcher = "rofi -show run",
    mail_client = "thunderbird",
-   screen_lock = "slock",
+   screen_lock = "i3lock -c 000000",
    screenshooter = "flameshot gui",
    power_menu = "rofi -show power-menu -modi power-menu:~/.dotfiles/rofi/rofi-power-menu/rofi-power-menu",
 
