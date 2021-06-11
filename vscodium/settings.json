@@ -1,5 +1,5 @@
 {
-    "workbench.colorTheme": "Gruvbox Material Dark",
+    "workbench.colorTheme": "Gruvbox Dark Medium",
     "editor.multiCursorModifier": "ctrlCmd",
     "haskell.formattingProvider": "fourmolu",
     "editor.fontLigatures": true,

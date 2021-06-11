@@ -9,6 +9,7 @@
 codium --install-extension kahole.magit
 codium --install-extension elmtooling.elm-ls-vscode
 codium --install-extension sainnhe.gruvbox-material
+codium --install-extension jdinhlife.gruvbox
 codium --install-extension haskell.haskell
 codium --install-extension k--kato.intellij-idea-keybindings
 codium --install-extension esbenp.prettier-vscode
