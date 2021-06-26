@@ -42,6 +42,7 @@ SWIPER_REPO := https://github.com/abo-abo/swiper.git
 TREEMACS_REPO := https://github.com/Alexander-Miller/treemacs.git
 	PFUTURE_URL := https://raw.githubusercontent.com/Alexander-Miller/pfuture/master/pfuture.el
 UNDO_TREE_URL := http://www.dr-qubit.org/undo-tree/undo-tree.el
+	QUEUE_URL := https://www.dr-qubit.org/predictive/queue.el
 VISUAL_REGEXP_URL := https://raw.githubusercontent.com/benma/visual-regexp.el/master/visual-regexp.el
 WHICH_KEY_URL := https://raw.githubusercontent.com/justbur/emacs-which-key/master/which-key.el
 WINUM_URL := https://raw.githubusercontent.com/deb0ch/emacs-winum/master/winum.el
@@ -252,6 +253,9 @@ update-pfuture:
 update-projectile:
 	$(call download-from-url, $(PROJECTILE_URL))
 
+update-queue:
+	$(call download-from-url, $(QUEUE_URL))
+
 update-rustic: update-xterm-color
 	$(call download-from-repo, $(RUSTIC_REPO))
 
@@ -282,7 +286,9 @@ update-treemacs: \
 
 	$(call download-from-repo, $(TREEMACS_REPO), icons/ src/)
 
-update-undo-tree:
+update-undo-tree: \
+	update-queue \
+
 	$(call download-from-url, $(UNDO_TREE_URL))
 
 update-visual-regexp:
