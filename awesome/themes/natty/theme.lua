@@ -52,7 +52,7 @@ theme.border_marked = colors.border_alert
 
 
 -- spacing
-theme.useless_gap          = dpi(0)
+theme.useless_gap          = dpi(3)
 theme.border_width         = dpi(1)
 theme.systray_icon_spacing = dpi(5)
 

@@ -68,10 +68,10 @@ local handler_request_titlebars = function(c)
    )
 
    local titlebar_args = {
-      position = "right"
+      position = "right",
+      size = dpi(40),
    }
-   awful.titlebar(c, titlebar_args) : setup
-   {
+   local titlebar_buttons = {
       { -- Left
 	 awful.titlebar.widget.closebutton    (c),
 	 awful.titlebar.widget.minimizebutton (c),
@@ -90,6 +90,15 @@ local handler_request_titlebars = function(c)
       },
       layout = wibox.layout.align.vertical,
    }
+
+   awful.titlebar(c, titlebar_args) : setup {
+      {
+	 titlebar_buttons,
+	 margins = dpi(5),
+	 widget = wibox.container.margin
+      },
+      layout = wibox.layout.stack
+   }
 end
 
 client.connect_signal("request::titlebars", handler_request_titlebars)
@@ -102,6 +111,13 @@ end)
 
 client.connect_signal("focus", function(c) c.border_color = beautiful.border_focus end)
 client.connect_signal("unfocus", function(c) c.border_color = beautiful.border_normal end)
+
+-- Rounded corners
+client.connect_signal("property::geometry", function (c)
+  gears.timer.delayed_call(function()
+    gears.surface.apply_shape_bounding(c, gears.shape.rounded_rect, 7)
+  end)
+end)
 -- }}}
 
 rules.add_rule({
