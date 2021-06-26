@@ -95,14 +95,14 @@ setkey { ALT, SHIFT, DOWN,
 setkey { ALT, SHIFT, "r",
 	 fun = awesome.restart  }
 setkey { ALT, SHIFT, "q",
-	 fun = run(programs.power_menu) }
+	 fun = run("rofi -show power-menu -modi power-menu:~/.dotfiles/rofi/rofi-power-menu/rofi-power-menu") }
 -- keyboard action keys
 setkey { "Print",
-	 fun = run(programs.screenshooter) }
+	 fun = run("flameshot gui") }
 setkey { "XF86MonBrightnessUp",
-	 fun = run(programs.brightness_up) }
+	 fun = run("light -A 4") }
 setkey { "XF86MonBrightnessDown",
-	 fun = run(programs.brightness_down) }
+	 fun = run("light -U 4") }
 setkey { "XF86AudioRaiseVolume",
 	 fun = function () sound_api.output_volume_up(5) end }
 setkey { "XF86AudioLowerVolume",
@@ -118,25 +118,25 @@ setkey { "XF86Launch5",
 setkey { "XF86Launch6",
 	 fun = sound_api.set_output_type_to_speakers}
 setkey { "XF86Tools",
-	 fun = run(programs.refresh_displays) }
+	 fun = run("autorandr -c") }
 -- launcher
 setkey { CTRL, SHIFT, " ",
-	 fun = run(programs.launcher) }
+	 fun = run("rofi -show run") }
 setkey { SUPER, " ",
 	 fun = menubar.show }
 -- programs
 setkey { ALT, CTRL, ENTER,
 	 fun = run(programs.terminal) }
 setkey { ALT, SHIFT, "e",
-	 fun = run(programs.file_manager) }
+	 fun = run("nemo") }
 setkey { ALT, SHIFT, "w",
-	 fun = run(programs.internet_browser) }
+	 fun = run("firefox") }
 setkey { ALT, SHIFT, "m",
-	 fun = run(programs.mail_client) }
+	 fun = run("thunderbird") }
 setkey { ALT, SHIFT, "i",
 	 fun = run("signal-desktop") }
 setkey { ALT, SHIFT, "l",
-	 fun = run(programs.screen_lock) }
+	 fun = run("i3lock -c 000000") }
 setkey { ALT, SHIFT, "x",
 	 fun = run("emacs") }
 setkey { ALT, SHIFT, "d",
