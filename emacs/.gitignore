@@ -11,3 +11,4 @@
 /transient/
 *.elc
 .lsp-session-v1
+/undo-tree-history/
