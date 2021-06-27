@@ -834,15 +834,15 @@ and `:slant'."
 ;;; Section Classes
 
 (defclass magit-file-section (magit-section)
-  ((keymap :initform magit-file-section-map)
+  ((keymap :initform 'magit-file-section-map)
    (source :initform nil)
    (header :initform nil)))
 
 (defclass magit-module-section (magit-file-section)
-  ((keymap :initform magit-hunk-section-map)))
+  ((keymap :initform 'magit-hunk-section-map)))
 
 (defclass magit-hunk-section (magit-section)
-  ((keymap      :initform magit-hunk-section-map)
+  ((keymap      :initform 'magit-hunk-section-map)
    (refined     :initform nil)
    (combined    :initform nil)
    (from-range  :initform nil)
@@ -2024,7 +2024,7 @@ Staging and applying changes is documented in info node
   (pcase-let ((`(,cmd . ,args)
                (-flatten args))
               (magit-git-global-arguments
-                (remove "--literal-pathspecs" magit-git-global-arguments)))
+               (remove "--literal-pathspecs" magit-git-global-arguments)))
     ;; As of Git 2.19.0, we need to generate diffs with
     ;; --ita-visible-in-index so that `magit-stage' can work with
     ;; intent-to-add files (see #4026).  Cache the result for each
@@ -2852,7 +2852,7 @@ Do not confuse this with `magit-diff-scope' (which see)."
                         (oref section children))
                    (magit-section-match [* file commit] section))
                'committed
-           'undefined))
+             'undefined))
           (t 'undefined))))
 
 (cl-defun magit-diff-scope (&optional (section nil ssection) strict)
