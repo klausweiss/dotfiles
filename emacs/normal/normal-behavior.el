@@ -72,6 +72,9 @@ With numeric prefix arg, copy to register 0-9 instead."
 ;; undo
 (setq undo-tree-map 'invalid-keymap)
 
+(setq undo-tree-history-directory-alist
+      '(("." . "~/.emacs.d/undo-tree-history")))
+
 (with-eval-after-load 'undo-tree
   (define-globalized-minor-mode global-undo-tree-mode
     undo-tree-mode (lambda () (undo-tree-mode 1)))
