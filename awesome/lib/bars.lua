@@ -1,6 +1,7 @@
 local awful = require("awful")
 local wibox = require("wibox")
 local dpi = require("beautiful.xresources").apply_dpi
+local startmenu = require("startmenu")
 
 local battery = require("lib/widgets/battery")
 local sound = require("lib/widgets/sound")
@@ -30,7 +31,7 @@ return {
 	 expand = "outside",
 	 { 
             layout = wibox.layout.fixed.vertical,
-            -- startmenu.launcher,
+            startmenu.launcher,
             promptbox,
 	    tasklist(screen),
 	 },
