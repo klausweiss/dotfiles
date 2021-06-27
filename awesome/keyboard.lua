@@ -71,6 +71,8 @@ setkey { ALT, UP,
 	 fun = screens.focus_up_screen }
 setkey { ALT, DOWN,
 	 fun = screens.focus_down_screen }
+setkey { ALT, SHIFT, "u",
+	 fun = clients.focus_urgent_client  }
 setkey { ALT, SHIFT, "t",
 	 fun = screens.move_client_to_left_screen  }
 setkey { ALT, SHIFT, LEFT,

@@ -1,5 +1,14 @@
 local awful = require("awful")
 
+local state = {
+   newest_client = nil,
+}
+
+client.connect_signal(
+   "manage", function (c)
+      state.newest_client = c
+end)
+
 return {
    focus_next  = function () awful.client.focus.byidx( 1) end,
    focus_prev  = function () awful.client.focus.byidx(-1) end,
@@ -34,5 +43,11 @@ return {
    close_client = function (client_)
       client_:kill()
    end,
+
+   focus_urgent_client = function()
+      state.newest_client:jump_to(false)
+   end,
+
+   state = state,
 }
 
