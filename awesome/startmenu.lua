@@ -1,7 +1,9 @@
 local awful = require("awful")
 local beautiful = require("beautiful")
+local dpi = require("beautiful.xresources").apply_dpi
 local hotkeys_popup = require("awful.hotkeys_popup")
 local programs = require("programs")
+local wibox = require("wibox")
 
 local myawesomemenu = {
    { "hotkeys", function() hotkeys_popup.show_help(nil, awful.screen.focused()) end },
@@ -41,8 +43,16 @@ else
    })
 end
 
-mylauncher = awful.widget.launcher({ image = beautiful.awesome_icon,
-                                     menu = mymainmenu })
+icon_launcher = awful.widget.launcher({ image = beautiful.awesome_icon,
+					menu = mymainmenu })
+local mylauncher = wibox.widget {
+   {
+      icon_launcher,
+      margins = dpi(10),
+      widget = wibox.container.margin,
+   },
+   layout = wibox.layout.stack
+}
 
 return {
    mainmenu = mymainmenu,
