@@ -117,7 +117,7 @@ setkey { "XF86Tools",
 	 fun = run("autorandr -c") }
 -- launcher
 setkey { CTRL, SHIFT, " ",
-	 fun = run("rofi -show run") }
+	 fun = run(programs.launcher) }
 setkey { SUPER, " ",
 	 fun = menubar.show }
 -- programs
