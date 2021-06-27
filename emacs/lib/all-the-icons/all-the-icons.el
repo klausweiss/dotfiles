@@ -3,7 +3,7 @@
 ;; Copyright (C) 2016  Dominic Charlesworth <dgc336@gmail.com>
 
 ;; Author: Dominic Charlesworth <dgc336@gmail.com>
-;; Version: 4.0.0
+;; Version: 5.0.0
 ;; Package-Requires: ((emacs "24.3"))
 ;; URL: https://github.com/domtronn/all-the-icons.el
 ;; Keywords: convenient, lisp
@@ -158,7 +158,7 @@
     ("dat"          all-the-icons-faicon "bar-chart"          :face all-the-icons-cyan :height 0.9)
     ("dmg"          all-the-icons-octicon "tools"             :v-adjust 0.0 :face all-the-icons-lsilver)
     ("dll"          all-the-icons-faicon "cogs"               :face all-the-icons-silver)
-    ("DS_STORE"     all-the-icons-faicon "cogs"               :face all-the-icons-silver)
+    ("ds_store"     all-the-icons-faicon "cogs"               :face all-the-icons-silver)
     ;; Source Codes
     ("scpt"         all-the-icons-fileicon "apple"            :face all-the-icons-pink)
     ("aup"          all-the-icons-fileicon "audacity"         :face all-the-icons-yellow)
@@ -872,8 +872,10 @@ Note: You want chevron, please use `all-the-icons-icon-for-dir-with-chevron'."
 ARG-OVERRIDES should be a plist containining `:height',
 `:v-adjust' or `:face' properties like in the normal icon
 inserting functions."
-  (let* ((icon (or (cdr (assoc (file-name-extension file)
-                               all-the-icons-extension-icon-alist))
+  (let* ((ext (file-name-extension file))
+         (icon (or (and ext
+                        (cdr (assoc (downcase ext)
+                                    all-the-icons-extension-icon-alist)))
                    (all-the-icons-match-to-alist file all-the-icons-regexp-icon-alist)))
          (args (cdr icon)))
     (when arg-overrides (setq args (append `(,(car args)) arg-overrides (cdr args))))
