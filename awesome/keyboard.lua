@@ -67,12 +67,8 @@ setkey { ALT, "s",
 	 fun = screens.focus_right_screen }
 setkey { ALT, RIGHT,
 	 fun = screens.focus_right_screen }
-setkey { ALT, "p",
-	 fun = screens.focus_up_screen }
 setkey { ALT, UP,
 	 fun = screens.focus_up_screen }
-setkey { ALT, "n",
-	 fun = screens.focus_down_screen }
 setkey { ALT, DOWN,
 	 fun = screens.focus_down_screen }
 setkey { ALT, SHIFT, "t",
