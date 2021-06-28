@@ -11,6 +11,7 @@ sudo apt install -y
      i3lock
      moreutils
      nemo
+     neovim
      redshift
      rofi
      tmux
