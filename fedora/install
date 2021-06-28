@@ -1,0 +1,22 @@
+!/usr/bin/env -S perl ${HOME}/.dotfiles/install --file
+
+[run]
+# Installing packages
+sudo dnf install -y
+     adwaita-icon-theme
+     awesome
+     emacs
+     fish
+     gnupg2-smime
+     i3lock
+     moreutils
+     nemo
+     neovim
+     pcsc-lite
+     redshift
+     rofi
+     tlp
+     tmux
+     xclip
+     xss-lock
+     xterm
