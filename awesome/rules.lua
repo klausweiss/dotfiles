@@ -48,6 +48,7 @@ add_rule({
 	 class = {
 	    "discord",
 	    "Evolution",
+	    "geary",
 	    "rambox",
 	    "Signal",
 	    "Telegram",
