@@ -4,6 +4,7 @@
 ./user-dirs: ~/.config/user-dirs.dirs
 ./wallpaper.png: ~/.config/wallpaper
 ./xinitrc: ~/.xinitrc
+./xinitrc: ~/.profile
 ./Xresources: ~/.Xresources
 
 [run]
