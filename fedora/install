@@ -5,13 +5,19 @@
 sudo dnf install -y
      adwaita-icon-theme
      awesome
+     bat
+     blueman
      emacs
      fish
      gnupg2-smime
+     htop
      i3lock
+     light
      moreutils
      nemo
      neovim
+     network-manager-applet
+     papirus-icon-theme
      pcsc-lite
      redshift
      rofi
