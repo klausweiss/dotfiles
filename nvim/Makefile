@@ -46,6 +46,9 @@ define download-from-repo
 endef
 
 
+update-compe:
+	$(call download-from-repo, https://github.com/hrsh7th/nvim-compe)
+
 update-gruvbox-material:
 	$(call download-from-repo, https://github.com/sainnhe/gruvbox-material)
 
