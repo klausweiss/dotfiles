@@ -52,3 +52,6 @@ update-gruvbox-material:
 update-vim-airline:
 	$(call download-from-repo, https://github.com/vim-airline/vim-airline)
 
+update-vim-gitgutter:
+	$(call download-from-repo, https://github.com/airblade/vim-gitgutter)
+
