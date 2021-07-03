@@ -49,6 +49,9 @@ endef
 update-gruvbox-material:
 	$(call download-from-repo, https://github.com/sainnhe/gruvbox-material)
 
+update-nvim-lsp-config:
+	$(call download-from-repo, https://github.com/neovim/nvim-lspconfig)
+
 update-vim-airline:
 	$(call download-from-repo, https://github.com/vim-airline/vim-airline)
 
