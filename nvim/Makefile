@@ -46,6 +46,11 @@ define download-from-repo
 endef
 
 
+update-barbar: \
+	update-nvim-web-devicons \
+
+	$(call download-from-repo, https://github.com/romgrk/barbar.nvim)
+
 update-compe:
 	$(call download-from-repo, https://github.com/hrsh7th/nvim-compe)
 
@@ -54,6 +59,9 @@ update-gruvbox-material:
 
 update-nvim-lsp-config:
 	$(call download-from-repo, https://github.com/neovim/nvim-lspconfig)
+
+update-nvim-web-devicons:
+	$(call download-from-repo, https://github.com/kyazdani42/nvim-web-devicons)
 
 update-vim-airline:
 	$(call download-from-repo, https://github.com/vim-airline/vim-airline)
