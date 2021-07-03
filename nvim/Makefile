@@ -46,8 +46,8 @@ define download-from-repo
 endef
 
 
-update-gruvbox:
-	$(call download-from-repo, https://github.com/morhetz/gruvbox)
+update-gruvbox-material:
+	$(call download-from-repo, https://github.com/sainnhe/gruvbox-material)
 
 update-vim-airline:
 	$(call download-from-repo, https://github.com/vim-airline/vim-airline)
