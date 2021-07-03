@@ -36,7 +36,7 @@ define copy-existing-srcs
 endef
 
 define clear-junk
-	find $(1) -name .git -type d -exec rm -rf {} +
+	find $(1) -name ".git*" -type d -exec rm -rf {} +
 endef
 
 define download-from-repo
@@ -48,3 +48,7 @@ endef
 
 update-gruvbox:
 	$(call download-from-repo, https://github.com/morhetz/gruvbox)
+
+update-vim-airline:
+	$(call download-from-repo, https://github.com/vim-airline/vim-airline)
+
