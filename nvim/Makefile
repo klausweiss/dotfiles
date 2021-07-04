@@ -63,6 +63,9 @@ update-nvim-lsp-config:
 update-nvim-web-devicons:
 	$(call download-from-repo, https://github.com/kyazdani42/nvim-web-devicons)
 
+update-undotree:
+	$(call download-from-repo, https://github.com/mbbill/undotree)
+
 update-vim-airline:
 	$(call download-from-repo, https://github.com/vim-airline/vim-airline)
 
