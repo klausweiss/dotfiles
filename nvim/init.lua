@@ -59,6 +59,9 @@ vim.api.nvim_set_var('airline_powerline_fonts', 1)
 -- line numbers
 cmd 'set number'
 
+-- leader key
+vim.g.mapleader = ' '
+
 -- lsp
 local nvim_lsp = require('lspconfig')
 
