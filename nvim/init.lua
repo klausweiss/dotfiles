@@ -63,6 +63,9 @@ cmd 'set number'
 -- leader key
 vim.g.mapleader = ' '
 
+-- undotree
+vim.g.undotree_SetFocusWhenToggle = 1
+
 -- neogit
 local neogit = require('neogit')
 neogit.setup {}
