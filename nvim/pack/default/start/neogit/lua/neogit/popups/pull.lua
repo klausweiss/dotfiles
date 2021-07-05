@@ -1,0 +1,61 @@
+local popup = require("neogit.lib.popup")
+local status = require 'neogit.status'
+local notif = require("neogit.lib.notification")
+local git = require("neogit.lib.git")
+local a = require 'plenary.async_lib'
+local async, await, scheduler, void = a.async, a.await, a.scheduler, a.void
+
+local pull_upstream = void(async(function (popup)
+  local _, code = await(git.cli.pull.args(unpack(popup.get_arguments())).args("upstream " .. status.repo.head.branch).call())
+  if code == 0 then
+    await(scheduler())
+    notif.create "Pulled from upstream"
+    await(status.refresh(true))
+  end
+end))
+
+local pull_pushremote = void(async(function (popup)
+  local _, code = await(git.cli.pull.args(unpack(popup.get_arguments())).call())
+  if code == 0 then
+    await(scheduler())
+    notif.create "Pulled from pushremote"
+    await(status.refresh(true))
+  end
+end))
+
+local function create()
+  popup.create(
+    "NeogitPullPopup",
+    {
+      {
+        key = "r",
+        description = "Rebase local commits",
+        cli = "rebase",
+        enabled = false
+      },
+    },
+    {},
+    {
+      {
+        {
+          key = "p",
+          description = "Pull from pushremote",
+          callback = pull_pushremote
+        },
+        {
+          key = "u",
+          description = "Pull from upstream",
+          callback = pull_upstream
+        },
+        {
+          key = "e",
+          description = "Pull from elsewhere",
+          callback = function() end
+        },
+      },
+    })
+end
+
+return {
+  create = create
+}
