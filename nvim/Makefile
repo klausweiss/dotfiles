@@ -72,6 +72,17 @@ update-nvim-web-devicons:
 update-plenary:
 	$(call download-from-repo, https://github.com/nvim-lua/plenary.nvim)
 
+update-popup: \
+	update-plenary \
+
+	$(call download-from-repo, https://github.com/nvim-lua/popup.nvim)
+
+update-telescope: \
+	update-popup \
+	update-plenary \
+
+	$(call download-from-repo, https://github.com/nvim-telescope/telescope.nvim)
+
 update-undotree:
 	$(call download-from-repo, https://github.com/mbbill/undotree)
 
