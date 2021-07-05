@@ -1,4 +1,5 @@
 SHELL := /bin/bash
+PLUGINS_DIR := pack/default/start
 
 
 define get-all-prefix-targets
@@ -22,7 +23,7 @@ update: $(all-update-targets)
 
 define clone-repo
 	rm -rf $(2)
-	git clone $(1) $(2) --depth 1
+	git clone $(1) $(2) --depth 1 --recurse-submodules
 endef
 
 define copy-if-any-srcs
@@ -40,7 +41,7 @@ define clear-junk
 endef
 
 define download-from-repo
-	$(eval DEST_DIR = pack/default/start/$(notdir $(basename $(1))))
+	$(eval DEST_DIR = $(PLUGINS_DIR)/$(notdir $(basename $(1))))
 	$(call clone-repo, $(1), $(DEST_DIR))
 	$(call clear-junk, $(DEST_DIR))
 endef
@@ -57,11 +58,19 @@ update-compe:
 update-gruvbox-material:
 	$(call download-from-repo, https://github.com/sainnhe/gruvbox-material)
 
+update-neogit: \
+	update-plenary \
+
+	$(call download-from-repo, https://github.com/TimUntersberger/neogit)
+
 update-nvim-lsp-config:
 	$(call download-from-repo, https://github.com/neovim/nvim-lspconfig)
 
 update-nvim-web-devicons:
 	$(call download-from-repo, https://github.com/kyazdani42/nvim-web-devicons)
+
+update-plenary:
+	$(call download-from-repo, https://github.com/nvim-lua/plenary.nvim)
 
 update-undotree:
 	$(call download-from-repo, https://github.com/mbbill/undotree)
