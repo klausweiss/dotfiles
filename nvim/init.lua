@@ -62,6 +62,10 @@ cmd 'set number'
 -- leader key
 vim.g.mapleader = ' '
 
+-- neogit
+local neogit = require('neogit')
+neogit.setup {}
+
 -- lsp
 local nvim_lsp = require('lspconfig')
 
