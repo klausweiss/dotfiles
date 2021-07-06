@@ -66,6 +66,11 @@ update-neogit: \
 update-nvim-lsp-config:
 	$(call download-from-repo, https://github.com/neovim/nvim-lspconfig)
 
+update-nvim-tree: \
+	update-nvim-web-devicons \
+
+	$(call download-from-repo, https://github.com/kyazdani42/nvim-tree.lua)
+
 update-nvim-web-devicons:
 	$(call download-from-repo, https://github.com/kyazdani42/nvim-web-devicons)
 
