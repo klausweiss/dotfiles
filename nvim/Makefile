@@ -100,3 +100,6 @@ update-vim-gitgutter:
 update-vim-polyglot:
 	$(call download-from-repo, https://github.com/sheerun/vim-polyglot)
 
+update-vim-rooter:
+	$(call download-from-repo, https://github.com/airblade/vim-rooter)
+
