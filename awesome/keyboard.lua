@@ -137,6 +137,8 @@ setkey { ALT, SHIFT, "l",
 	 fun = run("i3lock -c 000000") }
 setkey { ALT, SHIFT, "x",
 	 fun = run("emacs") }
+setkey { ALT, SHIFT, "g",
+	 fun = run("gnvim") }
 setkey { ALT, SHIFT, "d",
 	 fun = run("codium") }
 setkey { ALT, SHIFT, "k",
