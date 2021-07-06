@@ -116,6 +116,15 @@ function setup_lsp(server, options)
 	require'lspconfig'[server].setup(options)
 end
 
+-- lsp event handlers
+local telescope_builtin = require'telescope.builtin'
+vim.lsp.handlers['textDocument/codeAction'] = telescope_builtin.lsp_code_actions
+vim.lsp.handlers['textDocument/references'] = telescope_builtin.lsp_references
+vim.lsp.handlers['textDocument/definition'] = telescope_builtin.lsp_definitions
+vim.lsp.handlers['textDocument/implementation'] = telescope_builtin.lsp_implementations
+vim.lsp.handlers['textDocument/documentSymbol'] = telescope_builtin.lsp_document_symbols
+vim.lsp.handlers['workspace/symbol'] = telescope_builtin.lsp_workspace_symbols
+
 -- elm
 setup_lsp('elmls', {})
 
