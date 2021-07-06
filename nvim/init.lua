@@ -136,3 +136,15 @@ setup_lsp('elmls', {})
 -- haskell
 setup_lsp('hls', {})
 
+
+-- keymap
+local remap = {noremap = false, silent = true}
+local noremap = {noremap = true, silent = true}
+local function keycmd(k, cmd)
+  vim.api.nvim_set_keymap('i', k, '<cmd>' .. cmd .. '<CR>', noremap)
+  vim.api.nvim_set_keymap('', k, '<cmd>' .. cmd .. '<CR>', noremap)
+end
+keycmd('<C-S-a>', 'Telescope commands')
+keycmd('<C-S-o>', 'Telescope find_files')
+keycmd('<C-S-g>', 'Neogit')
+keycmd('<F1>', 'NvimTreeToggle')
