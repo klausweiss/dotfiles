@@ -66,6 +66,11 @@ vim.g.mapleader = ' '
 -- undotree
 vim.g.undotree_SetFocusWhenToggle = 1
 
+-- nvim tree
+vim.g.nvim_tree_update_cwd = 1
+vim.g.nvim_tree_quit_on_open = 1
+vim.g.nvim_tree_follow = 1
+
 -- neogit
 local neogit = require('neogit')
 neogit.setup {}
