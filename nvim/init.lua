@@ -171,18 +171,22 @@ end
 local function leader_shortcut(k, cmd)
   vim.api.nvim_set_keymap('', '<leader>' .. k, '<cmd>' .. cmd .. '<CR>', noremap)
 end
-local function command_key(k, ...) leader_shortcut('c' .. k, ...) end
-local function file_key(k, ...) leader_shortcut('f' .. k, ...) end
-local function git_key(k, ...) leader_shortcut('g' .. k, ...) end
-local function lsp_key(k, ...) leader_shortcut('l' .. k, ...) end
-local function project_key(k, ...) leader_shortcut('p' .. k, ...) end
-local function window_key(k, ...) leader_shortcut('w' .. k, ...) end
+local function mk_prefix(p) 
+  return function (k, ...) return leader_shortcut(p .. k, ...) end
+end
+local command_key = mk_prefix('c')
+local file_key =  mk_prefix('f')
+local git_key =  mk_prefix('g')
+local lsp_key =  mk_prefix('l')
+local project_key =  mk_prefix('p')
+local window_key =  mk_prefix('w')
+
+keycmd('<F1>', 'NvimTreeToggle')
 
 command_key('a', 'Telescope commands')
 file_key('f', 'Telescope find_files disable_devicons=true')
 file_key('o', 'Telescope file_browser disable_devicons=true hidden=true')
 git_key('s', 'Neogit')
-keycmd('<F1>', 'NvimTreeToggle')
 project_key('s', 'Telescope session-lens search_session')
 project_key('w', 'SaveSession')
 project_key('d', 'DeleteSession')
