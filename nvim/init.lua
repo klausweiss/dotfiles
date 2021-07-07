@@ -176,6 +176,7 @@ local function file_key(k, ...) leader_shortcut('f' .. k, ...) end
 local function git_key(k, ...) leader_shortcut('g' .. k, ...) end
 local function lsp_key(k, ...) leader_shortcut('l' .. k, ...) end
 local function project_key(k, ...) leader_shortcut('p' .. k, ...) end
+local function window_key(k, ...) leader_shortcut('w' .. k, ...) end
 
 command_key('a', 'Telescope commands')
 file_key('f', 'Telescope find_files disable_devicons=true')
@@ -185,3 +186,10 @@ keycmd('<F1>', 'NvimTreeToggle')
 project_key('s', 'Telescope session-lens search_session')
 project_key('w', 'SaveSession')
 project_key('d', 'DeleteSession')
+window_key('v', 'vsplit')
+window_key('h', 'split')
+window_key('d', 'hide')
+window_key('i', 'wincmd k')
+window_key('j', 'wincmd h')
+window_key('k', 'wincmd j')
+window_key('l', 'wincmd l')
