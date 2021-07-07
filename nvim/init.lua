@@ -153,7 +153,18 @@ local function keycmd(k, cmd)
   vim.api.nvim_set_keymap('i', k, '<cmd>' .. cmd .. '<CR>', noremap)
   vim.api.nvim_set_keymap('', k, '<cmd>' .. cmd .. '<CR>', noremap)
 end
-keycmd('<C-S-a>', 'Telescope commands')
-keycmd('<C-S-o>', 'Telescope find_files disable_devicons=true')
-keycmd('<C-S-g>', 'Neogit')
+local function leader_shortcut(k, cmd)
+  vim.api.nvim_set_keymap('', '<leader>' .. k, '<cmd>' .. cmd .. '<CR>', noremap)
+end
+local function command_key(k, ...) leader_shortcut('c' .. k, ...) end
+local function file_key(k, ...) leader_shortcut('f' .. k, ...) end
+local function git_key(k, ...) leader_shortcut('g' .. k, ...) end
+local function lsp_key(k, ...) leader_shortcut('l' .. k, ...) end
+local function project_key(k, ...) leader_shortcut('p' .. k, ...) end
+
+command_key('a', 'Telescope commands')
+file_key('f', 'Telescope find_files disable_devicons=true')
+file_key('o', 'Telescope file_browser disable_devicons=true hidden=true')
+git_key('s', 'Neogit')
 keycmd('<F1>', 'NvimTreeToggle')
+
