@@ -15,7 +15,7 @@ function table_merge(t1, t2)
     end
     return t1
 end
---
+
 -- theme, powerline, font
 vim.api.nvim_set_var('gruvbox_material_sign_column_background', 'clear') -- transparent signcolumn
 cmd 'autocmd vimenter * ++nested colorscheme gruvbox-material'
@@ -73,6 +73,12 @@ vim.g.undotree_SetFocusWhenToggle = 1
 vim.g.nvim_tree_update_cwd = 1
 vim.g.nvim_tree_quit_on_open = 1
 vim.g.nvim_tree_follow = 1
+vim.g.nvim_tree_show_icons = {
+  git= 0,
+  files= 0,
+  folders= 1,
+  folder_arrows= 1
+}
 
 -- neogit
 local neogit = require('neogit')
@@ -148,6 +154,6 @@ local function keycmd(k, cmd)
   vim.api.nvim_set_keymap('', k, '<cmd>' .. cmd .. '<CR>', noremap)
 end
 keycmd('<C-S-a>', 'Telescope commands')
-keycmd('<C-S-o>', 'Telescope find_files')
+keycmd('<C-S-o>', 'Telescope find_files disable_devicons=true')
 keycmd('<C-S-g>', 'Neogit')
 keycmd('<F1>', 'NvimTreeToggle')
