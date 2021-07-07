@@ -47,6 +47,9 @@ define download-from-repo
 endef
 
 
+update-autosession:
+	$(call download-from-repo, https://github.com/rmagatti/auto-session)
+
 update-barbar: \
 	update-nvim-web-devicons \
 
@@ -81,6 +84,9 @@ update-popup: \
 	update-plenary \
 
 	$(call download-from-repo, https://github.com/nvim-lua/popup.nvim)
+
+update-session-lens:
+	$(call download-from-repo, https://github.com/rmagatti/session-lens)
 
 update-telescope: \
 	update-popup \
