@@ -80,6 +80,21 @@ vim.g.nvim_tree_show_icons = {
   folder_arrows= 1
 }
 
+-- session
+local opts = {
+  log_level = 'info',
+  auto_session_enable_last_session = false,
+  auto_session_root_dir = vim.fn.stdpath('data').."/sessions/",
+  auto_session_enabled = true,
+  auto_save_enabled = nil,
+  auto_restore_enabled = nil,
+  auto_session_suppress_dirs = {
+    '~',
+  },
+}
+
+require('auto-session').setup(opts)
+
 -- neogit
 local neogit = require('neogit')
 neogit.setup {}
@@ -167,4 +182,6 @@ file_key('f', 'Telescope find_files disable_devicons=true')
 file_key('o', 'Telescope file_browser disable_devicons=true hidden=true')
 git_key('s', 'Neogit')
 keycmd('<F1>', 'NvimTreeToggle')
-
+project_key('s', 'Telescope session-lens search_session')
+project_key('w', 'SaveSession')
+project_key('d', 'DeleteSession')
