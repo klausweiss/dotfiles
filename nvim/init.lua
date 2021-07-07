@@ -15,6 +15,19 @@ function table_merge(t1, t2)
     end
     return t1
 end
+--
+-- theme, powerline, font
+vim.api.nvim_set_var('gruvbox_material_sign_column_background', 'clear') -- transparent signcolumn
+cmd 'autocmd vimenter * ++nested colorscheme gruvbox-material'
+vim.api.nvim_set_var('airline_powerline_fonts', 1)
+cmd 'set guifont=JetBrains\\ Mono'
+-- line numbers
+cmd 'set number'
+-- smartcase
+cmd 'set ignorecase smartcase'
+
+-- leader key
+vim.g.mapleader = ' '
 
 -- completion
 vim.o.completeopt = "menuone,noselect"
@@ -52,16 +65,6 @@ require'compe'.setup {
   };
 }
 
--- theme, powerline, font
-vim.api.nvim_set_var('gruvbox_material_sign_column_background', 'clear') -- transparent signcolumn
-cmd 'autocmd vimenter * ++nested colorscheme gruvbox-material'
-vim.api.nvim_set_var('airline_powerline_fonts', 1)
-cmd 'set guifont=JetBrains\\ Mono'
--- line numbers
-cmd 'set number'
-
--- leader key
-vim.g.mapleader = ' '
 
 -- undotree
 vim.g.undotree_SetFocusWhenToggle = 1
