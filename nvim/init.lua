@@ -16,6 +16,8 @@ function table_merge(t1, t2)
     return t1
 end
 
+local is_gnvim = (vim.g.gnvim == 1)
+
 -- theme, powerline, font
 vim.api.nvim_set_var('gruvbox_material_sign_column_background', 'clear') -- transparent signcolumn
 cmd 'autocmd vimenter * ++nested colorscheme gruvbox-material'
@@ -191,10 +193,16 @@ git_key('s', 'Neogit')
 project_key('s', 'Telescope session-lens search_session')
 project_key('w', 'SaveSession')
 project_key('d', 'DeleteSession')
-tab_key('c', 'tabnew')
-tab_key('d', 'tabclose')
-tab_key('n', 'tabnext')
-tab_key('p', 'tabprevious')
+if is_gnvim then
+  tab_key('c', 'tabnew')
+  tab_key('d', 'tabclose')
+  tab_key('n', 'tabnext')
+  tab_key('p', 'tabprevious')
+else
+  tab_key('d', 'BufferClose')
+  tab_key('n', 'BufferNext')
+  tab_key('p', 'BufferPrevious')
+end
 window_key('v', 'vsplit')
 window_key('h', 'split')
 window_key('d', 'hide')
