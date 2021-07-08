@@ -221,4 +221,4 @@ window_key('j', 'wincmd h')
 window_key('k', 'wincmd j')
 window_key('l', 'wincmd l')
 
-leader_shortcut('j', 'HopChar1')
+leader_shortcut('h', 'HopChar1')
