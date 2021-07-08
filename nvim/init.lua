@@ -28,6 +28,8 @@ cmd 'set termguicolors'
 cmd 'set number'
 -- smartcase
 cmd 'set ignorecase smartcase'
+-- mouse
+cmd 'set mouse=a'
 
 -- leader key
 vim.g.mapleader = ' '
