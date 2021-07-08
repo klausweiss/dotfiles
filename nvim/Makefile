@@ -58,6 +58,9 @@ update-barbar: \
 update-compe:
 	$(call download-from-repo, https://github.com/hrsh7th/nvim-compe)
 
+update-hop:
+	$(call download-from-repo, https://github.com/phaazon/hop.nvim)
+
 update-gruvbox-material:
 	$(call download-from-repo, https://github.com/sainnhe/gruvbox-material)
 
