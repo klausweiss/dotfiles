@@ -67,6 +67,8 @@ require'compe'.setup {
   };
 }
 
+-- hop
+require'hop'.setup()
 
 -- undotree
 vim.g.undotree_SetFocusWhenToggle = 1
@@ -203,6 +205,7 @@ else
   tab_key('n', 'BufferNext')
   tab_key('p', 'BufferPrevious')
 end
+
 window_key('v', 'vsplit')
 window_key('h', 'split')
 window_key('d', 'hide')
@@ -210,3 +213,5 @@ window_key('i', 'wincmd k')
 window_key('j', 'wincmd h')
 window_key('k', 'wincmd j')
 window_key('l', 'wincmd l')
+
+leader_shortcut('j', 'HopChar1')
