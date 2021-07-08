@@ -192,12 +192,16 @@ local window_key =  mk_prefix('w')
 keycmd('<F1>', 'NvimTreeToggle')
 
 command_key('a', 'Telescope commands')
-file_key('f', 'Telescope find_files disable_devicons=true')
-file_key('o', 'Telescope file_browser disable_devicons=true hidden=true')
+
+file_key('f', 'Telescope file_browser disable_devicons=true hidden=true')
+file_key('o', 'Telescope find_files disable_devicons=true')
+
 git_key('s', 'Neogit')
+
 project_key('s', 'Telescope session-lens search_session')
 project_key('w', 'SaveSession')
 project_key('d', 'DeleteSession')
+
 if is_gnvim then
   tab_key('c', 'tabnew')
   tab_key('d', 'tabclose')
