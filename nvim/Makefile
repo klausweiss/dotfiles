@@ -64,6 +64,13 @@ update-hop:
 update-gruvbox-material:
 	$(call download-from-repo, https://github.com/sainnhe/gruvbox-material)
 
+update-neuron: \
+	update-plenary \
+	update-popup \
+	update-telescope \
+
+	$(call download-from-repo, https://github.com/oberblastmeister/neuron.nvim)
+
 update-neogit: \
 	update-plenary \
 
