@@ -191,7 +191,7 @@ local file_key =  mk_prefix('f')
 local git_key =  mk_prefix('g')
 local lsp_key =  mk_prefix('l')
 local project_key =  mk_prefix('p')
-local tab_key =  mk_prefix('t')
+local tab_key =  mk_prefix('b')
 local window_key =  mk_prefix('w')
 
 keycmd('<F1>', 'NvimTreeToggle')
