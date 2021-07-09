@@ -22,8 +22,16 @@ endef
 update: $(all-update-targets)
 
 define clone-repo
-	rm -rf $(2)
-	git clone $(1) $(2) --depth 1 --recurse-submodules --branch $(3)
+	$(eval REPO = $(1))
+	$(eval DIR = $(2))
+	$(eval BRANCH = $(3))
+	$(eval BRANCH_OPTION =
+	ifneq ($(strip $(3)),)
+	override BRANCH_OPTION = --branch $(BRANCH)
+	endif)
+	rm -rf $(DIR)
+	git clone $(REPO) $(DIR) --depth 1 --recurse-submodules $(BRANCH_OPTION)
+	$(eval override BRANCH_OPTION = )
 endef
 
 define copy-if-any-srcs
@@ -41,8 +49,10 @@ define clear-junk
 endef
 
 define download-from-repo
-	$(eval DEST_DIR = $(PLUGINS_DIR)/$(notdir $(basename $(1))))
-	$(call clone-repo, $(1), $(DEST_DIR))
+	$(eval REPO = $(1))
+	$(eval BRANCH = $(2))
+	$(eval DEST_DIR = $(PLUGINS_DIR)/$(notdir $(basename $(REPO))))
+	$(call clone-repo, $(REPO), $(DEST_DIR), $(BRANCH))
 	$(call clear-junk, $(DEST_DIR))
 endef
 
