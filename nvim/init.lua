@@ -81,8 +81,8 @@ vim.g.undotree_SetFocusWhenToggle = 1
 vim.g.nvim_tree_quit_on_open = 1
 vim.g.nvim_tree_follow = 1
 vim.g.nvim_tree_show_icons = {
-  git= 0,
-  files= 0,
+  git= 1,
+  files= 1,
   folders= 1,
   folder_arrows= 1
 }
@@ -198,8 +198,8 @@ keycmd('<F1>', 'NvimTreeToggle')
 
 command_key('a', 'Telescope commands')
 
-file_key('f', 'Telescope file_browser disable_devicons=true hidden=true')
-file_key('o', 'Telescope find_files disable_devicons=true')
+file_key('f', 'Telescope file_browser disable_devicons=false hidden=true')
+file_key('o', 'Telescope find_files disable_devicons=false')
 
 git_key('s', 'Neogit')
 
