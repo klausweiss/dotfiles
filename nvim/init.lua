@@ -106,6 +106,11 @@ require('auto-session').setup(opts)
 local neogit = require('neogit')
 neogit.setup {}
 
+-- neuron
+require'neuron'.setup{
+  neuron_dir = '~/doc/neuron',
+}
+
 -- lsp
 local nvim_lsp = require('lspconfig')
 
