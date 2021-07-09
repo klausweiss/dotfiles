@@ -1,5 +1,5 @@
 return {
-   terminal = "xterm",
+   terminal = "kitty",
    editor = "emacs",
    launcher = "rofi -show run",
 }

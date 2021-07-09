@@ -12,6 +12,7 @@ sudo dnf install -y
      gnupg2-smime
      htop
      i3lock
+     kitty
      light
      moreutils
      nemo
