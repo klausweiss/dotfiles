@@ -23,6 +23,7 @@ that config.
 - [efm](#efm)
 - [elixirls](#elixirls)
 - [elmls](#elmls)
+- [ember](#ember)
 - [erlangls](#erlangls)
 - [flow](#flow)
 - [fortls](#fortls)
@@ -51,9 +52,11 @@ that config.
 - [ocamllsp](#ocamllsp)
 - [omnisharp](#omnisharp)
 - [perlls](#perlls)
+- [perlpls](#perlpls)
 - [phpactor](#phpactor)
 - [powershell_es](#powershell_es)
 - [prismals](#prismals)
+- [puppet](#puppet)
 - [purescriptls](#purescriptls)
 - [pyls](#pyls)
 - [pyls_ms](#pyls_ms)
@@ -368,17 +371,19 @@ require'lspconfig'.codeqlls.setup{}
   
   Default Values:
     before_init = function(initialize_params)
-                initialize_params['workspaceFolders'] = {{
-                    name = 'workspace',
-                    uri = initialize_params['rootUri']
-                }}
-            end;
+          initialize_params["workspaceFolders"] = {
+            {
+              name = "workspace",
+              uri = initialize_params["rootUri"],
+            },
+          }
+        end,
     cmd = { "codeql", "execute", "language-server", "--check-errors", "ON_CHANGE", "-q" }
     filetypes = { "ql" }
     log_level = 2
     root_dir = function(fname)
-                return root_pattern(fname) or util.path.dirname(fname)
-            end;
+          return root_pattern(fname) or util.path.dirname(fname)
+        end,
     settings = {
       search_path = "list containing all search paths, eg: '~/codeql-home/codeql-repo'"
     }
@@ -594,6 +599,12 @@ This server accepts configuration via the `settings` key.
 - **`dart.completeFunctionCalls`**: `boolean`
 
   Default: `true`
+  
+  null
+
+- **`dart.dapLogFile`**: `null|string`
+
+  Default: `vim.NIL`
   
   null
 
@@ -1258,9 +1269,8 @@ require'lspconfig'.dotls.setup{}
     cmd = { "dot-language-server", "--stdio" }
     filetypes = { "dot" }
     root_dir = function(filename)
-          return util.root_pattern(unpack(root_files))(filename) or
-                 util.path.dirname(filename)
-        end;
+          return util.root_pattern(unpack(root_files))(filename) or util.path.dirname(filename)
+        end,
 ```
 
 
@@ -1461,6 +1471,34 @@ require'lspconfig'.elmls.setup{}
       elmTestPath = "elm-test"
     }
     root_dir = root_pattern("elm.json")
+```
+
+
+## ember
+
+https://github.com/lifeart/ember-language-server
+
+`ember-language-server` can be installed via `npm`:
+
+```sh
+npm install -g @lifeart/ember-language-server
+```
+
+
+
+**Snippet to enable the language server:**
+```lua
+require'lspconfig'.ember.setup{}
+```
+
+**Commands and default values:**
+```lua
+  Commands:
+  
+  Default Values:
+    cmd = { "ember-language-server", "--stdio" }
+    filetypes = { "handlebars", "typescript", "javascript" }
+    root_dir = root_pattern("ember-cli-build.js", ".git")
 ```
 
 
@@ -2208,13 +2246,13 @@ require'lspconfig'.hls.setup{}
   Default Values:
     cmd = { "haskell-language-server-wrapper", "--lsp" }
     filetypes = { "haskell", "lhaskell" }
-    lspinfo = function (cfg)
+    lspinfo = function(cfg)
           -- return "specific"
           if cfg.settings.languageServerHaskell.logFile or false then
-            return "logfile: "..cfg.settings.languageServerHaskell.logFile
+            return "logfile: " .. cfg.settings.languageServerHaskell.logFile
           end
           return ""
-        end;
+        end,
     root_dir = root_pattern("*.cabal", "stack.yaml", "cabal.project", "package.yaml", "hie.yaml")
     settings = {
       languageServerHaskell = {
@@ -2269,7 +2307,7 @@ require'lspconfig'.html.setup{}
     }
     root_dir = function(fname)
           return root_pattern(fname) or vim.loop.os_homedir()
-        end;
+        end,
     settings = {}
 ```
 
@@ -2657,7 +2695,7 @@ This server accepts configuration via the `settings` key.
 
 - **`java.project.importOnFirstTimeStartup`**: `enum { "disabled", "interactive", "automatic" }`
 
-  Default: `"interactive"`
+  Default: `"automatic"`
   
   Specifies whether to import the Java projects\, when opening the folder in Hybrid mode for the first time\.
 
@@ -3278,14 +3316,14 @@ require'lspconfig'.julials.setup{}
     cmd = { "julia", "--startup-file=no", "--history-file=no", "-e", '    using Pkg;\n    Pkg.instantiate()\n    using LanguageServer; using SymbolServer;\n    depot_path = get(ENV, "JULIA_DEPOT_PATH", "")\n    project_path = dirname(something(Base.current_project(pwd()), Base.load_path_expand(LOAD_PATH[2])))\n    # Make sure that we only load packages from this environment specifically.\n    @info "Running language server" env=Base.load_path()[1] pwd() project_path depot_path\n    server = LanguageServer.LanguageServerInstance(stdin, stdout, project_path, depot_path);\n    server.runlinter = true;\n    run(server);\n  ' }
     filetypes = { "julia" }
     on_new_config = function(new_config, _)
-          local server_path = vim.fn.system("julia --startup-file=no -q -e 'print(Base.find_package(\"LanguageServer\"))'")
+          local server_path = vim.fn.system "julia --startup-file=no -q -e 'print(Base.find_package(\"LanguageServer\"))'"
           local new_cmd = vim.deepcopy(cmd)
-          table.insert(new_cmd, 2, "--project="..server_path:sub(0,-19))
+          table.insert(new_cmd, 2, "--project=" .. server_path:sub(0, -19))
           new_config.cmd = new_cmd
         end,
     root_dir = function(fname)
           return util.find_git_ancestor(fname) or vim.fn.getcwd()
-        end;
+        end,
 ```
 
 
@@ -3452,11 +3490,13 @@ require'lspconfig'.lean3ls.setup{}
     cmd = { "lean-language-server", "--stdio", "--", "-M", "4096", "-T", "100000" }
     filetypes = { "lean3" }
     on_new_config = function(config, root)
-          if not util.path.is_file(root .. "/leanpkg.toml") then return end
+          if not util.path.is_file(root .. "/leanpkg.toml") then
+            return
+          end
           if not config.cmd_cwd then
             config.cmd_cwd = root
           end
-        end;
+        end,
     root_dir = root_pattern("leanpkg.toml") or root_pattern(".git") or path.dirname
 ```
 
@@ -3486,11 +3526,13 @@ require'lspconfig'.leanls.setup{}
     cmd = { "lean", "--server" }
     filetypes = { "lean" }
     on_new_config = function(config, root)
-          if not util.path.is_file(root .. "/leanpkg.toml") then return end
+          if not util.path.is_file(root .. "/leanpkg.toml") then
+            return
+          end
           if not config.cmd_cwd then
             config.cmd_cwd = root
           end
-        end;
+        end,
     root_dir = root_pattern("leanpkg.toml") or root_pattern(".git") or path.dirname
 ```
 
@@ -3705,7 +3747,9 @@ require'lspconfig'.ocamllsp.setup{}
   Default Values:
     cmd = { "ocamllsp" }
     filetypes = { "menhir", "reason", "ocamlinterface", "ocaml", "ocamllex" }
-    get_language_id = function (_, ftype) return language_id_of[ftype] end
+    get_language_id = function(_, ftype)
+      return language_id_of[ftype]
+    end
     root_dir = root_pattern("*.opam", "esy.json", "package.json", ".git")
 ```
 
@@ -3893,6 +3937,100 @@ require'lspconfig'.perlls.setup{}
 ```
 
 
+## perlpls
+
+https://github.com/FractalBoy/perl-language-server
+https://metacpan.org/pod/PLS
+
+`PLS`, another language server for Perl.
+
+To use the language server, ensure that you have PLS installed and that it is in your path
+
+This server accepts configuration via the `settings` key.
+<details><summary>Available settings:</summary>
+
+- **`perl.cwd`**: `string`
+
+  Default: `"."`
+  
+  Current working directory to use
+
+- **`perl.inc`**: `array`
+
+  Default: `{}`
+  
+  Paths to add to \@INC\.
+
+- **`perl.perlcritic.enabled`**: `boolean`
+
+  Default: `true`
+  
+  Enable perlcritic
+
+- **`perl.perlcritic.perlcriticrc`**: `string`
+
+  Default: `"~/.perlcriticrc"`
+  
+  Path to \.perlcriticrc
+
+- **`perl.perltidyrc`**: `string`
+
+  Default: `"~/.perltidyrc"`
+  
+  Path to \.perltidyrc
+
+- **`perl.pls`**: `string`
+
+  Default: `"pls"`
+  
+  Path to the pls executable script
+
+- **`perl.sortImports.args`**: `array`
+
+  Default: `{}`
+  
+  Array items: `{type = "string"}`
+  
+  Arguments passed in\. Each argument is a separate item in the array\.
+
+- **`perl.syntax.enabled`**: `boolean`
+
+  Default: `true`
+  
+  Enable syntax checking
+
+- **`perl.syntax.perl`**: `string`
+
+  Default: `""`
+  
+  Path to the perl binary to use for syntax checking
+
+</details>
+
+
+**Snippet to enable the language server:**
+```lua
+require'lspconfig'.perlpls.setup{}
+```
+
+**Commands and default values:**
+```lua
+  Commands:
+  
+  Default Values:
+    cmd = { "pls" }
+    filetypes = { "perl" }
+    root_dir = vim's starting directory
+    settings = {
+      perl = {
+        perlcritic = {
+          enabled = false
+        }
+      }
+    }
+```
+
+
 ## phpactor
 
 https://github.com/phpactor/phpactor
@@ -3993,6 +4131,41 @@ require'lspconfig'.prismals.setup{}
         prismaFmtBinPath = ""
       }
     }
+```
+
+
+## puppet
+
+LSP server for Puppet.
+
+Installation:
+
+- Clone the editor-services repository:
+    https://github.com/puppetlabs/puppet-editor-services
+
+- Navigate into that directory and run: `bundle install`
+
+- Install the 'puppet-lint' gem: `gem install puppet-lint`
+
+- Add that repository to $PATH.
+
+- Ensure you can run `puppet-languageserver` from outside the editor-services directory.
+
+
+
+**Snippet to enable the language server:**
+```lua
+require'lspconfig'.puppet.setup{}
+```
+
+**Commands and default values:**
+```lua
+  Commands:
+  
+  Default Values:
+    cmd = { "puppet-languageserver", "--stdio" }
+    filetypes = { "puppet" }
+    root_dir = root_pattern("manifests", ".puppet-lint.rc", "hiera.yaml", ".git")
 ```
 
 
@@ -4565,12 +4738,10 @@ require'lspconfig'.pylsp.setup{}
             "setup.py",
             "setup.cfg",
             "requirements.txt",
-            "Pipfile"
+            "Pipfile",
           }
-          return util.root_pattern(unpack(root_files))(fname) or
-                  util.find_git_ancestor(fname) or
-                  util.path.dirname(fname)
-        end;
+          return util.root_pattern(unpack(root_files))(fname) or util.find_git_ancestor(fname) or util.path.dirname(fname)
+        end,
 ```
 
 
@@ -4682,9 +4853,8 @@ require'lspconfig'.pyright.setup{}
     cmd = { "pyright-langserver", "--stdio" }
     filetypes = { "python" }
     root_dir = function(filename)
-          return util.root_pattern(unpack(root_files))(filename) or
-                 util.path.dirname(filename)
-        end;
+          return util.root_pattern(unpack(root_files))(filename) or util.path.dirname(filename)
+        end,
     settings = {
       python = {
         analysis = {
@@ -4807,9 +4977,8 @@ require'lspconfig'.racket_langserver.setup{}
     cmd = { "racket", "--lib", "racket-langserver" }
     filetypes = { "racket", "scheme" }
     root_dir = function(filename)
-          return util.root_pattern(unpack(root_files))(filename) or
-            util.path.dirname(filename)
-          end
+          return util.root_pattern(unpack(root_files))(filename) or util.path.dirname(filename)
+        end,
 ```
 
 
@@ -5342,6 +5511,24 @@ This server accepts configuration via the `settings` key.
   
   null
 
+- **`rust-analyzer.joinLines.joinElseIf`**: `boolean`
+
+  Default: `true`
+  
+  null
+
+- **`rust-analyzer.joinLines.removeTrailingComma`**: `boolean`
+
+  Default: `true`
+  
+  null
+
+- **`rust-analyzer.joinLines.unwrapTrivialBlock`**: `boolean`
+
+  Default: `true`
+  
+  null
+
 - **`rust-analyzer.lens.debug`**: `boolean`
 
   Default: `true`
@@ -5667,6 +5854,9 @@ require'lspconfig'.solargraph.setup{}
   Default Values:
     cmd = { "solargraph", "stdio" }
     filetypes = { "ruby" }
+    init_options = {
+      formatting = true
+    }
     root_dir = root_pattern("Gemfile", ".git")
     settings = {
       solargraph = {
@@ -5796,7 +5986,7 @@ require'lspconfig'.sqlls.setup{}
     filetypes = { "sql", "mysql" }
     root_dir = function(fname)
           return root_pattern(fname) or vim.loop.os_homedir()
-        end;
+        end,
     settings = {}
 ```
 
@@ -5829,8 +6019,8 @@ require'lspconfig'.sqls.setup{}
     cmd = { "sqls" }
     filetypes = { "sql", "mysql" }
     root_dir = function(fname)
-          return util.root_pattern("config.yml")(fname) or util.path.dirname(fname)
-        end;
+          return util.root_pattern "config.yml"(fname) or util.path.dirname(fname)
+        end,
     settings = {}
 ```
 
@@ -6216,6 +6406,12 @@ This server accepts configuration via the `settings` key.
   
   null
 
+- **`Lua.workspace.checkThirdParty`**: `boolean`
+
+  Default: `true`
+  
+  null
+
 - **`Lua.workspace.ignoreDir`**: `array`
 
   Default: `{ ".vscode" }`
@@ -6375,8 +6571,12 @@ require'lspconfig'.tailwindcss.setup{}
       }
     }
     on_new_config = function(new_config)
-          if not new_config.settings then new_config.settings = {} end
-          if not new_config.settings.editor then new_config.settings.editor = {} end
+          if not new_config.settings then
+            new_config.settings = {}
+          end
+          if not new_config.settings.editor then
+            new_config.settings.editor = {}
+          end
           if not new_config.settings.editor.tabSize then
             -- set tab size for hover
             new_config.settings.editor.tabSize = vim.lsp.util.get_effective_tabstop()
@@ -6487,7 +6687,8 @@ require'lspconfig'.texlab.setup{}
         build = {
           args = { "-pdf", "-interaction=nonstopmode", "-synctex=1", "%f" },
           executable = "latexmk",
-          isContinuous = false
+          forwardSearchAfter = false,
+          onSave = false
         },
         chktex = {
           onEdit = false,
@@ -6497,6 +6698,10 @@ require'lspconfig'.texlab.setup{}
         formatterLineLength = 80,
         forwardSearch = {
           args = {}
+        },
+        latexFormatter = "latexindent",
+        latexindent = {
+          modifyLineBreaks = false
         }
       }
     }

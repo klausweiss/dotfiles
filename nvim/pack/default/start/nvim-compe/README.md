@@ -22,6 +22,7 @@ Auto completion plugin for nvim.
   - [How to use LSP snippet?](#how-to-use-lsp-snippet)
   - [How to use tab to navigate completion menu?](#how-to-use-tab-to-navigate-completion-menu)
   - [How to expand snippets from completion menu?](#how-to-expand-snippets-from-completion-menu)
+  - [How to automatically select the first match?](#how-to-automatically-select-the-first-match)
 - [Demo](#demo)
   - [Auto Import](#auto-import)
   - [LSP + Magic Completion](#lsp--rust_analyzers-magic-completion)
@@ -66,7 +67,7 @@ Detailed docs in [here](./doc/compe.txt) or `:help compe`.
 
 ### Prerequisite
 
-Neovim version 0.5.0 or above (not released yet, use nightlies or build from source).
+Neovim version 0.5.0 or above.
 
 You must set `completeopt` to `menuone,noselect` which can be easily done
 as follows.
@@ -181,6 +182,16 @@ If you use [Raimondi/delimitMate](https://github.com/Raimondi/delimitMate)
 ```viml
 inoremap <silent><expr> <C-Space> compe#complete()
 inoremap <silent><expr> <CR>      compe#confirm({ 'keys': "\<Plug>delimitMateCR", 'mode': '' })
+inoremap <silent><expr> <C-e>     compe#close('<C-e>')
+inoremap <silent><expr> <C-f>     compe#scroll({ 'delta': +4 })
+inoremap <silent><expr> <C-d>     compe#scroll({ 'delta': -4 })
+```
+
+If you use [windwp/nvim-autopairs](https://github.com/windwp/nvim-autopairs)
+
+```viml
+inoremap <silent><expr> <C-Space> compe#complete()
+inoremap <silent><expr> <CR>      compe#confirm(luaeval("require 'nvim-autopairs'.autopairs_cr()"))
 inoremap <silent><expr> <C-e>     compe#close('<C-e>')
 inoremap <silent><expr> <C-f>     compe#scroll({ 'delta': +4 })
 inoremap <silent><expr> <C-d>     compe#scroll({ 'delta': -4 })
@@ -348,6 +359,14 @@ vim.api.nvim_set_keymap("s", "<S-Tab>", "v:lua.s_tab_complete()", {expr = true})
 ### How to expand snippets from completion menu?
 
 Use `compe#confirm()` mapping, as described in section [Mappings](#mappings).
+
+### How to automatically select the first match?
+
+`compe#confirm()` with the select option set to true will select the first item when none has been manually selected. For example:
+
+```lua
+vim.api.nvim_set_keymap("i", "<CR>", "compe#confirm({ 'keys': '<CR>', 'select': v:true })", { expr = true })
+```
 
 
 ### ESC does not close the completion menu

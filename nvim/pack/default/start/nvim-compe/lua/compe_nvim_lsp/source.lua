@@ -31,6 +31,9 @@ function Source.complete(self, args)
   if vim.lsp.client_is_stopped(self.client.id) then
     return args.abort()
   end
+  if not self:_get_paths(self.client.server_capabilities, { 'completionProvider' }) then
+    return args.abort()
+  end
 
   local request = vim.lsp.util.make_position_params()
   request.context = {}
@@ -96,12 +99,29 @@ function Source.documentation(self, args)
 end
 
 --- _create_document
-function Source._create_document(self, filetype, completion_item)
-  local doc = completion_item.documentation
-  if type(doc) == "string" then
-    doc = string.format("```%s\n%s\n```", filetype, doc)
+function Source._create_document(_, filetype, completion_item)
+  local detail = (function()
+    if completion_item.detail then
+      return string.format("```%s\n%s\n```", filetype, completion_item.detail)
+    end
+  end)()
+  local doc = (function()
+    local doc = completion_item.documentation or {}
+    if type(doc) == "string" then
+      doc = string.format("```%s\n%s\n```", filetype, doc)
+    else
+      doc = vim.tbl_deep_extend('force', {}, doc)
+    end
+    return doc
+  end)()
+  local items = {}
+  if detail then
+    table.insert(items, detail)
   end
-  return doc and util.convert_input_to_markdown_lines(doc) or {}
+  if doc then
+    table.insert(items, doc)
+  end
+  return util.convert_input_to_markdown_lines(items) or {}
 end
 
 --- _get_paths
