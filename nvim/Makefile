@@ -119,6 +119,10 @@ update-undotree:
 update-vim-airline:
 	$(call download-from-repo, https://github.com/vim-airline/vim-airline)
 
+update-gitsigns: \
+	update-plenary \
+
+	$(call download-from-repo, https://github.com/lewis6991/gitsigns.nvim)
 
 update-vim-polyglot:
 	$(call download-from-repo, https://github.com/sheerun/vim-polyglot)
