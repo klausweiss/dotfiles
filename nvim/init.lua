@@ -30,6 +30,8 @@ cmd 'set number'
 cmd 'set ignorecase smartcase'
 -- mouse
 cmd 'set mouse=a'
+-- allow hiding unsaved buffers
+cmd 'set hidden'
 
 -- leader key
 vim.g.mapleader = ' '
