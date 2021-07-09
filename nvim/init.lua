@@ -109,6 +109,7 @@ neogit.setup {}
 -- neuron
 require'neuron'.setup{
   neuron_dir = '~/doc/neuron',
+  leader = ' z',
 }
 
 -- lsp
