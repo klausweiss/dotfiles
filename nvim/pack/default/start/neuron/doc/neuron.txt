@@ -1,0 +1,39 @@
+================================================================================
+M.rib({opts})                                                        *M.rib()*
+    starts the neuron server and opens it in the browser
+
+
+    Parameters: ~
+        {opts} (table)  the options for the job
+
+
+M.setup()                                                          *M.setup()*
+    This is the entry point to the plugin. It creates the necessary
+    autocommands and mappings.
+
+
+
+M.goto_next_extmark()                                  *M.goto_next_extmark()*
+    goes to the next link extmark/link
+
+
+
+M.goto_prev_extmark()                                  *M.goto_prev_extmark()*
+    goes to the previous link extmark/link
+
+
+
+M.goto_index()                                                *M.goto_index()*
+    go to the index note of your neuron directory
+
+
+
+
+================================================================================
+M.setup()                                                          *M.setup()*
+    setup the keymappings
+
+
+
+
+ vim:tw=78:ts=8:ft=help:norl:

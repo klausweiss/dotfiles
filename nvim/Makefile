@@ -23,7 +23,7 @@ update: $(all-update-targets)
 
 define clone-repo
 	rm -rf $(2)
-	git clone $(1) $(2) --depth 1 --recurse-submodules
+	git clone $(1) $(2) --depth 1 --recurse-submodules --branch $(3)
 endef
 
 define copy-if-any-srcs
@@ -66,10 +66,9 @@ update-gruvbox-material:
 
 update-neuron: \
 	update-plenary \
-	update-popup \
 	update-telescope \
 
-	$(call download-from-repo, https://github.com/oberblastmeister/neuron.nvim)
+	$(call download-from-repo, https://github.com/oberblastmeister/neuron.nvim, unstable)
 
 update-neogit: \
 	update-plenary \
