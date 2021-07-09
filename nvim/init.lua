@@ -77,7 +77,7 @@ require'hop'.setup()
 vim.g.undotree_SetFocusWhenToggle = 1
 
 -- nvim tree
-vim.g.nvim_tree_update_cwd = 1
+-- vim.g.nvim_tree_update_cwd = 1 -- TODO: upstream issue: https://github.com/kyazdani42/nvim-tree.lua/issues/441
 vim.g.nvim_tree_quit_on_open = 1
 vim.g.nvim_tree_follow = 1
 vim.g.nvim_tree_show_icons = {
