@@ -1,36 +1,35 @@
-local pickers = require('telescope.pickers')
-local make_entry = require('telescope.make_entry')
-local finders = require('telescope.finders')
-local previewers = require('telescope.previewers')
-local conf = require('telescope.config').values
-local actions = require('telescope.actions')
+local pickers = require("telescope.pickers")
+local make_entry = require("telescope.make_entry")
+local finders = require("telescope.finders")
+local previewers = require("telescope.previewers")
+local conf = require("telescope.config").values
+local actions = require("telescope.actions")
 local utils = require("neuron/utils")
 local cmd = require("neuron/cmd")
-local neuron = require("neuron")
 local neuron_actions = require("neuron/telescope/actions")
 local neuron_entry = require("neuron/telescope/make_entry")
+local config = require("neuron/config")
 
 local M = {}
 
 function M.find_zettels(opts)
   opts = opts or {}
 
-  cmd.query({
-    cached = opts.cached
-  }, neuron.config.neuron_dir, function(json)
+  cmd.query({cached = opts.cached}, config.neuron_dir, function(json)
     local picker_opts = {
-      prompt_title = 'Find Zettels',
+      prompt_title = "Find Zettels",
       finder = finders.new_table {
-        results = json.result,
-        entry_maker = neuron_entry.gen_from_zettels,
+        results = json,
+        entry_maker = neuron_entry.gen_from_zettels
       },
       previewer = previewers.vim_buffer_cat.new(opts),
-      sorter = conf.generic_sorter(opts),
+      sorter = conf.generic_sorter(opts)
     }
-    
+
     if opts.insert then
       picker_opts.attach_mappings = function()
-        actions.select_default:replace(neuron_actions.insert_maker("id"))
+        actions.select_default:replace(
+            neuron_actions.insert_maker("id"))
         return true
       end
     else
@@ -52,20 +51,21 @@ function M.find_backlinks(opts)
     back = opts.back or true,
     id = opts.id or utils.get_current_id(),
     cached = opts.cached
-  }, neuron.config.neuron_dir, function(json)
+  }, config.neuron_dir, function(json)
     local picker_opts = {
-      prompt_title = 'Find Backlinks',
+      prompt_title = "Find Backlinks",
       finder = finders.new_table {
         results = json.result,
-        entry_maker = neuron_entry.gen_from_links,
+        entry_maker = neuron_entry.gen_from_links
       },
       previewer = previewers.vim_buffer_cat.new(opts),
-      sorter = conf.generic_sorter(opts),
+      sorter = conf.generic_sorter(opts)
     }
 
     if opts.insert then
       picker_opts.attach_mappings = function()
-        actions.select_default:replace(neuron_actions.insert_maker("id"))
+        actions.select_default:replace(
+            neuron_actions.insert_maker("id"))
         return true
       end
     end
@@ -77,17 +77,18 @@ end
 function M.find_tags(opts)
   opts = opts or {}
 
-  cmd.query({uri = "z:tags"}, neuron.config.neuron_dir, function(json)
+  cmd.query({tags = true}, config.neuron_dir, function(json)
     local picker_opts = {
-      prompt_title = 'Find Tags',
+      prompt_title = "Find Tags",
       finder = finders.new_table {
-        results = json.result,
-        entry_maker = neuron_entry.gen_from_tags,
+        results = json,
+        entry_maker = neuron_entry.gen_from_tags
       },
       previewer = nil,
       sorter = conf.generic_sorter(opts),
       attach_mappings = function()
-        actions.select_default:replace(neuron_actions.insert_maker("display"))
+        actions.select_default:replace(
+            neuron_actions.insert_maker("display"))
         return true
       end
     }
@@ -99,25 +100,21 @@ end
 function M.find_by_tag(opts)
   opts = opts or {}
 
-
   local live_finder = finders.new_job(function(prompt)
-      -- TODO: Probably could add some options for smart case and whatever else rg offers.
+    -- TODO: Probably could add some options for smart case and whatever else rg offers.
 
-      if not prompt or prompt == "" then
-        return nil
-      end
+    if not prompt or prompt == "" then
+      return nil
+    end
 
-      return { "neuron", "query", "-t", prompt }
-    end,
-    opts.entry_maker or make_entry.gen_from_string(opts),
-    opts.max_results
-  )
+    return {"neuron", "query", "-t", prompt}
+  end, opts.entry_maker or make_entry.gen_from_string(opts), opts.max_results)
 
   pickers.new(opts, {
-    prompt_title = 'Live Find by Tag',
+    prompt_title = "Live Find by Tag",
     finder = live_finder,
     previewer = nil,
-    sorter = conf.generic_sorter(opts),
+    sorter = conf.generic_sorter(opts)
   }):find()
 end
 
