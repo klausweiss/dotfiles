@@ -9,6 +9,7 @@ sudo apt install -y
      emacs
      fish
      i3lock
+     kitty
      moreutils
      nemo
      neovim
