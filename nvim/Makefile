@@ -109,8 +109,6 @@ update-undotree:
 update-vim-airline:
 	$(call download-from-repo, https://github.com/vim-airline/vim-airline)
 
-update-vim-gitgutter:
-	$(call download-from-repo, https://github.com/airblade/vim-gitgutter)
 
 update-vim-polyglot:
 	$(call download-from-repo, https://github.com/sheerun/vim-polyglot)
