@@ -116,8 +116,6 @@ update-telescope: \
 update-undotree:
 	$(call download-from-repo, https://github.com/mbbill/undotree)
 
-update-vim-airline:
-	$(call download-from-repo, https://github.com/vim-airline/vim-airline)
 
 update-gitsigns: \
 	update-plenary \
