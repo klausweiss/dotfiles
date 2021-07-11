@@ -194,6 +194,9 @@ vim.lsp.handlers['textDocument/implementation'] = telescope_builtin.lsp_implemen
 vim.lsp.handlers['textDocument/documentSymbol'] = telescope_builtin.lsp_document_symbols
 vim.lsp.handlers['workspace/symbol'] = telescope_builtin.lsp_workspace_symbols
 
+-- c++
+setup_lsp('clangd', {})
+
 -- elm
 setup_lsp('elmls', {})
 
