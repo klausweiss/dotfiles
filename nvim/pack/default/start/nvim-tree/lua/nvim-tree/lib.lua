@@ -28,7 +28,9 @@ function M.init(with_open, with_reload)
   if not M.Tree.cwd then
     M.Tree.cwd = luv.cwd()
   end
-  git.git_root(M.Tree.cwd)
+  if config.use_git() then
+    git.git_root(M.Tree.cwd)
+  end
   populate(M.Tree.entries, M.Tree.cwd)
 
   local stat = luv.fs_stat(M.Tree.cwd)
@@ -130,7 +132,9 @@ function M.unroll_dir(node)
   if #node.entries > 0 then
     renderer.draw(M.Tree, true)
   else
-    git.git_root(node.absolute_path)
+    if config.use_git() then
+      git.git_root(node.absolute_path)
+    end
     populate(node.entries, node.link_to or node.absolute_path, node)
 
     renderer.draw(M.Tree, true)
@@ -164,13 +168,18 @@ end
 function M.refresh_tree()
   if vim.v.exiting ~= vim.NIL then return end
 
-  local use_git = config.use_git()
-  if use_git then git.reload_roots() end
   refresh_nodes(M.Tree)
-  if use_git then vim.schedule(function() refresh_git(M.Tree) end) end
+
+  local use_git = config.use_git()
+  if use_git then
+    vim.schedule(function()
+      git.reload_roots()
+      refresh_git(M.Tree)
+    end)
+  end
 
   if vim.g.nvim_tree_lsp_diagnostics == 1 then
-    diagnostics.update()
+    vim.schedule(diagnostics.update)
   end
 
   if view.win_open() then

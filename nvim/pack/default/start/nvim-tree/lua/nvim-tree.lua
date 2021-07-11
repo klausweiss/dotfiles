@@ -17,7 +17,8 @@ function M.toggle()
   else
     if vim.g.nvim_tree_follow == 1 then
       M.find_file(true)
-    else
+    end
+    if not view.win_open() then
       lib.open()
     end
   end
@@ -39,9 +40,15 @@ function M.open()
 end
 
 function M.tab_change()
-  if not view.win_open() and view.win_open({ any_tabpage = true }) then
-    view.open()
-  end
+  vim.schedule(function()
+    if not view.win_open() and view.win_open({ any_tabpage = true }) then
+      local bufname = vim.api.nvim_buf_get_name(0)
+      if bufname:match("Neogit") ~= nil or bufname:match("--graph") ~= nil then
+        return
+      end
+      view.open()
+    end
+  end)
 end
 
 local function gen_go_to(mode)
@@ -102,11 +109,11 @@ function M.on_keypress(mode)
   end
 
   if node.link_to and not node.entries then
-    lib.open_file(mode, node.relative_path)
+    lib.open_file(mode, utils.path_relative(node.absolute_path, vim.fn.getcwd(-1, 0)))
   elseif node.entries ~= nil then
     lib.unroll_dir(node)
   else
-    lib.open_file(mode, node.relative_path)
+    lib.open_file(mode, utils.path_relative(node.absolute_path, vim.fn.getcwd(-1, 0)))
   end
 end
 
@@ -148,17 +155,19 @@ end
 function M.find_file(with_open)
   local bufname = vim.fn.bufname()
   local filepath = vim.fn.fnamemodify(bufname, ':p')
+  if not is_file_readable(filepath) or vim.fn.isdirectory(filepath) == 1 then return end
 
   if with_open then
     M.open()
     view.focus()
-    if not is_file_readable(filepath) then return end
-    lib.set_index_and_redraw(filepath)
-    return
   end
 
-  if not is_file_readable(filepath) then return end
   lib.set_index_and_redraw(filepath)
+end
+
+function M.resize(size)
+  view.View.width = size
+  view.resize()
 end
 
 function M.on_leave()
