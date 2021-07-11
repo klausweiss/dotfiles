@@ -21,7 +21,7 @@ augroup NvimTree
     au WinClosed * lua require'nvim-tree'.on_leave()
   endif
   au ColorScheme * lua require'nvim-tree'.reset_highlight()
-  au User FugitiveChanged lua require'nvim-tree'.refresh()
+  au User FugitiveChanged,NeogitStatusRefreshed lua require'nvim-tree'.refresh()
   if get(g:, 'nvim_tree_tab_open') == 1
     au TabEnter * lua require'nvim-tree'.tab_change()
   endif
@@ -40,6 +40,7 @@ command! NvimTreeToggle lua require'nvim-tree'.toggle()
 command! NvimTreeRefresh lua require'nvim-tree'.refresh()
 command! NvimTreeClipboard lua require'nvim-tree'.print_clipboard()
 command! NvimTreeFindFile lua require'nvim-tree'.find_file(true)
+command! -nargs=1 NvimTreeResize lua require'nvim-tree'.resize(<args>)
 
 let &cpo = s:save_cpo
 unlet s:save_cpo
