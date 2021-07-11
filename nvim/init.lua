@@ -33,6 +33,11 @@ cmd 'set mouse=a'
 -- allow hiding unsaved buffers
 cmd 'set hidden'
 
+-- lualine
+require('lualine').setup{
+  options = {theme = 'gruvbox'}
+}
+
 -- leader key
 vim.g.mapleader = ' '
 

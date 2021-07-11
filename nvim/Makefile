@@ -116,6 +116,8 @@ update-telescope: \
 update-undotree:
 	$(call download-from-repo, https://github.com/mbbill/undotree)
 
+update-lualine:
+	$(call download-from-repo, https://github.com/hoob3rt/lualine.nvim)
 
 update-gitsigns: \
 	update-plenary \
