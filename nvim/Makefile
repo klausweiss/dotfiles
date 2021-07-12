@@ -118,6 +118,9 @@ update-popup: \
 update-session-lens:
 	$(call download-from-repo, https://github.com/rmagatti/session-lens)
 
+update-symbols-outline:
+	$(call download-from-repo, https://github.com/simrat39/symbols-outline.nvim)
+
 update-telescope: \
 	update-popup \
 	update-plenary \
