@@ -71,6 +71,9 @@ update-compe:
 update-hop:
 	$(call download-from-repo, https://github.com/phaazon/hop.nvim)
 
+update-lsp_signature:
+	$(call download-from-repo, https://github.com/ray-x/lsp_signature.nvim)
+
 update-gruvbox-material:
 	$(call download-from-repo, https://github.com/sainnhe/gruvbox-material)
 
