@@ -68,14 +68,22 @@ update-barbar: \
 update-compe:
 	$(call download-from-repo, https://github.com/hrsh7th/nvim-compe)
 
+update-gitsigns: \
+	update-plenary \
+
+	$(call download-from-repo, https://github.com/lewis6991/gitsigns.nvim)
+
+update-gruvbox-material:
+	$(call download-from-repo, https://github.com/sainnhe/gruvbox-material)
+
 update-hop:
 	$(call download-from-repo, https://github.com/phaazon/hop.nvim)
 
 update-lsp_signature:
 	$(call download-from-repo, https://github.com/ray-x/lsp_signature.nvim)
 
-update-gruvbox-material:
-	$(call download-from-repo, https://github.com/sainnhe/gruvbox-material)
+update-lualine:
+	$(call download-from-repo, https://github.com/hoob3rt/lualine.nvim)
 
 update-neuron: \
 	update-plenary \
@@ -118,14 +126,6 @@ update-telescope: \
 
 update-undotree:
 	$(call download-from-repo, https://github.com/mbbill/undotree)
-
-update-lualine:
-	$(call download-from-repo, https://github.com/hoob3rt/lualine.nvim)
-
-update-gitsigns: \
-	update-plenary \
-
-	$(call download-from-repo, https://github.com/lewis6991/gitsigns.nvim)
 
 update-vim-polyglot:
 	$(call download-from-repo, https://github.com/sheerun/vim-polyglot)
