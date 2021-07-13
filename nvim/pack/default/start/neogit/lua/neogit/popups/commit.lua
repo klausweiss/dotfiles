@@ -72,7 +72,7 @@ local prompt_commit_message = async(function (msg, skip_gen)
   if not skip_gen then
     local msg_template_path = cli.config.get("commit.template").call_sync()[1]
     if msg_template_path then
-      local msg_template = uv_utils.read_file_sync(msg_template_path)
+      local msg_template = uv_utils.read_file_sync(vim.fn.glob(msg_template_path))
       for _, line in pairs(msg_template) do
         table.insert(output, line)
       end
@@ -82,7 +82,7 @@ local prompt_commit_message = async(function (msg, skip_gen)
     table.insert(output, "# with '#' will be ignored, and an empty message aborts the commit.")
 
     local status_output = await(cli.status.call())
-    status_output = vim.split(status_output, '\n')
+    status_output = status_output
 
     for _, line in pairs(status_output) do
       if not vim.startswith(line, "  (") then
@@ -143,7 +143,6 @@ function M.create()
       await(scheduler())
       local commit_file = get_commit_file()
       local msg = await(cli.log.max_count(1).pretty('%B').call())
-      msg = vim.split(msg, '\n')
 
       await(do_commit(msg, cli.commit.commit_message_file(commit_file).amend.only))
     end)
@@ -151,7 +150,6 @@ function M.create()
       await(scheduler())
       local commit_file = get_commit_file()
       local msg = await(cli.log.max_count(1).pretty('%B').call())
-      msg = vim.split(msg, '\n')
 
       await(do_commit(msg, cli.commit.commit_message_file(commit_file).amend))
     end)
