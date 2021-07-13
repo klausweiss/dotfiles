@@ -201,7 +201,7 @@ local on_attach = function(client, bufnr)
                      -- to view the hiding contents
     max_width = 120, -- max_width of signature floating_window, line will be wrapped if exceed max_width
     handler_opts = {
-      border = "shadow"   -- double, single, shadow, none
+      border = "single"   -- double, single, shadow, none
     },
     extra_trigger_chars = {} -- Array of extra characters that will trigger signature completion, e.g., {"(", ","}
   }
