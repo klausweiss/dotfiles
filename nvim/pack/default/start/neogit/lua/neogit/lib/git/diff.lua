@@ -58,15 +58,19 @@ local function parse_diff(output, with_stats)
       table.insert(header, output[i])
     end
 
-    if #header == 4 then
+    local header_count = #header
+    if header_count == 4 then
       diff.file = header[3]:match("%-%-%- a/(.*)")
-    else
+    elseif header_count == 5 then
       diff.kind = header[2]:match("(.*) mode %d+")
       if diff.kind == "new file" then
         diff.file = header[5]:match("%+%+%+ b/(.*)")
       elseif diff.kind == "deleted file" then
         diff.file = header[4]:match("%-%-%- a/(.*)")
       end
+    else
+      print(vim.inspect(header))
+      print("TODO: diff parser")
     end
   end
 
@@ -162,7 +166,7 @@ function diff.register(meta)
         table.insert(executions, async(function (f)
           local raw_diff = await(cli.diff.files(f.name).call())
           local raw_stats = await(cli.diff.shortstat.files(f.name).call())
-          f.diff = parse_diff(util.split(raw_diff, '\n'))
+          f.diff = parse_diff(raw_diff)
           f.diff.stats = parse_diff_stats(raw_stats)
         end)(f))
       end
@@ -173,7 +177,7 @@ function diff.register(meta)
         table.insert(executions, async(function (f)
           local raw_diff = await(cli.diff.cached.files(f.name).call())
           local raw_stats = await(cli.diff.cached.shortstat.files(f.name).call())
-          f.diff = parse_diff(util.split(raw_diff, '\n'))
+          f.diff = parse_diff(raw_diff)
           f.diff.stats = parse_diff_stats(raw_stats)
         end)(f))
       end
