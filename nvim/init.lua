@@ -299,8 +299,14 @@ setup_lsp('hls', {})
 -- keymap
 local remap = {noremap = false, silent = true}
 local noremap = {noremap = true, silent = true}
-local function keycmd(k, cmd)
+local function ikeycmd(k, cmd)
   vim.api.nvim_set_keymap('i', k, '<cmd>' .. cmd .. '<CR>', noremap)
+end
+local function nkeycmd(k, cmd)
+  vim.api.nvim_set_keymap('n', k, '<cmd>' .. cmd .. '<CR>', noremap)
+end
+local function keycmd(k, cmd)
+  ikeycmd(k, cmd)
   vim.api.nvim_set_keymap('', k, '<cmd>' .. cmd .. '<CR>', noremap)
 end
 local function leader_shortcut(k, cmd)
@@ -318,6 +324,7 @@ local tab_key =  mk_prefix('b')
 local window_key =  mk_prefix('w')
 
 keycmd('<F1>', 'NvimTreeToggle')
+nkeycmd('U', 'UndotreeToggle')
 
 command_key('a', 'Telescope commands')
 
