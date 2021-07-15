@@ -85,6 +85,9 @@ update-lsp_signature:
 update-lualine:
 	$(call download-from-repo, https://github.com/hoob3rt/lualine.nvim)
 
+update-luasnip:
+	$(call download-from-repo, https://github.com/L3MON4D3/LuaSnip)
+
 update-neuron: \
 	update-plenary \
 	update-telescope \
