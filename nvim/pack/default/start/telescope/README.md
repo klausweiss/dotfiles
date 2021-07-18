@@ -349,7 +349,7 @@ local action_state = require('telescope.actions.state')
 ------------------------------
 require('telescope.builtin').fd({ -- or new custom picker's attach_mappings field:
   attach_mappings = function(prompt_bufnr)
-    -- This will replace select no mather on which key it is mapped by default
+    -- This will replace select no matter on which key it is mapped by default
     action_set.select:replace(function(prompt_bufnr, type)
       local entry = action_state.get_selected_entry()
       actions.close(prompt_bufnr)
@@ -545,6 +545,7 @@ We have some built in themes but are looking for more cool options.
 | Themes                   | Description                                                                                 |
 |--------------------------|---------------------------------------------------------------------------------------------|
 | `themes.get_dropdown`    | A list like centered list. [dropdown](https://i.imgur.com/SorAcXv.png)                      |
+| `themes.get_cursor`      | A cursor relative list.                                                                     |
 | `themes.get_ivy`         | Bottom panel overlay. [Ivy #771](https://github.com/nvim-telescope/telescope.nvim/pull/771) |
 
 To use a theme, simply append it to a built-in function:
@@ -700,7 +701,7 @@ but only for this instance, we could do something like:
 If we wanted to change the width for every time we use the `vertical`
 layout strategy, we could add the following to our `setup()` call:
 
-```
+```lua
 require('telescope').setup({
   defaults = {
     layout_config = {
@@ -753,7 +754,7 @@ and some other functions can be easily changed in custom pickers or built-in fun
 -- Disable preview for find_files
 nnoremap <leader>ff :lua require('telescope.builtin').find_files({previewer = false})<cr>
 
--- Change change prompt prefix for find_files builtin function:
+-- Change prompt prefix for find_files builtin function:
 nnoremap <leader>fg :lua require('telescope.builtin').live_grep({ prompt_prefix=🔍 })<cr>
 nnoremap <leader>fg :Telescope live_grep prompt_prefix=🔍<cr>
 ```

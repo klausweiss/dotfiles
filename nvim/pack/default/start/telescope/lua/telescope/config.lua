@@ -80,6 +80,10 @@ local layout_config_defaults = {
   center = {
     preview_cutoff = 40,
   },
+
+  cursor = {
+    preview_cutoff = 40,
+  }
 }
 
 local layout_config_description = string.format([[
@@ -188,10 +192,29 @@ local telescope_defaults = {
     - "shorten"   only display the first character of each directory in
                   the path
 
+    You can also specify the number of characters of each directory name
+    to keep by setting `path_display.shorten = num`.
+      e.g. for a path like
+        `alpha/beta/gamma/delta.txt`
+      setting `path_display.shorten = 1` will give a path like:
+        `a/b/g/delta.txt`
+      Similarly, `path_display.shorten = 2` will give a path like:
+        `al/be/ga/delta.txt`
+
     path_display can also be set to 'hidden' string to hide file names
+
+    path_display can also be set to a function for custom formatting of
+    the path display. Example:
+
+        -- Format path as "file.txt (path\to\file\)"
+        path_display = function(opts, path)
+          local tail = require("telescope.utils").path_tail(path)
+          return string.format("%s (%s)", tail, path)
+        end,
 
     Default: {}]]
   },
+
 
   borderchars = { { "─", "│", "─", "│", "╭", "╮", "╯", "╰" } },
 

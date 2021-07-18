@@ -23,7 +23,18 @@ local api = vim.api
 local uv = vim.loop
 local current_buf = api.nvim_get_current_buf
 
-local M: {string:function} = {}
+local record M
+  setup      : function(cfg: Config)
+  detach     : function(bufnr: integer, keep_signs: boolean)
+  detach_all : function()
+  attach     : function(cbuf: integer)
+
+  -- Internal, API unstable
+  _get_config        : function(): Config
+  _update_highlights : function()
+  _run_func          : function(range: {integer, integer}, func: string, ...: any)
+  _complete          : function(arglead: string, line: string): {string}
+end
 
 local namespace: integer
 
@@ -86,7 +97,7 @@ local watch_index = function(bufnr: integer, gitdir: string): uv.FSPollObj
     git_obj:update_abbrev_head()
 
     scheduler()
-    Status:update_head(bufnr, git_obj.abbrev_head)
+    Status:update(bufnr, { head = git_obj.abbrev_head})
 
     local was_tracked = git_obj.object_name ~= nil
     local old_relpath = git_obj.relpath
@@ -115,7 +126,7 @@ end
 -- to the file externally changing. When this happens a detach and attach event
 -- happen in sequence and so we keep the old signs to stop the sign column width
 -- moving about between updates.
-local function detach(bufnr: integer, keep_signs: boolean)
+M.detach = function(bufnr: integer, keep_signs: boolean)
   bufnr = bufnr or current_buf()
   dprint('Detached', bufnr)
   local bcache = cache[bufnr]
@@ -134,9 +145,9 @@ local function detach(bufnr: integer, keep_signs: boolean)
   cache:destroy(bufnr)
 end
 
-local function detach_all()
+M.detach_all = function()
   for k, _ in pairs(cache as {integer:CacheEntry}) do
-    detach(k)
+    M.detach(k)
   end
 end
 
@@ -177,9 +188,7 @@ local function in_git_dir(file: string): boolean
   return false
 end
 
-local attach = function(cbuf: integer)
-  scheduler()
-  cbuf = cbuf or current_buf()
+local attach0 = function(cbuf: integer)
   if cache[cbuf] then
     dprint('Already attached', cbuf, 'attach')
     return
@@ -223,7 +232,11 @@ local attach = function(cbuf: integer)
   end
 
   scheduler()
-  Status:update_head(cbuf, git_obj.abbrev_head)
+  Status:update(cbuf, {
+    head   = git_obj.abbrev_head,
+    root   = git_obj.toplevel,
+    gitdir = git_obj.gitdir,
+  })
 
   if vim.startswith(file, git_obj.gitdir..util.path_sep) then
     dprint('In non-standard git dir', cbuf, 'attach')
@@ -280,7 +293,7 @@ local attach = function(cbuf: integer)
       manager.update_debounced(buf)
     end,
     on_detach = function(_, buf: integer)
-      detach(buf, true)
+      M.detach(buf, true)
     end
   })
 
@@ -289,8 +302,26 @@ local attach = function(cbuf: integer)
   end
 end
 
+-- Ensure attaches cannot be interleaved.
+-- Since attaches are asynchronous we need to make sure an attach isn't
+-- performed whilst another one is in progress.
+local attach_running: {integer:boolean} = {}
+
+local attach = function(cbuf: integer)
+  cbuf = cbuf or current_buf()
+  if attach_running[cbuf] then
+    dprint('Attach in progress', cbuf, 'attach')
+    return
+  end
+  attach_running[cbuf] = true
+  attach0(cbuf)
+  attach_running[cbuf] = nil
+end
+
+local M0 = M as {string:function}
+
 -- Needs to be global so can be accessed from v:lua
-local function _complete(arglead: string, line: string): {string}
+M._complete = function(arglead: string, line: string): {string}
   local n: integer = #vim.split(line, '%s+')
 
   local matches: {string} = {}
@@ -306,20 +337,20 @@ local function _complete(arglead: string, line: string): {string}
     end
 
     get_matches(require('gitsigns.actions') as {string:function})
-    get_matches(M)
+    get_matches(M0)
   end
   return matches
 end
 
-local function _run_func(range: {integer, integer}, func: string, ...: any)
+M._run_func = function(range: {integer, integer}, func: string, ...: any)
   local actions = require('gitsigns.actions') as {string:function}
   actions._set_user_range(range)
   if type(actions[func]) == 'function' then
     actions[func](...)
     return
   end
-  if type(M[func]) == 'function' then
-    M[func](...)
+  if type(M0[func]) == 'function' then
+    M0[func](...)
     return
   end
 end
@@ -335,7 +366,7 @@ local function setup_command()
   }, ' '))
 end
 
-local setup = void(function(cfg: Config)
+M.setup = void(function(cfg: Config)
   gs_config.build(cfg)
   namespace = api.nvim_create_namespace('gitsigns')
 
@@ -343,7 +374,7 @@ local setup = void(function(cfg: Config)
 
   if config.debug_mode then
     for nm, f in pairs(gs_debug.add_debug_functions(cache)) do
-      M[nm] = f
+      M0[nm] = f
     end
   end
 
@@ -409,24 +440,16 @@ local setup = void(function(cfg: Config)
   require('gitsigns.current_line_blame').setup()
 end)
 
-M = {
-  attach        = void(attach),
-  detach        = detach,
-  detach_all    = detach_all,
-  setup         = setup,
+M.attach = void(attach)
 
-  -- Internal, API unstable
-  _get_config = function(): Config
-    return config
-  end,
+-- Internal, API unstable
+M._get_config = function(): Config
+  return config
+end
 
-  _complete = _complete,
-  _run_func = _run_func,
-
-  _update_highlights = function()
-    manager.setup_signs_and_highlights()
-  end,
-}
+M._update_highlights = function()
+  manager.setup_signs_and_highlights()
+end
 
 setmetatable(M, {
   __index = function(_, f: string): any
