@@ -293,7 +293,13 @@ setup_lsp('clangd', {})
 setup_lsp('elmls', {})
 
 -- haskell
-setup_lsp('hls', {})
+setup_lsp('hls', {
+  settings = {
+    languageServerHaskell = {
+      formattingProvider = 'fourmolu',
+    },
+  },
+})
 
 
 -- keymap
