@@ -17,8 +17,10 @@ local gs_debug          = require("gitsigns.debug")
 local dprint            = gs_debug.dprint
 local eprint            = gs_debug.eprint
 local util              = require('gitsigns.util')
-local git               = require('gitsigns.git')
+
 local gs_hunks          = require("gitsigns.hunks")
+local Hunk              = gs_hunks.Hunk
+
 local setup_highlight   = require('gitsigns.highlight').setup_highlight
 
 local config         = require('gitsigns.config').config
@@ -148,7 +150,7 @@ M.apply_word_diff = function(bufnr: integer, row: integer)
   for _, hunk in ipairs(cache[bufnr].hunks) do
     if lnum >= hunk.start and lnum <= hunk.vend then
       local size = #hunk.lines / 2
-      local regions = require('gitsigns.diff').run_word_diff(hunk.lines)
+      local regions = require('gitsigns.diff_ffi').run_word_diff(hunk.lines)
       for _, region in ipairs(regions) do
         local line = region[1]
         if lnum == hunk.start + line - size - 1
@@ -192,16 +194,20 @@ local update0 = function(bufnr: integer, bcache: CacheEntry)
 
   local compare_object = bcache.get_compare_obj(bcache)
 
+  -- Make sure these requires are done in the main event.
+  -- See https://github.com/neovim/neovim/issues/15147
+  local run_diff: function({string}, {string}, string): {Hunk}
   if config.use_internal_diff then
-    local diff = require('gitsigns.diff')
-    if not bcache.compare_text or config._refresh_staged_on_update then
-      bcache.compare_text = git_obj:get_show_text(compare_object)
-    end
-    bcache.hunks = diff.run_diff(bcache.compare_text, buftext, config.diff_algorithm)
+    run_diff = require('gitsigns.diff_ffi').run_diff
   else
-    git_obj:get_show(compare_object, bcache.compare_file)
-    bcache.hunks = git.run_diff(bcache.compare_file, buftext, config.diff_algorithm)
+    run_diff = require('gitsigns.diff_ext').run_diff
   end
+
+  if not bcache.compare_text or config._refresh_staged_on_update then
+    bcache.compare_text = git_obj:get_show_text(compare_object)
+  end
+
+  bcache.hunks = run_diff(bcache.compare_text, buftext, config.diff_algorithm)
   bcache.pending_signs = gs_hunks.process_hunks(bcache.hunks)
 
   scheduler()
@@ -216,11 +222,7 @@ local update0 = function(bufnr: integer, bcache: CacheEntry)
 
   update_cnt = update_cnt + 1
 
-  local update_str = string.format('updates: %s, jobs: %s', update_cnt, util.job_cnt)
-  dprint(update_str, bufnr, 'update')
-  if config.debug_mode then
-    api.nvim_set_var('gs_dev', update_str)
-  end
+  dprint(string.format('updates: %s, jobs: %s', update_cnt, util.job_cnt))
 end
 
 -- Ensure updates cannot be interleaved.

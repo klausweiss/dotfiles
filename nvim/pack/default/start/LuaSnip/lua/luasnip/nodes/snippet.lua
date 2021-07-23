@@ -67,6 +67,11 @@ local function S(context, nodes, condition, ...)
 		end
 	end
 
+	-- default: true.
+	if context.wordTrig == nil then
+		context.wordTrig = true
+	end
+
 	local snip = Snippet:new({
 		trigger = context.trig,
 		dscr = dscr,
@@ -280,7 +285,7 @@ function Snippet:matches(line)
 		return nil
 	end
 
-	-- if wordTrig is set, the char before the trigger has to be \w or the
+	-- if wordTrig is set, the char before the trigger can't be \w or the
 	-- word has to start at the beginning of the line.
 	if
 		self.wordTrig

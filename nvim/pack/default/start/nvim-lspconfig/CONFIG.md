@@ -2245,16 +2245,23 @@ require'lspconfig'.hls.setup{}
   Default Values:
     cmd = { "haskell-language-server-wrapper", "--lsp" }
     filetypes = { "haskell", "lhaskell" }
-    lspinfo = function(cfg)
-          -- return "specific"
-          if cfg.settings.languageServerHaskell.logFile or false then
-            return 'logfile: ' .. cfg.settings.languageServerHaskell.logFile
+    lspinfo = function on_stdout(_, data, _)
+            local version = data[1]
+            table.insert(extra, 'version:   ' .. version)
           end
-          return ''
+    
+          local opts = {
+            cwd = cfg.cwd,
+            stdout_buffered = true,
+            on_stdout = on_stdout,
+          }
+          local chanid = vim.fn.jobstart({ cfg.cmd[1], '--version' }, opts)
+          vim.fn.jobwait { chanid }
+          return extra
         end,
     root_dir = root_pattern("*.cabal", "stack.yaml", "cabal.project", "package.yaml", "hie.yaml")
     settings = {
-      languageServerHaskell = {
+      haskell = {
         formattingProvider = "ormolu"
       }
     }
@@ -3042,7 +3049,7 @@ This server accepts configuration via the `settings` key.
 
 - **`julia.completionmode`**: `enum { "exportedonly", "import", "qualify" }`
 
-  Default: `"import"`
+  Default: `"qualify"`
   
   Sets the mode for completions\.
 
@@ -3100,7 +3107,7 @@ This server accepts configuration via the `settings` key.
 
 - **`julia.execution.resultType`**: `enum { "REPL", "inline", "inline, errors in REPL", "both" }`
 
-  Default: `"REPL"`
+  Default: `"both"`
   
   Specifies how to show inline execution results
 
@@ -3285,6 +3292,12 @@ This server accepts configuration via the `settings` key.
   Default: `"julia_vscode"`
   
   null
+
+- **`julia.symbolCacheDownload`**: `boolean|null`
+
+  Default: `vim.NIL`
+  
+  Download symbol server cache files from GitHub\.
 
 - **`julia.trace.server`**: `enum { "off", "messages", "verbose" }`
 
@@ -3760,7 +3773,7 @@ require'lspconfig'.ocamllsp.setup{}
   
   Default Values:
     cmd = { "ocamllsp" }
-    filetypes = { "ocamllex", "menhir", "reason", "ocamlinterface", "ocaml" }
+    filetypes = { "ocaml", "ocaml.menhir", "ocaml.interface", "ocaml.ocamllex", "reason" }
     get_language_id = function(_, ftype)
       return language_id_of[ftype]
     end
@@ -6106,6 +6119,12 @@ This server accepts configuration via the `settings` key.
 - **`Lua.workspace.useGitIgnore`**: `boolean`
 
   Default: `true`
+  
+  null
+
+- **`Lua.workspace.userThirdParty`**: `array`
+
+  Array items: `{type = "string"}`
   
   null
 
