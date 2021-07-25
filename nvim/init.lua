@@ -101,6 +101,14 @@ vim.g.nvim_tree_show_icons = {
   folders= 1,
   folder_arrows= 1
 }
+vim.g.nvim_tree_window_picker_exclude = {
+  filetype = {
+    'Outline'
+  },
+  buftype = {
+    'terminal'
+  }
+}
 
 -- session
 local opts = {
