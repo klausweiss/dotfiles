@@ -303,7 +303,7 @@ setup_lsp('elmls', {})
 -- haskell
 setup_lsp('hls', {
   settings = {
-    languageServerHaskell = {
+    haskell = {
       formattingProvider = 'fourmolu',
     },
   },
