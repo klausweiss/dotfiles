@@ -92,8 +92,22 @@ helper.match_parameter = function(result, config)
   activeSignature = activeSignature + 1
   local signature = signatures[activeSignature]
 
-  local activeParameter = result.activeParameter or signature.active_parameter
-                              or signature.activeParameter
+  if signature.parameters == nil then -- no parameter
+    log("no sig")
+    return result, "", 0, 0
+  end
+
+  local activeParameter = signature.active_parameter
+
+  if result.activeParameter ~= nil and result.activeParameter < #signature.parameters then
+    activeParameter = result.activeParameter
+  else
+    activeParameter = 0
+  end
+
+  if signature.activeParameter ~= nil then
+    activeParameter = signature.activeParameter
+  end
 
   if activeParameter == nil or activeParameter < 0 then
     log("incorrect signature response?", result, config)
@@ -103,13 +117,6 @@ helper.match_parameter = function(result, config)
     log("incorrect signature response?", result)
     return result, "", 0, 0
   end
-
-  -- no arguments or only 1 arguments, the active arguments will not shown
-  -- disable return as it is useful for virtual hint
-  -- maybe use a flag?
-  -- if #signature.parameters < 2 or activeParameter + 1 > #signature.parameters then
-  --   return result, ""
-  -- end
 
   local nextParameter = signature.parameters[activeParameter + 1]
 

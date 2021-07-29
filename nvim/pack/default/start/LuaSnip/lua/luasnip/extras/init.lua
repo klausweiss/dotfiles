@@ -49,11 +49,14 @@ local function to_function(val, use_re)
 end
 
 local function match(index, _match, _then, _else)
-	assert(_then, "You have to pass at least 2 arguments")
+	assert(_match, "You have to pass at least 2 arguments")
 	assert(type(index) == "number", "Index has to be a single number")
 
-	_then = to_function(_then)
-	_match = to_function(_match or "^$", true)
+	_match = to_function(_match, true)
+	_then = to_function(_then or function(text)
+		local match_return = _match(text)
+		return (type(match_return) == "string" and match_return) or ""
+	end)
 	_else = to_function(_else or "")
 
 	local function func(arg)
@@ -84,6 +87,23 @@ return {
 		return F(function(_, fn, ...)
 			return fn(...)
 		end, {}, func, ...)
+	end,
+	nonempty = function(indx, text_if, text_if_not)
+		assert(
+			type(indx) == "number",
+			"this only checks one node for emptiness!"
+		)
+		assert(
+			text_if,
+			"At least the text for nonemptiness has to be supplied."
+		)
+
+		return F(function(args)
+			return (args[1][1] ~= "" or #args[1] > 1) and text_if
+				or (text_if_not or "")
+		end, {
+			indx,
+		})
 	end,
 
 	--alias

@@ -1279,6 +1279,18 @@ https://github.com/mattn/efm-langserver
 
 General purpose Language Server that can use specified error message format generated from specified command.
 
+Note: In order for neovim's built-in language server client to send the appropriate `languageId` to EFM, **you must
+specify `filetypes` in your call to `setup{}`**. Otherwise `lspconfig` will launch EFM on the `BufEnter` instead
+of the `FileType` autocommand, and the `filetype` variable used to populate the `languageId` will not yet be set.
+
+```lua
+require('lspconfig')['efm'].setup{
+  settings = ..., -- You must populate this according to the EFM readme
+  filetypes = { 'python','cpp','lua' }
+}
+```
+
+
 
 
 **Snippet to enable the language server:**
@@ -2152,35 +2164,29 @@ This server accepts configuration via the `settings` key.
   
   Enables splice plugin \(expand template haskell definitions\)
 
-- **`haskell.plugin.tactic.config.features`**: `string`
-
-  Default: `true`
-  
-  null
-
-- **`haskell.plugin.tactic.config.max_use_ctor_actions`**: `integer`
-
-  Default: `5`
-  
-  null
-
-- **`haskell.plugin.tactic.globalOn`**: `boolean`
-
-  Default: `true`
-  
-  Enables wingman \(tactic\) plugin
-
 - **`haskell.plugin.tactics.config.hole_severity`**: `enum { 1, 2, 3, 4, vim.NIL }`
 
   Default: `vim.NIL`
   
   The severity to use when showing hole diagnostics\.
 
+- **`haskell.plugin.tactics.config.max_use_ctor_actions`**: `integer`
+
+  Default: `5`
+  
+  null
+
 - **`haskell.plugin.tactics.config.timeout_duration`**: `integer`
 
   Default: `2`
   
   null
+
+- **`haskell.plugin.tactics.globalOn`**: `boolean`
+
+  Default: `true`
+  
+  Enables Wingman \(tactics\) plugin
 
 - **`haskell.releasesURL`**: `string`
 
@@ -2376,23 +2382,41 @@ require'lspconfig'.java_language_server.setup{}
 
 ## jdtls
 
-
 https://projects.eclipse.org/projects/eclipse.jdt.ls
 
 Language server for Java.
 
-See project page for installation instructions.
+IMPORTANT: If you want all the features jdtls has to offer, [nvim-jdtls](https://github.com/mfussenegger/nvim-jdtls)
+is highly recommended. If all you need is diagnostics, completion, imports, gotos and formatting and some code actions
+you can keep reading here.
 
-Due to the nature of java, the settings for eclipse jdtls cannot be automatically
-inferred. Please set the following environmental variables to match your installation. You can set these locally for your project with the help of [direnv](https://github.com/direnv/direnv). Note version numbers will change depending on your project's version of java, your version of eclipse, and in the case of JDTLS_CONFIG, your OS.
+For manual installation you can download precompiled binaries from the
+[official downloads site](http://download.eclipse.org/jdtls/snapshots/?d)
+
+Due to the nature of java, settings cannot be inferred. Please set the following
+environmental variables to match your installation. If you need per-project configuration
+[direnv](https://github.com/direnv/direnv) is highly recommended.
 
 ```bash
-export JAR=/path/to/eclipse.jdt.ls/org.eclipse.jdt.ls.product/target/repository/plugins/org.eclipse.equinox.launcher_1.6.0.v20200915-1508.jar
-export GRADLE_HOME=$HOME/gradle
-export JAVA_HOME=$(readlink -f /usr/bin/java | sed "s:/bin/java::")
-export JDTLS_CONFIG=/path/to/eclipse.jdt.ls/org.eclipse.jdt.ls.product/target/repository/config_linux
-export WORKSPACE=$HOME/workspace
+# Mandatory:
+# .bashrc
+export JDTLS_HOME=/path/to/jdtls_root # Directory with the plugin and configs directories
+
+# Optional:
+export JAVA_HOME=/path/to/java_home # In case you don't have java in path or want to use a version in particular
+export WORKSPACE=/path/to/workspace # Defaults to $HOME/workspace
 ```
+```lua
+  -- init.lua
+  require'lspconfig'.jdtls.setup{}
+```
+
+For automatic installation you can use the following unofficial installers/launchers under your own risk:
+  - [jdtls-launcher](https://github.com/eruizc-dev/jdtls-launcher) (Includes lombok support by default)
+    ```lua
+      -- init.lua
+      require'lspconfig'.jdtls.setup{ cmd = { 'jdtls' } }
+    ```
     
 This server accepts configuration via the `settings` key.
 <details><summary>Available settings:</summary>
@@ -2840,11 +2864,7 @@ require'lspconfig'.jdtls.setup{}
   Commands:
   
   Default Values:
-    cmd = { "/usr/lib/jvm/adoptopenjdk-11-hotspot-amd64/bin/java", "-Declipse.application=org.eclipse.jdt.ls.core.id1", "-Dosgi.bundles.defaultStartLevel=4", "-Declipse.product=org.eclipse.jdt.ls.core.product", "-Dlog.protocol=true", "-Dlog.level=ALL", "-Xms1g", "-Xmx2G", "-jar", "vim.NIL", "-configuration", "vim.NIL", "-data", "vim.NIL", "--add-modules=ALL-SYSTEM", "--add-opens java.base/java.util=ALL-UNNAMED", "--add-opens java.base/java.lang=ALL-UNNAMED" }
-    cmd_env = {
-      GRADLE_HOME = "/usr/share/gradle-7.1.1",
-      JAR = vim.NIL
-    }
+    cmd = { "/usr/lib/jvm/adoptopenjdk-11-hotspot-amd64/bin/java", "-Declipse.application=org.eclipse.jdt.ls.core.id1", "-Dosgi.bundles.defaultStartLevel=4", "-Declipse.product=org.eclipse.jdt.ls.core.product", "-Dlog.protocol=true", "-Dlog.level=ALL", "-Xms1g", "-Xmx2G", "-jar", "/plugins/org.eclipse.equinox.launcher_*.jar", "-configuration", "config_linux", "-data", "/home/runner/workspace", "--add-modules=ALL-SYSTEM", "--add-opens", "java.base/java.util=ALL-UNNAMED", "--add-opens", "java.base/java.lang=ALL-UNNAMED" }
     filetypes = { "java" }
     handlers = {
       ["language/status"] = <function 1>,
@@ -2856,7 +2876,17 @@ require'lspconfig'.jdtls.setup{}
       jvm_args = {},
       workspace = "/home/runner/workspace"
     }
-    root_dir = root_pattern(".git")
+    root_dir = {
+            -- Single-module projects
+            {
+              'build.xml', -- Ant
+              'pom.xml', -- Maven
+              'settings.gradle', -- Gradle
+              'settings.gradle.kts', -- Gradle
+            },
+            -- Multi-module projects
+            { 'build.gradle', 'build.gradle.kts' },
+          } or vim.fn.getcwd()
 ```
 
 
@@ -3264,6 +3294,10 @@ This server accepts configuration via the `settings` key.
   Default: `"test/runtests.jl"`
   
   A workspace relative path to a Julia file that contains the tests that should be run for live testing\.
+
+- **`julia.notebookController`**: `boolean`
+
+  Enable the experimental native Jupyter notebook integration\.
 
 - **`julia.packageServer`**: `string`
 
@@ -5653,7 +5687,7 @@ require'lspconfig'.sourcekit.setup{}
   Commands:
   
   Default Values:
-    cmd = { "xcrun", "sourcekit-lsp" }
+    cmd = { "sourcekit-lsp" }
     filetypes = { "swift", "c", "cpp", "objective-c", "objective-cpp" }
     root_dir = root_pattern("Package.swift", ".git")
 ```
@@ -6877,9 +6911,9 @@ require'lspconfig'.vuels.setup{}
 
 https://github.com/redhat-developer/yaml-language-server
 
-`yaml-language-server` can be installed via `npm`:
+`yaml-language-server` can be installed via `yarn`:
 ```sh
-npm install -g yaml-language-server
+yarn global add yaml-language-server
 ```
 
 This server accepts configuration via the `settings` key.
