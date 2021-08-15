@@ -1,4 +1,5 @@
-local a = require('plenary.async')
+local wrap = require('plenary.async.async').wrap
+local scheduler = require('plenary.async.util').scheduler
 local JobSpec = require('plenary.job').JobSpec
 
 local gsd = require("gitsigns.debug")
@@ -117,7 +118,7 @@ local function check_version(version)
    return true
 end
 
-M.command = a.wrap(function(args, spec, callback)
+M.command = wrap(function(args, spec, callback)
    local result = {}
    local reserr
    spec = spec or {}
@@ -149,19 +150,26 @@ M.command = a.wrap(function(args, spec, callback)
    util.run_job(spec)
 end, 3)
 
-local function process_abbrev_head(gitdir, head_str)
+local function process_abbrev_head(gitdir, head_str, path, cmd)
    if not gitdir then
       return head_str
    end
    if head_str == 'HEAD' then
+      local short_sha
+      if not gsd.debug_mode then
+         short_sha = M.command({ 'rev-parse', '--short', 'HEAD' }, {
+            command = cmd or 'git',
+            supress_stderr = true,
+            cwd = path,
+         })[1] or ''
+      else
+         short_sha = 'HEAD'
+      end
       if util.path_exists(gitdir .. '/rebase-merge') or
          util.path_exists(gitdir .. '/rebase-apply') then
-         return '(rebasing)'
-      elseif gsd.debug_mode then
-         return head_str
-      else
-         return ''
+         return short_sha .. '(rebasing)'
       end
+      return short_sha
    end
    return head_str
 end
@@ -174,7 +182,7 @@ local get_repo_info = function(path, cmd)
 
 
 
-   a.util.scheduler()
+   scheduler()
 
    local results = M.command({
       'rev-parse', '--show-toplevel', git_dir_opt, '--abbrev-ref', 'HEAD',
@@ -189,7 +197,7 @@ local get_repo_info = function(path, cmd)
    if not has_abs_gd then
       gitdir = uv.fs_realpath(gitdir)
    end
-   local abbrev_head = process_abbrev_head(gitdir, results[3])
+   local abbrev_head = process_abbrev_head(gitdir, results[3], path, cmd)
    return toplevel, gitdir, abbrev_head
 end
 
@@ -272,6 +280,16 @@ Obj.get_show_text = function(self, object)
 end
 
 Obj.run_blame = function(self, lines, lnum)
+   if not self.object_name then
+
+
+      return {
+         author = 'Not Committed Yet',
+         ['author-mail'] = '<not.committed.yet>',
+         committer = 'Not Committed Yet',
+         ['committer-mail'] = '<not.committed.yet>',
+      }
+   end
    local results = self:command({
       'blame',
       '--contents', '-',

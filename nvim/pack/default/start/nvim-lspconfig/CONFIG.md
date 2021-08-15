@@ -5,8 +5,10 @@ that config.
 
 - [als](#als)
 - [angularls](#angularls)
+- [ansiblels](#ansiblels)
 - [bashls](#bashls)
 - [beancount](#beancount)
+- [bicep](#bicep)
 - [ccls](#ccls)
 - [clangd](#clangd)
 - [clojure_lsp](#clojure_lsp)
@@ -47,6 +49,7 @@ that config.
 - [lean3ls](#lean3ls)
 - [leanls](#leanls)
 - [metals](#metals)
+- [mint](#mint)
 - [nimls](#nimls)
 - [ocamlls](#ocamlls)
 - [ocamllsp](#ocamllsp)
@@ -167,6 +170,51 @@ require'lspconfig'.angularls.setup{}
 ```
 
 
+## ansiblels
+
+https://github.com/ansible/ansible-language-server
+
+Language server for the ansible configuration management tool.
+
+`ansible-language-server` can be installed via `yarn`:
+```sh
+yarn global add ansible-language-server
+```
+
+
+
+**Snippet to enable the language server:**
+```lua
+require'lspconfig'.ansiblels.setup{}
+```
+
+**Commands and default values:**
+```lua
+  Commands:
+  
+  Default Values:
+    cmd = { "ansible-language-server", "--stdio" }
+    filetypes = { "yaml" }
+    root_dir = function(fname)
+          return util.root_pattern { '*.yml', '*.yaml' }(fname)
+        end,
+    settings = {
+      ansible = {
+        ansible = {
+          path = "ansible"
+        },
+        ansibleLint = {
+          enabled = true,
+          path = "ansible-lint"
+        },
+        python = {
+          interpreterPath = "python"
+        }
+      }
+    }
+```
+
+
 ## bashls
 
 https://github.com/mads-hartmann/bash-language-server
@@ -222,6 +270,53 @@ require'lspconfig'.beancount.setup{}
 ```
 
 
+## bicep
+
+https://github.com/azure/bicep
+Bicep language server
+
+Bicep language server can be installed by downloading and extracting a release of bicep-langserver.zip from [Bicep GitHub releases](https://github.com/Azure/bicep/releases).
+
+Bicep language server requires the [dotnet-sdk](https://dotnet.microsoft.com/download) to be installed.
+
+**By default, bicep language server doesn't have a `cmd` set.** This is because nvim-lspconfig does not make assumptions about your path. You must add the following to your init.vim or init.lua to set `cmd` to the absolute path ($HOME and ~ are not expanded) of the unzipped run script or binary.
+
+```lua
+local bicep_lsp_bin = "/path/to/bicep-langserver/Bicep.LangServer.dll"
+require'lspconfig'.bicep.setup{
+    cmd = { "dotnet", bicep_lsp_bin };
+    ...
+}
+```
+
+To download the latest release and place in /usr/local/bin/bicep-langserver:
+```bash
+(cd $(mktemp -d) \
+    && curl -fLO https://github.com/Azure/bicep/releases/latest/download/bicep-langserver.zip \
+    && rm -rf /usr/local/bin/bicep-langserver \
+    && unzip -d /usr/local/bin/bicep-langserver bicep-langserver.zip)
+```
+
+
+
+**Snippet to enable the language server:**
+```lua
+require'lspconfig'.bicep.setup{}
+```
+
+**Commands and default values:**
+```lua
+  Commands:
+  
+  Default Values:
+    filetypes = { "bicep" }
+    init_options = {}
+    root_dir = function(startpath)
+        return M.search_ancestors(startpath, matcher)
+      end
+```
+
+
 ## ccls
 
 https://github.com/MaskRay/ccls/wiki
@@ -263,7 +358,7 @@ require'lspconfig'.ccls.setup{}
   Default Values:
     cmd = { "ccls" }
     filetypes = { "c", "cpp", "objc", "objcpp" }
-    root_dir = root_pattern("compile_commands.json", "compile_flags.txt", ".git") or dirname
+    root_dir = root_pattern("compile_commands.json", ".ccls", "compile_flags.txt", ".git") or dirname
 ```
 
 
@@ -613,7 +708,7 @@ This server accepts configuration via the `settings` key.
   
   The protocol to use for the Dart Debug Extension backend service and injected client\. Using WebSockets can improve performance but may fail when connecting through some proxy servers\.
 
-- **`dart.debugExternalLibraries`**: `boolean`
+- **`dart.debugExternalPackageLibraries`**: `boolean`
 
   null
 
@@ -1182,14 +1277,14 @@ require'lspconfig'.dhall_lsp_server.setup{}
     cmd = { "dhall-lsp-server" }
     docs = {
       default_config = {
-        root_dir = 'root_pattern(".git", vim.fn.getcwd())'
+        root_dir = 'root_pattern(".git") or dirname'
       },
       description = "https://github.com/dhall-lang/dhall-haskell/tree/master/dhall-lsp-server\n\nlanguage server for dhall\n\n`dhall-lsp-server` can be installed via cabal:\n```sh\ncabal install dhall-lsp-server\n```\nprebuilt binaries can be found [here](https://github.com/dhall-lang/dhall-haskell/releases).\n"
     }
     filetypes = { "dhall" }
-    root_dir = function(startpath)
-        return M.search_ancestors(startpath, matcher)
-      end
+    root_dir = function(fname)
+          return util.root_pattern '.git'(fname) or util.path.dirname(fname)
+        end,
 ```
 
 
@@ -1916,7 +2011,7 @@ require'lspconfig'.graphql.setup{}
   Default Values:
     cmd = { "graphql-lsp", "server", "-m", "stream" }
     filetypes = { "graphql" }
-    root_dir = root_pattern('.git', '.graphqlrc')
+    root_dir = root_pattern('.git', '.graphqlrc*', '.graphql.config.*')
 ```
 
 
@@ -2032,12 +2127,6 @@ init_options = {
 This server accepts configuration via the `settings` key.
 <details><summary>Available settings:</summary>
 
-- **`haskell.completionSnippetsOn`**: `boolean`
-
-  Default: `true`
-  
-  Show snippets with type information when using code completion
-
 - **`haskell.diagnosticsOnChange`**: `boolean`
 
   Default: `true`
@@ -2055,12 +2144,6 @@ This server accepts configuration via the `settings` key.
   Default: `"ormolu"`
   
   The formatter to use when formatting a document or range\. Ensure the plugin is enabled\.
-
-- **`haskell.hlintOn`**: `boolean`
-
-  Default: `true`
-  
-  Get suggestions from hlint
 
 - **`haskell.logFile`**: `string`
 
@@ -2116,6 +2199,12 @@ This server accepts configuration via the `settings` key.
   
   Enables hlint code actions \(apply hints\)
 
+- **`haskell.plugin.hlint.config.flags`**: `array`
+
+  Default: `{}`
+  
+  null
+
 - **`haskell.plugin.hlint.diagnosticsOn`**: `boolean`
 
   Default: `true`
@@ -2164,6 +2253,12 @@ This server accepts configuration via the `settings` key.
   
   Enables splice plugin \(expand template haskell definitions\)
 
+- **`haskell.plugin.tactics.config.auto_gas`**: `integer`
+
+  Default: `4`
+  
+  null
+
 - **`haskell.plugin.tactics.config.hole_severity`**: `enum { 1, 2, 3, 4, vim.NIL }`
 
   Default: `vim.NIL`
@@ -2173,6 +2268,12 @@ This server accepts configuration via the `settings` key.
 - **`haskell.plugin.tactics.config.max_use_ctor_actions`**: `integer`
 
   Default: `5`
+  
+  null
+
+- **`haskell.plugin.tactics.config.proofstate_styling`**: `boolean`
+
+  Default: `true`
   
   null
 
@@ -2199,6 +2300,12 @@ This server accepts configuration via the `settings` key.
   Default: `""`
   
   null
+
+- **`haskell.trace.client`**: `enum { "off", "error", "debug" }`
+
+  Default: `"error"`
+  
+  Sets the log level in the client side\.
 
 - **`haskell.trace.server`**: `enum { "off", "messages" }`
 
@@ -2805,8 +2912,10 @@ This server accepts configuration via the `settings` key.
   
   null
 
-- **`java.showBuildStatusOnStart.enabled`**: `boolean`
+- **`java.showBuildStatusOnStart.enabled`**
 
+  Default: `"notification"`
+  
   Automatically show build status on startup\.
 
 - **`java.signatureHelp.enabled`**: `boolean`
@@ -2996,7 +3105,7 @@ require'lspconfig'.jsonls.setup{}
     init_options = {
       provideFormatter = true
     }
-    root_dir = root_pattern(".git", vim.fn.getcwd())
+    root_dir = root_pattern(".git") or dirname
 ```
 
 
@@ -3008,59 +3117,12 @@ https://github.com/julia-vscode/julia-vscode
 ```sh
 julia -e 'using Pkg; Pkg.add("LanguageServer"); Pkg.add("SymbolServer")'
 ```
-The default config lazily evaluates the location of the julia language server from the your global julia packages.
-This adds a small overhead on first opening of a julia file. To avoid this overhead, replace server_path in on_new_config with
-a hard-coded path to the server.
+This installs LanguageServer.jl into your global julia environment.
 
-```lua
-require'lspconfig'.julials.setup{
-    on_new_config = function(new_config,new_root_dir)
-      server_path = "/path/to/directory/containing/LanguageServer.jl/src"
-      cmd = {
-        "julia",
-        "--project="..server_path,
-        "--startup-file=no",
-        "--history-file=no",
-        "-e", [[
-          using Pkg
-          Pkg.instantiate()
-          using LanguageServer
-          depot_path = get(ENV, "JULIA_DEPOT_PATH", "")
-          project_path = let
-              dirname(something(
-                  ## 1. Finds an explicitly set project (JULIA_PROJECT)
-                  Base.load_path_expand((
-                      p = get(ENV, "JULIA_PROJECT", nothing);
-                      p === nothing ? nothing : isempty(p) ? nothing : p
-                  )),
-                  ## 2. Look for a Project.toml file in the current working directory,
-                  ##    or parent directories, with $HOME as an upper boundary
-                  Base.current_project(),
-                  ## 3. First entry in the load path
-                  get(Base.load_path(), 1, nothing),
-                  ## 4. Fallback to default global environment,
-                  ##    this is more or less unreachable
-                  Base.load_path_expand("@v#.#"),
-              ))
-          end
-          @info "Running language server" VERSION pwd() project_path depot_path
-          server = LanguageServer.LanguageServerInstance(stdin, stdout, project_path, depot_path)
-          server.runlinter = true
-          run(server)
-        \]\]
-    };
-      new_config.cmd = cmd
-    end
-}
+In order to have LanguageServer.jl pick up installed packages or dependencies in a Julia project, you must first instantiate the project:
+```sh
+julia --project=/path/to/my/project -e 'using Pkg; Pkg.instantiate()'
 ```
-You can find the path to the globally installed LanguageServer.jl package with the following command:
-
-```bash
-julia -e 'print(Base.find_package("LanguageServer"))'
-```
-
-Note: the directory passed to `--project=...` should terminate with src, not LanguageServer.jl.
-
     
 This server accepts configuration via the `settings` key.
 <details><summary>Available settings:</summary>
@@ -3376,14 +3438,11 @@ require'lspconfig'.julials.setup{}
   Default Values:
     cmd = { "julia", "--startup-file=no", "--history-file=no", "-e", '    using Pkg\n    Pkg.instantiate()\n    using LanguageServer\n    depot_path = get(ENV, "JULIA_DEPOT_PATH", "")\n    project_path = let\n        dirname(something(\n            ## 1. Finds an explicitly set project (JULIA_PROJECT)\n            Base.load_path_expand((\n                p = get(ENV, "JULIA_PROJECT", nothing);\n                p === nothing ? nothing : isempty(p) ? nothing : p\n            )),\n            ## 2. Look for a Project.toml file in the current working directory,\n            ##    or parent directories, with $HOME as an upper boundary\n            Base.current_project(),\n            ## 3. First entry in the load path\n            get(Base.load_path(), 1, nothing),\n            ## 4. Fallback to default global environment,\n            ##    this is more or less unreachable\n            Base.load_path_expand("@v#.#"),\n        ))\n    end\n    @info "Running language server" VERSION pwd() project_path depot_path\n    server = LanguageServer.LanguageServerInstance(stdin, stdout, project_path, depot_path)\n    server.runlinter = true\n    run(server)\n  ' }
     filetypes = { "julia" }
-    on_new_config = function(new_config, _)
-          local server_path = vim.fn.system 'julia --startup-file=no -q -e \'print(Base.find_package("LanguageServer"))\''
-          local new_cmd = vim.deepcopy(cmd)
-          table.insert(new_cmd, 2, '--project=' .. server_path:sub(0, -19))
-          new_config.cmd = new_cmd
+    on_new_config = function(new_config, root_dir)
+          new_config.cmd_cwd = root_dir
         end,
     root_dir = function(fname)
-          return util.find_git_ancestor(fname) or vim.fn.getcwd()
+          return util.find_git_ancestor(fname) or util.path.dirname(fname)
         end,
 ```
 
@@ -3653,6 +3712,33 @@ require'lspconfig'.metals.setup{}
     }
     message_level = 4
     root_dir = util.root_pattern("build.sbt", "build.sc", "build.gradle", "pom.xml")
+```
+
+
+## mint
+
+https://www.mint-lang.com
+
+Install Mint using the [instructions](https://www.mint-lang.com/install).
+The language server is included since version 0.12.0.
+
+
+
+**Snippet to enable the language server:**
+```lua
+require'lspconfig'.mint.setup{}
+```
+
+**Commands and default values:**
+```lua
+  Commands:
+  
+  Default Values:
+    cmd = { "mint", "ls" }
+    filetypes = { "mint" }
+    root_dir = function(fname)
+          return util.root_pattern 'mint.json'(fname) or util.find_git_ancestor(fname) or util.path.dirname(fname)
+        end,
 ```
 
 
@@ -4054,13 +4140,11 @@ This server accepts configuration via the `settings` key.
   
   Path to the pls executable script
 
-- **`perl.sortImports.args`**: `array`
+- **`perl.plsargs`**: `array`
 
   Default: `{}`
   
-  Array items: `{type = "string"}`
-  
-  Arguments passed in\. Each argument is a separate item in the array\.
+  Arguments to pass to the pls command
 
 - **`perl.syntax.enabled`**: `boolean`
 
@@ -4299,6 +4383,10 @@ This server accepts configuration via the `settings` key.
   
   Build command to use with arguments\. Not passed to shell\. eg \`spago build \-\-purs\-args \-\-json\-errors\`
 
+- **`purescript.buildOpenedFiles`**: `boolean`
+
+  null
+
 - **`purescript.censorWarnings`**: `array`
 
   Default: `{}`
@@ -4320,6 +4408,12 @@ This server accepts configuration via the `settings` key.
   Default: `true`
   
   Enable purs IDE server fast rebuild
+
+- **`purescript.formatter`**: `enum { "none", "purty", "purs-tidy", "pose" }`
+
+  Default: `"purty"`
+  
+  Tool to use to for formatting\. Must be installed and on PATH \(or npm installed with addNpmPath set\)
 
 - **`purescript.importsPreferredModules`**: `array`
 
@@ -5249,6 +5343,12 @@ This server accepts configuration via the `settings` key.
   null
 
 - **`rust-analyzer.lens.enable`**: `boolean`
+
+  Default: `true`
+  
+  null
+
+- **`rust-analyzer.lens.forceCustomCommands`**: `boolean`
 
   Default: `true`
   
@@ -6249,8 +6349,14 @@ require'lspconfig'.svelte.setup{}
 
 ## svls
 
-      https://github.com/dalance/svls
-      Language server for verilog and SystemVerilog
+https://github.com/dalance/svls
+
+Language server for verilog and SystemVerilog
+
+`svls` can be installed via `cargo`:
+ ```sh
+ cargo install svls
+ ```
     
 
 
@@ -6500,6 +6606,9 @@ require'lspconfig'.tsserver.setup{}
   Default Values:
     cmd = { "typescript-language-server", "--stdio" }
     filetypes = { "javascript", "javascriptreact", "javascript.jsx", "typescript", "typescriptreact", "typescript.tsx" }
+    init_options = {
+      hostInfo = "neovim"
+    }
     root_dir = root_pattern("package.json", "tsconfig.json", "jsconfig.json", ".git")
 ```
 
@@ -7026,7 +7135,7 @@ require'lspconfig'.yamlls.setup{}
   Default Values:
     cmd = { "yaml-language-server", "--stdio" }
     filetypes = { "yaml" }
-    root_dir = root_pattern(".git", vim.fn.getcwd())
+    root_dir = root_pattern(".git") or dirname
 ```
 
 

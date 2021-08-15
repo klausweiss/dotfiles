@@ -70,7 +70,6 @@ of the default settings:
       sign_priority = 6,
       update_debounce = 100,
       status_formatter = nil, -- Use default
-      use_decoration_api = true,
       use_internal_diff = true,  -- If luajit is present
     }
 <
@@ -234,6 +233,28 @@ refresh()                                                 *gitsigns.refresh()*
 
 select_hunk()                                         *gitsigns.select_hunk()*
                 Select the hunk under the cursor.
+
+get_hunks({bufnr})                                      *gitsigns.get_hunks()*
+                Get hunk array for specified buffer.
+
+                Parameters: ~
+                    {bufnr} integer: Buffer number, if not provided (or 0)
+                            will use current buffer.
+
+                Return: ~
+                   Array of hunk objects. Each hunk object has keys:
+                     • `"type"`: String with possible values: "add", "change",
+                       "delete"
+                     • `"head"`: Header that appears in the unified diff
+                       output.
+                     • `"lines"`: Line contents of the hunks prefixed with
+                       either `"-"` or `"+"`.
+                     • `"removed"`: Sub-table with fields:
+                       • `"start"`: Line number (1-based)
+                       • `"count"`: Line count
+                     • `"added"`: Sub-table with fields:
+                       • `"start"`: Line number (1-based)
+                       • `"count"`: Line count
 
 setqflist({target})                                      *gitsigns.setqflist()*
                 Populate the quickfix list with hunks.
@@ -504,13 +525,6 @@ use_internal_diff                          *gitsigns-config-use_internal_diff*
 
       This uses LuaJIT's FFI interface.
 
-use_decoration_api                        *gitsigns-config-use_decoration_api*
-      Type: `boolean`, Default: `true`
-
-      Use Neovim's decoration API to apply signs. This should improve
-      performance on large files since signs will only be applied to drawn
-      lines as opposed to all lines in the buffer.
-
 current_line_blame                        *gitsigns-config-current_line_blame*
       Type: `boolean`, Default: `false`
 
@@ -677,7 +691,7 @@ provided. `b:gitsigns_status` is formatted using `config.status_formatter`
         • `added` - Number of added lines.
         • `changed` - Number of changed lines.
         • `removed` - Number of removed lines.
-        • `head` - Name of current branch.
+        • `head` - Name of current HEAD (branch or short commit hash).
         • `root` - Top level directory of the working tree.
         • `gitdir` - .git directory.
 
@@ -686,8 +700,8 @@ Example:
     set statusline+=%{get(b:,'gitsigns_status','')}
 <
                                                              *b:gitsigns_head*
-Use `b:gitsigns_head` to return the name of the current branch. If the current
-HEAD is detached then this will be an empty string.
+Use `b:gitsigns_head` to return the name of the current HEAD (usually branch
+name). If the current HEAD is detached then this will be a short commit hash.
 
 ==============================================================================
 TEXT OBJECTS                                             *gitsigns-textobject*

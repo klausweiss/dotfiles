@@ -5,6 +5,7 @@ local ui = require('symbols-outline.ui')
 local writer = require('symbols-outline.writer')
 local config = require('symbols-outline.config')
 local utils = require('symbols-outline.utils.lsp_utils')
+local markdown = require('symbols-outline.markdown')
 
 local M = {}
 
@@ -58,12 +59,14 @@ end
 
 function M._refresh()
     if M.state.outline_buf ~= nil then
-        vim.lsp.buf_request_all(0, "textDocument/documentSymbol", getParams(),
-                                function(response)
+        local function refresh_handler(response)
             if response == nil or type(response) ~= 'table' then
                 return
             end
-            if not utils.is_buf_attached_to_lsp(vim.api.nvim_get_current_buf()) then
+
+            local current_buf = vim.api.nvim_get_current_buf()
+            if (not utils.is_buf_markdown(current_buf)) and
+                (not utils.is_buf_attached_to_lsp(current_buf)) then
                 return
             end
 
@@ -75,7 +78,13 @@ function M._refresh()
 
             writer.parse_and_write(M.state.outline_buf,
                                    M.state.flattened_outline_items)
-        end)
+        end
+
+        if vim.api.nvim_buf_get_option(0, 'ft') == 'markdown' then
+            refresh_handler(markdown.handle_markdown())
+        end
+        vim.lsp.buf_request_all(0, "textDocument/documentSymbol", getParams(),
+                                refresh_handler)
     end
 end
 
@@ -96,7 +105,10 @@ function M._highlight_current_item(winnr)
 
     local doesnt_have_outline_buf = not M.state.outline_buf
 
-    local should_exit = doesnt_have_lsp or doesnt_have_outline_buf or
+    local is_not_markdown = not utils.is_buf_markdown(0)
+
+    local should_exit = (doesnt_have_lsp and is_not_markdown) or
+                            doesnt_have_outline_buf or
                             is_current_buffer_the_outline
 
     -- Make a special case if we have a window number
@@ -162,10 +174,18 @@ function M._prevent_buffer_override()
 end
 
 local function setup_keymaps(bufnr)
-    local function nmap(key, action)
-        vim.api.nvim_buf_set_keymap(bufnr, "n", key, action,
-                                    {silent = true, noremap = true})
+    ---maps the table of keys to the action
+    ---@param keys table
+    ---@param action string
+    local function nmap(keys, action)
+        if type(keys) == 'string' then keys = {keys} end
+
+        for _, value in ipairs(keys) do
+            vim.api.nvim_buf_set_keymap(bufnr, "n", value, action,
+                                        {silent = true, noremap = true})
+        end
     end
+
     -- goto_location of symbol and focus that window
     nmap(config.options.keymaps.goto_location,
          ":lua require('symbols-outline')._goto_location(true)<Cr>")
@@ -198,7 +218,8 @@ local function setup_buffer()
     local current_win_width = vim.api.nvim_win_get_width(current_win)
 
     vim.cmd(config.get_split_command())
-    vim.cmd("vertical resize " .. math.ceil(current_win_width * config.get_width_percentage()))
+    vim.cmd("vertical resize " ..
+                math.ceil(current_win_width * config.get_width_percentage()))
     M.state.outline_win = vim.api.nvim_get_current_win()
     vim.api.nvim_win_set_buf(M.state.outline_win, M.state.outline_buf)
 
@@ -241,15 +262,17 @@ end
 
 function M.toggle_outline()
     if M.state.outline_buf == nil then
-        vim.lsp.buf_request_all(0, "textDocument/documentSymbol", getParams(),
-                                handler)
+        M.open_outline()
     else
-        vim.api.nvim_win_close(M.state.outline_win, true)
+        M.close_outline()
     end
 end
 
 function M.open_outline()
     if M.state.outline_buf == nil then
+        if vim.api.nvim_buf_get_option(0, 'ft') == 'markdown' then
+            handler(markdown.handle_markdown())
+        end
         vim.lsp.buf_request_all(0, "textDocument/documentSymbol", getParams(),
                                 handler)
     end

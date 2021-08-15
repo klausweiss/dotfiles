@@ -1,4 +1,3 @@
--- !::exe [luafile %]
 --
 -- layout.lua
 --
@@ -35,7 +34,7 @@ local function calculate_buffers_width(state, base_width)
 
     local width
     if buffer_data.closing then
-      width = buffer_data.dimensions[1] + buffer_data.dimensions[2]
+      width = buffer_data.real_width
     else
       width = base_width
         + strwidth(Buffer.get_activity(buffer_number) > 0 -- separator
@@ -49,11 +48,20 @@ local function calculate_buffers_width(state, base_width)
           + 1 -- space-after-buffer-index
       end
 
-      if opts.closable then
+      local is_pinned = state.is_pinned(buffer_number)
+
+      if opts.closable or is_pinned then
+        local is_modified = nvim.buf_get_option(buffer_number, 'modified')
+        local icon =
+          is_pinned
+            and opts.icon_pinned
+            or
+          (not is_modified -- close-icon
+            and opts.icon_close_tab
+             or opts.icon_close_tab_modified)
+
         width = width
-          + strwidth(not nvim.buf_get_option(buffer_number, 'modified') -- close-icon
-              and opts.icon_close_tab
-              or opts.icon_close_tab_modified)
+          + strwidth(icon)
           + 1 -- space-after-close-icon
       end
     end
@@ -62,6 +70,19 @@ local function calculate_buffers_width(state, base_width)
   end
 
   return sum, widths
+end
+
+local function calculate_buffers_position_by_buffer_number(state, layout)
+  local current_position = 0
+  local positions = {}
+
+  for i, buffer_number in ipairs(state.buffers) do
+    positions[buffer_number] = current_position
+    local width = layout.base_widths[i] + (2 * layout.padding_width)
+    current_position = current_position + width
+  end
+
+  return positions
 end
 
 local function calculate(state)
@@ -89,7 +110,7 @@ local function calculate(state)
   local remaining_width_per_buffer   = math.floor(remaining_width / buffers_length)
   local remaining_padding_per_buffer = math.floor(remaining_width_per_buffer / SIDES_OF_BUFFER)
   local padding_width                = math.min(remaining_padding_per_buffer, opts.maximum_padding)
-  local actual_width                 = used_width + (padding_width * buffers_length * SIDES_OF_BUFFER)
+  local actual_width                 = used_width + (buffers_length * padding_width * SIDES_OF_BUFFER)
 
   return {
     actual_width = actual_width,
@@ -103,14 +124,15 @@ local function calculate(state)
   }
 end
 
-local function calculate_dimensions(buffer_name, base_width, padding_width)
-  return { strwidth(buffer_name), base_width + padding_width * SIDES_OF_BUFFER }
+local function calculate_width(buffer_name, base_width, padding_width)
+  return strwidth(buffer_name) + base_width + padding_width * SIDES_OF_BUFFER
 end
 
 local exports = {
   calculate = calculate,
   calculate_buffers_width = calculate_buffers_width,
-  calculate_dimensions = calculate_dimensions,
+  calculate_buffers_position_by_buffer_number = calculate_buffers_position_by_buffer_number,
+  calculate_width = calculate_width,
 }
 
 return exports

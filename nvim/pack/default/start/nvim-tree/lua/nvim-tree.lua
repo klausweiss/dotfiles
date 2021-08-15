@@ -11,6 +11,13 @@ local api = vim.api
 
 local M = {}
 
+function M.focus()
+  if not view.win_open() then
+    lib.open()
+  end
+  view.focus();
+end
+
 function M.toggle()
   if view.win_open() then
     view.close()
@@ -46,7 +53,7 @@ function M.tab_change()
       if bufname:match("Neogit") ~= nil or bufname:match("--graph") ~= nil then
         return
       end
-      view.open()
+      view.open({ focus_tree = false })
     end
   end)
 end
@@ -88,6 +95,49 @@ local keypress_funcs = {
   preview = function(node)
     if node.entries ~= nil or node.name == '..' then return end
     return lib.open_file('preview', node.absolute_path)
+  end,
+  system_open = function(node)
+    if vim.g.nvim_tree_system_open_command == nil then
+      if vim.fn.has('win32') == 1 or vim.fn.has('win32unix') == 1 then
+        vim.g.nvim_tree_system_open_command = 'cmd'
+        vim.g.nvim_tree_system_open_command_args = {'/c', 'start', '""'}
+      elseif vim.fn.has('mac') == 1 or vim.fn.has('macunix') == 1 then
+        vim.g.nvim_tree_system_open_command = 'open'
+      elseif vim.fn.has('unix') == 1 then
+        vim.g.nvim_tree_system_open_command = 'xdg-open'
+      else
+        error('\nNvimTree system_open: cannot open file with system application. Unrecognized platform.\nPlease fill g:nvim_tree_system_open_command with the name of the system file launcher.')
+        return
+      end
+    end
+
+    local process = {}
+    process.args = vim.g.nvim_tree_system_open_command_args or {}
+    table.insert(process.args, node.link_to or node.absolute_path)
+    process.errors = '\n'
+    process.stderr = luv.new_pipe(false)
+    process.handle, process.pid = luv.spawn(vim.g.nvim_tree_system_open_command,
+      {args = process.args, stdio = {nil, nil, process.stderr}},
+      function(code)
+        process.stderr:read_stop()
+        process.stderr:close()
+        process.handle:close()
+        if code ~= 0 then
+          process.errors = process.errors .. string.format('NvimTree system_open: return code %d.', code)
+          error(process.errors)
+        end
+      end
+    )
+    if not process.handle then
+      error("\n" .. process.pid .. "\nNvimTree system_open: failed to spawn process using '" .. vim.g.nvim_tree_system_open_command .. "'.")
+      return
+    end
+    luv.read_start(process.stderr,
+      function(err, data)
+        if err then return end
+        if data then process.errors = process.errors .. data end
+      end
+    )
   end,
 }
 
@@ -220,9 +270,19 @@ function M.reset_highlight()
   renderer.render_hl(view.View.bufnr)
 end
 
+local prev_line
 function M.place_cursor_on_node()
+  local l = vim.api.nvim_win_get_cursor(0)[1]
+  if l == prev_line then
+    return
+  end
+  prev_line = l
+
   local node = lib.get_node_at_cursor()
-  if not node or node.name == ".." then return end
+  if not node or node.name == ".." then
+    return
+  end
+
   local line = api.nvim_get_current_line()
   local cursor = api.nvim_win_get_cursor(0)
   local idx = vim.fn.stridx(line, node.name)

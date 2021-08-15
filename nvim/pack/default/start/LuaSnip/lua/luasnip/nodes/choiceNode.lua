@@ -1,13 +1,17 @@
-local ChoiceNode = require("luasnip.nodes.node").Node:new()
+local node = require("luasnip.nodes.node").Node
+local ChoiceNode = node:new()
 local util = require("luasnip.util.util")
+local conf = require("luasnip.config")
+local types = require("luasnip.util.types")
+local mark = require("luasnip.util.mark").mark
 
 local function C(pos, choices)
 	return ChoiceNode:new({
 		active = false,
 		pos = pos,
 		choices = choices,
-		type = 4,
-		markers = {},
+		type = types.choiceNode,
+		mark = nil,
 		current_choice = 1,
 		dependents = {},
 	})
@@ -16,35 +20,44 @@ end
 function ChoiceNode:put_initial(pos)
 	for _, node in ipairs(self.choices) do
 		node.parent = self.parent
-		node.markers = self.markers
 		node.next = self
 		node.prev = self
 		node.dependents = self.dependents
-		if node.type == 3 then
+		if node.type == types.snippetNode then
 			node:indent(self.parent.indentstr)
 			node.env = self.parent.env
+			node.ext_opts = util.increase_ext_prio(
+				vim.deepcopy(self.parent.ext_opts),
+				conf.config.ext_prio_increase
+			)
 		end
 		node.indx = self.indx
 		node.pos = self.pos
 		-- if function- or dynamicNode, dependents may need to be replaced with
 		-- actual nodes, until here dependents may only contain indices of nodes.
-		if node.type == 2 or node.type == 5 then
-			if type(node.args[1]) ~= "table" then
-				-- append node to dependents-table of args.
-				for i, arg in ipairs(node.args) do
-					-- Function-Node contains refs. to arg-nodes.
-					node.args[i] = self.parent.insert_nodes[arg]
-					self.parent.insert_nodes[arg].dependents[#self.parent.insert_nodes[arg].dependents + 1] =
-						node
-				end
-			end
+		if
+			node.type == types.functionNode
+			or node.type == types.dynamicNode
+		then
+			self.parent:populate_args(node)
 		end
 	end
 	self.inner = self.choices[self.current_choice]
+
+	local old_pos = vim.deepcopy(pos)
+
 	self.inner:put_initial(pos)
+
+	local mark_opts = vim.tbl_extend("keep", {
+		right_gravity = false,
+		end_right_gravity = false,
+	}, self.parent.ext_opts[self.inner.type].passive)
+
+	self.inner.mark = mark(old_pos, pos, mark_opts)
 end
 
 function ChoiceNode:input_enter()
+	self.mark:update_opts(self.parent.ext_opts[self.type].active)
 	self.parent:enter_node(self.indx)
 
 	self.prev_choice = Luasnip_active_choice
@@ -53,6 +66,7 @@ function ChoiceNode:input_enter()
 end
 
 function ChoiceNode:input_leave()
+	self.mark:update_opts(self.parent.ext_opts[self.type].passive)
 	self:update_dependents()
 	Luasnip_active_choice = self.prev_choice
 	self.active = false
@@ -108,7 +122,10 @@ function ChoiceNode:change_choice(val)
 	self.current_choice = tmp
 	self.inner = self.choices[self.current_choice]
 
-	self.inner:put_initial(util.get_ext_position(self.markers[1]))
+	self.inner.mark = self.mark:copy_pos_gravs(
+		vim.deepcopy(self.parent.ext_opts[self.inner.type].passive)
+	)
+	self.inner:put_initial(util.get_ext_position_begin(self.mark.id))
 	self.inner:update()
 	self.inner.old_text = self.inner:get_text()
 
@@ -122,7 +139,7 @@ end
 function ChoiceNode:copy()
 	local o = vim.deepcopy(self)
 	for i, node in ipairs(self.choices) do
-		if node.type == 3 or node.type == 4 then
+		if node.type == types.snippetNode or node.type == types.choiceNode then
 			o.choices[i] = node:copy()
 		else
 			setmetatable(o.choices[i], getmetatable(node))
@@ -132,24 +149,15 @@ function ChoiceNode:copy()
 	return o
 end
 
-function ChoiceNode:set_mark_rgrav(mark, val)
-	-- set own markers.
-	local pos = vim.api.nvim_buf_get_extmark_by_id(
-		0,
-		Luasnip_ns_id,
-		self.markers[mark],
-		{}
-	)
-	vim.api.nvim_buf_del_extmark(0, Luasnip_ns_id, self.markers[mark])
-	self.markers[mark] = vim.api.nvim_buf_set_extmark(
-		0,
-		Luasnip_ns_id,
-		pos[1],
-		pos[2],
-		{ right_gravity = val }
-	)
+function ChoiceNode:exit()
+	self.mark:clear()
+	self.inner:exit()
+end
 
-	self.inner:set_mark_rgrav(mark, val)
+-- val_begin/end may be nil, in this case that gravity won't be changed.
+function ChoiceNode:set_mark_rgrav(rgrav_beg, rgrav_end)
+	node.set_mark_rgrav(self, rgrav_beg, rgrav_end)
+	self.inner:set_mark_rgrav(rgrav_beg, rgrav_end)
 end
 
 return {

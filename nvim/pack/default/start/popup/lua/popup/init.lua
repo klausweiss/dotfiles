@@ -29,6 +29,8 @@ local function dict_default(options, key, default)
   end
 end
 
+-- Callbacks to be called later by popup.execute_callback
+popup._callbacks = {}
 
 function popup.create(what, vim_options)
   local bufnr
@@ -136,15 +138,8 @@ function popup.create(what, vim_options)
     else
       win_opts.anchor = popup._pos_map[vim_options.pos]
     end
-  end
-
-  -- posinvert, When FALSE the value of "pos" is always used.  When
-  -- ,   TRUE (the default) and the popup does not fit
-  -- ,   vertically and there is more space on the other side
-  -- ,   then the popup is placed on the other side of the
-  -- ,   position indicated by "line".
-  if dict_default(vim_options, 'posinvert', option_defaults) then
-    -- TODO: handle the invert thing
+  else
+    win_opts.anchor = "NW" -- This is the default, but makes `posinvert` easier to implement
   end
 
   -- , fixed    When FALSE (the default), and:
@@ -157,7 +152,7 @@ function popup.create(what, vim_options)
 
   win_opts.style = 'minimal'
 
-  -- Feels like maxheigh, minheight, maxwidth, minwidth will all be related
+  -- Feels like maxheight, minheight, maxwidth, minwidth will all be related
   --
   -- maxheight  Maximum height of the contents, excluding border and padding.
   -- minheight  Minimum height of the contents, excluding border and padding.
@@ -176,6 +171,25 @@ function popup.create(what, vim_options)
   win_opts.width = utils.bounded(width, vim_options.minwidth, vim_options.maxwidth)
   win_opts.height = utils.bounded(height, vim_options.minheight, vim_options.maxheight)
 
+  -- posinvert, When FALSE the value of "pos" is always used.  When
+  -- ,   TRUE (the default) and the popup does not fit
+  -- ,   vertically and there is more space on the other side
+  -- ,   then the popup is placed on the other side of the
+  -- ,   position indicated by "line".
+  if dict_default(vim_options, 'posinvert', option_defaults) then
+    if win_opts.anchor == "NW" or win_opts.anchor == "NE" then
+      if win_opts.row + win_opts.height > vim.o.lines and win_opts.row * 2 > vim.o.lines then
+        -- Don't know why, but this is how vim adjusts it
+        win_opts.row = win_opts.row - win_opts.height - 2
+      end
+    elseif win_opts.anchor == "SW" or win_opts.anchor == "SE" then
+      if win_opts.row - win_opts.height < 0 and win_opts.row * 2 < vim.o.lines then
+        -- Don't know why, but this is how vim adjusts it
+        win_opts.row = win_opts.row + win_opts.height + 2
+      end
+    end
+  end
+
   -- textprop, When present the popup is positioned next to a text
   -- ,   property with this name and will move when the text
   -- ,   property moves.  Use an empty string to remove.  See
@@ -188,11 +202,7 @@ function popup.create(what, vim_options)
   if vim_options.hidden then
     assert(false, "I have not implemented this yet and don't know how")
   else
-    local should_enter = vim_options.enter
-    if should_enter == nil then
-      should_enter = true
-    end
-    win_id = vim.api.nvim_open_win(bufnr, should_enter, win_opts)
+    win_id = vim.api.nvim_open_win(bufnr, false, win_opts)
   end
 
 
@@ -335,6 +345,34 @@ function popup.create(what, vim_options)
     vim.api.nvim_win_set_option(win_id, 'winhl', string.format('Normal:%s', vim_options.highlight))
   end
 
+  if vim_options.borderhighlight then
+    vim.api.nvim_win_set_option(border.win_id, 'winhl', string.format('Normal:%s', vim_options.borderhighlight))
+  end
+
+  -- enter
+  local should_enter = vim_options.enter
+  if should_enter == nil then
+    should_enter = true
+  end
+
+  if should_enter then
+    -- set focus after border creation so that it's properly placed (especially
+    -- in relative cursor layout)
+    vim.api.nvim_set_current_win(win_id)
+  end
+
+  -- callback
+  if vim_options.callback then
+    popup._callbacks[bufnr] = function()
+      -- (jbyuki): Giving win_id is pointless here because it's closed right afterwards
+      -- but it might make more sense once hidden is implemented
+      local row, _ = unpack(vim.api.nvim_win_get_cursor(win_id))
+      vim_options.callback(win_id, what[row])
+      vim.api.nvim_win_close(win_id, true)
+    end
+    vim.api.nvim_buf_set_keymap(bufnr, 'n', '<CR>', '<cmd>lua require"popup".execute_callback(' .. bufnr .. ')<CR>', {noremap = true})
+  end
+
   -- TODO: Perhaps there's a way to return an object that looks like a window id,
   --    but actually has some extra metadata about it.
   --
@@ -344,10 +382,12 @@ function popup.create(what, vim_options)
   }
 end
 
-function popup.show(self, asdf)
-end
-
-popup.show = function()
+function popup.execute_callback(bufnr)
+  if popup._callbacks[bufnr] then
+    local wrapper = popup._callbacks[bufnr]
+    wrapper()
+    popup._callbacks[bufnr] = nil
+  end
 end
 
 return popup

@@ -26,6 +26,8 @@ local M = {Hunk = {Node = {}, }, }
 
 
 
+
+
 local Hunk = M.Hunk
 
 function M.create_hunk(start_a, count_a, start_b, count_b)
@@ -221,6 +223,20 @@ function M.extract_removed(hunk)
    end, vim.tbl_filter(function(l)
       return vim.startswith(l, '-')
    end, hunk.lines))
+end
+
+function M.compare_heads(a, b)
+   if (a == nil) ~= (b == nil) then
+      return true
+   elseif a and #a ~= #b then
+      return true
+   end
+   for i, ah in ipairs(a) do
+      if b[i].head ~= ah.head then
+         return true
+      end
+   end
+   return false
 end
 
 return M

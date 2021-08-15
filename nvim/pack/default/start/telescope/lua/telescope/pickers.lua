@@ -1,8 +1,8 @@
 local a = vim.api
-local popup = require "popup"
 
 local async_lib = require "plenary.async_lib"
 local async_util = async_lib.util
+local popup = require "plenary.popup"
 
 local async = async_lib.async
 local await = async_lib.await
@@ -968,6 +968,10 @@ end
 --  Would allow for better debugging of items.
 function Picker:register_completion_callback(cb)
   table.insert(self._completion_callbacks, cb)
+end
+
+function Picker:clear_completion_callbacks()
+  self._completion_callbacks = {}
 end
 
 function Picker:_on_complete()

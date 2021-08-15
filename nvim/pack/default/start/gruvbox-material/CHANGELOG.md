@@ -6,6 +6,12 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Add `g:gruvbox_material_ui_contrast`.
+
+## [1.2.2] - 2021-08-06
+
+### Added
+
 - Optimize `lervag/vimtex`.
 - Add `g:gruvbox_material_diagnostic_text_highlight`
 - Optimize `liuchengxu/vim-clap`.
@@ -21,6 +27,7 @@ All notable changes to this project will be documented in this file.
 - Support semantic highlight in coc.nvim .
 - Optimize semantic highlight in some plugins.
 - Support `thiagoalessio/rainbow_levels.vim` and `p00f/nvim-ts-rainbow`.
+- Optimize coc symbols and coc tree.
 
 ### Changed
 
@@ -293,7 +300,8 @@ All notable changes to this project will be documented in this file.
 - Lightline theme.
 - Finish AUR package and add the url in README.
 
-[unreleased]: https://github.com/sainnhe/gruvbox-material/compare/v1.2.1...HEAD
+[unreleased]: https://github.com/sainnhe/gruvbox-material/compare/v1.2.2...HEAD
+[1.2.2]: https://github.com/sainnhe/gruvbox-material/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/sainnhe/gruvbox-material/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/sainnhe/gruvbox-material/compare/v1.1.3...v1.2.0
 [1.1.3]: https://github.com/sainnhe/gruvbox-material/compare/v1.1.2...v1.1.3

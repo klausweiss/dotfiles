@@ -1,22 +1,52 @@
 local node_mod = require("luasnip.nodes.node")
 local iNode = require("luasnip.nodes.insertNode")
+local t = require("luasnip.nodes.textNode").T
 local util = require("luasnip.util.util")
+local types = require("luasnip.util.types")
+local mark = require("luasnip.util.mark").mark
+local conf = require("luasnip.config")
 
 Luasnip_ns_id = vim.api.nvim_create_namespace("Luasnip")
 
 local Snippet = node_mod.Node:new()
+
+local Parent_indexer = {}
+
+function Parent_indexer:new(o)
+	setmetatable(o, self)
+	self.__index = self
+	return o
+end
+
+-- Returns referred node from parent (or parents' parent).
+function Parent_indexer:resolve(snippet)
+	-- recurse if index is a parent_indexer
+	if getmetatable(self.indx) == Parent_indexer then
+		return self.indx:resolve(snippet.parent)
+	else
+		return snippet.parent.insert_nodes[self.indx]
+	end
+end
+
+local function P(indx)
+	return Parent_indexer:new({ indx = indx })
+end
 
 function Snippet:init_nodes()
 	local insert_nodes = {}
 	for i, node in ipairs(self.nodes) do
 		node.parent = self
 		node.indx = i
-		if node.type == 1 or node.type == 4 or node.type == 5 then
-			insert_nodes[node.pos] = node
-		end
-		if node.type == 3 then
-			insert_nodes[node.pos] = node
-			node.env = self.env
+		if
+			node.type == types.insertNode
+			or node.type == types.exitNode
+			or node.type == types.snippetNode
+			or node.type == types.choiceNode
+			or node.type == types.dynamicNode
+		then
+			if node.pos then
+				insert_nodes[node.pos] = node
+			end
 		end
 	end
 
@@ -38,17 +68,21 @@ function Snippet:init_nodes()
 	self.insert_nodes = insert_nodes
 end
 
+local function wrap_nodes(nodes)
+	-- safe to assume, if nodes has a metatable, it is a single node, not a
+	-- table.
+	if getmetatable(nodes) then
+		return { nodes }
+	else
+		return nodes
+	end
+end
+
 local function S(context, nodes, condition, ...)
 	if not condition then
 		condition = function()
 			return true
 		end
-	end
-
-	local nodes = nodes
-	if not nodes[1] then
-		-- Then it's a node-table rather than an array of nodes: auto-wrap it
-		nodes = { nodes }
 	end
 
 	if type(context) == "string" then
@@ -72,6 +106,7 @@ local function S(context, nodes, condition, ...)
 		context.wordTrig = true
 	end
 
+	nodes = wrap_nodes(nodes)
 	local snip = Snippet:new({
 		trigger = context.trig,
 		dscr = dscr,
@@ -83,10 +118,11 @@ local function S(context, nodes, condition, ...)
 		current_insert = 0,
 		condition = condition,
 		user_args = { ... },
-		markers = {},
+		mark = nil,
 		dependents = {},
 		active = false,
 		env = {},
+		type = types.snippet,
 	})
 
 	snip:init_nodes()
@@ -98,30 +134,65 @@ local function S(context, nodes, condition, ...)
 		i0.parent = snip
 		i0.indx = i0_indx
 		snip.insert_nodes[0] = i0
-		nodes[i0_indx] = i0
+		snip.nodes[i0_indx] = i0
 	end
 
 	return snip
 end
 
-local function SN(pos, nodes, condition, ...)
-	if not condition then
-		condition = function()
-			return true
-		end
-	end
+local function SN(pos, nodes)
 	local snip = Snippet:new({
 		pos = pos,
-		nodes = util.wrap_value(nodes),
+		nodes = wrap_nodes(nodes),
 		insert_nodes = {},
 		current_insert = 0,
-		condition = condition,
-		user_args = { ... },
-		markers = {},
+		mark = nil,
 		dependents = {},
 		active = false,
-		type = 3,
+		type = types.snippetNode,
 	})
+	snip:init_nodes()
+	return snip
+end
+
+local function ISN(pos, nodes, indent_text)
+	local snip = Snippet:new({
+		pos = pos,
+		nodes = wrap_nodes(nodes),
+		insert_nodes = {},
+		current_insert = 0,
+		mark = nil,
+		dependents = {},
+		active = false,
+		type = types.snippetNode,
+	})
+	function snip:indent(parent_indent)
+		Snippet.indent(self, indent_text:gsub("$PARENT_INDENT", parent_indent))
+	end
+	snip:init_nodes()
+	return snip
+end
+
+local function PSN(pos, nodes, prefix)
+	local snip = Snippet:new({
+		pos = pos,
+		nodes = wrap_nodes(nodes),
+		insert_nodes = {},
+		current_insert = 0,
+		mark = nil,
+		dependents = {},
+		active = false,
+		type = types.snippetNode,
+	})
+	function snip:indent(parent_indent)
+		Snippet.indent(self, parent_indent .. prefix)
+	end
+
+	-- insert prefix as first node of snippetNode.
+	for i = #snip.nodes, 1, -1 do
+		snip.nodes[i + 1] = snip.nodes[i]
+	end
+	snip.nodes[1] = t({ prefix })
 	snip:init_nodes()
 	return snip
 end
@@ -135,12 +206,15 @@ local function pop_env(env)
 		false
 	)[1]
 	env.TM_CURRENT_WORD = util.word_under_cursor(cur, env.TM_CURRENT_LINE)
-	env.TM_LINE_INDEX = cur[1]
-	env.TM_LINE_NUMBER = cur[1] + 1
+	env.TM_LINE_INDEX = tostring(cur[1])
+	env.TM_LINE_NUMBER = tostring(cur[1] + 1)
 	env.TM_FILENAME = vim.fn.expand("%:t")
 	env.TM_FILENAME_BASE = vim.fn.expand("%:t:s?\\.[^\\.]\\+$??")
 	env.TM_DIRECTORY = vim.fn.expand("%:p:h")
 	env.TM_FILEPATH = vim.fn.expand("%:p")
+
+	env.SELECT_RAW, env.SELECT_DEDENT, env.TM_SELECTED_TEXT =
+		util.get_selection()
 end
 
 function Snippet:remove_from_jumplist()
@@ -224,8 +298,22 @@ local function insert_into_jumplist(snippet, start_node, current_node)
 end
 
 function Snippet:trigger_expand(current_node)
-	self:indent(util.get_current_line_to_cursor())
+	self:indent(util.get_current_line_to_cursor():match("^%s*"))
 
+	-- keep (possibly) user-set opts.
+	if not self.ext_opts then
+		-- if expanded outside another snippet use configs' ext_opts, if inside,
+		-- use those of that snippet and increase priority.
+		-- for now do a check for .indx, TODO: maybe only expand in insertNodes.
+		if current_node and (current_node.indx and current_node.indx > 1) then
+			self.ext_opts = util.increase_ext_prio(
+				vim.deepcopy(current_node.parent.ext_opts),
+				conf.config.ext_prio_increase
+			)
+		else
+			self.ext_opts = vim.deepcopy(conf.config.ext_opts)
+		end
+	end
 	pop_env(self.env)
 
 	-- remove snippet-trigger, Cursor at start of future snippet text.
@@ -233,11 +321,22 @@ function Snippet:trigger_expand(current_node)
 
 	local start_node = iNode.I(0)
 
-	self:put_initial(util.get_cursor_0ind())
+	local pos = util.get_cursor_0ind()
+	local old_pos = vim.deepcopy(pos)
+
+	self:put_initial(pos)
+
+	local mark_opts = vim.tbl_extend("keep", {
+		right_gravity = false,
+		end_right_gravity = false,
+	}, self.ext_opts[types.snippet].passive)
+	self.mark = mark(old_pos, pos, mark_opts)
+	self:set_old_text()
+
 	self:update()
 
 	-- Marks should stay at the beginning of the snippet, only the first mark is needed.
-	start_node.markers = self.nodes[1].markers
+	start_node.mark = self.nodes[1].mark
 	start_node.pos = -1
 	start_node.parent = self
 
@@ -250,25 +349,28 @@ function Snippet:trigger_expand(current_node)
 end
 
 -- returns copy of snip if it matches, nil if not.
-function Snippet:matches(line)
+function Snippet:matches(line_to_cursor)
 	local from
 	local match
 	local captures = {}
 	if self.regTrig then
 		-- capture entire trigger, must be put into match.
-		local find_res = { string.find(line, "(" .. self.trigger .. ")$") }
-		if find_res then
+		local find_res = { string.find(line_to_cursor, self.trigger .. "$") }
+		if #find_res > 0 then
 			from = find_res[1]
-			match = find_res[3]
-			for i = 4, #find_res do
-				captures[i - 3] = find_res[i]
+			match = line_to_cursor:sub(from, #line_to_cursor)
+			for i = 3, #find_res do
+				captures[i - 2] = find_res[i]
 			end
 		end
 	else
 		if
-			string.sub(line, #line - #self.trigger + 1, #line) == self.trigger
+			line_to_cursor:sub(
+				#line_to_cursor - #self.trigger + 1,
+				#line_to_cursor
+			) == self.trigger
 		then
-			from = #line - #self.trigger + 1
+			from = #line_to_cursor - #self.trigger + 1
 			match = self.trigger
 		end
 	end
@@ -277,9 +379,6 @@ function Snippet:matches(line)
 	if not match then
 		return nil
 	end
-	local trigger = self.trigger
-	-- Regex-snippets can access matchstring in condition.
-	self.trigger = match
 
 	if not self.condition(unpack(self.user_args)) then
 		return nil
@@ -291,50 +390,56 @@ function Snippet:matches(line)
 		self.wordTrig
 		and not (
 			from == 1
-			or string.match(string.sub(line, from - 1, from - 1), "[%w_]")
+			or string.match(
+					string.sub(line_to_cursor, from - 1, from - 1),
+					"[%w_]"
+				)
 				== nil
 		)
 	then
 		return nil
 	end
 
-	-- has match instead of trigger (makes difference for regex)
 	local cp = self:copy()
-	self.trigger = trigger
+	cp.trigger = match
 	cp.captures = captures
 	return cp
 end
 
--- todo: impl exit_node
 function Snippet:enter_node(node_id)
 	if self.parent then
 		self.parent:enter_node(self.indx)
 	end
 
 	local node = self.nodes[node_id]
-	for i = 1, node_id - 1, 1 do
-		local other = self.nodes[i]
-		if util.mark_pos_equal(other.markers[2], node.markers[1]) then
-			other:set_mark_rgrav(2, false)
-		else
-			other:set_mark_rgrav(2, true)
-		end
+	local node_to = util.get_ext_position_end(node.mark.id)
+	for i = 1, node_id - 1 do
+		-- print(string.format("%d: %s, %s", i, "<", "<"))
+		self.nodes[i]:set_mark_rgrav(false, false)
 	end
-	node:set_mark_rgrav(1, false)
-	node:set_mark_rgrav(2, true)
-	for i = node_id + 1, #self.nodes, 1 do
+	-- print(vim.inspect(node_from), vim.inspect(node_to))
+	-- print(string.format("[crt] %d: %s, %s", node_id,
+	-- 	node.ext_gravities_active[1] and ">" or "<",
+	-- 	node.ext_gravities_active[2] and ">" or "<"))
+	node:set_mark_rgrav(
+		node.ext_gravities_active[1],
+		node.ext_gravities_active[2]
+	)
+	for i = node_id + 1, #self.nodes do
 		local other = self.nodes[i]
-		if util.mark_pos_equal(node.markers[2], other.markers[1]) then
-			other:set_mark_rgrav(1, true)
-		else
-			other:set_mark_rgrav(1, false)
-		end
-		-- can be the case after expand; there all nodes without static text
-		-- have left gravity on all marks.
-		if util.mark_pos_equal(node.markers[2], other.markers[2]) then
-			other:set_mark_rgrav(2, true)
-		end
+		local other_from, other_to = util.get_ext_positions(other.mark.id)
+
+		-- print(vim.inspect(other_from), vim.inspect(other_to))
+		-- print(string.format("%d: %s, %s", i,
+		-- 	util.pos_equal(other_from, node_to) and ">" or "<",
+		-- 	util.pos_equal(other_to, node_to) and ">" or "<"))
+
+		other:set_mark_rgrav(
+			util.pos_equal(other_from, node_to),
+			util.pos_equal(other_to, node_to)
+		)
 	end
+	-- print("\n ")
 end
 
 -- https://gist.github.com/tylerneylon/81333721109155b2d244
@@ -362,29 +467,9 @@ function Snippet:copy()
 end
 
 function Snippet:set_text(node, text)
-	local node_from = vim.api.nvim_buf_get_extmark_by_id(
-		0,
-		Luasnip_ns_id,
-		node.markers[1],
-		{}
-	)
-	local node_to = vim.api.nvim_buf_get_extmark_by_id(
-		0,
-		Luasnip_ns_id,
-		node.markers[2],
-		{}
-	)
+	local node_from, node_to = node.mark:pos_begin_end_raw()
 
 	self:enter_node(node.indx)
-	if vim.o.expandtab then
-		local tab_string = string.rep(
-			" ",
-			vim.o.shiftwidth ~= 0 and vim.o.shiftwidth or vim.o.tabstop
-		)
-		for i, str in ipairs(text) do
-			text[i] = string.gsub(str, "\t", tab_string)
-		end
-	end
 	local ok, msg = pcall(
 		vim.api.nvim_buf_set_text,
 		0,
@@ -395,6 +480,9 @@ function Snippet:set_text(node, text)
 		text
 	)
 	if not ok then
+		-- get correct column-indices:
+		node_from = util.bytecol_to_utfcol(node_from)
+		node_to = util.bytecol_to_utfcol(node_to)
 		print(
 			"[LuaSnip Failed]:",
 			node_from[1],
@@ -408,8 +496,7 @@ end
 
 function Snippet:del_marks()
 	for _, node in ipairs(self.nodes) do
-		vim.api.nvim_buf_del_extmark(0, Luasnip_ns_id, node.markers[1])
-		vim.api.nvim_buf_del_extmark(0, Luasnip_ns_id, node.markers[2])
+		vim.api.nvim_buf_del_extmark(0, Luasnip_ns_id, node.mark.id)
 	end
 end
 
@@ -417,13 +504,13 @@ function Snippet:is_interactive()
 	for _, node in ipairs(self.nodes) do
 		-- return true if any node depends on another node or is an insertNode.
 		if
-			node.type == 1
-			or ((node.type == 2 or node.type == 5) and #node.args ~= 0)
-			or node.type == 4
+			node.type == types.insertNode
+			or ((node.type == types.functionNode or node.type == types.dynamicNode) and #node.args ~= 0)
+			or node.type == types.choiceNode
 		then
 			return true
 			-- node is snippet, recurse.
-		elseif node.type == 3 then
+		elseif node.type == types.snippetNode then
 			return node:is_interactive()
 		end
 	end
@@ -433,81 +520,47 @@ end
 function Snippet:dump()
 	for i, node in ipairs(self.nodes) do
 		print(i)
-		local c = vim.api.nvim_buf_get_extmark_by_id(
-			0,
-			Luasnip_ns_id,
-			node.markers[1],
-			{ details = false }
-		)
-		print(c[1], c[2])
-		c = vim.api.nvim_buf_get_extmark_by_id(
-			0,
-			Luasnip_ns_id,
-			node.markers[2],
-			{ details = false }
-		)
-		print(c[1], c[2])
+		print(node.mark.opts.right_gravity, node.mark.opts.end_right_gravity)
+		local from, to = util.get_ext_positions(node.mark.id)
+		print(from[1], from[2])
+		print(to[1], to[2])
 	end
 end
 
 function Snippet:put_initial(pos)
-	self.markers[1] = vim.api.nvim_buf_set_extmark(
-		0,
-		Luasnip_ns_id,
-		pos[1],
-		pos[2],
-		{ right_gravity = false }
-	)
 	-- i needed for functions.
 	for _, node in ipairs(self.nodes) do
 		-- save pos to compare to later.
 		local old_pos = vim.deepcopy(pos)
+
+		-- set for snippetNodes.
+		if node.type == types.snippetNode then
+			node:indent(self.indentstr)
+			node.env = self.env
+			node.ext_opts = util.increase_ext_prio(
+				vim.deepcopy(self.ext_opts),
+				conf.config.ext_prio_increase
+			)
+		end
+
 		node:put_initial(pos)
 
-		-- if no text inserted, set rgrav, else not.
-		node.markers[1] = vim.api.nvim_buf_set_extmark(
-			0,
-			Luasnip_ns_id,
-			old_pos[1],
-			old_pos[2],
-			{
-				right_gravity = not (
-						old_pos[1] == pos[1] and old_pos[2] == pos[2]
-					),
-			}
-		)
-
-		-- place extmark directly behind last char of put text.
-		node.markers[2] = vim.api.nvim_buf_set_extmark(
-			0,
-			Luasnip_ns_id,
-			pos[1],
-			pos[2],
-			{ right_gravity = false }
-		)
+		-- correctly set extmark for node.
+		-- does not modify ext_opts[node.type].
+		local mark_opts = vim.tbl_extend("keep", {
+			right_gravity = false,
+			end_right_gravity = false,
+		}, self.ext_opts[node.type].passive)
+		node.mark = mark(old_pos, pos, mark_opts)
 		node:set_old_text()
 	end
 
-	self.markers[2] = vim.api.nvim_buf_set_extmark(
-		0,
-		Luasnip_ns_id,
-		pos[1],
-		pos[2],
-		{ right_gravity = false }
-	)
-	self:set_old_text()
-
 	for _, node in ipairs(self.nodes) do
-		if node.type == 2 or node.type == 5 then
-			if type(node.args[1]) ~= "table" then
-				-- append node to dependents-table of args.
-				for i, arg in ipairs(node.args) do
-					-- Function-Node contains refs. to arg-nodes.
-					node.args[i] = self.insert_nodes[arg]
-					self.insert_nodes[arg].dependents[#self.insert_nodes[arg].dependents + 1] =
-						node
-				end
-			end
+		if
+			node.type == types.functionNode
+			or node.type == types.dynamicNode
+		then
+			self:populate_args(node)
 		end
 	end
 end
@@ -518,8 +571,7 @@ function Snippet:update()
 	end
 end
 
-function Snippet:indent(line)
-	local prefix = string.match(line, "^%s*")
+function Snippet:indent(prefix)
 	self.indentstr = prefix
 	-- Check once here instead of inside loop.
 	if vim.o.expandtab then
@@ -556,11 +608,13 @@ end
 
 function Snippet:input_enter()
 	self.active = true
+	self.mark:update_opts(self.ext_opts[self.type].active)
 end
 
 function Snippet:input_leave()
 	self:update_dependents()
 	self.active = false
+	self.mark:update_opts(self.ext_opts[self.type].passive)
 end
 
 function Snippet:jump_into(dir)
@@ -586,30 +640,35 @@ end
 
 function Snippet:exit()
 	for _, node in ipairs(self.nodes) do
-		vim.api.nvim_buf_del_extmark(0, Luasnip_ns_id, node.markers[1])
-		vim.api.nvim_buf_del_extmark(0, Luasnip_ns_id, node.markers[2])
+		node:exit()
 	end
 end
 
-function Snippet:set_mark_rgrav(mark, val)
+function Snippet:set_mark_rgrav(val_begin, val_end)
 	-- set own markers.
-	local pos = vim.api.nvim_buf_get_extmark_by_id(
-		0,
-		Luasnip_ns_id,
-		self.markers[mark],
-		{}
-	)
-	vim.api.nvim_buf_del_extmark(0, Luasnip_ns_id, self.markers[mark])
-	self.markers[mark] = vim.api.nvim_buf_set_extmark(
-		0,
-		Luasnip_ns_id,
-		pos[1],
-		pos[2],
-		{ right_gravity = val }
-	)
+	node_mod.Node.set_mark_rgrav(self, val_begin, val_end)
 
 	for _, node in ipairs(self.nodes) do
-		node:set_mark_rgrav(mark, val)
+		node:set_mark_rgrav(val_begin, val_end)
+	end
+end
+
+function Snippet:populate_args(node)
+	for i, arg in ipairs(node.args) do
+		local argnode = nil
+		-- simple index; references node in this snippet.
+		if type(arg) == "number" then
+			argnode = self.insert_nodes[arg]
+			--parent_indexer: references node outside this snippet, resolve it.
+		else
+			if getmetatable(arg) == Parent_indexer then
+				argnode = arg:resolve(self)
+			end
+		end
+		if argnode then
+			node.args[i] = argnode
+			argnode.dependents[#argnode.dependents + 1] = node
+		end
 	end
 end
 
@@ -617,4 +676,7 @@ return {
 	Snippet = Snippet,
 	S = S,
 	SN = SN,
+	P = P,
+	ISN = ISN,
+	PSN = PSN,
 }

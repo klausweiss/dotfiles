@@ -68,11 +68,36 @@ local function simple_tabstop(text, tab_stops)
 	end
 end
 
+local last_text = nil
 local function simple_var(text)
 	if functions.lsp[text] then
 		local f = fNode.F(functions.lsp.var, {})
 		f.user_args = { f, text }
-		return f
+
+		local indent_maybe
+		if last_text ~= nil and #last_text.static_text > 1 then
+			indent_maybe = last_text.static_text[#last_text.static_text]:match(
+				"%s+$"
+			)
+		end
+		if indent_maybe then
+			-- remove indent-string from last_texts' text, use it to indent the
+			-- variable.
+			last_text.static_text[#last_text.static_text] =
+				last_text.static_text[#last_text.static_text]:gsub(
+					indent_maybe,
+					""
+				)
+			-- TODO: jump into these appropriately.
+			f = snipNode.PSN(nil, f, indent_maybe)
+		end
+
+		if text == "TM_SELECTED_TEXT" then
+			-- Don't indent visual.
+			return snipNode.ISN(nil, f, "")
+		else
+			return f
+		end
 	end
 	-- if the function is unknown, just insert an empty text-snippet.
 	return tNode.T({ "" })
@@ -129,13 +154,11 @@ local function parse_placeholder(text, tab_stops, brackets)
 						true
 					)
 					-- SELECT snippet text only when there is text to select (more oft than not there isnt).
-					if
-						not util.mark_pos_equal(
-							self.markers[2],
-							self.markers[1]
-						)
-					then
-						util.normal_move_on_mark(self.markers[1])
+					local from_pos, to_pos = util.get_ext_positions(
+						self.mark.id
+					)
+					if not util.pos_equal(from_pos, to_pos) then
+						util.normal_move_on(from_pos)
 						vim.api.nvim_feedkeys(
 							vim.api.nvim_replace_termcodes(
 								"v",
@@ -146,7 +169,7 @@ local function parse_placeholder(text, tab_stops, brackets)
 							"n",
 							true
 						)
-						util.normal_move_before_mark(self.markers[2])
+						util.normal_move_before(to_pos)
 						vim.api.nvim_feedkeys(
 							vim.api.nvim_replace_termcodes(
 								"o<C-G>",
@@ -158,7 +181,7 @@ local function parse_placeholder(text, tab_stops, brackets)
 							true
 						)
 					else
-						util.normal_move_on_mark_insert(self.markers[1])
+						util.normal_move_on_insert(from_pos)
 					end
 					Luasnip_current_nodes[vim.api.nvim_get_current_buf()] = self
 				end
@@ -170,10 +193,11 @@ local function parse_placeholder(text, tab_stops, brackets)
 
 				tab_stops[pos] = snip
 			else
+				-- move placeholders' indices.
 				modify_nodes(snip, pos)
 				snip:init_nodes()
 
-				tab_stops[pos] = cNode.C(pos, { snip, tNode.T({ "" }) })
+				tab_stops[pos] = cNode.C(pos, { snip, iNode.I({ "" }) })
 			end
 			return tab_stops[pos]
 		end
@@ -260,7 +284,8 @@ parse_snippet = function(context, body, tab_stops, brackets)
 				-- insert text so far as textNode.
 				local plain_text = string.sub(body, text_start, next_node - 1)
 				if plain_text ~= "" then
-					nodes[#nodes + 1] = parse_text(plain_text)
+					last_text = parse_text(plain_text)
+					nodes[#nodes + 1] = last_text
 				end
 
 				-- potentially find matching bracket.

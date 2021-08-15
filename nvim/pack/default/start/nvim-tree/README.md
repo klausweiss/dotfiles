@@ -16,6 +16,15 @@ Plug 'kyazdani42/nvim-web-devicons' " for file icons
 Plug 'kyazdani42/nvim-tree.lua'
 ```
 
+Install with [packer](https://github.com/wbthomason/packer.nvim):
+
+```lua
+use {
+    'kyazdani42/nvim-tree.lua',
+    requires = 'kyazdani42/nvim-web-devicons'
+}
+```
+
 ## Setup
 
 ```vim
@@ -43,7 +52,9 @@ let g:nvim_tree_lsp_diagnostics = 1 "0 by default, will show lsp diagnostics in 
 let g:nvim_tree_disable_window_picker = 1 "0 by default, will disable the window picker.
 let g:nvim_tree_hijack_cursor = 0 "1 by default, when moving cursor in the tree, will position the cursor at the start of the file on the current line
 let g:nvim_tree_icon_padding = ' ' "one space by default, used for rendering the space between the icon and the filename. Use with caution, it could break rendering if you set an empty string depending on your font.
+let g:nvim_tree_symlink_arrow = ' >> ' " defaults to ' ➛ '. used as a separator between symlinks' source and target.
 let g:nvim_tree_update_cwd = 1 "0 by default, will update the tree cwd when changing nvim's directory (DirChanged event). Behaves strangely with autochdir set.
+let g:nvim_tree_respect_buf_cwd = 1 "0 by default, will change cwd of nvim-tree to that of new buffer's when opening nvim-tree.
 let g:nvim_tree_window_picker_exclude = {
     \   'filetype': [
     \     'packer',
@@ -104,7 +115,7 @@ let g:nvim_tree_icons = {
 nnoremap <C-n> :NvimTreeToggle<CR>
 nnoremap <leader>r :NvimTreeRefresh<CR>
 nnoremap <leader>n :NvimTreeFindFile<CR>
-" NvimTreeOpen and NvimTreeClose are also available if you need them
+" NvimTreeOpen, NvimTreeClose and NvimTreeFocus are also available if you need them
 
 set termguicolors " this variable must be enabled for colors to be applied properly
 
@@ -134,6 +145,7 @@ highlight NvimTreeFolderIcon guibg=blue
 - type `]c` to go to next git item
 - type `[c` to go to prev git item
 - type `-` to navigate up to the parent directory of the current file/directory
+- type `s` to open a file with default system application or a folder with default file manager (if you want to change the command used to do it see `:h g:nvim_tree_system_open_command` and `:h g:nvim_tree_system_open_command_args`)
 - if the file is a directory, `<CR>` will open the directory otherwise it will open the file in the buffer near the tree
 - if the file is a symlink, `<CR>` will follow the symlink (if the target is a file)
 - `<C-v>` will open the file in a vertical split
@@ -209,6 +221,7 @@ lua <<EOF
       { key = "[c",                           cb = tree_cb("prev_git_item") },
       { key = "]c",                           cb = tree_cb("next_git_item") },
       { key = "-",                            cb = tree_cb("dir_up") },
+      { key = "s",                            cb = tree_cb("system_open") },
       { key = "q",                            cb = tree_cb("close") },
       { key = "g?",                           cb = tree_cb("toggle_help") },
     }
@@ -236,16 +249,6 @@ This plugin is very fast because it uses the `libuv` `scandir` and `scandir_next
 ## Tips
 
 - You can edit the size of the tree during runtime with `:lua require'nvim-tree.view'.View.width = 50`
-- Open the node under the cursor with the OS default application (usually file explorer for folders):
-  ```lua
-  function NvimTreeOSOpen()
-    local lib = require "nvim-tree.lib"
-    local node = lib.get_node_at_cursor()
-    if node then
-      vim.fn.jobstart("open '" .. node.absolute_path .. "' &", {detach = true})
-    end
-  end
-  ```
 
 ## Screenshots
 

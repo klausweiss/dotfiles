@@ -10,7 +10,7 @@
 let s:configuration = gruvbox_material#get_configuration()
 let s:palette = gruvbox_material#get_palette(s:configuration.background, s:configuration.palette)
 let s:path = expand('<sfile>:p') " the path of this script
-let s:last_modified = 'Thu Jul 29 01:19:14 AM UTC 2021'
+let s:last_modified = 'Fri Aug  6 11:27:23 AM UTC 2021'
 let g:gruvbox_material_loaded_file_types = []
 
 if !(exists('g:colors_name') && g:colors_name ==# 'gruvbox-material' && s:configuration.better_performance)
@@ -36,7 +36,11 @@ if s:configuration.transparent_background
   else
     call gruvbox_material#highlight('EndOfBuffer', s:palette.bg0, s:palette.none)
   endif
-  call gruvbox_material#highlight('FoldColumn', s:palette.bg5, s:palette.none)
+  if s:configuration.ui_contrast ==# 'low'
+    call gruvbox_material#highlight('FoldColumn', s:palette.bg5, s:palette.none)
+  else
+    call gruvbox_material#highlight('FoldColumn', s:palette.grey0, s:palette.none)
+  endif
   call gruvbox_material#highlight('Folded', s:palette.grey1, s:palette.none)
   call gruvbox_material#highlight('SignColumn', s:palette.fg0, s:palette.none)
   call gruvbox_material#highlight('ToolbarLine', s:palette.fg0, s:palette.none)
@@ -55,13 +59,21 @@ else
     call gruvbox_material#highlight('FoldColumn', s:palette.grey1, s:palette.bg2)
   else
     call gruvbox_material#highlight('SignColumn', s:palette.fg0, s:palette.none)
-    call gruvbox_material#highlight('FoldColumn', s:palette.bg5, s:palette.none)
+    if s:configuration.ui_contrast ==# 'low'
+      call gruvbox_material#highlight('FoldColumn', s:palette.bg5, s:palette.none)
+    else
+      call gruvbox_material#highlight('FoldColumn', s:palette.grey0, s:palette.none)
+    endif
   endif
 endif
 call gruvbox_material#highlight('IncSearch', s:palette.bg0, s:palette.bg_red)
 call gruvbox_material#highlight('Search', s:palette.bg0, s:palette.bg_green)
 call gruvbox_material#highlight('ColorColumn', s:palette.none, s:palette.bg2)
-call gruvbox_material#highlight('Conceal', s:palette.bg5, s:palette.none)
+if s:configuration.ui_contrast ==# 'low'
+  call gruvbox_material#highlight('Conceal', s:palette.bg5, s:palette.none)
+else
+  call gruvbox_material#highlight('Conceal', s:palette.grey0, s:palette.none)
+endif
 if s:configuration.cursor ==# 'auto'
   call gruvbox_material#highlight('Cursor', s:palette.none, s:palette.none, 'reverse')
 else
@@ -92,6 +104,25 @@ call gruvbox_material#highlight('DiffDelete', s:palette.none, s:palette.bg_diff_
 call gruvbox_material#highlight('DiffText', s:palette.bg0, s:palette.blue)
 call gruvbox_material#highlight('Directory', s:palette.green, s:palette.none)
 call gruvbox_material#highlight('ErrorMsg', s:palette.red, s:palette.none, 'bold,underline')
+if s:configuration.ui_contrast ==# 'low'
+  call gruvbox_material#highlight('LineNr', s:palette.bg5, s:palette.none)
+  if &diff
+    call gruvbox_material#highlight('CursorLineNr', s:palette.grey1, s:palette.none, 'underline')
+  elseif (&relativenumber == 1 && &cursorline == 0) || s:configuration.sign_column_background !=# 'default'
+    call gruvbox_material#highlight('CursorLineNr', s:palette.grey1, s:palette.none)
+  else
+    call gruvbox_material#highlight('CursorLineNr', s:palette.grey1, s:palette.bg1)
+  endif
+else
+  call gruvbox_material#highlight('LineNr', s:palette.grey0, s:palette.none)
+  if &diff
+    call gruvbox_material#highlight('CursorLineNr', s:palette.grey2, s:palette.none, 'underline')
+  elseif (&relativenumber == 1 && &cursorline == 0) || s:configuration.sign_column_background !=# 'default'
+    call gruvbox_material#highlight('CursorLineNr', s:palette.grey2, s:palette.none)
+  else
+    call gruvbox_material#highlight('CursorLineNr', s:palette.grey2, s:palette.bg1)
+  endif
+endif
 call gruvbox_material#highlight('WarningMsg', s:palette.yellow, s:palette.none, 'bold')
 call gruvbox_material#highlight('ModeMsg', s:palette.fg0, s:palette.none, 'bold')
 call gruvbox_material#highlight('MoreMsg', s:palette.yellow, s:palette.none, 'bold')
@@ -419,7 +450,7 @@ highlight! link TSConditional Red
 highlight! link TSConstBuiltin BlueItalic
 highlight! link TSConstMacro BlueItalic
 highlight! link TSConstant Fg
-highlight! link TSConstructor Fg
+highlight! link TSConstructor GreenBold
 highlight! link TSException Red
 highlight! link TSField Green
 highlight! link TSFloat Purple
@@ -517,6 +548,7 @@ highlight! link CocWarningHighlight WarningText
 highlight! link CocInfoHighlight InfoText
 highlight! link CocHintHighlight HintText
 highlight! link CocHighlightText CurrentWord
+highlight! link CocHoverRange CurrentWord
 highlight! link CocErrorSign RedSign
 highlight! link CocWarningSign YellowSign
 highlight! link CocInfoSign BlueSign
@@ -532,7 +564,37 @@ highlight! link CocHintLine HintLine
 highlight! link CocCodeLens Grey
 highlight! link CocFadeOut Grey
 highlight! link CocStrikeThrough Grey
+highlight! link CocListMode StatusLine
+highlight! link CocListPath StatusLine
+highlight! link CocTreeOpenClose Grey
 highlight! link HighlightedyankRegion Visual
+highlight! link CocSymbolFile Fg
+highlight! link CocSymbolModule TSNamespace
+highlight! link CocSymbolNamespace TSNamespace
+highlight! link CocSymbolPackage TSNamespace
+highlight! link CocSymbolClass TSType
+highlight! link CocSymbolMethod TSMethod
+highlight! link CocSymbolProperty TSProperty
+highlight! link CocSymbolField TSField
+highlight! link CocSymbolConstructor TSConstructor
+highlight! link CocSymbolEnum TSStructure
+highlight! link CocSymbolInterface TSType
+highlight! link CocSymbolFunction TSFunction
+highlight! link CocSymbolVariable TSVariable
+highlight! link CocSymbolConstant TSConstant
+highlight! link CocSymbolString TSString
+highlight! link CocSymbolNumber TSNumber
+highlight! link CocSymbolBoolean TSBoolean
+highlight! link CocSymbolArray TSVariable
+highlight! link CocSymbolObject TSVariable
+highlight! link CocSymbolKey TSKeyword
+highlight! link CocSymbolNull TSVariableBuiltin
+highlight! link CocSymbolEnumMember TSProperty
+highlight! link CocSymbolStruct TSStructure
+highlight! link CocSymbolEvent TSLabel
+highlight! link CocSymbolOperator TSOperator
+highlight! link CocSymbolTypeParameter TSType
+highlight! link CocSymbolDefault TSNone
 highlight! link CocGitAddedSign GreenSign
 highlight! link CocGitChangeRemovedSign PurpleSign
 highlight! link CocGitChangedSign BlueSign
@@ -793,14 +855,19 @@ highlight! link CursorWord0 CurrentWord
 highlight! link CursorWord1 CurrentWord
 " }}}
 " Yggdroot/indentLine {{{
-let g:indentLine_color_gui = s:palette.bg5[0]
-let g:indentLine_color_term = s:palette.bg5[1]
+if s:configuration.ui_contrast ==# 'low'
+  let g:indentLine_color_gui = s:palette.bg5[0]
+  let g:indentLine_color_term = s:palette.bg5[1]
+else
+  let g:indentLine_color_gui = s:palette.grey0[0]
+  let g:indentLine_color_term = s:palette.grey0[1]
+endif
 " }}}
 " lukas-reineke/indent-blankline.nvim {{{
-call gruvbox_material#highlight('IndentBlanklineContextChar', s:palette.grey0, s:palette.none)
-highlight! link IndentBlanklineChar Conceal
-highlight! link IndentBlanklineSpaceChar Conceal
-highlight! link IndentBlanklineSpaceCharBlankline Conceal
+highlight! link IndentBlanklineContextChar CursorLineNr
+highlight! link IndentBlanklineChar LineNr
+highlight! link IndentBlanklineSpaceChar LineNr
+highlight! link IndentBlanklineSpaceCharBlankline LineNr
 " }}}
 " nathanaelkane/vim-indent-guides {{{
 if get(g:, 'indent_guides_auto_colors', 1) == 0

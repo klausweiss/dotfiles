@@ -1,13 +1,16 @@
 local DynamicNode = require("luasnip.nodes.node").Node:new()
 local util = require("luasnip.util.util")
+local Node = require("luasnip.nodes.node").Node
+local types = require("luasnip.util.types")
+local conf = require("luasnip.config")
 
 local function D(pos, fn, args, ...)
 	return DynamicNode:new({
 		pos = pos,
 		fn = fn,
 		args = util.wrap_value(args),
-		type = 5,
-		markers = {},
+		type = types.dynamicNode,
+		mark = nil,
 		user_args = { ... },
 		dependents = {},
 	})
@@ -16,7 +19,7 @@ end
 function DynamicNode:get_args()
 	local args = {}
 	for i, node in ipairs(self.args) do
-		args[i] = node:get_text()
+		args[i] = util.dedent(node:get_text(), self.parent.indentstr)
 	end
 	args[#args + 1] = self.parent
 	return args
@@ -24,11 +27,13 @@ end
 
 function DynamicNode:input_enter()
 	self.active = true
+	self.mark:update_opts(self.parent.ext_opts[self.type].active)
 end
 
 function DynamicNode:input_leave()
 	self:update_dependents()
 	self.active = false
+	self.mark:update_opts(self.parent.ext_opts[self.type].passive)
 end
 
 function DynamicNode:has_static_text()
@@ -65,9 +70,12 @@ function DynamicNode:update()
 			self.snip.old_state,
 			unpack(self.user_args)
 		)
+		-- enters node.
 		self.parent:set_text(self, { "" })
 		self.snip:exit()
 	else
+		-- also enter node here.
+		self.parent:enter_node(self.indx)
 		tmp = self.fn(self:get_args(), nil, unpack(self.user_args))
 	end
 	self.snip = nil
@@ -80,13 +88,20 @@ function DynamicNode:update()
 	tmp.prev = self
 
 	tmp.env = self.parent.env
-	tmp.markers = self.markers
+	tmp.ext_opts = tmp.ext_opts
+		or util.increase_ext_prio(
+			vim.deepcopy(self.parent.ext_opts),
+			conf.config.ext_prio_increase
+		)
+	tmp.mark = self.mark:copy_pos_gravs(
+		vim.deepcopy(self.parent.ext_opts[types.snippetNode].passive)
+	)
 	tmp.dependents = self.dependents
 
 	tmp:indent(self.parent.indentstr)
 
 	self.parent:enter_node(self.indx)
-	tmp:put_initial(util.get_ext_position(self.markers[1]))
+	tmp:put_initial(util.get_ext_position_begin(self.mark.id))
 	-- Update, tbh no idea how that could come in handy, but should be done.
 	tmp:update()
 
@@ -95,25 +110,17 @@ function DynamicNode:update()
 	self.snip = tmp
 end
 
-function DynamicNode:set_mark_rgrav(mark, val)
+function DynamicNode:set_mark_rgrav(val_begin, val_end)
+	Node.set_mark_rgrav(self, val_begin, val_end)
 	if self.snip then
-		self.snip:set_mark_rgrav(mark, val)
-	else
-		local pos = vim.api.nvim_buf_get_extmark_by_id(
-			0,
-			Luasnip_ns_id,
-			self.markers[mark],
-			{}
-		)
-		vim.api.nvim_buf_del_extmark(0, Luasnip_ns_id, self.markers[mark])
-		self.markers[mark] = vim.api.nvim_buf_set_extmark(
-			0,
-			Luasnip_ns_id,
-			pos[1],
-			pos[2],
-			{ right_gravity = val }
-		)
+		self.snip:set_mark_rgrav(val_begin, val_end)
 	end
+end
+
+function DynamicNode:exit()
+	self.mark:clear()
+	-- snip should exist if exit is called.
+	self.snip:exit()
 end
 
 return {

@@ -33,6 +33,10 @@ closes the tree
 
 open or close the tree
 
+|:NvimTreeFocus| 	                          *:NvimTreeFocus*
+
+open the tree if it is closed, and then focus on the tree
+
 |:NvimTreeRefresh|			          *:NvimTreeRefresh*
 
 refresh the tree
@@ -194,6 +198,20 @@ Can be `0` or `1`. When `1`, will close the tree when a file is opened.
 Applies to: `edit`, `vsplit`, `split`, `tabnew`.
 Default is 0
 
+|g:nvim_tree_system_open_command|      *g:nvim_tree_system_open_command*
+
+A string containing the command used to open a file/folder with default system
+application. If left unset it will be automatically filled with the right
+command, depending on the operating system. If your operating system isn't
+recognized or if you want to use another command you can edit it.
+Default: depends on the operating system
+
+|g:nvim_tree_system_open_command_args| *g:nvim_tree_system_open_command_args*
+
+An array of strings containing the arguments to be passed to the command
+specified in |g:nvim_tree_system_open_command|.
+Default: unset if not using Windows
+
 |g:nvim_tree_disable_keybindings|          *g:nvim_tree_disable_keybindings*
 
 Can be `0` or `1`. When `1`, will disable all keybindings by the plugin.
@@ -310,11 +328,20 @@ of the file on the current line.
 
 One space by default, used for rendering the space between the icon and the filename. Use with caution, it could break rendering if you set an empty string depending on your font.
 
+|g:nvim_tree_symlink_arrow|                *g:nvim_tree_symlink_arrow*
+
+Defaults to ' ➛ '. Used as a separator between symlinks' source and target.
+
 |g:nvim_tree_update_cwd|
 
 Can be 0 or 1. 0 by default.
 Will update the tree cwd when changing nvim's directory (DirChanged event).
 WARNING: Behaves strangely with autochdir set.
+
+|g:nvim_tree_respect_buf_cwd|             *g:nvim_tree_respect_buf_cwd*
+
+Can be 0 or 1. 0 by default.
+Will change cwd of nvim-tree to that of new buffer's when opening nvim-tree.
 
 ==============================================================================
 INFORMATIONS				        *nvim-tree-info*
@@ -339,6 +366,7 @@ INFORMATIONS				        *nvim-tree-info*
 - type ']c' to go to next git item
 - type '[c' to go to prev git item
 - type '-' to navigate up one directory
+- type 's' to open a file with default system application or a folder with default file manager
 - type '<' to navigate to the previous sibling of current file/directory
 - type '>' to navigate to the next sibling of current file/directory
 - type 'J' to navigate to the first sibling of current file/directory
@@ -406,6 +434,7 @@ Default mappings:
         { key = "[c",                           cb = tree_cb("prev_git_item") },
         { key = "]c",                           cb = tree_cb("next_git_item") },
         { key = "-",                            cb = tree_cb("dir_up") },
+        { key = "s",                            cb = tree_cb("system_open") },
         { key = "q",                            cb = tree_cb("close") },
         { key = "g?",                           cb = tree_cb("toggle_help") },
       }

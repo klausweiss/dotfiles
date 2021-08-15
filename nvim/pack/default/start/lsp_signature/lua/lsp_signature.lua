@@ -29,10 +29,16 @@ _LSP_SIG_CFG = {
   hint_scheme = "String",
   hi_parameter = "Search",
   handler_opts = {border = "single"},
+  padding = '', -- character to pad on left and right of signature
   use_lspsaga = false,
+  trigger_on_newline = true, -- sometime show signature on new line can be confusing, set it to false for #58
   debug = false,
-  extra_trigger_chars = {} -- Array of extra characters that will trigger signature completion, e.g., {"(", ","}
+  log_path = '', -- log dir when debug is no
+  extra_trigger_chars = {}, -- Array of extra characters that will trigger signature completion, e.g., {"(", ","}
   -- decorator = {"`", "`"} -- set to nil if using guihua.lua
+  zindex = 200,
+  shadow_blend = 36, -- if you using shadow as border use this set the opacity
+  shadow_guibg = 'Black' -- if you using shadow as border use this set the color e.g. 'Green' or '#121315'
 }
 
 local double = {"╔", "═", "╗", "║", "╝", "═", "╚", "║"}
@@ -128,13 +134,31 @@ local function signature_handler(err, method, result, client_id, bufnr, config)
   end
   if not (result and result.signatures and result.signatures[1]) then
     log("no result?", result)
+    if helper.is_new_line() then
+      helper.cleanup(true)
+      -- need to close floating window and virtual text (if they are active)
+    end
+
     return
   end
+  local activeSignature = result.activeSignature or 0
+  activeSignature = activeSignature + 1
 
   local _, hint, s, l = match_parameter(result, config)
   local force_redraw = false
   if #result.signatures > 1 then
     force_redraw = true
+    for i = #result.signatures, 1, -1 do
+      local sig = result.signatures[i]
+      -- hack for lua
+      local actPar = sig.activeParameter or result.activeParameter or 0
+      if actPar + 1 > #(sig.parameters or {}) then
+        table.remove(result.signatures, i)
+        if i <= activeSignature and activeSignature > 1 then
+          activeSignature = activeSignature - 1
+        end
+      end
+    end
   end
 
   if _LSP_SIG_CFG.floating_window == true or not config.trigger_from_lsp_sig then
@@ -146,20 +170,27 @@ local function signature_handler(err, method, result, client_id, bufnr, config)
       return
     end
 
-    activeSignature = result.activeSignature or 0
-    activeSignature = activeSignature + 1
+    lines = vim.lsp.util.trim_empty_lines(lines)
     -- offset used for multiple signatures
-    local offset = 3
+
+    local offset = 2
     if #result.signatures > 1 then
+      if string.find(lines[1], [[```]]) then -- markdown format start with ```, insert pos need after that
+        log("line1 markdown")
+        offset = 3
+      end
+      log("before insert", lines)
       for index, sig in ipairs(result.signatures) do
         if index ~= activeSignature then
           table.insert(lines, offset, sig.label)
           offset = offset + 1
+
+          log("after insert", offset, lines)
         end
       end
+      -- log("after insert", lines)
     end
 
-    log("md lines", lines)
     local label = result.signatures[1].label
     if #result.signatures > 1 then
       label = result.signatures[activeSignature].label
@@ -168,6 +199,17 @@ local function signature_handler(err, method, result, client_id, bufnr, config)
     log("label:", label, result.activeSignature, activeSignature, result.activeParameter,
         result.signatures[activeSignature])
     local woff
+
+    -- truncate empty document it
+    if result.signatures[activeSignature].documentation
+        and result.signatures[activeSignature].documentation.kind == "markdown"
+        and result.signatures[activeSignature].documentation.value == "```text\n\n```" then
+      result.signatures[activeSignature].documentation = nil
+      lines = vim.lsp.util.convert_signature_help_to_markdown_lines(result, ft)
+
+      log("md lines remove empty", lines)
+    end
+
     if config.triggered_chars and vim.tbl_contains(config.triggered_chars, '(') then
       woff = label:find('(', 1, true)
       if woff then
@@ -181,11 +223,16 @@ local function signature_handler(err, method, result, client_id, bufnr, config)
     if doc_num < 3 then
       doc_num = 3
     end
-
-    if vim.fn.mode() == 'i' or vim.fn.mode() == 'ic' then
+    local vmode = vim.fn.mode()
+    if vmode == 'i' or vmode == 'ic' or vmode == 'v' or vmode == 's' or vmode == 'S' then
       -- truncate the doc?
-      if #lines > doc_num + 1 then
+      if #lines > doc_num + offset + 1 then -- for markdown doc start with ```text and end with ```
+        local last = lines[#lines]
         lines = vim.list_slice(lines, 1, doc_num + offset + 1)
+        if last == "```" then
+          table.insert(lines, "```")
+        end
+        log("lines truncate", lines)
       end
     end
 
@@ -239,18 +286,21 @@ local function signature_handler(err, method, result, client_id, bufnr, config)
         or #result.signatures[activeSignature].parameters == 0 then
       config.close_events = close_events
     end
-    config.zindex = 200 -- TODO: does it work?
+    config.zindex = _LSP_SIG_CFG.zindex
     -- fix pos case
     log('win config', config)
+    local new_line = helper.is_new_line()
+
+    if _LSP_SIG_CFG.padding ~= "" then
+      for lineIndex = 1, #lines do
+        lines[lineIndex] = _LSP_SIG_CFG.padding .. lines[lineIndex] .. _LSP_SIG_CFG.padding
+      end
+      config.offset_x = config.offset_x - #_LSP_SIG_CFG.padding
+    end
+
     if _LSP_SIG_CFG.fix_pos and _LSP_SIG_CFG.bufnr and _LSP_SIG_CFG.winnr then
-      if api.nvim_win_is_valid(_LSP_SIG_CFG.winnr) and _LSP_SIG_CFG.label == label then
-        -- check last parameter and update hilight
-        if _LSP_SIG_CFG.ns then
-          log("bufnr, ns", _LSP_SIG_CFG.bufnr, _LSP_SIG_CFG.ns)
-          api.nvim_buf_clear_namespace(_LSP_SIG_CFG.bufnr, _LSP_SIG_CFG.ns, 0, -1)
-        end
-        _LSP_SIG_CFG.markid = nil
-        _LSP_SIG_CFG.ns = nil
+      if api.nvim_win_is_valid(_LSP_SIG_CFG.winnr) and _LSP_SIG_CFG.label == label and not new_line then
+        helper.cleanup(false)
       else
         log("sig_cfg bufnr, winnr not valid", _LSP_SIG_CFG.bufnr, _LSP_SIG_CFG.winnr)
         -- vim.api.nvim_win_close(_LSP_SIG_CFG.winnr, true)
@@ -278,11 +328,17 @@ local function signature_handler(err, method, result, client_id, bufnr, config)
     -- api.nvim_command("autocmd User SigComplete".." <buffer> ++once lua pcall(vim.api.nvim_win_close, "..winnr..", true)")
     _LSP_SIG_CFG.ns = vim.api.nvim_create_namespace('lsp_signature_hi_parameter')
     local hi = _LSP_SIG_CFG.hi_parameter
-    log("extmark", s, l)
+    log("extmark", s, l, #_LSP_SIG_CFG.padding)
     if s and l and s > 0 then
-      _LSP_SIG_CFG.markid = vim.api.nvim_buf_set_extmark(_LSP_SIG_CFG.bufnr, _LSP_SIG_CFG.ns, 0,
-                                                         s - 1,
+      if _LSP_SIG_CFG.padding == "" then
+        s = s - 1
+      else
+        s = s - 1 + #_LSP_SIG_CFG.padding
+        l = l + #_LSP_SIG_CFG.padding
+      end
+      _LSP_SIG_CFG.markid = vim.api.nvim_buf_set_extmark(_LSP_SIG_CFG.bufnr, _LSP_SIG_CFG.ns, 0, s,
                                                          {end_line = 0, end_col = l, hl_group = hi})
+
     else
       print("failed get highlight parameter", s, l)
     end
@@ -430,7 +486,6 @@ end
 
 function M.on_InsertEnter()
 
-  log("insert enter")
   local timer = vim.loop.new_timer()
   -- setup variable
   manager.init()
@@ -456,7 +511,11 @@ function M.on_CompleteDone()
   -- need auto brackets to make things work
   -- signature()
   -- cleanup virtual hint
+  local m = vim.fn.mode()
   vim.api.nvim_buf_clear_namespace(0, _VT_NS, 0, -1)
+  if m == 'i' or m == 's' or m == 'v' then
+    log("completedone ", m, "enable signature ?")
+  end
 end
 
 M.on_attach = function(cfg)
@@ -477,6 +536,15 @@ M.on_attach = function(cfg)
     vim.lsp.handlers["textDocument/signatureHelp"] =
         vim.lsp.with(signature_handler, _LSP_SIG_CFG.handler_opts)
   end
+
+  local shadow_cmd = string.format("hi default FloatShadow blend=%i guibg=%s",
+                                   _LSP_SIG_CFG.shadow_blend, _LSP_SIG_CFG.shadow_guibg)
+  vim.cmd(shadow_cmd)
+
+  local shadow_cmd = string.format("hi default FloatShadowThrough blend=%i guibg=%s",
+                                   _LSP_SIG_CFG.shadow_blend + 20, _LSP_SIG_CFG.shadow_guibg)
+  vim.cmd(shadow_cmd)
+
 end
 
 -- setup function enable the signature and attach it to client
@@ -497,6 +565,7 @@ M.setup = function(cfg)
     end
     return _start_client(lsp_config)
   end
+
 end
 
 return M

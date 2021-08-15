@@ -1,4 +1,7 @@
 local F = require("luasnip.nodes.functionNode").F
+local SN = require("luasnip.nodes.snippet").SN
+local D = require("luasnip.nodes.dynamicNode").D
+local I = require("luasnip.nodes.insertNode").I
 
 local lambda = {}
 
@@ -12,7 +15,8 @@ local function expr_to_fn(expr)
 	local fn_code = _lambda.instantiate(expr)
 	local function fn(args)
 		local inputs = vim.tbl_map(_concat, args)
-		local out = fn_code(unpack(inputs))
+		-- to be sure, lambda may end with a `match` returning nil.
+		local out = fn_code(unpack(inputs)) or ""
 		return vim.split(out, "\n")
 	end
 	return fn
@@ -104,6 +108,18 @@ return {
 		end, {
 			indx,
 		})
+	end,
+	dynamic_lambda = function(pos, lambd, args_indcs)
+		local insert_preset_text_func = lambda.instantiate(lambd)
+		return D(pos, function(args_text)
+			-- \n-concat lines from each node.
+			local inputs = vim.tbl_map(_concat, args_text)
+			-- to be sure, lambda may end with a `match` returning nil.
+			local out = insert_preset_text_func(unpack(inputs)) or ""
+			return SN(pos, {
+				I(1, vim.split(out, "\n")),
+			})
+		end, args_indcs)
 	end,
 
 	--alias

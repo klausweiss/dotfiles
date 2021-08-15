@@ -1,18 +1,16 @@
 local node_mod = require("luasnip.nodes.node")
 local util = require("luasnip.util.util")
+local types = require("luasnip.util.types")
 
 local TextNode = node_mod.Node:new()
 
 local function T(static_text)
 	return TextNode:new({
 		static_text = util.wrap_value(static_text),
-		markers = {},
-		type = 0,
+		mark = nil,
+		type = types.textNode,
 	})
 end
-
--- Don't touch gravities for TextNodes.
-function TextNode:set_mark_rgrav(_, _) end
 
 function TextNode:input_enter()
 	vim.api.nvim_feedkeys(
@@ -20,7 +18,7 @@ function TextNode:input_enter()
 		"n",
 		true
 	)
-	util.normal_move_on_mark_insert(self.markers[1])
+	util.normal_move_on_insert(util.get_ext_position_begin(self.mark.id))
 end
 
 function TextNode:put_initial(pos)

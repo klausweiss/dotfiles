@@ -17,10 +17,9 @@ local p_scroller = require "telescope.pickers.scroller"
 local action_state = require "telescope.actions.state"
 local action_utils = require "telescope.actions.utils"
 local action_set = require "telescope.actions.set"
+local from_entry = require "telescope.from_entry"
 
 local transform_mod = require("telescope.actions.mt").transform_mod
-
-local Path = require "plenary.path"
 
 local actions = setmetatable({}, {
   __index = function(_, k)
@@ -526,6 +525,42 @@ actions.git_rebase_branch = function(prompt_bufnr)
   end
 end
 
+local git_reset_branch = function(prompt_bufnr, mode)
+  local cwd = action_state.get_current_picker(prompt_bufnr).cwd
+  local selection = action_state.get_selected_entry()
+
+  local confirmation = vim.fn.input("Do you really wanna " .. mode .. " reset to " .. selection.value .. "? [Y/n] ")
+  if confirmation ~= "" and string.lower(confirmation) ~= "y" then
+    return
+  end
+
+  actions.close(prompt_bufnr)
+  local _, ret, stderr = utils.get_os_command_output({ "git", "reset", mode, selection.value }, cwd)
+  if ret == 0 then
+    print("Reset to: " .. selection.value)
+  else
+    print(string.format('Error when resetting to: %s. Git returned: "%s"', selection.value, table.concat(stderr, "  ")))
+  end
+end
+
+--- Reset to selected git commit using mixed mode
+---@param prompt_bufnr number: The prompt bufnr
+actions.git_reset_mixed = function(prompt_bufnr)
+  git_reset_branch(prompt_bufnr, "--mixed")
+end
+
+--- Reset to selected git commit using soft mode
+---@param prompt_bufnr number: The prompt bufnr
+actions.git_reset_soft = function(prompt_bufnr)
+  git_reset_branch(prompt_bufnr, "--soft")
+end
+
+--- Reset to selected git commit using hard mode
+---@param prompt_bufnr number: The prompt bufnr
+actions.git_reset_hard = function(prompt_bufnr)
+  git_reset_branch(prompt_bufnr, "--hard")
+end
+
 actions.git_checkout_current_buffer = function(prompt_bufnr)
   local cwd = actions.get_current_picker(prompt_bufnr).cwd
   local selection = actions.get_selected_entry()
@@ -549,7 +584,7 @@ end
 local entry_to_qf = function(entry)
   return {
     bufnr = entry.bufnr,
-    filename = Path:new(entry.cwd, entry.filename):absolute(),
+    filename = from_entry.path(entry, false),
     lnum = entry.lnum,
     col = entry.col,
     text = entry.text or entry.value.text or entry.value,

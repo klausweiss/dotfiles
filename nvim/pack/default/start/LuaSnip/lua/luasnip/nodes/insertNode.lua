@@ -2,6 +2,7 @@ local InsertNode = require("luasnip.nodes.node").Node:new()
 local ExitNode = InsertNode:new()
 local util = require("luasnip.util.util")
 local config = require("luasnip.config")
+local types = require("luasnip.util.types")
 
 local function I(pos, static_text)
 	local static_text = util.wrap_value(static_text)
@@ -9,37 +10,46 @@ local function I(pos, static_text)
 		return ExitNode:new({
 			pos = pos,
 			static_text = static_text,
-			markers = {},
+			mark = nil,
 			dependents = {},
-			type = 1,
+			type = types.exitNode,
+			-- will only be needed for 0-node, -1-node isn't set with this.
+			ext_gravities_active = { false, false },
 		})
 	else
 		return InsertNode:new({
 			pos = pos,
 			static_text = static_text,
-			markers = {},
+			mark = nil,
 			dependents = {},
-			type = 1,
+			type = types.insertNode,
 			inner_active = false,
 		})
 	end
 end
 
 function ExitNode:input_enter()
-	-- Text written in the ExitNode does not belong to snippet.
-	self:set_mark_rgrav(1, self.pos == -1)
-	self:set_mark_rgrav(2, self.pos == -1)
+	-- Don't enter node for -1-node, it isn't in the node-table.
+	if self.pos == 0 then
+		InsertNode.input_enter(self)
+		-- -1-node:
+	else
+		self:set_mark_rgrav(true, true)
 
-	vim.api.nvim_feedkeys(
-		vim.api.nvim_replace_termcodes("<Esc>", true, false, true),
-		"n",
-		true
-	)
-	-- SELECT snippet text only when there is text to select (more oft than not there isnt).
-	util.normal_move_on_mark_insert(self.markers[1])
+		vim.api.nvim_feedkeys(
+			vim.api.nvim_replace_termcodes("<Esc>", true, false, true),
+			"n",
+			true
+		)
+		util.normal_move_on_insert(util.get_ext_position_begin(self.mark.id))
+	end
 end
 
-function ExitNode:input_leave() end
+function ExitNode:input_leave()
+	if self.pos == 0 then
+		InsertNode.input_leave(self)
+	end
+end
 
 function ExitNode:jump_into(dir)
 	if not config.config.history then
@@ -55,6 +65,7 @@ function ExitNode:jump_into(dir)
 end
 
 function InsertNode:input_enter(no_move)
+	self.mark:update_opts(self.parent.ext_opts[self.type].active)
 	if not no_move then
 		self.parent:enter_node(self.indx)
 
@@ -64,21 +75,24 @@ function InsertNode:input_enter(no_move)
 			true
 		)
 		-- SELECT snippet text only when there is text to select (more oft than not there isnt).
-		if not util.mark_pos_equal(self.markers[2], self.markers[1]) then
-			util.normal_move_on_mark(self.markers[1])
+		local mark_begin_pos, mark_end_pos = util.get_ext_positions(
+			self.mark.id
+		)
+		if not util.pos_equal(mark_begin_pos, mark_end_pos) then
+			util.normal_move_on(mark_begin_pos)
 			vim.api.nvim_feedkeys(
 				vim.api.nvim_replace_termcodes("v", true, false, true),
 				"n",
 				true
 			)
-			util.normal_move_before_mark(self.markers[2])
+			util.normal_move_before(mark_end_pos)
 			vim.api.nvim_feedkeys(
 				vim.api.nvim_replace_termcodes("o<C-G>", true, false, true),
 				"n",
 				true
 			)
 		else
-			util.normal_move_on_mark_insert(self.markers[1])
+			util.normal_move_on_insert(mark_begin_pos)
 		end
 	else
 		self.parent:enter_node(self.indx)
@@ -145,12 +159,14 @@ end
 
 function InsertNode:input_leave()
 	self:update_dependents()
+	self.mark:update_opts(self.parent.ext_opts[self.type].passive)
 end
 
 function InsertNode:exit()
 	self.inner_first = nil
 	self.inner_last = nil
 	self.inner_active = false
+	self.mark:clear()
 end
 
 return {

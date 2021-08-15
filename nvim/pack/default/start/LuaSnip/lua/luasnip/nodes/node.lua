@@ -26,7 +26,9 @@ function Node:put_initial(pos)
 	end
 end
 
-function Node:input_enter(no_move) end
+function Node:input_enter(no_move)
+	self.mark:update_opts(self.parent.ext_opts[self.type].active)
+end
 
 function Node:jump_into(dir, no_move)
 	self:input_enter(no_move)
@@ -59,47 +61,28 @@ function Node:jumpable(dir)
 	end
 end
 
-function Node:set_mark_rgrav(mark, val)
-	local pos = vim.api.nvim_buf_get_extmark_by_id(
-		0,
-		Luasnip_ns_id,
-		self.markers[mark],
-		{}
-	)
-	vim.api.nvim_buf_del_extmark(0, Luasnip_ns_id, self.markers[mark])
-	self.markers[mark] = vim.api.nvim_buf_set_extmark(
-		0,
-		Luasnip_ns_id,
-		pos[1],
-		pos[2],
-		{ right_gravity = val }
-	)
+function Node:set_mark_rgrav(rgrav_beg, rgrav_end)
+	self.mark:update_rgravs(rgrav_beg, rgrav_end)
 end
 
 function Node:get_text()
-	local from = vim.api.nvim_buf_get_extmark_by_id(
-		0,
-		Luasnip_ns_id,
-		self.markers[1],
-		{}
-	)
-	local to = vim.api.nvim_buf_get_extmark_by_id(
-		0,
-		Luasnip_ns_id,
-		self.markers[2],
-		{}
-	)
+	local from_pos, to_pos = util.get_ext_positions(self.mark.id)
 
 	-- end-exclusive indexing.
-	local lines = vim.api.nvim_buf_get_lines(0, from[1], to[1] + 1, false)
+	local lines = vim.api.nvim_buf_get_lines(
+		0,
+		from_pos[1],
+		to_pos[1] + 1,
+		false
+	)
 
 	if #lines == 1 then
-		lines[1] = string.sub(lines[1], from[2] + 1, to[2])
+		lines[1] = string.sub(lines[1], from_pos[2] + 1, to_pos[2])
 	else
-		lines[1] = string.sub(lines[1], from[2] + 1, #lines[1])
+		lines[1] = string.sub(lines[1], from_pos[2] + 1, #lines[1])
 
 		-- node-range is end-exclusive.
-		lines[#lines] = string.sub(lines[#lines], 1, to[2])
+		lines[#lines] = string.sub(lines[#lines], 1, to_pos[2])
 	end
 	return lines
 end
@@ -108,9 +91,13 @@ function Node:set_old_text()
 	self.old_text = self:get_text()
 end
 
-function Node:exit() end
+function Node:exit()
+	self.mark:clear()
+end
 
-function Node:input_leave() end
+function Node:input_leave()
+	self.mark:update_opts(self.parent.ext_opts[self.type].passive)
+end
 
 function Node:update_dependents()
 	if not util.multiline_equal(self.old_text, self:get_text()) then
@@ -122,6 +109,8 @@ function Node:update_dependents()
 end
 
 function Node:update() end
+
+Node.ext_gravities_active = { false, true }
 
 return {
 	Node = Node,

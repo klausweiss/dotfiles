@@ -14,6 +14,7 @@ Luasnip is a snippet-engine written entirely in lua. It has some great
 features like inserting text (`luasnip-function-node`) or nodes
 (`luasnip-dynamic-node`) based on user input, parsing LSP syntax and switching
 nodes (`luasnip-choice-node`).
+For basic setup like mappings and installing, check the README.
 
 All code-snippets in this help assume that
 
@@ -41,7 +42,7 @@ s({trig="trigger"}, {})
 entries:
 
 - `trig`: string, plain text by default. The only entry that must be given.
-- `namr`: string, can be used by eg. `nvim-compe` to identify the snippet.
+- `name`: string, can be used by eg. `nvim-compe` to identify the snippet.
 - `dscr`: string, textual description of the snippet, \n-separated or table
           for multiple lines.
 - `wordTrig`: boolean, if true, the snippet is only expanded if the word
@@ -60,6 +61,13 @@ s("trigger", {})
 The second argument to `s` is a table containing all nodes that belong to the
 snippet. If the table only has a single node, it can be passed directly
 without wrapping it in a table.
+
+The third argument is the condition-function. The snippet will be expanded only
+if it returns true (default is a function that just returns true) (the function
+is called before the text is modified in any way).
+
+The fourth and following args are passed to the condition-function(allows
+reusing condition-functions).
 
 Snippets contain some interesting tables, eg. `snippet.env` contains variables
 used in the LSP-protocol like `TM_CURRENT_LINE` or `TM_FILENAME` or
@@ -133,10 +141,9 @@ It's possible to have easy-to-overwrite text inside an InsertNode initially:
 ```
 This initial text is defined the same way as textNodes, eg. can be multiline.
 
-0-th Node can not have placeholder text. So the following is not possible
-```lua
-	s("trigger", i(0, "Not Valid"))
-```
+`i(0)`s can have placeholder text, but do note that when the SELECTed text is
+replaced, its' replacement won't end up in the `i(0)`, but behind it (for
+reasons, check out Luasnip#110).
 
 
 # FUNCTIONNODE
@@ -154,7 +161,8 @@ user-defined function:
 ```
 The first parameter of `f` is the function. Its parameters are
 	1.: a table of text and the surrounding snippet (ie.
-	`{{line1}, {line1, line2}, snippet}`).
+	`{{line1}, {line1, line2}, snippet}`). the snippet-indent will be removed
+	from all lines following the first.
 	The snippet is included here, as it allows access to anything that could be
 	useful in functionNodes (ie.  `snippet.env` or `snippet.captures`, which
 	contains capture groups of regex-triggered snippets).
@@ -168,7 +176,8 @@ evaluated once upon snippet-expansion. If the table only has a single node, it
 can be passed directly without wrapping it in a table.
 
 The function shall return a string, which will be inserted as-is, or a table
-of strings for multiline snippets.
+of strings for multiline snippets, here all lines following the first will be
+prepended with the snippets' indentation.
 
 Examples:
 	Use captures from the regex-trigger using a functionNode:
@@ -229,7 +238,7 @@ which makes them very powerful.
 Parameters:
 1. position (just like all jumpable nodes)
 2. function: Similar to functionNodes' function, first parameter is the
-	`table of text` from nodes the dynamicNode depends on, the second,
+	`table of text` from nodes the dynamicNode depends on(also without snippet-indent), the second,
 	unlike functionNode, is a user-defined table, `old_state`.
 	This table can contain anything, its main usage is to preserve
 	information from the previous snippetNode:
@@ -298,8 +307,42 @@ eg. 3, it would change to "3\nSample Text\nSample Text\nSample Text". Text
 that was inserted into any of the dynamicNodes insertNodes is kept when
 changing to a bigger number.
 
+# LSP-SNIPPETS
 
+Luasnip is capable of parsing lsp-style snippets using
+`ls.parser.parse_snippet(context, snippet_string)`:
+```lua
+ls.parser.parse_snippet({trig = "lsp"}, "$1 is ${2|hard,easy,challenging|}")
+```
 
+Nested placeholders(`"${1:this is ${2:nested}}"`) will be turned into
+choiceNode's with:  
+	- the given snippet(`"this is ${1:nested}"`) and  
+	- an empty insertNode
+	
+# VARIABLES
+
+All `TM_something`-variables are supported with two additions:
+`SELECT_RAW` and `SELECT_DEDENT`. These were introduced because
+`TM_SELECTED_TEXT` is designed to be compatible with vscodes' behaviour, which
+can be counterintuitive when the snippet can be expanded at places other than
+the point where selection started (or when doing transformations on selected text).
+
+All variables can be used outside of lsp-parsed snippets as their values are
+stored in a snippets' `snip.env`-table:
+```lua
+s("selected_text", {
+	-- the surrounding snippet is passed in args after all argnodes (none,
+	-- in this case).
+	f(function(args) return args[1].env.SELECT_RAW end, {})
+})
+```
+
+To use any `*SELECT*` variable, the `store_selection_keys` must be set via
+`require("luasnip").config.setup({store_selection_keys="<Tab>"})`. In this case,
+hitting `<Tab>` while in Visualmode will populate the `*SELECT*`-vars for the next
+snippet and then clear them.
+ 
 # VSCODE SNIPPETS LOADER
 
 As luasnip is capable of loading the same format of plugins as vscode, it also
@@ -330,4 +373,45 @@ In this case `opts` only accepts paths (`runtimepath` if any). That will load
 the general snippets (the ones of filetype 'all') and those of the filetype
 of the buffers, you open every time you open a new one (but it won't reload them).
 
+# EXT\_OPTS
 
+`ext_opts` are probably best explained with a short example:
+```lua
+local types = require("luasnip.util.types")
+
+vim.api.nvim_command("hi LuasnipChoiceNodePassive cterm=italic")
+ls.config.setup({
+	ext_opts = {
+		[types.insertNode] = {
+			passive = {
+				hl_group = "GruvboxRed"
+			}
+		},
+		[types.choiceNode] = {
+			active = {
+				virt_text = {{"choiceNode", "GruvboxOrange"}}
+			}
+		},
+	},
+	ext_base_prio = 200,
+	ext_prio_increase = 7,
+})
+```
+
+This highlights `insertNodes` red (both when active and passive) and adds
+virtualText and italics to `choiceNode` while it is active (unspecified
+values in `active` are populated with values from `passive`). The `active`/
+`passive`-tables are passed to `nvim_buf_set_extmark` as `opts` which means only
+entries valid there can be used here. `priority`, while still affecting the
+priority of highlighting, is interpreted as a relative value here, not absolute
+(`0 <= priority < ext_prio_increase`).
+The absolute range of priorities can still be somewhat controlled using
+`ext_base_prio` and `ext_prio_increase` (all highlights start out with
+`ext_base_prio`+their own priority, for highlights belonging to a nested
+snippet(Node), `ext_base_prio` is increased by `ext_prio_increase`)).
+
+As a shortcut for setting `hl_group`, the highlight-groups
+`Luasnip*Node{Active,Passive}` may be defined (to be actually used by LuaSnip,
+`ls.config.setup` has to be called after defining). They are overridden by the values
+defined in `ext_opts` directly, but otherwise behave the same (active is
+extended by passive).

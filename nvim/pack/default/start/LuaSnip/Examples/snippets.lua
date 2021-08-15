@@ -12,12 +12,26 @@ local r = require("luasnip.extras").rep
 local p = require("luasnip.extras").partial
 local m = require("luasnip.extras").match
 local n = require("luasnip.extras").nonempty
+local dl = require("luasnip.extras").dynamic_lambda
+local types = require("luasnip.util.types")
 
 -- Every unspecified option will be set to the default.
 ls.config.set_config({
 	history = true,
 	-- Update more often, :h events for more info.
 	updateevents = "TextChanged,TextChangedI",
+	ext_opts = {
+		[types.choiceNode] = {
+			active = {
+				virt_text = { { "choiceNode", "Comment" } },
+			},
+		},
+	},
+	-- treesitter-hl has 100, use something higher (default is 200).
+	ext_base_prio = 300,
+	-- minimal increase in priority.
+	ext_prio_increase = 1,
+	enable_autosnippets = true,
 })
 
 -- args is a table, where 1 is the text in Placeholder 1, 2 the text in
@@ -132,6 +146,13 @@ local function bash(_, command)
 	return res
 end
 
+-- Returns a snippet_node wrapped around an insert_node whose initial
+-- text value is set to the current date in the desired format.
+local date_input = function(args, state, fmt)
+	local fmt = fmt or "%Y-%m-%d"
+	return sn(nil, i(1, os.date(fmt)))
+end
+
 ls.snippets = {
 	all = {
 		-- trigger is fn.
@@ -180,6 +201,14 @@ ls.snippets = {
 			t({ "", "\t" }),
 			i(0),
 			t({ "", "}" }),
+		}),
+		-- Use a dynamic_node to interpolate the output of a
+		-- function (see date_input above) into the initial
+		-- value of an insert_node.
+		s("novel", {
+			t("It was a dark and stormy night on "),
+			d(1, date_input, {}, "%A, %B %d of %Y"),
+			t(" and the clocks were striking thirteen."),
 		}),
 		-- Parsing snippets: First parameter: Snippet-Trigger, Second: Snippet body.
 		-- Placeholders are parsed into choices with 1. the placeholder text(as a snippet) and 2. an empty string.
@@ -230,19 +259,29 @@ ls.snippets = {
 			-- Lambdas can also apply transforms USING the text of other nodes:
 			l(l._1:gsub("e", l._2), { 1, 2 }),
 		}),
+		-- Set store_selection_keys = "<Tab>" (for example) in your
+		-- luasnip.config.setup() call to access TM_SELECTED_TEXT. In
+		-- this case, select a URL, hit Tab, then expand this snippet.
+		s("link_url", {
+			t('<a href="'),
+			f(function(args)
+				return args[1].env.TM_SELECTED_TEXT[1]
+			end, {}),
+			t('">'),
+			i(1),
+			t("</a>"),
+			i(0),
+		}),
 		-- Shorthand for repeating the text in a given node.
 		s("repeat", { i(1, "text"), t({ "", "" }), r(1) }),
 		-- Directly insert the ouput from a function evaluated at runtime.
 		s("part", p(os.date, "%Y")),
 		-- use matchNodes to insert text based on a pattern/function/lambda-evaluation.
-		s(
-			"mat",
-			{
-				i(1, { "sample_text" }),
-				t(": "),
-				m(1, "%d", "contains a number", "no number :("),
-			}
-		),
+		s("mat", {
+			i(1, { "sample_text" }),
+			t(": "),
+			m(1, "%d", "contains a number", "no number :("),
+		}),
 		-- The inserted text defaults to the first capture group/the entire
 		-- match if there are none
 		s("mat2", {
@@ -277,12 +316,27 @@ ls.snippets = {
 			i(1, "sample_text"),
 			n(1, "i(1) is not empty!"),
 		}),
+		-- dynamic lambdas work exactly like regular lambdas, except that they
+		-- don't return a textNode, but a dynamicNode containing one insertNode.
+		-- This makes it easier to dynamically set preset-text for insertNodes.
+		s("dl1", {
+			i(1, "sample_text"),
+			t({ ":", "" }),
+			dl(2, l._1, 1),
+		}),
+		-- Obviously, it's also possible to apply transformations, just like lambdas.
+		s("dl2", {
+			i(1, "sample_text"),
+			i(2, "sample_text_2"),
+			t({ "", "" }),
+			dl(3, l._1:gsub("\n", " linebreak ") .. l._2, { 1, 2 }),
+		}),
 	},
 	java = {
 		-- Very long example for a java class.
 		s("fn", {
 			d(6, jdocsnip, { 2, 4, 5 }),
-			t("", ""),
+			t({ "", "" }),
 			c(1, {
 				t("public "),
 				t("private "),
@@ -321,6 +375,15 @@ ls.snippets = {
 			i(1),
 			d(2, rec_ls, {}),
 			t({ "", "\\end{itemize}" }),
+		}),
+	},
+}
+
+-- autotriggered snippets have to be defined in a separate table, luasnip.autosnippets.
+ls.autosnippets = {
+	all = {
+		s("autotrigger", {
+			t("autosnippet"),
 		}),
 	},
 }

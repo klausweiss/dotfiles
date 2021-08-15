@@ -17,7 +17,7 @@ Community driven built-in [pickers](#pickers), [sorters](#sorters) and [previewe
 - [Vim](#vim-pickers)
 - [Files](#file-pickers)
 - [Git](#git-pickers)
-- [LSP](#lsp-pickers)
+- [LSP](#neovim-lsp-pickers)
 - [Treesitter](#treesitter-picker)
 
 ![Preview](https://i.imgur.com/TTTja6t.gif)
@@ -66,7 +66,6 @@ This section should guide you to run your first built-in pickers :smile:.
 Using [vim-plug](https://github.com/junegunn/vim-plug)
 
 ```viml
-Plug 'nvim-lua/popup.nvim'
 Plug 'nvim-lua/plenary.nvim'
 Plug 'nvim-telescope/telescope.nvim'
 ```
@@ -74,7 +73,6 @@ Plug 'nvim-telescope/telescope.nvim'
 Using [dein](https://github.com/Shougo/dein.vim)
 
 ```viml
-call dein#add('nvim-lua/popup.nvim')
 call dein#add('nvim-lua/plenary.nvim')
 call dein#add('nvim-telescope/telescope.nvim')
 ```
@@ -83,7 +81,7 @@ Using [packer.nvim](https://github.com/wbthomason/packer.nvim)
 ```lua
 use {
   'nvim-telescope/telescope.nvim',
-  requires = {{'nvim-lua/popup.nvim'}, {'nvim-lua/plenary.nvim'}}
+  requires = { {'nvim-lua/plenary.nvim'} }
 }
 ```
 
@@ -201,6 +199,7 @@ EOF
 | `scroll_strategy`      | How to behave when the when there are no more item next/prev | cycle, nil           |
 | `winblend`             | How transparent is the telescope window should be.    | number                      |
 | `borderchars`          | The border chars, it gives border telescope window    | dict                        |
+| `disable_devicons`     | Whether to display devicons or not                    | boolean                     |
 | `color_devicons`       | Whether to color devicons or not                      | boolean                     |
 | `use_less`             | Whether to use less with bat or less/cat if bat not installed | boolean             |
 | `set_env`              | Set environment variables for previewer               | dict                        |
@@ -270,19 +269,20 @@ require("telescope").setup {
 Mappings are fully customizable.
 Many familiar mapping patterns are setup as defaults.
 
-| Mappings       | Action                           |
-|----------------|----------------------------------|
-| `<C-n>/<Down>` | Next item                        |
-| `<C-p>/<Up>`   | Previous item                    |
-| `j/k`          | Next/previous (in normal mode)   |
-| `<cr>`         | Confirm selection                |
-| `<C-x>`        | go to file selection as a split  |
-| `<C-v>`        | go to file selection as a vsplit |
-| `<C-t>`        | go to a file in a new tab        |
-| `<C-u>`        | scroll up in preview window      |
-| `<C-d>`        | scroll down in preview window    |
-| `<C-c>`        | close telescope                  |
-| `<Esc>`        | close telescope (in normal mode) |
+| Mappings       | Action                                     |
+|----------------|--------------------------------------------|
+| `<C-n>/<Down>` | Next item                                  |
+| `<C-p>/<Up>`   | Previous item                              |
+| `j/k`          | Next/previous (in normal mode)             |
+| `<cr>`         | Confirm selection                          |
+| `<C-q>`        | Confirm selection and open quickfix window |
+| `<C-x>`        | go to file selection as a split            |
+| `<C-v>`        | go to file selection as a vsplit           |
+| `<C-t>`        | go to a file in a new tab                  |
+| `<C-u>`        | scroll up in preview window                |
+| `<C-d>`        | scroll down in preview window              |
+| `<C-c>`        | close telescope                            |
+| `<Esc>`        | close telescope (in normal mode)           |
 
 To see the full list of mappings, check out `lua/telescope/mappings.lua` and
 the `default_mappings` table.
@@ -468,7 +468,7 @@ document symbols not recognized as methods by treesitter.
 
 | Functions                           | Description                                                                                                |
 |-------------------------------------|------------------------------------------------------------------------------------------------------------|
-| `builtin.git_commits`               | Lists git commits with diff preview and checks them out on `<cr>`                                          |
+| `builtin.git_commits`               | Lists git commits with diff preview, checkout action `<cr>`, reset mixed `<C-r>m`, reset soft `<C-r>s` and reset hard `<C-r>h` |
 | `builtin.git_bcommits`              | Lists buffer's git commits with diff preview and checks them out on `<cr>`                                 |
 | `builtin.git_branches`              | Lists all branches with log preview, checkout action `<cr>`, track action `<C-t>` and rebase action`<C-r>` |
 | `builtin.git_status`                | Lists current changes per file with diff preview and add action. (Multi-selection still WIP)               |

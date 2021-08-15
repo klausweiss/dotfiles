@@ -70,6 +70,7 @@ local builtin = {}
 ---@param opts table: options to pass to the picker
 ---@field grep_open_files boolean: if true, restrict search to open files only, mutually exclusive with `search_dirs`
 ---@field search_dirs table: directory/directories to search in, mutually exclusive with `grep_open_files`
+---@field additional_args function: function(opts) which returns a table of additional arguments to be passed on
 builtin.live_grep = require("telescope.builtin.files").live_grep
 
 --- Searches for the string under your cursor in your current working directory
@@ -77,6 +78,7 @@ builtin.live_grep = require("telescope.builtin.files").live_grep
 ---@field search string: the query to search
 ---@field search_dirs table: directory/directories to search in
 ---@field use_regex boolean: if true, special characters won't be escaped, allows for using regex (default is false)
+---@field additional_args function: function(opts) which returns a table of additional arguments to be passed on
 builtin.grep_string = require("telescope.builtin.files").grep_string
 
 --- Lists files in your current working directory, respects .gitignore
@@ -103,6 +105,7 @@ builtin.fd = builtin.find_files
 ---@field cwd string: directory path to browse (default is cwd)
 ---@field depth number: file tree depth to display (default is 1)
 ---@field dir_icon string: change the icon for a directory. default: 
+---@field hidden boolean: determines whether to show hidden files or not (default is false)
 builtin.file_browser = require("telescope.builtin.files").file_browser
 
 --- Lists function names, variables, and other symbols from treesitter queries
@@ -144,6 +147,9 @@ builtin.git_files = require("telescope.builtin.git").files
 --- Lists commits for current directory with diff preview
 --- - Default keymaps:
 ---   - `<cr>`: checks out the currently selected commit
+---   - `<C-r>m`: resets current branch to selected commit using mixed mode
+---   - `<C-r>s`: resets current branch to selected commit using soft mode
+---   - `<C-r>h`: resets current branch to selected commit using hard mode
 ---@param opts table: options to pass to the picker
 ---@field cwd string: specify the path of the repo
 builtin.git_commits = require("telescope.builtin.git").commits
@@ -238,6 +244,7 @@ builtin.help_tags = require("telescope.builtin.internal").help_tags
 
 --- Lists manpage entries, opens them in a help window on `<cr>`
 ---@param opts table: options to pass to the picker
+---@field sections table: a list of sections to search, use `{ "ALL" }` to search in all sections
 builtin.man_pages = require("telescope.builtin.internal").man_pages
 
 --- Lists lua modules and reloads them on `<cr>`
@@ -309,10 +316,12 @@ builtin.lsp_references = require("telescope.builtin.lsp").references
 
 --- Goto the definition of the word under the cursor, if there's only one, otherwise show all options in Telescope
 ---@param opts table: options to pass to the picker
+---@field jump_type string: how to goto definition if there is only one, values: "tab", "split", "vsplit", "never"
 builtin.lsp_definitions = require("telescope.builtin.lsp").definitions
 
 --- Goto the implementation of the word under the cursor if there's only one, otherwise show all options in Telescope
 ---@param opts table: options to pass to the picker
+---@field jump_type string: how to goto implementation if there is only one, values: "tab", "split", "vsplit", "never"
 builtin.lsp_implementations = require("telescope.builtin.lsp").implementations
 
 --- Lists any LSP actions for the word under the cursor which can be triggered with `<cr>`
@@ -374,26 +383,28 @@ builtin.lsp_workspace_diagnostics = require("telescope.builtin.lsp").workspace_d
 local apply_config = function(mod)
   local pickers_conf = require("telescope.config").pickers
   for k, v in pairs(mod) do
-    local pconf = vim.deepcopy(pickers_conf[k] or {})
-    if pconf.theme then
-      local theme = pconf.theme
-      pconf.theme = nil
-      pconf = require("telescope.themes")["get_" .. theme](pconf)
-    end
-    if pconf.mappings then
-      local mappings = pconf.mappings
-      pconf.mappings = nil
-      pconf.attach_mappings = function(_, map)
-        for mode, tbl in pairs(mappings) do
-          for key, action in pairs(tbl) do
-            map(mode, key, action)
-          end
-        end
-        return true
-      end
-    end
     mod[k] = function(opts)
       opts = opts or {}
+
+      local pconf = vim.deepcopy(pickers_conf[k] or {})
+      if pconf.theme then
+        local theme = pconf.theme
+        pconf.theme = nil
+        pconf = require("telescope.themes")["get_" .. theme](pconf)
+      end
+      if pconf.mappings then
+        local mappings = pconf.mappings
+        pconf.mappings = nil
+        pconf.attach_mappings = function(_, map)
+          for mode, tbl in pairs(mappings) do
+            for key, action in pairs(tbl) do
+              map(mode, key, action)
+            end
+          end
+          return true
+        end
+      end
+
       if pconf.attach_mappings and opts.attach_mappings then
         local attach_mappings = pconf.attach_mappings
         pconf.attach_mappings = nil

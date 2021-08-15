@@ -65,8 +65,14 @@ git.commits = function(opts)
       previewers.git_commit_message.new(opts),
     },
     sorter = conf.file_sorter(opts),
-    attach_mappings = function()
+    attach_mappings = function(_, map)
       actions.select_default:replace(actions.git_checkout)
+      map("i", "<c-r>m", actions.git_reset_mixed)
+      map("n", "<c-r>m", actions.git_reset_mixed)
+      map("i", "<c-r>s", actions.git_reset_soft)
+      map("n", "<c-r>s", actions.git_reset_soft)
+      map("i", "<c-r>h", actions.git_reset_hard)
+      map("n", "<c-r>h", actions.git_reset_hard)
       return true
     end,
   }):find()
@@ -102,7 +108,7 @@ end
 
 git.bcommits = function(opts)
   opts.current_line = not opts.current_file and get_current_buf_line(0) or nil
-  opts.current_file = opts.current_file or vim.fn.expand "%"
+  opts.current_file = opts.current_file or vim.fn.expand "%:p"
   local results = utils.get_os_command_output({
     "git",
     "log",
@@ -186,7 +192,7 @@ git.branches = function(opts)
     .. "%(refname)"
     .. "%(authorname)"
     .. "%(upstream:lstrip=2)"
-    .. "%(committerdate:format-local:%Y/%m/%d%H:%M:%S)"
+    .. "%(committerdate:format-local:%Y/%m/%d %H:%M:%S)"
   local output = utils.get_os_command_output({ "git", "for-each-ref", "--perl", "--format", format }, opts.cwd)
 
   local results = {}

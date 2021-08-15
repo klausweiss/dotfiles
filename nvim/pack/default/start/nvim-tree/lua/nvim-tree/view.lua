@@ -35,11 +35,11 @@ M.View = {
     }, ',')
   },
   bufopts = {
-    swapfile = false,
-    buftype = 'nofile';
-    modifiable = false;
-    filetype = 'NvimTree';
-    bufhidden = 'hide';
+    { name = 'swapfile', val = false },
+    { name = 'buftype', val = 'nofile' },
+    { name = 'modifiable', val = false },
+    { name = 'filetype', val = 'NvimTree' },
+    { name = 'bufhidden', val = 'hide' }
   },
   bindings = {
     { key = {"<CR>", "o", "<2-LeftMouse>"}, cb = M.nvim_tree_callback("edit") },
@@ -71,6 +71,7 @@ M.View = {
     { key = "[c",                           cb = M.nvim_tree_callback("prev_git_item") },
     { key = "]c",                           cb = M.nvim_tree_callback("next_git_item") },
     { key = "-",                            cb = M.nvim_tree_callback("dir_up") },
+    { key = "s",                            cb = M.nvim_tree_callback("system_open") },
     { key = "q",                            cb = M.nvim_tree_callback("close") },
     { key = "g?",                           cb = M.nvim_tree_callback("toggle_help") }
   }
@@ -129,8 +130,8 @@ function M.setup()
     a.nvim_buf_set_name(M.View.bufnr, 'NvimTree')
   end
 
-  for k, v in pairs(M.View.bufopts) do
-    vim.bo[M.View.bufnr][k] = v
+  for _, opt in ipairs(M.View.bufopts) do
+    vim.bo[M.View.bufnr][opt.name] = opt.val
   end
 
   vim.cmd "au! BufWinEnter * lua require'nvim-tree.view'._prevent_buffer_override()"
@@ -263,7 +264,8 @@ local function set_local(opt, value)
   vim.cmd(cmd)
 end
 
-function M.open()
+function M.open(options)
+	options = options or { focus_tree = true }
   if not is_buf_valid() then
     M.setup()
   end
@@ -281,6 +283,9 @@ function M.open()
     set_local(k, v)
   end
   vim.cmd ":wincmd ="
+	if not options.focus_tree then
+		vim.cmd("wincmd p")
+	end
 end
 
 function M.close()

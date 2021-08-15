@@ -12,9 +12,6 @@ local record M
     type: Type
     head: string
     lines: {string}
-    start: integer
-    dend: integer
-    vend: integer
 
     record Node
       start: integer
@@ -23,6 +20,11 @@ local record M
 
     added: Node
     removed: Node
+
+    -- API unstable
+    start: integer
+    dend: integer
+    vend: integer
   end
 end
 
@@ -221,6 +223,20 @@ function M.extract_removed(hunk: Hunk): {string}
   end, vim.tbl_filter(function(l: string): boolean
     return vim.startswith(l, '-')
   end, hunk.lines)) as {string}
+end
+
+function M.compare_heads(a: {Hunk}, b: {Hunk}): boolean
+  if (a == nil) ~= (b == nil) then
+    return true
+  elseif a and #a ~= #b then
+    return true
+  end
+  for i, ah in ipairs(a) do
+    if b[i].head ~= ah.head then
+      return true
+    end
+  end
+  return false
 end
 
 return M

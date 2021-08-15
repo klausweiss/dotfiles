@@ -1,6 +1,5 @@
-local a = require('plenary.async')
-local void = a.void
-local scheduler = a.util.scheduler
+local void = require('plenary.async.async').void
+local scheduler = require('plenary.async.util').scheduler
 
 local Status = require("gitsigns.status")
 local config = require('gitsigns.config').config
@@ -27,6 +26,7 @@ local NavHunkOpts = {}
 
 
 local M = {}
+
 
 
 
@@ -145,7 +145,7 @@ M.stage_hunk = mk_repeatable(void(function(range)
    for lnum, _ in pairs(hunk_signs) do
       signs.remove(bufnr, lnum)
    end
-   a.void(manager.update)(bufnr)
+   void(manager.update)(bufnr)
 end))
 
 M.reset_hunk = mk_repeatable(function(range)
@@ -268,7 +268,7 @@ M.reset_buffer_index = void(function()
 
    scheduler()
    signs.add(config, bufnr, gs_hunks.process_hunks(hunks))
-   a.void(manager.update)(bufnr)
+   void(manager.update)(bufnr)
 end)
 
 local function nav_hunk(options)
@@ -276,8 +276,18 @@ local function nav_hunk(options)
    if not bcache then
       return
    end
+
+
+   local show_navigation_msg = not string.find(vim.o.shortmess, 'S')
+   if options.navigation_message ~= nil then
+      show_navigation_msg = options.navigation_message
+   end
+
    local hunks = bcache.hunks
    if not hunks or vim.tbl_isempty(hunks) then
+      if show_navigation_msg then
+         vim.api.nvim_echo({ { 'No hunks', 'WarningMsg' } }, false, {})
+      end
       return
    end
    local line = api.nvim_win_get_cursor(0)[1]
@@ -289,12 +299,6 @@ local function nav_hunk(options)
    end
 
    local hunk, index = gs_hunks.find_nearest_hunk(line, hunks, options.forwards, wrap)
-
-
-   local show_navigation_msg = not string.find(vim.o.shortmess, 'S')
-   if options.navigation_message ~= nil then
-      show_navigation_msg = options.navigation_message
-   end
 
    if hunk == nil then
       if show_navigation_msg then
@@ -375,6 +379,22 @@ M.select_hunk = function()
    vim.cmd('normal! ' .. hunk.start .. 'GV' .. hunk.vend .. 'G')
 end
 
+M.get_hunks = function(bufnr)
+   bufnr = current_buf()
+   if not cache[bufnr] then return end
+   local ret = {}
+   for _, h in ipairs(cache[bufnr].hunks) do
+      ret[#ret + 1] = {
+         head = h.head,
+         lines = h.lines,
+         type = h.type,
+         added = h.added,
+         removed = h.removed,
+      }
+   end
+   return ret
+end
+
 local function defer(duration, callback)
    local timer = vim.loop.new_timer()
    timer:start(duration, 0, function()
@@ -402,7 +422,7 @@ M.blame_line = void(function(full)
       loading:close()
    end)
 
-   local is_committed = tonumber('0x' .. result.sha) ~= 0
+   local is_committed = bcache.git_obj.object_name and tonumber('0x' .. result.sha) ~= 0
    if is_committed then
       local commit_message = {}
       if full then
@@ -457,7 +477,7 @@ M.change_base = function(base)
    base = calc_base(base)
    bcache.base = base
    bcache.compare_text = nil
-   a.void(manager.update)(buf, bcache)
+   void(manager.update)(buf, bcache)
 end
 
 M.diffthis = void(function(base)

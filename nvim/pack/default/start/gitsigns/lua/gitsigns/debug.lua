@@ -34,19 +34,23 @@ local function getvarvalue(name)
    return getfenv(func)[name]
 end
 
-function M.dprint(obj, caller)
+
+
+function M.dprint(obj, ...)
    if not M.debug_mode then
       return
    end
-   local msg = type(obj) == "string" and obj or vim.inspect(obj)
-   local name = caller
+   local msg = type(obj) == "string" and obj:format(...) or vim.inspect(obj)
+   local name = getvarvalue('__FUNC__')
    if not name then
       local name0 = debug.getinfo(2, 'n').name or ''
       name = name0:gsub('(.*)%d+$', '%1')
    end
    local msg2
 
-   local bufnr = getvarvalue('bufnr') or getvarvalue('cbuf')
+   local bufnr = getvarvalue('bufnr') or
+   getvarvalue('cbuf') or
+   getvarvalue('buf')
    if bufnr then
       msg2 = string.format('%s(%s): %s', name, bufnr, msg)
    else

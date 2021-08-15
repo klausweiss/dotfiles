@@ -1,7 +1,6 @@
-local a = require('plenary.async')
-local void      = a.void
-local scheduler = a.util.scheduler
-local sleep     = a.util.sleep
+local void = require('plenary.async.async').void
+local async_util = require('plenary.async.util')
+local scheduler = async_util.scheduler
 
 local gs_cache = require('gitsigns.cache')
 local CacheEntry = gs_cache.CacheEntry
@@ -44,14 +43,9 @@ function M.apply_win_signs(bufnr: integer, pending: {integer:Sign}, top: integer
   -- clearing all the signs
   local first_apply = top == nil
 
-  if config.use_decoration_api then
-    -- Just apply to signs visible in window
-    top = top or vim.fn.line('w0')
-    bot = bot or vim.fn.line('w$')
-  else
-    top = top or 1
-    bot = bot or vim.fn.line('$')
-  end
+  -- Just apply to signs visible in window
+  top = top or vim.fn.line('w0')
+  bot = bot or vim.fn.line('w$')
 
   local scheduled: {integer:Sign} = {}
 
@@ -73,9 +67,7 @@ function M.apply_win_signs(bufnr: integer, pending: {integer:Sign}, top: integer
     -- added but none of them are visible in the window, then make sure to add at
     -- least one sign. Only do this on the first call after an update when we all
     -- the signs have been cleared.
-    if config.use_decoration_api then
-      schedule_sign(next(pending))
-    end
+    schedule_sign(next(pending))
   end
 
   signs.add(config, bufnr, scheduled)
@@ -131,7 +123,7 @@ end
 
 M.on_lines = function(buf: integer, last_orig: integer, last_new: integer): boolean
   if not cache[buf] then
-    dprint('Cache for buffer '..buf..' was nil. Detaching')
+    dprint('Cache for buffer %d was nil. Detaching', buf)
     return true
   end
 
@@ -186,6 +178,7 @@ local update0 = function(bufnr: integer, bcache: CacheEntry)
     eprint('Cache for buffer '..bufnr..' was nil')
     return
   end
+  local old_hunks = bcache.hunks
   bcache.hunks = nil
 
   scheduler()
@@ -208,21 +201,22 @@ local update0 = function(bufnr: integer, bcache: CacheEntry)
   end
 
   bcache.hunks = run_diff(bcache.compare_text, buftext, config.diff_algorithm)
-  bcache.pending_signs = gs_hunks.process_hunks(bcache.hunks)
 
   scheduler()
+  if gs_hunks.compare_heads(bcache.hunks, old_hunks) then
+    bcache.pending_signs = gs_hunks.process_hunks(bcache.hunks)
 
-  -- Apply signs to the window. Other signs will be added by the decoration
-  -- provider as they are drawn.
-  M.apply_win_signs(bufnr, bcache.pending_signs)
-
+    -- Apply signs to the window. Other signs will be added by the decoration
+    -- provider as they are drawn.
+    M.apply_win_signs(bufnr, bcache.pending_signs)
+  end
   local summary = gs_hunks.get_summary(bcache.hunks)
   summary.head = git_obj.abbrev_head
   Status:update(bufnr, summary)
 
   update_cnt = update_cnt + 1
 
-  dprint(string.format('updates: %s, jobs: %s', update_cnt, util.job_cnt))
+  dprint('updates: %s, jobs: %s', update_cnt, util.job_cnt)
 end
 
 -- Ensure updates cannot be interleaved.
@@ -244,7 +238,7 @@ do
     else
       -- Wait until all updates have finished
       while running do
-        sleep(100)
+        async_util.sleep(100)
       end
     end
   end

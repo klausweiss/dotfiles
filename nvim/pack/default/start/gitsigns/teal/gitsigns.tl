@@ -1,6 +1,5 @@
-local a = require('plenary.async')
-local void      = a.void
-local scheduler = a.util.scheduler
+local void = require('plenary.async.async').void
+local scheduler = require('plenary.async.util').scheduler
 
 local Status     = require("gitsigns.status")
 local git        = require('gitsigns.git')
@@ -27,13 +26,14 @@ local record M
   setup      : function(cfg: Config)
   detach     : function(bufnr: integer, keep_signs: boolean)
   detach_all : function()
-  attach     : function(cbuf: integer)
+  attach     : function(cbuf: integer, trigger: string)
 
   -- Internal, API unstable
-  _get_config        : function(): Config
   _update_highlights : function()
   _run_func          : function(range: {integer, integer}, func: string, ...: any)
   _complete          : function(arglead: string, line: string): {string}
+  _attach_enable     : function()
+  _attach_disable    : function()
 end
 
 local namespace: integer
@@ -44,7 +44,7 @@ local handle_moved = function(bufnr: integer, bcache: CacheEntry, old_relpath: s
 
   local new_name = git_obj:has_moved()
   if new_name then
-    dprint('File moved to '..new_name)
+    dprint('File moved to %s', new_name)
     git_obj.relpath = new_name
     if not git_obj.orig_relpath then
       git_obj.orig_relpath = old_relpath
@@ -76,11 +76,12 @@ local watch_index = function(bufnr: integer, gitdir: string): uv.FSPollObj
   local index = gitdir..util.path_sep..'index'
   local w = uv.new_fs_poll()
   w:start(index, config.watch_index.interval, void(function(err: string)
+    local __FUNC__ = 'watcher_cb'
     if err then
-      dprint('Index update error: '..err, 'watcher_cb')
+      dprint('Index update error: %s', err)
       return
     end
-    dprint('Index update', 'watcher_cb')
+    dprint('Index update')
 
     local bcache = cache[bufnr]
 
@@ -88,7 +89,7 @@ local watch_index = function(bufnr: integer, gitdir: string): uv.FSPollObj
       -- Very occasionally an external git operation may cause the buffer to
       -- detach and update the index simultaneously. When this happens this
       -- handler will trigger but there will be no cache.
-      dprint(string.format('Buffer %s has detached, aborting', bufnr))
+      dprint('Has detached, aborting')
       return
     end
 
@@ -103,7 +104,7 @@ local watch_index = function(bufnr: integer, gitdir: string): uv.FSPollObj
     local old_relpath = git_obj.relpath
 
     if not git_obj:update_file_info() then
-      dprint('File not changed', 'watcher_cb')
+      dprint('File not changed')
       return
     end
 
@@ -167,7 +168,7 @@ local function get_buf_path(bufnr: integer): string, string
       sub_module_path = sub_module_path:gsub("^/modules", "")
       file = root_path .. sub_module_path .. real_path
       file = uv.fs_realpath(file)
-      dprint(("Fugitive buffer for file '%s' from path '%s'"):format(file, orig_path))
+      dprint("Fugitive buffer for file '%s' from path '%s'", file, orig_path)
       if file then
         return file, commit
       else
@@ -188,12 +189,24 @@ local function in_git_dir(file: string): boolean
   return false
 end
 
-local attach0 = function(cbuf: integer)
+local attach_disabled = false
+
+local attach0 = function(cbuf: integer, aucmd: string)
+  if attach_disabled then
+    dprint('attaching is disabled')
+    return
+  end
+
   if cache[cbuf] then
     dprint('Already attached')
     return
   end
-  dprint('Attaching')
+
+  if aucmd then
+    dprint('Attaching (trigger=%s)', aucmd)
+  else
+    dprint('Attaching')
+  end
 
   if not api.nvim_buf_is_loaded(cbuf) then
     dprint('Non-loaded buffer')
@@ -289,7 +302,8 @@ local attach0 = function(cbuf: integer)
       return manager.on_lines(buf, last_orig, last_new)
     end,
     on_reload = function(_, bufnr: integer)
-      dprint('Reload', 'on_reload')
+      local __FUNC__ = 'on_reload'
+      dprint('Reload')
       manager.update_debounced(bufnr)
     end,
     on_detach = function(_, buf: integer)
@@ -302,19 +316,27 @@ local attach0 = function(cbuf: integer)
   end
 end
 
+M._attach_enable = function()
+  attach_disabled = false
+end
+
+M._attach_disable = function()
+  attach_disabled = true
+end
+
 -- Ensure attaches cannot be interleaved.
 -- Since attaches are asynchronous we need to make sure an attach isn't
 -- performed whilst another one is in progress.
 local attach_running: {integer:boolean} = {}
 
-local attach = function(cbuf: integer)
+local attach = function(cbuf: integer, trigger: string)
   cbuf = cbuf or current_buf()
   if attach_running[cbuf] then
-    dprint('Attach in progress', 'attach')
+    dprint('Attach in progress')
     return
   end
   attach_running[cbuf] = true
-  attach0(cbuf)
+  attach0(cbuf, trigger)
   attach_running[cbuf] = nil
 end
 
@@ -396,25 +418,23 @@ M.setup = void(function(cfg: Config)
 
   setup_command()
 
-  if config.use_decoration_api then
-    -- Calling this before any await calls will stop nvim's intro messages being
-    -- displayed
-    api.nvim_set_decoration_provider(namespace, {
-      on_win = function(_, _, bufnr: integer, top: integer, bot: integer): boolean
-        local bcache = cache[bufnr]
-        if not bcache or not bcache.pending_signs then
-          return false
-        end
-        manager.apply_win_signs(bufnr, bcache.pending_signs, top+1, bot+1)
-
-        -- Returning false prevents the on_line callbacks
-        return config.word_diff and config.use_internal_diff
-      end,
-      on_line = function(_, _, bufnr: integer, row: integer)
-        manager.apply_word_diff(bufnr, row)
+  -- Calling this before any await calls will stop nvim's intro messages being
+  -- displayed
+  api.nvim_set_decoration_provider(namespace, {
+    on_win = function(_, _, bufnr: integer, top: integer, bot: integer): boolean
+      local bcache = cache[bufnr]
+      if not bcache or not bcache.pending_signs then
+        return false
       end
-    })
-  end
+      manager.apply_win_signs(bufnr, bcache.pending_signs, top+1, bot+1)
+
+      -- Returning false prevents the on_line callbacks
+      return config.word_diff and config.use_internal_diff
+    end,
+    on_line = function(_, _, bufnr: integer, row: integer)
+      manager.apply_word_diff(bufnr, row)
+    end
+  })
 
   git.enable_yadm = config.yadm.enable
   git.set_version(config._git_version)
@@ -424,21 +444,26 @@ M.setup = void(function(cfg: Config)
   for _, buf in ipairs(api.nvim_list_bufs()) do
     if    api.nvim_buf_is_loaded(buf)
       and api.nvim_buf_get_name(buf) ~= '' then
-      attach(buf)
+      attach(buf, 'setup')
       scheduler()
     end
   end
 
-  -- set up augroup, clear it if setup is run twice.
-  vim.cmd('augroup gitsigns | autocmd! | augroup END')
+  vim.cmd[[
+    augroup gitsigns
+      autocmd!
+      autocmd VimLeavePre  * lua _G.package.loaded.gitsigns.detach_all()
+      autocmd ColorScheme  * lua _G.package.loaded.gitsigns._update_highlights()
+      autocmd BufRead      * lua _G.package.loaded.gitsigns.attach(nil, 'BufRead')
+      autocmd BufNewFile   * lua _G.package.loaded.gitsigns.attach(nil, 'BufNewFile')
+      autocmd BufWritePost * lua _G.package.loaded.gitsigns.attach(nil, 'BufWritePost')
 
-  for func, events in pairs{
-    attach             = 'BufRead,BufNewFile,BufWritePost',
-    detach_all         = 'VimLeavePre',
-    _update_highlights = 'ColorScheme',
-  } do
-    vim.cmd('autocmd gitsigns '..events..' * lua require("gitsigns").'..func..'()')
-  end
+      " vimpgrep creates and deletes lots of buffers so attaching to each one will
+      " waste lots of resource and even slow down vimgrep.
+      autocmd QuickFixCmdPre  *vimgrep* lua _G.package.loaded.gitsigns._attach_disable()
+      autocmd QuickFixCmdPost *vimgrep* lua _G.package.loaded.gitsigns._attach_enable()
+    augroup END
+  ]]
 
   require('gitsigns.current_line_blame').setup()
 end)
@@ -446,10 +471,6 @@ end)
 M.attach = void(attach)
 
 -- Internal, API unstable
-M._get_config = function(): Config
-  return config
-end
-
 M._update_highlights = function()
   manager.setup_signs_and_highlights()
 end
