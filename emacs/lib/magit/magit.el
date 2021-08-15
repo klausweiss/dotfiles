@@ -19,6 +19,8 @@
 
 ;; Keywords: git tools vc
 ;; Homepage: https://github.com/magit/magit
+;; Package-Requires: ((emacs "25.1") (dash "2.18.1") (git-commit "3.2.1") (magit-section "3.2.1") (transient "0.3.6") (with-editor "3.0.4"))
+;; Package-Version: 3.2.1
 ;; SPDX-License-Identifier: GPL-3.0-or-later
 
 ;; Magit is free software; you can redistribute it and/or modify it
@@ -106,8 +108,8 @@ own faces for the `header-line', or for parts of the
   :group 'magit-faces)
 
 (defface magit-branch-remote-head
-  '((((class color) (background light)) :inherit magit-branch-remote :box t)
-    (((class color) (background  dark)) :inherit magit-branch-remote :box t))
+  '((((supports (:box t))) :inherit magit-branch-remote :box t)
+    (t                     :inherit magit-branch-remote :inverse-video t))
   "Face for current branch."
   :group 'magit-faces)
 
@@ -118,8 +120,8 @@ own faces for the `header-line', or for parts of the
   :group 'magit-faces)
 
 (defface magit-branch-current
-  '((((class color) (background light)) :inherit magit-branch-local :box t)
-    (((class color) (background  dark)) :inherit magit-branch-local :box t))
+  '((((supports (:box t))) :inherit magit-branch-local :box t)
+    (t                     :inherit magit-branch-local :inverse-video t))
   "Face for current branch."
   :group 'magit-faces)
 
@@ -237,7 +239,7 @@ C-x g           magit-status
 C-x M-g         magit-dispatch
 C-c M-g         magit-file-dispatch
 
-These bindings may be added when `after-init-hook' is called.
+These bindings may be added when `after-init-hook' is run.
 Each binding is added if and only if at that time no other key
 is bound to the same command and no other command is bound to
 the same key.  In other words we try to avoid adding bindings
@@ -251,8 +253,14 @@ is loaded or autoloaded) and to increase the likelihood that
 all the potentially conflicting user bindings have already
 been added.
 
-Setting this variable after the hook has already been called
-has no effect.
+To set this variable use either `setq' or the Custom interface.
+Do not use the function `customize-set-variable' because doing
+that would cause Magit to be loaded immediately when that form
+is evaluated (this differs from `custom-set-variables', which
+doesn't load the libraries that define the customized variables).
+
+Setting this variable to nil has no effect if that is done after
+the key bindings have already been added.
 
 We recommend that you bind \"C-c g\" instead of \"C-c M-g\" to
 `magit-file-dispatch'.  The former is a much better binding
@@ -296,29 +304,36 @@ Also see info node `(magit)Commands for Buffers Visiting Files'."
     ("d" "Diff"           magit-diff)
     ("D" "Diff (change)"  magit-diff-refresh)
     ("e" "Ediff (dwim)"   magit-ediff-dwim)
-    ("E" "Ediff"          magit-ediff)]
-   [("f" "Fetch"          magit-fetch)
+    ("E" "Ediff"          magit-ediff)
+    ("f" "Fetch"          magit-fetch)
     ("F" "Pull"           magit-pull)
+    ("h" "Help"           magit-help)
+    ("H" "Section info"   magit-describe-section :if-derived magit-mode)]
+   [("i" "Ignore"         magit-gitignore)
     ("I" "Init"           magit-init)
+    ("j" "Jump to section"magit-status-jump  :if-mode     magit-status-mode)
+    ("j" "Display status" magit-status-quick :if-not-mode magit-status-mode)
+    ("J" "Display buffer" magit-display-repository-buffer)
     ("l" "Log"            magit-log)
     ("L" "Log (change)"   magit-log-refresh)
     ("m" "Merge"          magit-merge)
     ("M" "Remote"         magit-remote)
     ("o" "Submodule"      magit-submodule)
-    ("O" "Subtree"        magit-subtree)]
-   [("P" "Push"           magit-push)
-    ("r" "Rebase"         magit-rebase)
+    ("O" "Subtree"        magit-subtree)
+    ("P" "Push"           magit-push)
+    ("Q" "Command"        magit-git-command)]
+   [("r" "Rebase"         magit-rebase)
     ("t" "Tag"            magit-tag)
     ("T" "Note"           magit-notes)
     ("V" "Revert"         magit-revert)
     ("w" "Apply patches"  magit-am)
     ("W" "Format patches" magit-patch)
-    ("X" "Reset"          magit-reset)]
-   [("y" "Show Refs"      magit-show-refs)
+    ("X" "Reset"          magit-reset)
+    ("y" "Show Refs"      magit-show-refs)
     ("Y" "Cherries"       magit-cherry)
     ("z" "Stash"          magit-stash)
-    ("!" "Run"            magit-run)
-    ("%" "Worktree"       magit-worktree)]]
+    ("Z" "Worktree"       magit-worktree)
+    ("!" "Run"            magit-run)]]
   ["Applying changes"
    :if-derived magit-mode
    [("a" "Apply"          magit-apply)
@@ -350,8 +365,6 @@ This affects `magit-git-command', `magit-git-command-topdir',
 ;;;###autoload (autoload 'magit-run "magit" nil t)
 (transient-define-prefix magit-run ()
   "Run git or another command, or launch a graphical utility."
-
-
   [["Run git subcommand"
     ("!" "in repository root"   magit-git-command-topdir)
     ("p" "in working directory" magit-git-command)]
@@ -526,8 +539,19 @@ and Emacs to it."
                         (magit-git-string "rev-parse" "HEAD"))))))))
     (if (stringp magit-version)
         (when print-dest
-          (princ (format "Magit %s, Git %s, Emacs %s, %s"
+          (princ (format "Magit %s%s, Git %s, Emacs %s, %s"
                          (or magit-version "(unknown)")
+                         (or (and (ignore-errors (version< "2008" magit-version))
+                                  (ignore-errors
+                                    (require 'lisp-mnt)
+                                    (and (fboundp 'lm-header)
+                                         (format
+                                          " [>= %s]"
+                                          (with-temp-buffer
+                                            (insert-file-contents
+                                             (locate-library "magit.el" t))
+                                            (lm-header "Package-Version"))))))
+                             "")
                          (or (let ((magit-git-debug
                                     (lambda (err)
                                       (display-warning '(magit git)
@@ -550,11 +574,14 @@ and Emacs to it."
 
 (defun magit-debug-git-executable ()
   "Display a buffer with information about `magit-git-executable'.
+Also include information about `magit-remote-git-executable'.
 See info node `(magit)Debugging Tools' for more information."
   (interactive)
   (with-current-buffer (get-buffer-create "*magit-git-debug*")
     (pop-to-buffer (current-buffer))
     (erase-buffer)
+    (insert (format "magit-remote-git-executable: %S\n"
+                    magit-remote-git-executable))
     (insert (concat
              (format "magit-git-executable: %S" magit-git-executable)
              (and (not (file-name-absolute-p magit-git-executable))

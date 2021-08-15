@@ -90,8 +90,10 @@ argument the push-remote can be changed before pushed to it."
                (magit--select-push-remote "push there")))
     (when changed
       (magit-confirm 'set-and-push
-        (format "Really use \"%s\" as push-remote and push \"%s\" there"
-                remote branch)))
+        (replace-regexp-in-string
+         "%" "%%"
+         (format "Really use \"%s\" as push-remote and push \"%s\" there"
+                 remote branch))))
     (run-hooks 'magit-credential-hook)
     (magit-run-git-async "push" "-v" args remote
                          (format "refs/heads/%s:refs/heads/%s"
@@ -150,8 +152,10 @@ the upstream."
           ;; is what the user wants to happen.
           (setq merge (concat "refs/heads/" merge)))
         (magit-confirm 'set-and-push
-          (format "Really use \"%s\" as upstream and push \"%s\" there"
-                  upstream branch)))
+          (replace-regexp-in-string
+           "%" "%%"
+           (format "Really use \"%s\" as upstream and push \"%s\" there"
+                   upstream branch))))
       (cl-pushnew "--set-upstream" args :test #'equal))
     (run-hooks 'magit-credential-hook)
     (magit-run-git-async "push" "-v" args remote (concat branch ":" merge))))
@@ -217,11 +221,10 @@ only available for the part before the colon, or when no colon
 is used."
   (interactive
    (list (magit-read-remote "Push to remote")
-         (split-string (magit-completing-read-multiple
-                        "Push refspec,s"
-                        (cons "HEAD" (magit-list-local-branch-names))
-                        nil nil 'magit-push-refspecs-history)
-                       crm-default-separator t)
+         (magit-completing-read-multiple*
+          "Push refspec,s: "
+          (cons "HEAD" (magit-list-local-branch-names))
+          nil nil nil 'magit-push-refspecs-history)
          (magit-push-arguments)))
   (run-hooks 'magit-credential-hook)
   (magit-run-git-async "push" "-v" args remote refspecs))

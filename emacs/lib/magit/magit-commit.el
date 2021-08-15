@@ -318,7 +318,7 @@ depending on the value of option `magit-commit-squash-confirm'."
 
 (defun magit-commit-squash-internal
     (option commit &optional args rebase edit confirmed)
-  (when-let ((args (magit-commit-assert args t)))
+  (when-let ((args (magit-commit-assert args (not edit))))
     (when commit
       (when (and rebase (not (magit-rev-ancestor-p commit "HEAD")))
         (magit-read-char-case
@@ -382,9 +382,9 @@ depending on the value of option `magit-commit-squash-confirm'."
              (or (member "--amend" args)
                  (member "--allow-empty" args)
                  (member "--reset-author" args)
-                 (member "--author" args)
                  (member "--signoff" args)
-                 (cl-find-if (lambda (a) (string-match-p "\\`--date=" a)) args))))
+                 (transient-arg-value "--author=" args)
+                 (transient-arg-value "--date=" args))))
     (or args (list "--")))
    ((and (magit-rebase-in-progress-p)
          (not (magit-anything-unstaged-p))

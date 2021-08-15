@@ -14,16 +14,6 @@ FORMAT_ALL_THE_CODE_URL := https://raw.githubusercontent.com/lassik/emacs-format
 	LANGUAGE_ID_URL := https://raw.githubusercontent.com/lassik/emacs-language-id/master/language-id.el
 HASKELL_MODE_REPO := https://github.com/haskell/haskell-mode.git
 JUMP_TREE_MODE_REPO := https://github.com/yangwen0228/jump-tree
-LSP_MODE_REPO := https://github.com/emacs-lsp/lsp-mode.git
-	F_URL := https://raw.githubusercontent.com/rejeep/f.el/master/f.el
-	HT_URL := https://raw.githubusercontent.com/Wilfred/ht.el/master/ht.el
-	LV_URL := https://raw.githubusercontent.com/abo-abo/hydra/master/lv.el
-	MARKDOWN_URL := https://raw.githubusercontent.com/jrblevin/markdown-mode/master/markdown-mode.el
-	S_URL := https://raw.githubusercontent.com/magnars/s.el/master/s.el
-	SPINNER_URL := https://raw.githubusercontent.com/Malabarba/spinner.el/master/spinner.el
-LSP_UI_REPO := https://github.com/emacs-lsp/lsp-ui.git
-LSP_HASKELL_URL := https://raw.githubusercontent.com/emacs-lsp/lsp-haskell/master/lsp-haskell.el
-LSP_IVY_URL := https://raw.githubusercontent.com/emacs-lsp/lsp-ivy/master/lsp-ivy.el
 LUA_MODE_URL := https://raw.githubusercontent.com/immerrr/lua-mode/master/lua-mode.el
 	DASH_FUNCTIONAL_URL := https://raw.githubusercontent.com/magnars/dash.el/master/dash-functional.el
 MAGIT_REPO := https://github.com/magit/magit.git
@@ -34,12 +24,13 @@ MINI_MODELINE_URL := https://raw.githubusercontent.com/kiennq/emacs-mini-modelin
 PERSPECTIVE_URL := https://raw.githubusercontent.com/nex3/perspective-el/master/perspective.el
 PERSPECTIVE_PROJECTILE_URL := https://raw.githubusercontent.com/bbatsov/persp-projectile/master/persp-projectile.el
 PROJECTILE_URL := https://raw.githubusercontent.com/bbatsov/projectile/master/projectile.el
-RUSTIC_REPO := https://github.com/brotzeit/rustic.git
-	XTERM_COLOR_URL := https://raw.githubusercontent.com/atomontage/xterm-color/master/xterm-color.el
 SIMPLECLIP_URL := https://raw.githubusercontent.com/rolandwalker/simpleclip/master/simpleclip.el
 SMART_SHIFT_URL := https://raw.githubusercontent.com/klausweiss/smart-shift/master/smart-shift.el
 SWIPER_REPO := https://github.com/abo-abo/swiper.git
 TREEMACS_REPO := https://github.com/Alexander-Miller/treemacs.git
+	F_URL := https://raw.githubusercontent.com/rejeep/f.el/master/f.el
+	HT_URL := https://raw.githubusercontent.com/Wilfred/ht.el/master/ht.el
+	S_URL := https://raw.githubusercontent.com/magnars/s.el/master/s.el
 	PFUTURE_URL := https://raw.githubusercontent.com/Alexander-Miller/pfuture/master/pfuture.el
 UNDO_TREE_URL := http://www.dr-qubit.org/undo-tree/undo-tree.el
 	QUEUE_URL := https://www.dr-qubit.org/predictive/queue.el
@@ -182,42 +173,8 @@ update-jump-tree-mode:
 update-language-id:
 	$(call download-from-url, $(LANGUAGE_ID_URL))
 
-update-lsp-mode: \
-	update-dash \
-	update-f \
-	update-ht \
-	update-lv \
-	update-markdown \
-	update-s \
-	update-spinner \
-
-	$(call download-from-repo, $(LSP_MODE_REPO), scripts/* clients/)
-
-update-lsp-haskell: \
-	update-lsp-mode \
-	update-haskell-mode \
-
-	$(call download-from-url, $(LSP_HASKELL_URL))
-
-update-lsp-ivy: \
-	update-lsp-mode \
-	update-dash \
-	update-swiper \
-
-	$(call download-from-url, $(LSP_IVY_URL))
-
-update-lsp-ui: \
-	update-dash \
-	update-lsp-mode \
-	update-markdown \
-
-	$(call download-from-repo, $(LSP_UI_REPO), resources/)
-
 update-lua-mode:
 	$(call download-from-url, $(LUA_MODE_URL))
-
-update-lv:
-	$(call download-from-url, $(LV_URL))
 
 update-magit: \
 	update-with-editor \
@@ -228,9 +185,6 @@ update-magit: \
 	make -C $(DIR) versionlib
 	$(call update-lib-files, magit, lisp/*)
 	$(call clean-repo-dir)
-
-update-markdown:
-	$(call download-from-url, $(MARKDOWN_URL))
 
 update-mini-modeline:
 	$(call download-from-url, $(MINI_MODELINE_URL))
@@ -256,14 +210,8 @@ update-projectile:
 update-queue:
 	$(call download-from-url, $(QUEUE_URL))
 
-update-rustic: update-xterm-color
-	$(call download-from-repo, $(RUSTIC_REPO))
-
 update-s:
 	$(call download-from-url, $(S_URL))
-
-update-spinner:
-	$(call download-from-url, $(SPINNER_URL))
 
 update-simpleclip:
 	$(call download-from-url, $(SIMPLECLIP_URL))
@@ -302,9 +250,6 @@ update-winum:
 
 update-with-editor:
 	$(call download-from-url, $(WITH_EDITOR_URL))
-
-update-xterm-color:
-	$(call download-from-url, $(XTERM_COLOR_URL))
 
 update-yafolding-mode:
 	$(call download-from-url, $(YAFOLDING_URL))

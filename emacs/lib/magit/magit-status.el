@@ -309,6 +309,29 @@ also contains other useful hints.")
 
 (put 'magit-status-here 'interactive-only 'magit-status-setup-buffer)
 
+(defun magit-status-quick ()
+  "Show the status of the current Git repository, maybe without refreshing.
+
+If the status buffer of the current Git repository exists but
+isn't being displayed in the selected frame, then display it
+without refreshing it.
+
+If the status buffer is being displayed in the selected frame,
+then also refresh it.
+
+Prefix arguments have the same meaning as for `magit-status',
+and additionally cause the buffer to be refresh.
+
+To use this function instead of `magit-status', add this to your
+init file: (global-set-key (kbd \"C-x g\") 'magit-status-quick)."
+  (interactive)
+  (if-let ((buffer
+            (and (not current-prefix-arg)
+                 (not (magit-get-mode-buffer 'magit-status-mode nil 'selected))
+                 (magit-get-mode-buffer 'magit-status-mode))))
+      (magit-display-buffer buffer)
+    (call-interactively #'magit-status)))
+
 (defvar magit--remotes-using-recent-git nil)
 
 (defun magit--tramp-asserts (directory)
@@ -324,25 +347,14 @@ Magit requires Git >= %s, but on %s the version is %s.
 If multiple Git versions are installed on the host, then the
 problem might be that TRAMP uses the wrong executable.
 
-First check the value of `magit-git-executable'.  Its value is
-used when running git locally as well as when running it on a
-remote host.  The default value is \"git\", except on Windows
-where an absolute path is used for performance reasons.
-
-If the value already is just \"git\" but TRAMP never-the-less
-doesn't use the correct executable, then consult the info node
-`(tramp)Remote programs'.\n" magit--minimal-git remote version) :error))
+Check the value of `magit-remote-git-executable' and consult
+the info node `(tramp)Remote programs'.
+" magit--minimal-git remote version) :error))
         (display-warning 'magit (format "\
 Magit cannot find Git on %s.
 
-First check the value of `magit-git-executable'.  Its value is
-used when running git locally as well as when running it on a
-remote host.  The default value is \"git\", except on Windows
-where an absolute path is used for performance reasons.
-
-If the value already is just \"git\" but TRAMP never-the-less
-doesn't find the executable, then consult the info node
-`(tramp)Remote programs'.\n" remote) :error)))))
+Check the value of `magit-remote-git-executable' and consult
+the info node `(tramp)Remote programs'." remote) :error)))))
 
 ;;; Mode
 
@@ -623,12 +635,13 @@ arguments are for internal use only."
               ((magit--valid-upstream-p remote merge)
                (if (equal remote ".")
                    (concat
-                    (propertize merge 'font-lock-face 'magit-branch-local)
-                    (propertize " does not exist"
+                    (propertize merge 'font-lock-face 'magit-branch-local) " "
+                    (propertize "does not exist"
                                 'font-lock-face 'font-lock-warning-face))
-                 (concat
+                 (format
+                  "%s %s %s"
                   (propertize merge 'font-lock-face 'magit-branch-remote)
-                  (propertize " does not exist on "
+                  (propertize "does not exist on"
                               'font-lock-face 'font-lock-warning-face)
                   (propertize remote 'font-lock-face 'magit-branch-remote))))
               (t
@@ -655,11 +668,11 @@ arguments are for internal use only."
                                          "(no commit message)"))))
          (let ((remote (magit-get-push-remote branch)))
            (if (magit-remote-p remote)
-               (concat target
-                       (propertize " does not exist"
+               (concat target " "
+                       (propertize "does not exist"
                                    'font-lock-face 'font-lock-warning-face))
-             (concat remote
-                     (propertize " remote does not exist"
+             (concat remote " "
+                     (propertize "remote does not exist"
                                  'font-lock-face 'font-lock-warning-face))))))
       (insert ?\n))))
 

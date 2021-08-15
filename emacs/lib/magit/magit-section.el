@@ -10,8 +10,8 @@
 
 ;; Keywords: tools
 ;; Homepage: https://github.com/magit/magit
-;; Package-Requires: ((emacs "25.1") (dash "20210330"))
-;; Package-Version: 3.0.0
+;; Package-Requires: ((emacs "25.1") (dash "2.18.1"))
+;; Package-Version: 3.2.1
 ;; SPDX-License-Identifier: GPL-3.0-or-later
 
 ;; Magit-Section is free software; you can redistribute it and/or modify
@@ -318,7 +318,7 @@ but that ship has sailed, thus this option."
 (defvar magit-section-mode-map
   (let ((map (make-keymap)))
     (suppress-keymap map t)
-    (define-key map (kbd "C-i") 'magit-section-toggle)
+    (define-key map (kbd "TAB") 'magit-section-toggle)
     (define-key map [C-tab]     'magit-section-cycle)
     (define-key map [M-tab]     'magit-section-cycle)
     ;; [backtab] is the most portable binding for Shift+Tab.
@@ -328,10 +328,10 @@ but that ship has sailed, thus this option."
     (define-key map (kbd   "n") 'magit-section-forward)
     (define-key map (kbd "M-p") 'magit-section-backward-sibling)
     (define-key map (kbd "M-n") 'magit-section-forward-sibling)
-    (define-key map "1"         'magit-section-show-level-1)
-    (define-key map "2"         'magit-section-show-level-2)
-    (define-key map "3"         'magit-section-show-level-3)
-    (define-key map "4"         'magit-section-show-level-4)
+    (define-key map (kbd   "1") 'magit-section-show-level-1)
+    (define-key map (kbd   "2") 'magit-section-show-level-2)
+    (define-key map (kbd   "3") 'magit-section-show-level-3)
+    (define-key map (kbd   "4") 'magit-section-show-level-4)
     (define-key map (kbd "M-1") 'magit-section-show-level-1-all)
     (define-key map (kbd "M-2") 'magit-section-show-level-2-all)
     (define-key map (kbd "M-3") 'magit-section-show-level-3-all)

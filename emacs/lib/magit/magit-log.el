@@ -77,11 +77,11 @@
   :options '("--follow" "--grep" "-G" "-S" "-L"))
 
 (defcustom magit-log-revision-headers-format "\
-%+b
+%+b%+N
 Author:    %aN <%aE>
 Committer: %cN <%cE>"
   "Additional format string used with the `++header' argument."
-  :package-version '(magit . "2.3.0")
+  :package-version '(magit . "3.2.0")
   :group 'magit-log
   :type 'string)
 
@@ -595,16 +595,17 @@ the upstream isn't ahead of the current branch) show."
 
 (defun magit-log-read-revs (&optional use-current)
   (or (and use-current (--when-let (magit-get-current-branch) (list it)))
-      (let ((collection (magit-list-refnames nil t)))
-        (split-string
-         (magit-completing-read-multiple "Log rev,s" collection
-                                         "\\(\\.\\.\\.?\\|[, ]\\)"
-                                         (or (magit-branch-or-commit-at-point)
-                                             (unless use-current
-                                               (magit-get-previous-branch)))
-                                         'magit-revision-history
-                                         magit-log-read-revs-map)
-         "[, ]" t))))
+      (let ((crm-separator "\\(\\.\\.\\.?\\|[, ]\\)")
+            (crm-local-completion-map magit-log-read-revs-map))
+        (split-string (magit-completing-read-multiple*
+                       "Log rev,s: "
+                       (magit-list-refnames nil t)
+                       nil nil nil 'magit-revision-history
+                       (or (magit-branch-or-commit-at-point)
+                           (unless use-current
+                             (magit-get-previous-branch)))
+                       nil t)
+                      "[, ]" t))))
 
 (defun magit-log-read-pattern (option)
   "Read a string from the user to pass as parameter to OPTION."
@@ -769,7 +770,7 @@ commits instead.
 This command requires git-when-merged, which is available from
 https://github.com/mhagger/git-when-merged."
   (interactive
-   (append (let ((commit (magit-read-branch-or-commit "Commit")))
+   (append (let ((commit (magit-read-branch-or-commit "Log merge of commit")))
              (list commit
                    (magit-read-other-branch "Merged into" commit)))
            (magit-log-arguments)))
@@ -779,11 +780,9 @@ https://github.com/mhagger/git-when-merged."
   (let (exit m)
     (with-temp-buffer
       (save-excursion
-        (setq exit (magit-process-file
-                    magit-git-executable nil t nil
-                    "when-merged" "-c"
-                    "--abbrev" (number-to-string (magit-abbrev-length))
-                    commit branch)))
+        (setq exit (magit-process-git t "when-merged" "-c"
+                                      (magit-abbrev-arg)
+                                      commit branch)))
       (setq m (buffer-substring-no-properties (point) (line-end-position))))
     (if (zerop exit)
         (magit-log-setup-buffer (list (format "%s^1..%s" m m))
@@ -917,11 +916,15 @@ of the current repository first; creating it if necessary."
    ("r" "range" magit-shortlog-range)])
 
 (defun magit-git-shortlog (rev args)
-  (with-current-buffer (get-buffer-create "*magit-shortlog*")
-    (erase-buffer)
-    (save-excursion
-      (magit-git-insert "shortlog" args rev))
-    (switch-to-buffer-other-window (current-buffer))))
+  (let ((dir default-directory))
+    (with-current-buffer (get-buffer-create "*magit-shortlog*")
+      (setq default-directory dir)
+      (setq buffer-read-only t)
+      (let ((inhibit-read-only t))
+        (erase-buffer)
+        (save-excursion
+          (magit-git-insert "shortlog" args rev))
+        (switch-to-buffer-other-window (current-buffer))))))
 
 ;;;###autoload
 (defun magit-shortlog-since (rev args)
@@ -948,9 +951,9 @@ of the current repository first; creating it if necessary."
 (defvar magit-log-mode-map
   (let ((map (make-sparse-keymap)))
     (set-keymap-parent map magit-mode-map)
-    (define-key map "\C-c\C-b" 'magit-go-backward)
-    (define-key map "\C-c\C-f" 'magit-go-forward)
-    (define-key map "\C-c\C-n" 'magit-log-move-to-parent)
+    (define-key map (kbd "C-c C-b") 'magit-go-backward)
+    (define-key map (kbd "C-c C-f") 'magit-go-forward)
+    (define-key map (kbd "C-c C-n") 'magit-log-move-to-parent)
     (define-key map "j" 'magit-log-move-to-revision)
     (define-key map "=" 'magit-log-toggle-commit-limit)
     (define-key map "+" 'magit-log-double-commit-limit)
@@ -1004,9 +1007,7 @@ Type \\[magit-reset] to reset `HEAD' to the commit at point.
         (files magit-buffer-log-files))
     (magit-set-header-line-format
      (funcall magit-log-header-line-function revs args files))
-    (if (= (length files) 1)
-        (unless (magit-file-tracked-p (car files))
-          (setq args (cons "--full-history" args)))
+    (unless (= (length files) 1)
       (setq args (remove "--follow" args)))
     (when (and (car magit-log-remove-graph-args)
                (--any-p (string-match-p
@@ -1528,13 +1529,13 @@ The shortstat style is experimental and rather slow."
 (defvar magit-log-select-mode-map
   (let ((map (make-sparse-keymap)))
     (set-keymap-parent map magit-log-mode-map)
-    (define-key map "\C-c\C-b" 'undefined)
-    (define-key map "\C-c\C-f" 'undefined)
-    (define-key map "."        'magit-log-select-pick)
-    (define-key map "e"        'magit-log-select-pick)
-    (define-key map "\C-c\C-c" 'magit-log-select-pick)
-    (define-key map "q"        'magit-log-select-quit)
-    (define-key map "\C-c\C-k" 'magit-log-select-quit)
+    (define-key map (kbd "C-c C-b") 'undefined)
+    (define-key map (kbd "C-c C-f") 'undefined)
+    (define-key map (kbd ".")       'magit-log-select-pick)
+    (define-key map (kbd "e")       'magit-log-select-pick)
+    (define-key map (kbd "C-c C-c") 'magit-log-select-pick)
+    (define-key map (kbd "q")       'magit-log-select-quit)
+    (define-key map (kbd "C-c C-k") 'magit-log-select-quit)
     map)
   "Keymap for `magit-log-select-mode'.")
 
@@ -1624,11 +1625,12 @@ commit as argument."
     (funcall fun rev)))
 
 (defun magit-log-select-quit ()
-  "Abort selecting a commit, don't act on any commit."
+  "Abort selecting a commit, don't act on any commit.
+Call `magit-log-select-quit-function' if set."
   (interactive)
-  (magit-mode-bury-buffer 'kill)
-  (when magit-log-select-quit-function
-    (funcall magit-log-select-quit-function)))
+  (let ((fun magit-log-select-quit-function))
+    (magit-mode-bury-buffer 'kill)
+    (when fun (funcall fun))))
 
 ;;; Cherry Mode
 

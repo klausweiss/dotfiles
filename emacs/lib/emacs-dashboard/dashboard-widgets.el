@@ -14,7 +14,7 @@
 ;; Created: October 05, 2016
 ;; Package-Version: 1.8.0-SNAPSHOT
 ;; Keywords: startup, screen, tools, dashboard
-;; Package-Requires: ((emacs "25.3") (page-break-lines "0.11"))
+;; Package-Requires: ((emacs "25.3"))
 ;;; Commentary:
 
 ;; An extensible Emacs dashboard, with sections for
@@ -60,7 +60,7 @@
 (defvar all-the-icons-dir-icon-alist)
 (defvar package-activated-list)
 
-(defcustom dashboard-page-separator "\n\f\n"
+(defcustom dashboard-page-separator "\n\n"
   "Separator to use between the different pages."
   :type 'string
   :group 'dashboard)
@@ -126,13 +126,6 @@ preserved."
 (defcustom dashboard-show-shortcuts t
   "Whether to show shortcut keys for each section."
   :type 'boolean
-  :group 'dashboard)
-
-(defcustom dashboard-org-agenda-categories nil
-  "Specify the Categories to consider when using agenda in dashboard.
-Example:
-'(\"Tasks\" \"Habits\")"
-  :type 'list
   :group 'dashboard)
 
 (defconst dashboard-banners-directory
@@ -260,6 +253,18 @@ Will be of the form `(list-type . keys)' as understood by
 value is nil, that item's shortcut is disbaled.  See
 `dashboard-items' for possible values of list-type.'"
   :type '(repeat (alist :key-type symbol :value-type string))
+  :group 'dashboard)
+
+(defcustom dashboard-item-names nil
+  "Association list of item heading names.
+When an item is nil or not present, the default name is used.
+Will be of the form `(default-name . new-name)'.
+Possible values for default-name are:
+\"Recent Files:\" \"Bookmarks:\" \"Agenda for today:\",
+\"Agenda for the coming week:\" \"Registers:\" \"Projects:\"."
+  :type '(alist :key-type string :value-type string)
+  :options '("Recent Files:" "Bookmarks:" "Agenda for today:"
+             "Agenda for the coming week:" "Registers:" "Projects:")
   :group 'dashboard)
 
 (defcustom dashboard-items-default-length 20
@@ -438,6 +443,16 @@ If MESSAGEBUF is not nil then MSG is also written in message buffer."
     (insert " "))
 
   (insert (propertize heading 'face 'dashboard-heading))
+
+  ;; Turn the inserted heading into an overlay, so that we may freely change
+  ;; its name without breaking any of the functions that expect the default name.
+  ;; If there isn't a suitable entry in `dashboard-item-names',
+  ;; we fallback to using HEADING.  In that case we still want it to be an
+  ;; overlay to maintain consistent behavior (such as the point movement)
+  ;; between modified and default headings.
+  (let ((ov (make-overlay (- (point) (length heading)) (point) nil t)))
+    (overlay-put ov 'display (or (cdr (assoc heading dashboard-item-names)) heading))
+    (overlay-put ov 'face 'dashboard-heading))
   (when shortcut (insert (format " (%s)" shortcut))))
 
 (defun dashboard-center-line (string)

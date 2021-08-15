@@ -63,7 +63,7 @@ overview looks as follows:
    a window or launching an external application.
  * Understanding of frames :: every frame will receive its own treemacs buffer that will live and die with that frame.
  * Finding of files and tags :: Treemacs can follow along and keep in focus the currently selected file or even the tag
-   at point using, either manually or automatically using either ~treemacs-follow-mode~ or ~treemacs-tag-follow-mode~.
+   at point, either manually or automatically using either ~treemacs-follow-mode~ or ~treemacs-tag-follow-mode~.
  * Git Integration :: Treemacs can use different faces for files and directories based on their git status.
    The git process is run asynchronously, minimizing its performance impact.
  * [[https://github.com/deb0ch/emacs-winum][Winum]] & [[https://github.com/abo-abo/ace-window][ace-window]] compatibility :: The presence of treemacs will not interfere with winum's and ace-window's
@@ -152,7 +152,7 @@ that file. If that fails treemacs will resort to using the /fallback workspace/ 
 element in the list of all workspace.
 
 The order of workspaces is the same that you see when calling ~treemacs-edit-workspaces~ (see next chapter). You can
-interactively set the fall backback workspace by calling ~treemacs-set-fallback-workspace~.
+interactively set the fallback workspace by calling ~treemacs-set-fallback-workspace~.
 
 This selection will happen when treemacs is first started (with a command like ~treemacs-select-window~) or when a
 function that requires the current workspace to be known is used (like adding or removing a project).
@@ -180,14 +180,18 @@ You needn't worry about making mistakes either. If there's something wrong when 
 indentation is caused by ~org-indent-mode~)
 
 ** Navigation without Projects and Workspaces
-If a strict workspace and project structure, as described above, is too stringent for your use-case you can, under
-certain circumstances, use treemacs to freely navigate through your your file system, similar to dired: When your
-workspace contains /exactly/ a single project you can use ~h~ and ~l~ (or ~treemacs-root-up~ and ~treemacs-root-down~)
-to arbitrarily change the single project's root. ~h~ will navigate one level upward in the file system, ~l~ will move
-into the directory at point.
 
-You can also use ~treemacs-display-current-project-exclusively~ to switch to the current project (deleting any others
-that might be present).
+If a strict workspace and project structure, as described above, is too stringent for your use-case there are multiple
+other ways to use treemacs in a more "free-form" style:
+
+- You can use ~treemacs-display-current-project-exclusively~ to switch to the current project (deleting any others that
+  might be present).
+- You can enable ~treemacs-project-follow-mode~ to make treemacs automatically switch to the project for the current
+  buffer.
+- As long as there is exactly /a single project/ in your workspace you can also use ~M-H~ and ~M-L~ (or
+  ~treemacs-root-up~ and ~treemacs-root-down~) to to arbitrarily change the project's root and freely navigate through
+  your your file system, similar to dired. ~M-H~ will navigate one level upward in the file system, ~M-L~ will move into
+  the directory at point.
 
 ** Frame Locality
 Treemacs buffers have a limited scope they are visible in: the frames they are created in. A treemacs buffer, once
@@ -208,7 +212,8 @@ Additionally tag sections can be expanded or collapsed by a single click on the 
 If you prefer to expand/collpase nodes with a single mouse click you can also use ~treemacs-single-click-expand-action~:
 
 #+BEGIN_SRC emacs-lisp
-  (define-key treemacs-mode-map [mouse-1] #'treemacs-single-click-expand-action)
+  (with-eval-after-load 'treemacs
+    (define-key treemacs-mode-map [mouse-1] #'treemacs-single-click-expand-action))
 #+END_SRC
 
 A right click popup-menu is also available:
@@ -434,6 +439,7 @@ setting. Setting them all yourself is not necessary, they are only listed here t
             treemacs-user-mode-line-format         nil
             treemacs-user-header-line-format       nil
             treemacs-width                         35
+            treemacs-width-is-initially-locked     t
             treemacs-workspace-switch-cleanup      nil)
 
       ;; The default width and height of the icons is 22 pixels. If you are
@@ -491,8 +497,8 @@ Treemacs offers the following configuration options (~describe-variable~ will us
 | treemacs-indentation-string            | " "                                              | The string that is used to create indentation when ~treemacs-indentation~ is not specified as pixels.                                                                                                                                |
 | treemacs-width                         | 35                                               | Width of the treemacs window.                                                                                                                                                                                                        |
 | treemacs-show-hidden-files             | t                                                | Dotfiles will be shown if this is set to t and be hidden otherwise.                                                                                                                                                                  |
-| treemacs-follow-after-init             | t                                                | When non-nil follow the currently selected file after initializing the treemacs buffer, regardless of ~treemacs-follow-mode~ setting.                                                                                               |
-| treemacs-expand-after-init             | t                                                | When non-nil expand the first project after treemacs is first initialsed.                                                                                                                                                           |
+| treemacs-follow-after-init             | t                                                | When non-nil follow the currently selected file after initializing the treemacs buffer, regardless of ~treemacs-follow-mode~ setting.                                                                                                |
+| treemacs-expand-after-init             | t                                                | When non-nil expand the first project after treemacs is first initialsed.                                                                                                                                                            |
 | treemacs-sorting                       | alphabetic-asc                                   | Indicates how treemacs will sort its files and directories. (Files will always be shown after directories.)                                                                                                                          |
 | treemacs-ignored-file-predicates       | (treemacs--std-ignore-file-predicate)            | List of predicates to test for files and directories ignored by Emacs. Ignored files will *never* be shown in the treemacs buffer.                                                                                                   |
 | treemacs-pre-file-insert-predicates    | nil                                              | List of predicates to test for files and directories not to be rendered. Unlike ~treemacs-ignored-file-predicates~ these predicates apply when files' git status information is available.                                           |
@@ -547,6 +553,7 @@ Treemacs offers the following configuration options (~describe-variable~ will us
 | treemacs-imenu-scope                   | 'everything                                      | Determines which items treemacs' imenu function will collect.                                                                                                                                                                        |
 | treemacs-window-background-color       | nil                                              | Background color for the treemacs window.                                                                                                                                                                                            |
 | treemacs-litter-directories            | ("/node_modules" "/.venv" "/.cask")              | List of directories affected by ~treemacs-cleanup-litter~.                                                                                                                                                                           |
+| treemacs-width-is-initially-locked     | t                                                | Indicates whether the treemacs windows starts with a locked width or not.                                                                                                                                                            |
 
 ** Faces
 Treemacs defines and uses the following faces:
@@ -852,6 +859,10 @@ Aside from this there are the following known incompatibilities:
    part of ~special-mode-hook~, since this is the mode ~treemacs-mode~ is derived from.
 
 * FAQ
+- I don't need multiple projects, can treemacs just always show me the current project I'm in?
+
+  Yes, see the section about [[*Navigation without Projects and Workspaces]].
+
 - How do I hide files I don't want to see?
 
    You need to define a predicate function and add it to ~treemacs-ignored-file-predicates~. This function accepts two
@@ -959,15 +970,19 @@ into their own module in ~treemacs-icons.el~).
 If you want to delve into the treemacs' code base, check out [[https://github.com/Alexander-Miller/treemacs/wiki][the wiki]] for some general pointers.
 
 * Dependencies
- * emacs >= 26.1
- * s.el
- * dash
- * cl-lib
- * ace-window
- * pfuture
- * ht
- * hydra
- * (optionally) evil
- * (optionally) projectile
- * (optionally) winum
- * (optionally) python(3)
+ - emacs >= 26.1
+ - s
+ - dash
+ - cl-lib
+ - ace-window
+ - pfuture
+ - ht
+ - cfrs
+ - hydra
+ - (optionally) evil
+ - (optionally) projectile
+ - (optionally) winum
+ - (optionally) magit
+ - (optionally) perspective/persp
+ - (optionally) all-the-icons
+ - (optionally) python(3)

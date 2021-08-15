@@ -1,30 +1,30 @@
 ;;; language-id.el --- Library to work with programming language identifiers -*- lexical-binding: t -*-
-;;
+
 ;; Author: Lassi Kortela <lassi@lassi.io>
 ;; URL: https://github.com/lassik/emacs-language-id
-;; Version: 0.13
+;; Version: 0.15.1
 ;; Package-Requires: ((emacs "24") (cl-lib "0.5"))
 ;; Keywords: languages util
 ;; SPDX-License-Identifier: ISC
-;;
+
 ;; This file is not part of GNU Emacs.
-;;
+
 ;;; Commentary:
-;;
+
 ;; language-id is a small, focused library that helps other Emacs
 ;; packages identify the programming languages and markup languages
 ;; used in Emacs buffers.  The main point is that it contains an
 ;; evolving table of language definitions that doesn't need to be
 ;; replicated in other packages.
-;;
+
 ;; Right now there is only one public function, `language-id-buffer'.
 ;; It looks at the major mode and other variables and returns the
 ;; language's GitHub Linguist identifier.  We can add support for
 ;; other kinds of identifiers if there is demand.
-;;
+
 ;; This library does not do any statistical text matching to guess the
 ;; language.
-;;
+
 ;;; Code:
 
 (defvar language-id--file-name-extension nil
@@ -46,6 +46,11 @@
 
     ;; scss-mode is derived from css-mode.
     ("SCSS" scss-mode)
+
+    ;; svelte-mode is derived from html-mode.
+    ("Svelte"
+     svelte-mode
+     (web-mode (web-mode-content-type "html") (web-mode-engine "svelte")))
 
     ;; terraform-mode is derived from hcl-mode.
     ("Terraform" terraform-mode)
@@ -88,6 +93,7 @@
 
     ("Assembly" asm-mode nasm-mode)
     ("ATS" ats-mode)
+    ("Awk" awk-mode)
     ("Bazel" bazel-mode)
     ("BibTeX" bibtex-mode)
     ("C" c-mode)

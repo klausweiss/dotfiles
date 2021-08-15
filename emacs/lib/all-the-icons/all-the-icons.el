@@ -170,7 +170,7 @@
     ("ex"           all-the-icons-alltheicon "elixir"         :face all-the-icons-lpurple :v-adjust -0.1 :height 0.9)
     ("exs"          all-the-icons-alltheicon "elixir"         :face all-the-icons-lred :v-adjust -0.1 :height 0.9)
     ("java"         all-the-icons-alltheicon "java"           :height 1.0  :face all-the-icons-purple)
-    ("go"           all-the-icons-alltheicon "go"             :height 1.0  :face all-the-icons-blue)
+    ("go"           all-the-icons-fileicon "go"               :height 1.0  :face all-the-icons-blue)
     ("jl"           all-the-icons-fileicon "julia"            :face all-the-icons-purple :v-adjust 0.0)
     ("matlab"       all-the-icons-fileicon "matlab"           :face all-the-icons-orange)
     ("nix"          all-the-icons-fileicon "nix"              :face all-the-icons-blue)
@@ -194,7 +194,6 @@
     ("r"            all-the-icons-fileicon "R"                :face all-the-icons-lblue)
     ("rd"           all-the-icons-fileicon "R"                :face all-the-icons-lblue)
     ("rdx"          all-the-icons-fileicon "R"                :face all-the-icons-lblue)
-    ("rs"           all-the-icons-fileicon "R"                :face all-the-icons-lblue)
     ("rsx"          all-the-icons-fileicon "R"                :face all-the-icons-lblue)
     ;; There seems to be a a bug with this font icon which does not
     ;; let you propertise it without it reverting to being a lower
