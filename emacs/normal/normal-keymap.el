@@ -64,19 +64,6 @@
 (autoload-all "../lib/jump-tree/jump-tree"
 	      #'jump-tree-visualize
 	      )
-(autoload-all "../lib/lsp-mode/lsp"
-	      #'lsp-rename
-	      #'lsp-execute-code-action
-	      #'lsp-format-buffer
-	      )
-(autoload-all "../lib/lsp-ivy"
-	      #'lsp-ivy-workspace-symbol
-	      )
-(autoload-all "../lib/lsp-ui/lsp-ui"
-	      #'lsp-ui-peek-find-references
-	      #'lsp-ui-peek-find-definitions
-	      #'lsp-ui-peek-find-implementations
-	      )
 (autoload-all "../lib/magit/magit"
 	      #'magit-status
 	      )
@@ -265,16 +252,6 @@
      map global-map)
     (append map (list menu-bar tool-bar))
     )
-  )
-
-(with-eval-after-load 'lsp-mode
-  (define-key lsp-mode-map (kbd "C-S-b") #'lsp-ui-peek-find-references)
-  (define-key lsp-mode-map normal-keymap-find-definition #'lsp-ui-peek-find-definitions)
-  (define-key lsp-mode-map (kbd "C-M-b") #'lsp-ui-peek-find-implementation)
-  (define-key lsp-mode-map (kbd "C-n") #'lsp-ivy-workspace-symbol)
-  (define-key lsp-mode-map (kbd "S-<f6>") #'lsp-rename)
-  (define-key lsp-mode-map (kbd "M-RET") #'lsp-execute-code-action)
-  (define-key lsp-mode-map (kbd "C-M-l") #'lsp-format-buffer)
   )
 
 (with-eval-after-load 'cc-mode

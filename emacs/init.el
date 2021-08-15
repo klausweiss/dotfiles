@@ -24,7 +24,6 @@
 (require 'normal-interface)
 (require 'normal-ivy)
 (require 'normal-languages)
-(require 'normal-lsp)
 (require 'normal-magit)
 (require 'normal-menu)
 (require 'normal-project-integration)
