@@ -94,6 +94,8 @@ setkey { ALT, SHIFT, "r",
 	 fun = awesome.restart  }
 setkey { ALT, SHIFT, "q",
 	 fun = run("rofi -show power-menu -modi power-menu:~/.dotfiles/rofi/rofi-power-menu/rofi-power-menu") }
+setkey { ALT, SHIFT, "j",
+	 fun = run("rofi -show vm-journal -modi vm-journal:~/.dotfiles/rofi/rofi-vm-journal/rofi-vm-journal") }
 -- keyboard action keys
 setkey { "Print",
 	 fun = run("flameshot gui") }
