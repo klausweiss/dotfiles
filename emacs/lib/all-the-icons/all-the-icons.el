@@ -88,12 +88,12 @@
 ;;; Code:
 (require 'cl-lib)
 
-(require 'data-alltheicons  "./data/data-alltheicons.el")
-(require 'data-faicons      "./data/data-faicons.el")
-(require 'data-fileicons    "./data/data-fileicons.el")
-(require 'data-octicons     "./data/data-octicons.el")
-(require 'data-weathericons "./data/data-weathericons.el")
-(require 'data-material     "./data/data-material.el")
+(require 'data-alltheicons  "./data/data-alltheicons")
+(require 'data-faicons      "./data/data-faicons")
+(require 'data-fileicons    "./data/data-fileicons")
+(require 'data-octicons     "./data/data-octicons")
+(require 'data-weathericons "./data/data-weathericons")
+(require 'data-material     "./data/data-material")
 
 (require 'all-the-icons-faces)
 
@@ -170,6 +170,8 @@
     ("ex"           all-the-icons-alltheicon "elixir"         :face all-the-icons-lpurple :v-adjust -0.1 :height 0.9)
     ("exs"          all-the-icons-alltheicon "elixir"         :face all-the-icons-lred :v-adjust -0.1 :height 0.9)
     ("java"         all-the-icons-alltheicon "java"           :height 1.0  :face all-the-icons-purple)
+    ("ebuild"       all-the-icons-fileicon "gentoo"           :face all-the-icons-cyan)
+    ("eclass"       all-the-icons-fileicon "gentoo"           :face all-the-icons-blue)
     ("go"           all-the-icons-fileicon "go"               :height 1.0  :face all-the-icons-blue)
     ("jl"           all-the-icons-fileicon "julia"            :face all-the-icons-purple :v-adjust 0.0)
     ("matlab"       all-the-icons-fileicon "matlab"           :face all-the-icons-orange)
@@ -337,6 +339,7 @@
     ("gif"          all-the-icons-octicon "file-media"        :v-adjust 0.0 :face all-the-icons-green)
     ("jpeg"         all-the-icons-octicon "file-media"        :v-adjust 0.0 :face all-the-icons-dblue)
     ("jpg"          all-the-icons-octicon "file-media"        :v-adjust 0.0 :face all-the-icons-dblue)
+    ("webp"         all-the-icons-octicon "file-media"        :v-adjust 0.0 :face all-the-icons-dblue)
     ;; Audio
     ("mp3"          all-the-icons-faicon "volume-up"          :face all-the-icons-dred)
     ("wav"          all-the-icons-faicon "volume-up"          :face all-the-icons-dred)

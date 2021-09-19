@@ -39,12 +39,14 @@
                (s-lines)
                (--first
                 (when (file-exists-p it)
-                  (->> (concat (shell-quote-argument it) " --version")
-                       (shell-command-to-string)
-                       (s-trim)
-                       (s-replace "Python " "")
-                       (s-left 1)
-                       (version<= "3")))))
+                  (condition-case _
+                      (->> (concat (shell-quote-argument it) " --version")
+                           (shell-command-to-string)
+                           (s-trim)
+                           (s-replace "Python " "")
+                           (s-left 1)
+                           (version<= "3"))
+                    (error nil)))))
         (error nil)))))
 
 (cl-macrolet
@@ -164,7 +166,9 @@ used when there is no windowing system available."
   :group 'treemacs)
 
 (defcustom treemacs-show-hidden-files t
-  "Dotfiles will be shown if this is set to t and be hidden otherwise."
+  "Dotfiles will be shown if this is set to t and be hidden otherwise.
+
+Can be toggled by `treemacs-toggle-show-dotfiles'."
   :type 'boolean
   :group 'treemacs)
 
@@ -334,7 +338,9 @@ Mac-derived operating systems (when `system-type' is `darwin')."
 The difference between this and `treemacs-ignored-file-predicates' is that the
 functions in this list will be called on files just before they would be
 rendered, when the files' git status information is now available.  This for
-example allows to make files ignored by git invisible.
+example allows to make files ignored by git invisible (however this particular
+use-case is already covered by `treemacs-show-gitignored-files').
+
 The functions in this list are therefore expected to have a different signature:
 They must take two arguments - a file's absolute path and a hash table that maps
 files to their git status.  The files' paths are the table's keys, its values
@@ -350,10 +356,7 @@ map map as follows: (the pattern is derived from 'git status --porcelain')
 
 Otherwise the behaviour is the same as `treemacs-ignored-file-predicates', in
 that any one function returning t for a file means that this file will not
-be rendered.
-
-Since removing files ignored by git is the most likely use-case treemacs offers
-`treemacs-is-file-git-ignored?' to quickly make this possible."
+be rendered."
   :type 'list
   :group 'treemacs)
 
@@ -774,6 +777,24 @@ Can be set either to `treemacs-header-buttons-format' or any one of its
 constituent parts, or any other value acceptable for `header-line-format'."
   :type 'string
   :group 'treemacs-window)
+
+(defcustom treemacs-text-scale nil
+  "Optional scale for the text (not the icons) in the treemacs window.
+If set the value will be passed to `text-scale-increase'.  Both positive and
+negative values are possible."
+  :type 'integer
+  :group 'treemacs-window)
+
+(defcustom treemacs-select-when-already-in-treemacs 'move-back
+  "How `treemacs-select-window' behaves when treemacs is already selected.
+
+Possible values are:
+ - `stay' - remain in the treemacs windows, effectively doing nothing
+ - `move-back' - move point back to the most recently used window (as selected
+    by `get-mru-window')"
+  :type '(choice (const stay)
+                 (const move-back))
+  :group 'treemacs)
 
 (defcustom treemacs-position 'left
   "Position of treemacs buffer.

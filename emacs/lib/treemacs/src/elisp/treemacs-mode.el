@@ -121,6 +121,7 @@ Will be set by `treemacs--post-command'.")
 (defvar treemacs-toggle-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "h")        'treemacs-toggle-show-dotfiles)
+    (define-key map (kbd "i")        'treemacs-hide-gitignored-files-mode)
     (define-key map (kbd "w")        'treemacs-toggle-fixed-width)
     (define-key map (kbd "v")        'treemacs-fringe-indicator-mode)
     (define-key map (kbd "g")        'treemacs-git-mode)
@@ -302,6 +303,9 @@ Will simply return `treemacs--eldoc-msg'."
     (face-remap-add-relative 'default :background (car treemacs-window-background-color))
     (face-remap-add-relative 'fringe  :background (car treemacs-window-background-color))
     (face-remap-add-relative 'hl-line :background (cdr treemacs-window-background-color)))
+
+  (when treemacs-text-scale
+    (text-scale-increase treemacs-text-scale))
 
   (add-hook 'window-configuration-change-hook #'treemacs--on-window-config-change)
   (add-hook 'kill-buffer-hook #'treemacs--on-buffer-kill nil t)

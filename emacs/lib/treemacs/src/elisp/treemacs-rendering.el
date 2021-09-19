@@ -336,7 +336,7 @@ DIRS: List of Collapse Paths.  Each Collapse Path is a list of
               (-let [beg (point)]
                 (insert label-to-add)
                 (add-text-properties beg (point) props)
-                (unless (memq treemacs-git-mode '(deferred extended))
+                (unless (memq treemacs--git-mode '(deferred extended))
                   (add-text-properties
                    beg (point)
                    '(face treemacs-directory-collapsed-face)))))))))))
@@ -370,15 +370,11 @@ set to PARENT."
               (dirs (car dirs-and-files))
               (files (cadr dirs-and-files))
               (parent-node (treemacs-find-in-dom ,root))
-              (dir-dom-nodes (--map (treemacs-dom-node->create! :parent parent-node :key it) dirs))
-              (file-dom-nodes (--map (treemacs-dom-node->create! :parent parent-node :key it) files))
+              (dir-dom-nodes)
+              (file-dom-nodes)
               (git-info)
               (file-strings)
               (dir-strings))
-         (setf (treemacs-dom-node->children parent-node)
-               (nconc dir-dom-nodes file-dom-nodes (treemacs-dom-node->children parent-node)))
-         (dolist (it (treemacs-dom-node->children parent-node))
-           (treemacs-dom-node->insert-into-dom! it))
          (setq dir-strings
                (treemacs--create-buttons
                 :nodes dirs
@@ -407,7 +403,7 @@ set to PARENT."
          ;; based on previous invocations
          ;; if git-mode is disabled there is nothing to do - in this case the git status parse function will always
          ;; produce an empty hash table
-         (pcase treemacs-git-mode
+         (pcase treemacs--git-mode
            ((or 'simple 'extended)
             (setf git-info (treemacs--get-or-parse-git-result ,git-future))
             (ht-set! treemacs--git-cache ,root git-info))
@@ -417,26 +413,43 @@ set to PARENT."
            (_
             (setq git-info (ht))))
 
-         (when treemacs-pre-file-insert-predicates
-           (-let [result nil]
-             (while file-strings
-               (let* ((prefix (car file-strings))
-                      (icon (cadr file-strings))
-                      (filename (caddr file-strings))
-                      (filepath (concat ,root "/" filename)))
-                 (unless (--any? (funcall it filepath git-info) treemacs-pre-file-insert-predicates)
-                   (setq result (cons filename (cons icon (cons prefix result))))))
-               (setq file-strings (cdddr file-strings)))
-             (setq file-strings (nreverse result)))
-           (-let [result nil]
-             (while dir-strings
-               (let* ((prefix (car dir-strings))
-                      (dirname (cadr dir-strings))
-                      (dirpath (concat ,root "/" dirname)))
-                 (unless (--any? (funcall it dirpath git-info) treemacs-pre-file-insert-predicates)
-                   (setq result (cons dirname (cons prefix result)))))
-               (setq dir-strings (cddr dir-strings)))
-             (setq dir-strings (nreverse result))))
+         (if treemacs-pre-file-insert-predicates
+             (progn
+               (-let [result nil]
+                 (while file-strings
+                   (let* ((prefix (car file-strings))
+                          (icon (cadr file-strings))
+                          (filename (caddr file-strings))
+                          (filepath (concat ,root "/" filename)))
+                     (unless (--any? (funcall it filepath git-info) treemacs-pre-file-insert-predicates)
+                       (setq result (cons filename (cons icon (cons prefix result))))
+                       (push (treemacs-dom-node->create! :parent parent-node :key filepath)
+                             file-dom-nodes)))
+                   (setq file-strings (cdddr file-strings)))
+                 (setq file-strings (nreverse result)))
+               (-let [result nil]
+                 (while dir-strings
+                   (let* ((prefix (car dir-strings))
+                          (dirname (cadr dir-strings))
+                          (dirpath (concat ,root "/" dirname)))
+                     (unless (--any? (funcall it dirpath git-info) treemacs-pre-file-insert-predicates)
+                       (setq result (cons dirname (cons prefix result)))
+                       (push (treemacs-dom-node->create! :parent parent-node :key dirpath)
+                             dir-dom-nodes)))
+                   (setq dir-strings (cddr dir-strings)))
+                 (setq dir-strings (nreverse result))))
+           (setf
+            file-dom-nodes
+            (--map (treemacs-dom-node->create! :parent parent-node :key it) files)
+            dir-dom-nodes
+            (--map (treemacs-dom-node->create! :parent parent-node :key it) dirs)))
+
+         ;; do nodes can only be created *after* any potential fitering has taken place,
+         ;; otherwise we end up with dom entries for files that are not rendered
+         (setf (treemacs-dom-node->children parent-node)
+               (nconc dir-dom-nodes file-dom-nodes (treemacs-dom-node->children parent-node)))
+         (dolist (it (treemacs-dom-node->children parent-node))
+           (treemacs-dom-node->insert-into-dom! it))
 
          (treemacs--inplace-map-when-unrolled dir-strings 2
            (put-text-property
@@ -1026,7 +1039,7 @@ parents' git status can be updated."
                (treemacs-do-delete-single-node path project))
               ('changed
                (treemacs-do-update-node path)
-               (when (memq treemacs-git-mode '(extended deferred))
+               (when (memq treemacs--git-mode '(extended deferred))
                  (treemacs-update-single-file-git-state path)))
               ('created
                (treemacs-do-insert-single-node path (treemacs-dom-node->key node)))

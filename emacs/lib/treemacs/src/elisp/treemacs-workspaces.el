@@ -60,6 +60,9 @@
   treemacs--forget-last-highlight
   treemacs-pulse-on-failure)
 
+(treemacs-import-functions-from "treemacs-async"
+  treemacs--prefetch-gitignore-cache)
+
 (cl-defstruct (treemacs-project
                (:conc-name treemacs-project->)
                (:constructor treemacs-project->create!))
@@ -512,6 +515,8 @@ NAME: String"
            (when treemacs-expand-added-projects
              (treemacs--expand-root-node (treemacs-project->position project))))))
        (treemacs--persist)
+       (when (with-no-warnings treemacs-hide-gitignored-files-mode)
+         (treemacs--prefetch-gitignore-cache path))
        (run-hook-with-args 'treemacs-create-project-functions project)
        `(success ,project)))))
 
@@ -632,6 +637,8 @@ Return values may be as follows:
      (setf (treemacs-current-workspace) new-workspace)
      (treemacs--invalidate-buffer-project-cache)
      (treemacs--rerender-after-workspace-change)
+     (when (with-no-warnings treemacs-hide-gitignored-files-mode)
+       (treemacs--prefetch-gitignore-cache 'all))
      (run-hooks 'treemacs-switch-workspace-hook)
      (treemacs-return
       `(success ,new-workspace)))))
@@ -718,10 +725,11 @@ PROJECT: Project Struct"
        (-let [project-btn (treemacs-project->position project-in-buffer)]
          (when (eq 'root-node-open (treemacs-button-get project-btn :state))
            (push project-in-buffer expanded-projects-in-buffer)
+           (goto-char project-btn)
            (treemacs--collapse-root-node project-btn))))
      ;; figure out which ones have been deleted and and remove them from the dom
      (dolist (project-in-buffer projects-in-buffer)
-       (unless (treemacs-is-path (treemacs-project->path project-in-buffer) :in-workspace current-workspace)
+       (unless (member project-in-buffer projects-in-workspace)
          (treemacs-on-collapse (treemacs-project->path project-in-buffer) :purge)
          (ht-remove! treemacs-dom (treemacs-project->path project-in-buffer))
          (setf projects-in-buffer (delete project-in-buffer projects-in-buffer))))
