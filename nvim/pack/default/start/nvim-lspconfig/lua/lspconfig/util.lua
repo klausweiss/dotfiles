@@ -19,6 +19,27 @@ M.default_config = {
 -- global on_setup hook
 M.on_setup = nil
 
+-- add compatibility shim for breaking signature change
+-- from https://github.com/mfussenegger/nvim-lsp-compl/
+-- TODO: remove after Neovim release
+function M.compat_handler(handler)
+  return function(...)
+    local config_or_client_id = select(4, ...)
+    local is_new = type(config_or_client_id) ~= 'number'
+    if is_new then
+      return handler(...)
+    else
+      local err = select(1, ...)
+      local method = select(2, ...)
+      local result = select(3, ...)
+      local client_id = select(4, ...)
+      local bufnr = select(5, ...)
+      local config = select(6, ...)
+      return handler(err, result, { method = method, client_id = client_id, bufnr = bufnr }, config)
+    end
+  end
+end
+
 function M.validate_bufnr(bufnr)
   validate {
     bufnr = { bufnr, 'n' },
@@ -230,13 +251,10 @@ function M.server_per_root_dir_manager(_make_config)
       if new_config.enabled == false then
         return
       end
-      --TODO:mjlbach -- these prints only show up with nvim_error_writeln()
       if not new_config.cmd then
         print(
           string.format(
-            'Error, cmd not defined for [%q].'
-              .. 'You must manually define a cmd for the default config for this server.'
-              .. 'See server documentation.',
+            'Error: cmd not defined for %q. You must manually set cmd in the setup{} call according to CONFIG.md.',
             new_config.name
           )
         )
@@ -324,5 +342,35 @@ function M.find_package_json_ancestor(startpath)
   end)
 end
 
+function M.get_active_clients_list_by_ft(filetype)
+  local clients = vim.lsp.get_active_clients()
+  local clients_list = {}
+  for _, client in pairs(clients) do
+    local filetypes = client.config.filetypes or {}
+    for _, ft in pairs(filetypes) do
+      if ft == filetype then
+        table.insert(clients_list, client.name)
+      end
+    end
+  end
+  return clients_list
+end
+
+function M.get_other_matching_providers(filetype)
+  local configs = require 'lspconfig/configs'
+  local active_clients_list = M.get_active_clients_list_by_ft(filetype)
+  local other_matching_configs = {}
+  for _, config in pairs(configs) do
+    if not vim.tbl_contains(active_clients_list, config.name) then
+      local filetypes = config.filetypes or {}
+      for _, ft in pairs(filetypes) do
+        if ft == filetype then
+          table.insert(other_matching_configs, config)
+        end
+      end
+    end
+  end
+  return other_matching_configs
+end
+
 return M
--- vim:et ts=2 sw=2

@@ -9,10 +9,11 @@ Provide an API that is compatible with the vim `popup_*` APIs. After
 stablization and any required features are merged into Neovim, we can upstream
 this and expose the API in vimL to create better compatibility.
 
+## Notices
+- **2021-08-19:** we now follow Vim's default to `noautocmd` on popup creation. This can be overriden with `vim_options.noautocmd=false`
+
 ## List of Neovim Features Required:
 
-- [ ] Add Z-index for floating windows
-    - [ ] When complete, we can add `zindex` parameter
 - [ ] Key handlers (used for `popup_filter`)
 - [ ] scrollbar for floating windows
     - [ ] scrollbar
@@ -66,6 +67,7 @@ Suported Features:
     - [x] time
     - [x] title
     - [x] wrap
+    - [x] zindex
 
 ## All known unimplemented vim features at the moment
 

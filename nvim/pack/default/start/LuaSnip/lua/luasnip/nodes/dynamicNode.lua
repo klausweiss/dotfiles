@@ -2,6 +2,7 @@ local DynamicNode = require("luasnip.nodes.node").Node:new()
 local util = require("luasnip.util.util")
 local Node = require("luasnip.nodes.node").Node
 local types = require("luasnip.util.types")
+local events = require("luasnip.util.events")
 local conf = require("luasnip.config")
 
 local function D(pos, fn, args, ...)
@@ -25,45 +26,90 @@ function DynamicNode:get_args()
 	return args
 end
 
+function DynamicNode:get_args_static()
+	local args = {}
+	for i, node in ipairs(self.args) do
+		args[i] = util.dedent(node:get_static_text(), self.parent.indentstr)
+	end
+	args[#args + 1] = self.parent
+	return args
+end
+
 function DynamicNode:input_enter()
 	self.active = true
 	self.mark:update_opts(self.parent.ext_opts[self.type].active)
+
+	self:event(events.enter)
 end
 
 function DynamicNode:input_leave()
+	self:event(events.leave)
+
 	self:update_dependents()
 	self.active = false
 	self.mark:update_opts(self.parent.ext_opts[self.type].passive)
 end
 
-function DynamicNode:has_static_text()
-	return false
-end
-
 function DynamicNode:get_static_text()
-	return self.snip:get_static_text()
+	-- cache static_text, no need to recalculate function.
+	if not self.static_text then
+		local tmp = self.fn(self:get_args_static(), nil, unpack(self.user_args))
+		self.static_text = tmp:get_static_text()
+	end
+	return self.static_text
 end
 
+local errorstring = [[
+Error while evaluating dynamicNode@%d for snippet '%s':
+%s
+ 
+:h luasnip-docstring for more info]]
+function DynamicNode:get_docstring()
+	-- cache static_text, no need to recalculate function.
+	if not self.docstring then
+		local success, tmp = pcall(
+			self.fn,
+			self:get_args_static(),
+			nil,
+			unpack(self.user_args)
+		)
+		if not success then
+			local snip = util.find_outer_snippet(self)
+			print(errorstring:format(self.indx, snip.name, tmp))
+			self.docstring = { "" }
+		else
+			-- set pos for util.string_wrap().
+			tmp.pos = self.pos
+			self.docstring = tmp:get_docstring()
+		end
+	end
+	return self.docstring
+end
+
+-- DynamicNode's don't have static text, nop these.
 function DynamicNode:put_initial(_) end
 
-function DynamicNode:jump_into(dir)
+function DynamicNode:indent(_) end
+
+function DynamicNode:expand_tabs(_) end
+
+function DynamicNode:jump_into(dir, no_move)
 	if self.active then
 		self:input_leave()
 		if dir == 1 then
-			self.next:jump_into(dir)
+			return self.next:jump_into(dir, no_move)
 		else
-			self.prev:jump_into(dir)
+			return self.prev:jump_into(dir, no_move)
 		end
 	else
 		self:input_enter()
-		self.snip:jump_into(dir)
+		return self.snip:jump_into(dir, no_move)
 	end
 end
 
 function DynamicNode:update()
 	local tmp
 	if self.snip then
-		self.snip:input_leave()
 		-- build new snippet before exiting, markers may be needed for construncting.
 		tmp = self.fn(
 			self:get_args(),
@@ -93,15 +139,22 @@ function DynamicNode:update()
 			vim.deepcopy(self.parent.ext_opts),
 			conf.config.ext_prio_increase
 		)
+	tmp.snippet = self.parent.snippet
 	tmp.mark = self.mark:copy_pos_gravs(
 		vim.deepcopy(self.parent.ext_opts[types.snippetNode].passive)
 	)
 	tmp.dependents = self.dependents
 
+	tmp:populate_argnodes()
+	tmp:subsnip_init()
+
+	if vim.o.expandtab then
+		tmp:expand_tabs(util.tab_width())
+	end
 	tmp:indent(self.parent.indentstr)
 
 	self.parent:enter_node(self.indx)
-	tmp:put_initial(util.get_ext_position_begin(self.mark.id))
+	tmp:put_initial(self.mark:pos_begin_raw())
 	-- Update, tbh no idea how that could come in handy, but should be done.
 	tmp:update()
 
@@ -121,6 +174,7 @@ function DynamicNode:exit()
 	self.mark:clear()
 	-- snip should exist if exit is called.
 	self.snip:exit()
+	self.active = false
 end
 
 return {

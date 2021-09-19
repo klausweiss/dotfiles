@@ -10,8 +10,8 @@ configs.perlpls = {
       },
     },
     filetypes = { 'perl' },
-    root_dir = function(filename)
-      return util.root_pattern '.git'(filename) or util.path.dirname(filename)
+    root_dir = function(fname)
+      return util.root_pattern '.git'(fname) or util.path.dirname(fname)
     end,
   },
   docs = {
@@ -29,4 +29,3 @@ To use the language server, ensure that you have PLS installed and that it is in
     },
   },
 }
--- vim:et ts=2 sw=2

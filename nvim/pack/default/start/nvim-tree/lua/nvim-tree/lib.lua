@@ -25,6 +25,7 @@ M.Tree = {
 }
 
 function M.init(with_open, with_reload)
+  M.Tree.entries = {}
   if not M.Tree.cwd then
     M.Tree.cwd = luv.cwd()
   end
@@ -84,13 +85,14 @@ local function get_line_from_node(node, find_parent)
   local line = 2
   local function iter(entries, recursive)
     for _, entry in ipairs(entries) do
-      if node_path:match('^'..entry.match_path..'$') ~= nil then
+      local n = M.get_last_group_node(entry)
+      if node_path:match('^'..n.match_path..'$') ~= nil then
         return line, entry
       end
 
       line = line + 1
-      if entry.open == true and recursive then
-        local _, child = iter(entry.entries, recursive)
+      if n.open == true and recursive then
+        local _, child = iter(n.entries, recursive)
         if child ~= nil then return line, child end
       end
     end
@@ -99,6 +101,10 @@ local function get_line_from_node(node, find_parent)
 end
 
 function M.get_node_at_cursor()
+  local winnr = view.get_winnr()
+  if not winnr then
+    return
+  end
   local cursor = api.nvim_win_get_cursor(view.get_winnr())
   local line = cursor[1]
   if view.is_help_ui() then
@@ -169,8 +175,8 @@ end
 -- so only one happens every second at most
 local refreshing = false
 
-function M.refresh_tree()
-  if refreshing or vim.v.exiting ~= vim.NIL then return end
+function M.refresh_tree(disable_clock)
+  if (not disable_clock and refreshing) or vim.v.exiting ~= vim.NIL then return end
   refreshing = true
 
   refresh_nodes(M.Tree)
@@ -194,7 +200,9 @@ function M.refresh_tree()
     M.Tree.loaded = false
   end
 
-  vim.defer_fn(function() refreshing = false end, 1000)
+  if not disable_clock then
+    vim.defer_fn(function() refreshing = false end, vim.g.nvim_tree_refresh_wait or 1000)
+  end
 end
 
 function M.set_index_and_redraw(fname)
@@ -446,7 +454,6 @@ function M.change_dir(name)
 
   vim.cmd('lcd '..foldername)
   M.Tree.cwd = foldername
-  M.Tree.entries = {}
   M.init(false, true)
 end
 
@@ -464,9 +471,9 @@ end
 function M.open()
   M.set_target_win()
 
+  local cwd = vim.fn.getcwd()
   view.open()
 
-  local cwd = vim.fn.getcwd()
   local respect_buf_cwd = vim.g.nvim_tree_respect_buf_cwd or 0
   if M.Tree.loaded or (respect_buf_cwd == 1 and cwd ~= M.Tree.cwd) then
     M.change_dir(cwd)

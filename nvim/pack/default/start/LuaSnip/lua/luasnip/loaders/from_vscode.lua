@@ -1,5 +1,7 @@
 local ls = require("luasnip")
 local uv = vim.loop
+local caches = require("luasnip.loaders._caches")
+local util = require("luasnip.util.util")
 
 local function json_decode(data)
 	local status, result = pcall(vim.fn.json_decode, data)
@@ -61,9 +63,13 @@ local function load_snippet_file(langs, snippet_set_path)
 		true,
 		vim.schedule_wrap(function(data)
 			local snippet_set_data = json_decode(data)
+			if snippet_set_data == nil then
+				return
+			end
+
 			for _, lang in pairs(langs) do
 				local lang_snips = ls.snippets[lang] or {}
-
+				local auto_lang_snips = ls.autosnippets[lang] or {}
 				for name, parts in pairs(snippet_set_data) do
 					local body = type(parts.body) == "string" and parts.body
 						or table.concat(parts.body, "\n")
@@ -75,22 +81,43 @@ local function load_snippet_file(langs, snippet_set_path)
 								and parts.prefix
 							or { parts.prefix }
 						for _, prefix in ipairs(prefixes) do
-							table.insert(
-								lang_snips,
-								ls.parser.parse_snippet({
-									trig = prefix,
-									name = name,
-									dscr = parts.description or name,
-									wordTrig = true,
-								}, body)
-							)
+							local ls_conf = parts.luasnip or {}
+
+							local snip = ls.parser.parse_snippet({
+								trig = prefix,
+								name = name,
+								dscr = parts.description or name,
+								wordTrig = true,
+							}, body)
+
+							if ls_conf.autotrigger then
+								table.insert(auto_lang_snips, snip)
+							else
+								table.insert(lang_snips, snip)
+							end
 						end
 					end)
 				end
 				ls.snippets[lang] = lang_snips
+				ls.autosnippets[lang] = auto_lang_snips
 			end
 		end)
 	)
+end
+
+local function filter_list(list, exclude, include)
+	local out = {}
+	for _, entry in ipairs(list) do
+		if exclude[entry] then
+			goto continue
+		end
+		-- If include is nil then it's true
+		if include == nil or include[entry] then
+			table.insert(out, entry)
+		end
+		::continue::
+	end
+	return out
 end
 
 local function load_snippet_folder(root, opts)
@@ -118,7 +145,7 @@ local function load_snippet_folder(root, opts)
 				end
 				langs = filter_list(langs, opts.exclude, opts.include)
 
-				if #langs then
+				if #langs ~= 0 then
 					load_snippet_file(
 						langs,
 						path_join(root, snippet_entry.path)
@@ -129,22 +156,7 @@ local function load_snippet_folder(root, opts)
 	)
 end
 
-function filter_list(list, exclude, include)
-	local out = {}
-	for _, entry in ipairs(list) do
-		if exclude[entry] then
-			goto continue
-		end
-		-- If include is nil then it's true
-		if include == nil or include[entry] then
-			table.insert(out, entry)
-		end
-		::continue::
-	end
-	return out
-end
-
-function list_to_set(list)
+local function list_to_set(list)
 	if not list then
 		return list
 	end
@@ -177,7 +189,7 @@ end
 
 MYCONFIG_ROOT = MYCONFIG_ROOT:gsub("/[^/]+$", "")
 
-function expand_path(path)
+local function expand_path(path)
 	local expanded = path:gsub("^~", vim.env.HOME):gsub("^[.]", MYCONFIG_ROOT)
 	return uv.fs_realpath(expanded)
 end
@@ -192,13 +204,13 @@ function M.load(opts)
 	opts.exclude = list_to_set(opts.exclude) or {}
 
 	-- list of paths to crawl for loading (could be a table or a comma-separated-list)
-	if type(opts.paths) ~= "table" and opts.paths ~= nil then
-		opts.paths = vim.split(opts.paths, ",")
-		opts.paths = vim.tbl_map(expand_path, opts.paths) -- Expand before deduping, fake paths will become nil
-	else
+	if not opts.paths then
 		opts.paths = get_snippets_rtp()
+	elseif type(opts.paths) == "string" then
+		opts.paths = vim.split(opts.paths, ",")
 	end
 
+	opts.paths = vim.tbl_map(expand_path, opts.paths) -- Expand before deduping, fake paths will become nil
 	opts.paths = vim.tbl_keys(list_to_set(opts.paths)) -- Remove doppelgänger paths and ditch nil ones
 
 	for _, path in ipairs(opts.paths) do
@@ -206,14 +218,12 @@ function M.load(opts)
 	end
 end
 
-local lazy_load_paths = {}
-local lazy_loaded_ft = {}
-
 function M._luasnip_vscode_lazy_load()
-	for _, ft in ipairs({ vim.bo.filetype, "all" }) do
-		if not lazy_loaded_ft[ft] then
-			lazy_loaded_ft[ft] = true
-			M.load({ paths = lazy_load_paths, include = { ft } })
+	local fts = util.get_snippet_filetypes(vim.bo.filetype)
+	for _, ft in ipairs(fts) do
+		if not caches.lazy_loaded_ft[ft] then
+			caches.lazy_loaded_ft[ft] = true
+			M.load({ paths = caches.lazy_load_paths, include = { ft } })
 		end
 	end
 end
@@ -222,19 +232,20 @@ function M.lazy_load(opts)
 	opts = opts or {}
 
 	-- We have to do this here too, because we have to store them in lozy_load_paths
-	if type(opts.paths) ~= "table" and opts.paths ~= nil then
-		opts.paths = vim.split(opts.paths, ",")
-	else
+	if not opts.paths then
 		opts.paths = get_snippets_rtp()
+	elseif type(opts.paths) == "string" then
+		opts.paths = vim.split(opts.paths, ",")
 	end
-	vim.list_extend(lazy_load_paths, opts.paths)
+	vim.list_extend(caches.lazy_load_paths, opts.paths)
 
-	lazy_load_paths = vim.tbl_keys(list_to_set(lazy_load_paths)) -- Remove doppelgänger paths and ditch nil ones
+	caches.lazy_load_paths = vim.tbl_keys(list_to_set(caches.lazy_load_paths)) -- Remove doppelgänger paths and ditch nil ones
 
 	vim.cmd([[
 		augroup _luasnip_vscode_lazy_load
 		autocmd!
-		au BufEnter * lua require('luasnip/loaders/from_vscode')._luasnip_vscode_lazy_load()
+		au BufEnter * lua require('luasnip.loaders.from_vscode')._luasnip_vscode_lazy_load()
+    au User LuasnipCleanup lua require('luasnip.loaders._caches').clean()
 		augroup END
 	]])
 end

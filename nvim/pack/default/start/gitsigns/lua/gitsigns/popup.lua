@@ -15,6 +15,26 @@ local function bufnr_calc_width(buf, lines)
    end)
 end
 
+
+local function expand_height(win_id, nlines)
+   local newheight = 0
+   for _ = 0, 50 do
+      local winheight = api.nvim_win_get_height(win_id)
+      if newheight > winheight then
+
+         break
+      end
+      local wd = api.nvim_win_call(win_id, function()
+         return vim.fn.line('w$')
+      end)
+      if wd >= nlines then
+         break
+      end
+      newheight = winheight + nlines - wd
+      api.nvim_win_set_height(win_id, newheight)
+   end
+end
+
 function popup.create(lines, opts)
    local ts = api.nvim_buf_get_option(0, 'tabstop')
    local bufnr = api.nvim_create_buf(false, true)
@@ -37,16 +57,32 @@ function popup.create(lines, opts)
 
    local win_id = api.nvim_open_win(bufnr, false, opts1)
 
+   if not opts.height then
+      expand_height(win_id, #lines)
+   end
+
    if opts1.style == 'minimal' then
 
 
       api.nvim_win_set_option(win_id, 'signcolumn', 'no')
    end
 
-   vim.cmd("autocmd CursorMoved,CursorMovedI,BufLeave <buffer> ++once lua pcall(vim.api.nvim_win_close, " ..
-   win_id .. ", true)")
+
+
+   vim.cmd("augroup GitsignsPopup" .. win_id)
+   vim.cmd("autocmd CursorMoved,CursorMovedI * " ..
+   ("lua package.loaded['gitsigns.popup'].close(%d)"):format(win_id))
+   vim.cmd("augroup END")
 
    return win_id, bufnr
+end
+
+function popup.close(win_id)
+   if api.nvim_get_current_win() ~= win_id then
+
+      vim.cmd("silent! augroup! GitsignsPopup" .. win_id)
+      pcall(api.nvim_win_close, win_id, true)
+   end
 end
 
 return popup

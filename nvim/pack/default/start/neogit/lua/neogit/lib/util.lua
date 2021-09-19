@@ -1,4 +1,4 @@
-local a = require 'plenary.async_lib'
+local a = require 'plenary.async'
 
 local function map(tbl, f)
   local t = {}
@@ -6,6 +6,10 @@ local function map(tbl, f)
     t[k] = f(v)
   end
   return t
+end
+
+local function trim(s)
+  return (string.gsub(s, "^%s*(.-)%s*$", "%1"))
 end
 
 local function deepcopy(o)
@@ -55,19 +59,6 @@ local function print_tbl(tbl)
   end
 end
 
-local function tbl_longest_str(tbl)
-  local len = 0
-
-  for _,str in pairs(tbl) do
-    local str_len = #str
-    if str_len > len then
-      len = str_len
-    end
-  end
-
-  return len
-end
-
 local function get_keymaps(mode, startswith)
   local maps = vim.api.nvim_get_keymap(mode)
   if startswith then
@@ -89,12 +80,12 @@ local function time(name, f)
   return res
 end
 
-local time_async = a.async(function(name, f)
+local function time_async(name, f)
   local before = os.clock()
-  local res = a.await(f())
+  local res = a.run(f())
   print(name .. " took " .. os.clock() - before .. "ms")
   return res
-end)
+end
 
 local function str_right_pad(str, len, sep)
   return str .. sep:rep(len - #str)
@@ -159,7 +150,6 @@ return {
   slice = slice,
   map = map,
   range = range,
-  tbl_longest_str = tbl_longest_str,
   filter = filter,
   str_right_pad = str_right_pad,
   str_count = str_count,
@@ -169,6 +159,7 @@ return {
   intersperse = intersperse,
   split_lines = split_lines,
   deepcopy = deepcopy,
+  trim = trim,
   parse_command_args = parse_command_args
 }
 

@@ -2,7 +2,7 @@ local vim = vim
 
 local M = {}
 
-local defaults = {
+M.defaults = {
     highlight_hovered_item = true,
     show_guides = true,
     position = 'right',
@@ -16,8 +16,10 @@ local defaults = {
         goto_location = "<Cr>",
         focus_location = "o",
         hover_symbol = "<C-space>",
+        toggle_preview = "K",
         rename_symbol = "r",
-        code_actions = "a"
+        code_actions = "a",
+        show_help = "?"
     },
     lsp_blacklist = {},
     symbol_blacklist = {},
@@ -92,8 +94,14 @@ function M.is_client_blacklisted(client_id)
     return has_value(M.options.lsp_blacklist, client.name)
 end
 
+function M.show_help()
+    print "Current keymaps:"
+    print(vim.inspect(M.options.keymaps))
+end
+
 function M.setup(options)
-    M.options = vim.tbl_deep_extend("force", {}, defaults, options or {})
+    vim.g.symbols_outline_loaded = 1
+    M.options = vim.tbl_deep_extend("force", {}, M.defaults, options or {})
 end
 
 return M

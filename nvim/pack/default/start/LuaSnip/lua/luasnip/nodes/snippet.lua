@@ -1,10 +1,14 @@
 local node_mod = require("luasnip.nodes.node")
 local iNode = require("luasnip.nodes.insertNode")
-local t = require("luasnip.nodes.textNode").T
+local tNode = require("luasnip.nodes.textNode")
 local util = require("luasnip.util.util")
 local types = require("luasnip.util.types")
+local events = require("luasnip.util.events")
 local mark = require("luasnip.util.mark").mark
+local Environ = require("luasnip.util.environ")
 local conf = require("luasnip.config")
+local session = require("luasnip.session")
+local pattern_tokenizer = require("luasnip.util.pattern_tokenizer")
 
 Luasnip_ns_id = vim.api.nvim_create_namespace("Luasnip")
 
@@ -48,6 +52,12 @@ function Snippet:init_nodes()
 				insert_nodes[node.pos] = node
 			end
 		end
+
+		local _update_dependents = node.update_dependents
+		node.update_dependents = function(node)
+			_update_dependents(node)
+			node.parent:update_dependents()
+		end
 	end
 
 	if insert_nodes[1] then
@@ -66,6 +76,7 @@ function Snippet:init_nodes()
 	end
 
 	self.insert_nodes = insert_nodes
+	self:populate_argnodes()
 end
 
 local function wrap_nodes(nodes)
@@ -78,33 +89,42 @@ local function wrap_nodes(nodes)
 	end
 end
 
-local function S(context, nodes, condition, ...)
-	if not condition then
-		condition = function()
-			return true
-		end
-	end
+local function init_opts(opts)
+	opts = opts or {}
 
+	opts.callbacks = opts.callbacks or {}
+	-- return empty table for non-specified callbacks.
+	setmetatable(opts.callbacks, {
+		__index = function(table, key)
+			rawset(table, key, {})
+			return {}
+		end,
+	})
+	opts.condition = opts.condition or function()
+		return true
+	end
+	return opts
+end
+
+local function S(context, nodes, opts)
 	if type(context) == "string" then
 		context = { trig = context }
 	end
 
 	-- context.dscr could be nil, string or table.
 	context.dscr = util.wrap_value(context.dscr or context.trig)
+	local dscr = util.to_line_table(context.dscr)
 
-	-- split entries at \n.
-	local dscr = {}
-	for _, str in ipairs(context.dscr) do
-		local split = vim.split(str, "\n", true)
-		for i = 1, #split do
-			dscr[#dscr + 1] = split[i]
-		end
+	if context.docstring then
+		context.docstring = util.to_line_table(context.docstring)
 	end
 
 	-- default: true.
 	if context.wordTrig == nil then
 		context.wordTrig = true
 	end
+
+	opts = init_opts(opts)
 
 	nodes = wrap_nodes(nodes)
 	local snip = Snippet:new({
@@ -113,17 +133,20 @@ local function S(context, nodes, condition, ...)
 		name = context.name or context.trig,
 		wordTrig = context.wordTrig,
 		regTrig = context.regTrig,
+		docstring = context.docstring,
+		docTrig = context.docTrig,
 		nodes = nodes,
 		insert_nodes = {},
 		current_insert = 0,
-		condition = condition,
-		user_args = { ... },
+		condition = opts.condition,
+		callbacks = opts.callbacks,
 		mark = nil,
 		dependents = {},
 		active = false,
-		env = {},
 		type = types.snippet,
 	})
+	-- is propagated to all subsnippets, used to quickly find the outer snippet
+	snip.snippet = snip
 
 	snip:init_nodes()
 
@@ -140,130 +163,88 @@ local function S(context, nodes, condition, ...)
 	return snip
 end
 
-local function SN(pos, nodes)
+local function SN(pos, nodes, opts)
+	opts = init_opts(opts)
+
 	local snip = Snippet:new({
 		pos = pos,
 		nodes = wrap_nodes(nodes),
 		insert_nodes = {},
 		current_insert = 0,
+		callbacks = opts.callbacks,
 		mark = nil,
 		dependents = {},
 		active = false,
 		type = types.snippetNode,
 	})
 	snip:init_nodes()
+
 	return snip
 end
 
-local function ISN(pos, nodes, indent_text)
-	local snip = Snippet:new({
-		pos = pos,
-		nodes = wrap_nodes(nodes),
-		insert_nodes = {},
-		current_insert = 0,
-		mark = nil,
-		dependents = {},
-		active = false,
-		type = types.snippetNode,
-	})
+local function ISN(pos, nodes, indent_text, opts)
+	local snip = SN(pos, nodes, opts)
+
 	function snip:indent(parent_indent)
 		Snippet.indent(self, indent_text:gsub("$PARENT_INDENT", parent_indent))
 	end
-	snip:init_nodes()
+
 	return snip
-end
-
-local function PSN(pos, nodes, prefix)
-	local snip = Snippet:new({
-		pos = pos,
-		nodes = wrap_nodes(nodes),
-		insert_nodes = {},
-		current_insert = 0,
-		mark = nil,
-		dependents = {},
-		active = false,
-		type = types.snippetNode,
-	})
-	function snip:indent(parent_indent)
-		Snippet.indent(self, parent_indent .. prefix)
-	end
-
-	-- insert prefix as first node of snippetNode.
-	for i = #snip.nodes, 1, -1 do
-		snip.nodes[i + 1] = snip.nodes[i]
-	end
-	snip.nodes[1] = t({ prefix })
-	snip:init_nodes()
-	return snip
-end
-
-local function pop_env(env)
-	local cur = util.get_cursor_0ind()
-	env.TM_CURRENT_LINE = vim.api.nvim_buf_get_lines(
-		0,
-		cur[1],
-		cur[1] + 1,
-		false
-	)[1]
-	env.TM_CURRENT_WORD = util.word_under_cursor(cur, env.TM_CURRENT_LINE)
-	env.TM_LINE_INDEX = tostring(cur[1])
-	env.TM_LINE_NUMBER = tostring(cur[1] + 1)
-	env.TM_FILENAME = vim.fn.expand("%:t")
-	env.TM_FILENAME_BASE = vim.fn.expand("%:t:s?\\.[^\\.]\\+$??")
-	env.TM_DIRECTORY = vim.fn.expand("%:p:h")
-	env.TM_FILEPATH = vim.fn.expand("%:p")
-
-	env.SELECT_RAW, env.SELECT_DEDENT, env.TM_SELECTED_TEXT =
-		util.get_selection()
 end
 
 function Snippet:remove_from_jumplist()
-	-- Snippet is 'surrounded' by insertNodes.
+	-- prev is i(-1)(startNode), prev of that is the outer/previous snippet.
 	local pre = self.prev.prev
+	-- similar for next, self.next is the i(0).
 	local nxt = self.next.next
 
-	-- Only existing Snippet.
-	if not pre and not nxt then
-		vim.api.nvim_buf_clear_namespace(0, Luasnip_ns_id, 0, -1)
-		Luasnip_active_choice = nil
-		Luasnip_current_nodes[vim.api.nvim_get_current_buf()] = nil
-	end
+	self:exit()
 
+	-- basically four possibilities: only snippet, between two snippets,
+	-- inside an insertNode (start), inside an insertNode (end).
 	if pre then
-		-- Snippet is linearly behind previous snip.
+		-- Snippet is linearly behind previous snip, the appropriate value
+		-- for nxt.prev is set later.
 		if pre.pos == 0 then
 			pre.next = nxt
 		else
-			-- check if self is only snippet inside insert node.
 			if nxt ~= pre then
-				pre.inner_first = nxt.next
+				-- if not the only snippet inside the insertNode:
+				pre.inner_first = nxt
+				nxt.prev = pre
+				return
 			else
 				pre.inner_first = nil
 				pre.inner_last = nil
+				pre.inner_active = false
 				return
 			end
 		end
 	end
 	if nxt then
-		-- linearly before?
 		if nxt.pos == -1 then
 			nxt.prev = pre
 		else
-			-- case 'only snippet inside iNode' is handled above.
+			-- only possible if this is the last inside an insertNode, only
+			-- snippet in insertNode is handled above
 			nxt.inner_last = pre
+			pre.next = nxt
 		end
 	end
 end
 
 local function insert_into_jumplist(snippet, start_node, current_node)
 	if current_node then
+		-- currently at the endpoint (i(0)) of another snippet, this snippet
+		-- is inserted _behind_ that snippet.
 		if current_node.pos == 0 then
 			if current_node.next then
-				-- next is beginning of another snippet.
 				if current_node.next.pos == -1 then
+					-- next is beginning of another snippet, this snippet is
+					-- inserted before that one.
 					current_node.next.prev = snippet.insert_nodes[0]
-					-- next is outer insertNode.
 				else
+					-- next is outer insertNode.
 					current_node.next.inner_last = snippet.insert_nodes[0]
 				end
 			end
@@ -290,6 +271,7 @@ local function insert_into_jumplist(snippet, start_node, current_node)
 		end
 	end
 
+	-- snippet is between i(-1)(startNode) and i(0).
 	snippet.next = snippet.insert_nodes[0]
 	snippet.prev = start_node
 
@@ -298,6 +280,10 @@ local function insert_into_jumplist(snippet, start_node, current_node)
 end
 
 function Snippet:trigger_expand(current_node)
+	-- expand tabs before indenting to keep indentstring unmodified
+	if vim.o.expandtab then
+		self:expand_tabs(util.tab_width())
+	end
 	self:indent(util.get_current_line_to_cursor():match("^%s*"))
 
 	-- keep (possibly) user-set opts.
@@ -314,7 +300,9 @@ function Snippet:trigger_expand(current_node)
 			self.ext_opts = vim.deepcopy(conf.config.ext_opts)
 		end
 	end
-	pop_env(self.env)
+
+	self.env = Environ:new()
+	self:subsnip_init()
 
 	-- remove snippet-trigger, Cursor at start of future snippet text.
 	util.remove_n_before_cur(#self.trigger)
@@ -326,9 +314,10 @@ function Snippet:trigger_expand(current_node)
 
 	self:put_initial(pos)
 
+	-- update() may insert text, set marks appropriately.
 	local mark_opts = vim.tbl_extend("keep", {
 		right_gravity = false,
-		end_right_gravity = false,
+		end_right_gravity = true,
 	}, self.ext_opts[types.snippet].passive)
 	self.mark = mark(old_pos, pos, mark_opts)
 	self:set_old_text()
@@ -342,10 +331,14 @@ function Snippet:trigger_expand(current_node)
 
 	insert_into_jumplist(self, start_node, current_node)
 
-	if current_node and current_node.pos > 0 then
-		current_node.inner_active = true
+	if current_node then
+		if current_node.pos > 0 then
+			current_node.inner_active = true
+		else
+			current_node:input_leave(1)
+		end
 	end
-	self:jump_into(1)
+	Luasnip_current_nodes[vim.api.nvim_get_current_buf()] = self:jump_into(1)
 end
 
 -- returns copy of snip if it matches, nil if not.
@@ -380,7 +373,7 @@ function Snippet:matches(line_to_cursor)
 		return nil
 	end
 
-	if not self.condition(unpack(self.user_args)) then
+	if not self.condition(line_to_cursor, match, captures) then
 		return nil
 	end
 
@@ -412,7 +405,7 @@ function Snippet:enter_node(node_id)
 	end
 
 	local node = self.nodes[node_id]
-	local node_to = util.get_ext_position_end(node.mark.id)
+	local node_to = node.mark:pos_end()
 	for i = 1, node_id - 1 do
 		-- print(string.format("%d: %s, %s", i, "<", "<"))
 		self.nodes[i]:set_mark_rgrav(false, false)
@@ -427,7 +420,7 @@ function Snippet:enter_node(node_id)
 	)
 	for i = node_id + 1, #self.nodes do
 		local other = self.nodes[i]
-		local other_from, other_to = util.get_ext_positions(other.mark.id)
+		local other_from, other_to = other.mark:pos_begin_end()
 
 		-- print(vim.inspect(other_from), vim.inspect(other_to))
 		-- print(string.format("%d: %s, %s", i,
@@ -521,28 +514,16 @@ function Snippet:dump()
 	for i, node in ipairs(self.nodes) do
 		print(i)
 		print(node.mark.opts.right_gravity, node.mark.opts.end_right_gravity)
-		local from, to = util.get_ext_positions(node.mark.id)
+		local from, to = node.mark:pos_begin_end()
 		print(from[1], from[2])
 		print(to[1], to[2])
 	end
 end
 
 function Snippet:put_initial(pos)
-	-- i needed for functions.
 	for _, node in ipairs(self.nodes) do
 		-- save pos to compare to later.
 		local old_pos = vim.deepcopy(pos)
-
-		-- set for snippetNodes.
-		if node.type == types.snippetNode then
-			node:indent(self.indentstr)
-			node.env = self.env
-			node.ext_opts = util.increase_ext_prio(
-				vim.deepcopy(self.ext_opts),
-				conf.config.ext_prio_increase
-			)
-		end
-
 		node:put_initial(pos)
 
 		-- correctly set extmark for node.
@@ -554,15 +535,112 @@ function Snippet:put_initial(pos)
 		node.mark = mark(old_pos, pos, mark_opts)
 		node:set_old_text()
 	end
+end
 
+-- may only be called if the `insertNodes` of all snippet(Node)s are populated
+-- (the first node may refer to the last+recursion with Parent_indexer's, can't
+-- be done in init_nodes()).
+function Snippet:populate_argnodes()
 	for _, node in ipairs(self.nodes) do
+		-- stylua: ignore
 		if
 			node.type == types.functionNode
 			or node.type == types.dynamicNode
 		then
 			self:populate_args(node)
+		else
+			node:populate_argnodes()
 		end
 	end
+end
+
+-- populate env,inden,captures,trigger(regex),... but don't put any text.
+function Snippet:fake_expand()
+	-- set eg. env.TM_SELECTED_TEXT to $TM_SELECTED_TEXT
+	self.env = {}
+	setmetatable(self.env, {
+		__index = function(_, key)
+			return { "$" .. key }
+		end,
+	})
+
+	self.captures = {}
+	setmetatable(self.captures, {
+		__index = function(_, key)
+			return "$CAPTURE" .. tostring(key)
+		end,
+	})
+	if self.docTrig then
+		-- This fills captures[1] with docTrig if no capture groups are defined
+		-- and therefore slightly differs from normal expansion where it won't
+		-- be filled, but that's alright.
+		self.captures = { self.docTrig:match(self.trigger) }
+		self.trigger = self.docTrig
+	else
+		self.trigger = "$TRIGGER"
+	end
+	self.ext_opts = vim.deepcopy(conf.config.ext_opts)
+
+	self:indent("")
+	self:subsnip_init()
+end
+
+-- to work correctly, this may require that the snippets' env,indent,captures? are
+-- set.
+function Snippet:get_static_text()
+	if self.static_text then
+		return self.static_text
+	elseif not self.env then
+		-- not a snippetNode and not yet initialized
+		local snipcop = self:copy()
+		-- sets env, captures, etc.
+		snipcop:fake_expand()
+		local static_text = snipcop:get_static_text()
+		self.static_text = static_text
+		return static_text
+	end
+	local text = { "" }
+	for _, node in ipairs(self.nodes) do
+		local node_text = node:get_static_text()
+		-- append first line to last line of text so far.
+		text[#text] = text[#text] .. node_text[1]
+		for i = 2, #node_text do
+			text[#text + 1] = node_text[i]
+		end
+	end
+	-- cache computed text, may be called multiple times for
+	-- function/dynamicNodes.
+	self.static_text = text
+	return text
+end
+
+function Snippet:get_docstring()
+	if self.docstring then
+		return self.docstring
+	elseif not self.env then
+		-- not a snippetNode and not yet initialized
+		local snipcop = self:copy()
+		-- sets env, captures, etc.
+		snipcop:fake_expand()
+		local docstring = snipcop:get_docstring()
+		self.docstring = docstring
+		return docstring
+	end
+	local docstring = { "" }
+	for _, node in ipairs(self.nodes) do
+		local node_text = node:get_docstring()
+		-- append first line to last line of text so far.
+		docstring[#docstring] = docstring[#docstring] .. node_text[1]
+		for i = 2, #node_text do
+			docstring[#docstring + 1] = node_text[i]
+		end
+	end
+	-- cache computed text, may be called multiple times for
+	-- function/dynamicNodes.
+	-- if not outer snippet, wrap it in ${}.
+	self.docstring = self.type == types.snippet and docstring
+		or util.string_wrap(docstring, rawget(self, "pos"))
+	return self.docstring
 end
 
 function Snippet:update()
@@ -573,64 +651,60 @@ end
 
 function Snippet:indent(prefix)
 	self.indentstr = prefix
-	-- Check once here instead of inside loop.
-	if vim.o.expandtab then
-		local tab_string = string.rep(
-			" ",
-			vim.o.shiftwidth ~= 0 and vim.o.shiftwidth or vim.o.tabstop
-		)
-		for _, node in ipairs(self.nodes) do
-			-- put prefix behind newlines.
-			if node:has_static_text() then
-				for i = 2, #node:get_static_text() do
-					-- Note: prefix is not changed but copied.
-					node:get_static_text()[i] = prefix
-						.. string.gsub(
-							node:get_static_text()[i],
-							"\t",
-							tab_string
-						)
-				end
-			end
+	for _, node in ipairs(self.nodes) do
+		node:indent(prefix)
+	end
+end
+
+function Snippet:expand_tabs(tabwidth)
+	for _, node in ipairs(self.nodes) do
+		node:expand_tabs(tabwidth)
+	end
+end
+
+function Snippet:subsnip_init()
+	for _, node in ipairs(self.nodes) do
+		if node.type == types.snippetNode then
+			node.env = self.env
+			node.ext_opts = util.increase_ext_prio(
+				vim.deepcopy(self.ext_opts),
+				conf.config.ext_prio_increase
+			)
+			node.snippet = self.snippet
 		end
-	else
-		for _, node in ipairs(self.nodes) do
-			-- put prefix behind newlines.
-			if node:has_static_text() then
-				for i = 2, #node:get_static_text() do
-					node:get_static_text()[i] = prefix
-						.. node:get_static_text()[i]
-				end
-			end
-		end
+		node:subsnip_init()
 	end
 end
 
 function Snippet:input_enter()
 	self.active = true
 	self.mark:update_opts(self.ext_opts[self.type].active)
+
+	self:event(events.enter)
 end
 
 function Snippet:input_leave()
+	self:event(events.leave)
+
 	self:update_dependents()
 	self.active = false
 	self.mark:update_opts(self.ext_opts[self.type].passive)
 end
 
-function Snippet:jump_into(dir)
+function Snippet:jump_into(dir, no_move)
 	if self.active then
 		self:input_leave()
 		if dir == 1 then
-			self.next:jump_into(dir)
+			return self.next:jump_into(dir, no_move)
 		else
-			self.prev:jump_into(dir)
+			return self.prev:jump_into(dir, no_move)
 		end
 	else
 		self:input_enter()
 		if dir == 1 then
-			self.inner_first:jump_into(dir)
+			return self.inner_first:jump_into(dir, no_move)
 		else
-			self.inner_last:jump_into(dir)
+			return self.inner_last:jump_into(dir, no_move)
 		end
 	end
 end
@@ -642,6 +716,8 @@ function Snippet:exit()
 	for _, node in ipairs(self.nodes) do
 		node:exit()
 	end
+	self.mark:clear()
+	self.active = false
 end
 
 function Snippet:set_mark_rgrav(val_begin, val_end)
@@ -672,11 +748,93 @@ function Snippet:populate_args(node)
 	end
 end
 
+function Snippet:text_only()
+	for _, node in ipairs(self.nodes) do
+		if node.type ~= types.textNode then
+			return false
+		end
+	end
+	return true
+end
+
+function Snippet:event(event)
+	local callback = self.callbacks[-1][event]
+	if callback then
+		callback(self)
+	end
+	if self.type == types.snippetNode and self.pos then
+		-- if snippetNode, also do callback for position in parent.
+		callback = self.parent.callbacks[self.pos][event]
+		if callback then
+			callback(self)
+		end
+	end
+
+	session.event_node = self
+	vim.cmd("doautocmd User Luasnip" .. events.to_string(self.type, event))
+end
+
+local function nodes_from_pattern(pattern)
+	local nodes = {}
+	local text_active = true
+	local iNode_indx = 1
+	local tokens = pattern_tokenizer.tokenize(pattern)
+	for _, text in ipairs(tokens) do
+		if text_active then
+			nodes[#nodes + 1] = tNode.T(text)
+		else
+			nodes[#nodes + 1] = iNode.I(iNode_indx, text)
+			iNode_indx = iNode_indx + 1
+		end
+		text_active = not text_active
+	end
+	-- This is done so the user ends up at the end of the snippet either way
+	-- and may use their regular expand-key to expand the snippet.
+	-- Autoexpanding doesn't quite work, if the snippet ends with an
+	-- interactive part and the user overrides whatever is put in there, the
+	-- jump to the i(0) may trigger an expansion, and the helper-snippet could
+	-- not easily be removed, as the snippet the user wants to actually use is
+	-- inside of it.
+	-- Because of that it is easier to let the user do the actual expanding,
+	-- but help them on the way to it (by providing an easy way to override the
+	-- "interactive" parts of the pattern-trigger).
+	--
+	-- if even number of nodes, the last is an insertNode (nodes begins with
+	-- textNode and alternates between the two).
+	if #nodes % 2 == 0 then
+		nodes[#nodes] = iNode.I(0, tokens[#tokens])
+	else
+		nodes[#nodes + 1] = iNode.I(0)
+	end
+	return nodes
+end
+
+-- only call on actual snippets, snippetNodes don't have trigger.
+function Snippet:get_pattern_expand_helper()
+	if not self.expand_helper_snippet then
+		local nodes = nodes_from_pattern(self.trigger)
+		self.expand_helper_snippet = S(self.trigger, nodes, {
+			callbacks = {
+				[0] = {
+					[events.enter] = function(_)
+						-- try expanding after entering i(0).
+						vim.schedule(function()
+							-- Remove this helper snippet as soon as the i(0)
+							-- is reached.
+							require("luasnip").unlink_current()
+						end)
+					end,
+				},
+			},
+		})
+	end
+	return self.expand_helper_snippet:copy()
+end
+
 return {
 	Snippet = Snippet,
 	S = S,
 	SN = SN,
 	P = P,
 	ISN = ISN,
-	PSN = PSN,
 }

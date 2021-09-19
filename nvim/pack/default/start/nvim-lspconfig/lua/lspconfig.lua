@@ -18,7 +18,7 @@ function M._root._setup()
   M._root.commands = {
     LspInfo = {
       function()
-        require 'lspconfig/lspinfo'()
+        require 'lspconfig/ui/lspinfo'()
       end,
       '-nargs=0',
       description = '`:LspInfo` Displays attached, active, and configured language servers',
@@ -67,7 +67,7 @@ function M._root._setup()
           clients = { vim.lsp.get_client_by_id(tonumber(client_id)) }
         end
 
-        for _, client in ipairs(clients) do
+        for _, client in pairs(clients) do
           local client_name = client.name
           client.stop()
           vim.defer_fn(function()
@@ -94,4 +94,3 @@ function mt:__index(k)
 end
 
 return setmetatable(M, mt)
--- vim:et ts=2 sw=2

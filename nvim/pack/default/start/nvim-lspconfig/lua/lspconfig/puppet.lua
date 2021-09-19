@@ -15,11 +15,12 @@ configs[server_name] = {
   default_config = {
     cmd = { bin_name, '--stdio' },
     filetypes = { 'puppet' },
-    root_dir = function(filename)
-      return util.root_pattern(unpack(root_files))(filename) or util.path.dirname(filename)
+    root_dir = function(fname)
+      return util.root_pattern(unpack(root_files))(fname) or util.path.dirname(fname)
     end,
   },
   docs = {
+    package_json = 'https://raw.githubusercontent.com/puppetlabs/puppet-vscode/main/package.json',
     description = [[
 LSP server for Puppet.
 
@@ -41,4 +42,3 @@ Installation:
     },
   },
 }
--- vim:et ts=2 sw=2

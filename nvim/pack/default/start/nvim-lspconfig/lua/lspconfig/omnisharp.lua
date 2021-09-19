@@ -8,6 +8,12 @@ configs[server_name] = {
     root_dir = function(fname)
       return util.root_pattern '*.sln'(fname) or util.root_pattern '*.csproj'(fname)
     end,
+    on_new_config = function(new_config, new_root_dir)
+      if new_root_dir then
+        table.insert(new_config.cmd, '-s')
+        table.insert(new_config.cmd, new_root_dir)
+      end
+    end,
     init_options = {},
   },
   -- on_new_config = function(new_config) end;
@@ -46,5 +52,3 @@ find /path/to/omnisharp-osx | xargs xattr -r -d com.apple.quarantine
     },
   },
 }
-
--- vim:et ts=2 sw=2

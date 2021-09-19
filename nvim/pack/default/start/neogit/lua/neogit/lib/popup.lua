@@ -2,6 +2,7 @@ local PopupBuilder = require 'neogit.lib.popup.builder'
 local Buffer = require 'neogit.lib.buffer'
 local common = require 'neogit.buffers.common'
 local Ui = require 'neogit.lib.ui'
+local logger = require 'neogit.logger'
 local util = require 'neogit.lib.util'
 
 local col = Ui.col
@@ -40,6 +41,16 @@ function M:get_arguments()
     end
   end
   return flags
+end
+
+function M:get_parse_arguments()
+  local switches = {}
+  for _, switch in pairs(self.state.switches) do
+    if switch.enabled and switch.parse then
+      switches[switch.cli] = switch.enabled
+    end
+  end
+  return switches
 end
 
 function M:to_cli()
@@ -199,6 +210,7 @@ function M:show()
     for _, action in pairs(group) do
       if action.callback then
         mappings.n[action.key] = function()
+          logger.debug(string.format("[POPUP]: Invoking action '%s' of %s", action.key, self.state.name))
           local ret = action.callback(self)
           self:close()
           if type(ret) == "function" then
@@ -208,7 +220,7 @@ function M:show()
       else
         mappings.n[action.key] = function()
           local notif = require 'neogit.lib.notification'
-          notif.create(action.description .. " has not been implemented yet", { type = "warning" })
+          notif.create(action.description .. " has not been implemented yet", vim.log.levels.WARN)
         end
       end
     end

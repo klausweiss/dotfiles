@@ -1,9 +1,9 @@
-# Description
+# 🗒️ Description
 Auto Session takes advantage of Neovim's existing session management capabilities to provide seamless automatic session management.
 
 <img src="https://github.com/rmagatti/readme-assets/blob/main/auto-session-zoomed.gif" width="1000" />
 
-# Behaviour
+# 💡 Behaviour
 1. When starting `nvim` with no arguments, auto-session will try to restore an existing session for the current `cwd` if one exists.
 2. When starting `nvim .` with some argument, auto-session will do nothing.
 3. Even after starting `nvim` with an argument, a session can still be manually restored by running `:RestoreSession`.
@@ -13,19 +13,15 @@ Auto Session takes advantage of Neovim's existing session management capabilitie
 :warning: Please note that if there are errors in your config, restoring the session might fail, if that happens, auto session will then disable auto saving for the current session.
 Manually saving a session can still be done by calling `:SaveSession`.
 
-# Installation
+# 📦 Installation
 Any plugin manager should do, I use [Plug](https://github.com/junegunn/vim-plug).
 
 `Plug 'rmagatti/auto-session'`
 
-# Configuration
+# ⚙️ Configuration
 
 ### Default
 Auto Session by default stores sessions in `vim.fn.stdpath('config').."/sessions/"`.  
-
-🛑 BREAKING CHANGE 🛑  
-The new version changes the default sessions dir from `~/.config/nvim/sessions/` to `vim.fn.stdpath('config').."/sessions/"`.  
-If you have not set your sessions dir manually, you might need to copy your existing sessions over to the new default, or alternatively set the old default as the `g:auto_session_root_dir`.
 
 ### Custom
 One can set the auto\_session root dir that will be used for auto session saving and restoring.
@@ -56,8 +52,24 @@ EOF
 | auto_session_enabled              | false, true               | true                                  | Enables/disables the plugin's auto save _and_ restore features  |
 | auto_save_enabled                 | false, true, nil          | nil                                   | Enables/disables auto saving                                    |
 | auto_restore_enabled              | false, true, nil          | nil                                   | Enables/disables auto restoring                                 |
-| auto_session_suppress_dirs        | ["list", "of paths"]      | nil                                   | Suppress session create/restore if in one of a list of dirs     |
+| auto_session_suppress_dirs        | ["list", "of paths"]      | nil                                   | Suppress session create/restore if in one of the list of dirs   |
+| auto_session_allowed_dirs         | ["list", "of paths"]      | nil                                   | Allow session create/restore if in one of the list of dirs      |
 
+#### Recommended sessionoptions config
+For a better experience with the plugin overall using this config for `sessionoptions` is recommended.
+
+**Lua**
+```lua
+vim.o.sessionoptions="blank,buffers,curdir,folds,help,options,tabpages,winsize,resize,winpos,terminal"
+```
+
+**VimL**
+```viml
+set sessionoptions+=options,resize,winpos,terminal
+```
+
+**Note**: if you use [packer.nvim](https://github.com/wbthomason/packer.nvim)'s lazy loading feature, you might want to _not_ add the `options` value to `sessionoptions`.
+It might lead to weird behaviour with the lazy loading, especially around key-based lazy loading.
 
 ### Last Session
 This optional feature enables the keeping track and loading of the last session.
@@ -72,7 +84,7 @@ require('auto-session').setup {
 
 :warning: WARNING :warning: If the directory does not exist, default directory will be used and an error message will be printed.
 
-# Commands
+# 📢 Commands
 Auto Session exposes two commands that can be used or mapped to any keybindings for manually saving and restoring sessions.
 ```viml
 :SaveSession " saves or creates a session in the currently set `auto_session_root_dir`.
@@ -83,7 +95,7 @@ Auto Session exposes two commands that can be used or mapped to any keybindings 
 :DeleteSession ~/my/custom/path " deleetes a session based on the provided path.
 ```
 
-## Command Hooks
+## 🪝 Command Hooks
 #### Command hooks are a list of commands that get executed at different stages of the session management lifecycle.
 
 Command hooks exist in the format: {hook\_name}
@@ -111,7 +123,19 @@ e.g. to close NERDTree before saving the session.
 let g:auto_session_pre_save_cmds = ["tabdo NERDTreeClose"]
 ```
 
-## Session Lens
+Hooks can also be lua functions
+Example:
+```lua
+local function custom_hook()
+    -- insert hook here
+end
+
+require('auto-session').setup {
+    {hook_name}_cmds = {"{vim_cmd_1}", custom_hook, "{vim_cmd_2}"}
+}
+```
+
+## 🔭 Session Lens
 [Session Lens](https://github.com/rmagatti/session-lens) is a companion plugin to auto-session built on top of [Telescope.nvim](https://github.com/nvim-telescope/telescope.nvim) for easy switching between existing sessions.
 
 See installation and usage instructions in the plugin's page.

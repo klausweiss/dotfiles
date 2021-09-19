@@ -37,6 +37,8 @@ let g:nvim_tree_auto_close = 1 "0 by default, closes the tree when it's the last
 let g:nvim_tree_auto_ignore_ft = [ 'startify', 'dashboard' ] "empty by default, don't auto open tree on specific filetypes.
 let g:nvim_tree_quit_on_open = 1 "0 by default, closes the tree when you open a file
 let g:nvim_tree_follow = 1 "0 by default, this option allows the cursor to be updated when entering a buffer
+let g:nvim_tree_follow_update_path = 1 "0 by default, will update the path of the current dir if the file is not inside the tree.
+Default is 0
 let g:nvim_tree_indent_markers = 1 "0 by default, this option shows indent markers when folders are open
 let g:nvim_tree_hide_dotfiles = 1 "0 by default, this option hides files and folders starting with a dot `.`
 let g:nvim_tree_git_hl = 1 "0 by default, will enable file highlight for git attributes (can be used without the icons).
@@ -55,8 +57,10 @@ let g:nvim_tree_icon_padding = ' ' "one space by default, used for rendering the
 let g:nvim_tree_symlink_arrow = ' >> ' " defaults to ' ➛ '. used as a separator between symlinks' source and target.
 let g:nvim_tree_update_cwd = 1 "0 by default, will update the tree cwd when changing nvim's directory (DirChanged event). Behaves strangely with autochdir set.
 let g:nvim_tree_respect_buf_cwd = 1 "0 by default, will change cwd of nvim-tree to that of new buffer's when opening nvim-tree.
+let g:nvim_tree_refresh_wait = 500 "1000 by default, control how often the tree can be refreshed, 1000 means the tree can be refresh once per 1000ms.
 let g:nvim_tree_window_picker_exclude = {
     \   'filetype': [
+    \     'notify',
     \     'packer',
     \     'qf'
     \   ],
@@ -161,17 +165,21 @@ highlight NvimTreeFolderIcon guibg=blue
 ### Setup
 
 You can disable default mappings with
+
 ```vim
 " let g:nvim_tree_disable_keybindings=1
 ```
+
 But you won't be able to map any keys from the setup with nvim_tree_bindings. Use with caution.
 
 You can use only your mappings with
+
 ```vim
 let g:nvim_tree_disable_default_keybindings = 1
 ```
 
 You can define your own keymaps with this syntax:
+
 ```vim
 lua <<EOF
     vim.g.nvim_tree_bindings = {
@@ -180,7 +188,9 @@ lua <<EOF
     }
 EOF
 ```
+
 Notes:
+
 - `key` can be either a string or a table of strings
 - `mode` is `n` by default if you don't specify it
 - `cb` is the command that will be called when the keymap is triggered
@@ -227,6 +237,7 @@ lua <<EOF
     }
 EOF
 ```
+
 You can toggle the help UI by pressing `g?`.
 
 ## Note

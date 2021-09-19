@@ -1,16 +1,14 @@
-local actions = require "telescope.actions"
+local channel = require("plenary.async.control").channel
+
 local action_state = require "telescope.actions.state"
+local actions = require "telescope.actions"
+local conf = require("telescope.config").values
+local entry_display = require "telescope.pickers.entry_display"
 local finders = require "telescope.finders"
 local make_entry = require "telescope.make_entry"
 local pickers = require "telescope.pickers"
-local entry_display = require "telescope.pickers.entry_display"
-local utils = require "telescope.utils"
 local strings = require "plenary.strings"
-local a = require "plenary.async_lib"
-local async, await = a.async, a.await
-local channel = a.util.channel
-
-local conf = require("telescope.config").values
+local utils = require "telescope.utils"
 
 local lsp = {}
 
@@ -95,6 +93,10 @@ end
 
 lsp.definitions = function(opts)
   return list_or_jump("textDocument/definition", "LSP Definitions", opts)
+end
+
+lsp.type_definitions = function(opts)
+  return list_or_jump("textDocument/typeDefinition", "LSP Type Definitions", opts)
 end
 
 lsp.implementations = function(opts)
@@ -215,6 +217,68 @@ lsp.code_actions = function(opts)
     }
   end
 
+  -- If the text document version is 0, set it to nil instead so that Neovim
+  -- won't refuse to update a buffer that it believes is newer than edits.
+  -- See: https://github.com/eclipse/eclipse.jdt.ls/issues/1695
+  -- Source:
+  -- https://github.com/neovim/nvim-lspconfig/blob/486f72a25ea2ee7f81648fdfd8999a155049e466/lua/lspconfig/jdtls.lua#L62
+  local function fix_zero_version(workspace_edit)
+    if workspace_edit and workspace_edit.documentChanges then
+      for _, change in pairs(workspace_edit.documentChanges) do
+        local text_document = change.textDocument
+        if text_document and text_document.version and text_document.version == 0 then
+          text_document.version = nil
+        end
+      end
+    end
+    return workspace_edit
+  end
+
+  --[[
+  -- actions is (Command | CodeAction)[] | null
+  -- CodeAction
+  --      title: String
+  --      kind?: CodeActionKind
+  --      diagnostics?: Diagnostic[]
+  --      isPreferred?: boolean
+  --      edit?: WorkspaceEdit
+  --      command?: Command
+  --
+  -- Command
+  --      title: String
+  --      command: String
+  --      arguments?: any[]
+  --]]
+  local transform_action = opts.transform_action
+    or function(action)
+      -- Remove 0 -version from LSP codeaction request payload.
+      -- Is only run on lsp codeactions which contain a comand or a arguments field
+      -- Fixed Java/jdtls compatibility with Telescope
+      -- See fix_zero_version commentary for more information
+      if action.command or action.arguments then
+        if action.command.command then
+          action.edit = fix_zero_version(action.command.arguments[1])
+        else
+          action.edit = fix_zero_version(action.arguments[1])
+        end
+      end
+      return action
+    end
+
+  local execute_action = opts.execute_action
+    or function(action)
+      if action.edit or type(action.command) == "table" then
+        if action.edit then
+          vim.lsp.util.apply_workspace_edit(action.edit)
+        end
+        if type(action.command) == "table" then
+          vim.lsp.buf.execute_command(action.command)
+        end
+      else
+        vim.lsp.buf.execute_command(action)
+      end
+    end
+
   pickers.new(opts, {
     prompt_title = "LSP Code Actions",
     finder = finders.new_table {
@@ -235,18 +299,9 @@ lsp.code_actions = function(opts)
       actions.select_default:replace(function()
         local selection = action_state.get_selected_entry()
         actions.close(prompt_bufnr)
-        local val = selection.value
+        local action = selection.value
 
-        if val.edit or type(val.command) == "table" then
-          if val.edit then
-            vim.lsp.util.apply_workspace_edit(val.edit)
-          end
-          if type(val.command) == "table" then
-            vim.lsp.buf.execute_command(val.command)
-          end
-        else
-          vim.lsp.buf.execute_command(val)
-        end
+        execute_action(transform_action(action))
       end)
 
       return true
@@ -256,7 +311,7 @@ lsp.code_actions = function(opts)
 end
 
 lsp.range_code_actions = function(opts)
-  opts.params = vim.lsp.util.make_given_range_params()
+  opts.params = vim.lsp.util.make_given_range_params({ opts.start_line, 1 }, { opts.end_line, 1 })
   lsp.code_actions(opts)
 end
 
@@ -312,17 +367,24 @@ end
 local function get_workspace_symbols_requester(bufnr)
   local cancel = function() end
 
-  return async(function(prompt)
+  return function(prompt)
     local tx, rx = channel.oneshot()
     cancel()
     _, cancel = vim.lsp.buf_request(bufnr, "workspace/symbol", { query = prompt }, tx)
 
-    local err, _, results_lsp = await(rx())
+    -- Handle 0.5 / 0.5.1 handler situation
+    local err, res_1, res_2 = rx()
+    local results_lsp
+    if type(res_1) == "table" then
+      results_lsp = res_1
+    else
+      results_lsp = res_2
+    end
     assert(not err, err)
 
     local locations = vim.lsp.util.symbols_to_items(results_lsp or {}, bufnr) or {}
     return locations
-  end)
+  end
 end
 
 lsp.dynamic_workspace_symbols = function(opts)
@@ -335,7 +397,7 @@ lsp.dynamic_workspace_symbols = function(opts)
       fn = get_workspace_symbols_requester(curr_bufnr),
     },
     previewer = conf.qflist_previewer(opts),
-    sorter = conf.generic_sorter(),
+    sorter = conf.generic_sorter(opts),
   }):find()
 end
 
@@ -398,6 +460,7 @@ local feature_map = {
   ["document_symbols"] = "document_symbol",
   ["references"] = "find_references",
   ["definitions"] = "goto_definition",
+  ["type_definitions"] = "type_definition",
   ["implementations"] = "implementation",
   ["workspace_symbols"] = "workspace_symbol",
 }

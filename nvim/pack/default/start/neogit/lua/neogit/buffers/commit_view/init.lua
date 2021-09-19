@@ -3,7 +3,9 @@ local cli = require 'neogit.lib.git.cli'
 local parser = require 'neogit.buffers.commit_view.parsing'
 local ui = require 'neogit.buffers.commit_view.ui'
 
-local M = {}
+local M = {
+  instance = nil
+}
 
 -- @class CommitViewBuffer
 -- @field is_open whether the buffer is currently shown
@@ -31,7 +33,7 @@ function M.new(commit_id, notify)
     buffer = nil
   }
 
-  if notify then
+  if notification then
     notification:delete()
   end
 
@@ -50,6 +52,12 @@ end
 
 
 function M:open()
+  if M.instance and M.instance.is_open then
+    M.instance:close()
+  end
+
+  M.instance = self
+
   if self.is_open then
     return
   end

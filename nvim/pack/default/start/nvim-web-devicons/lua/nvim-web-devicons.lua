@@ -282,6 +282,26 @@ local icons = {
     color = "#6d8086",
     name = "CMake"
   };
+  ["cobol"] = {
+    icon = "⚙",
+    color = "#005ca5",
+    name = "Cobol",
+  };
+  ["cob"] = {
+    icon = "⚙",
+    color = "#005ca5",
+    name = "Cobol",
+  };
+  ["cbl"] = {
+    icon = "⚙",
+    color = "#005ca5",
+    name = "Cobol",
+  };
+  ["cpy"] = {
+    icon = "⚙",
+    color = "#005ca5",
+    name = "Cobol",
+  };
   ["coffee"] = {
     icon = "",
     color = "#cbcb41",
@@ -984,13 +1004,17 @@ local function get_highlight_name(data)
   return data.name and "DevIcon" .. data.name
 end
 
+local function set_up_highlight(icon_data)
+  local hl_group = get_highlight_name(icon_data)
+  if hl_group then
+    vim.api.nvim_command("highlight! "..hl_group.. " guifg="..icon_data.color)
+  end
+end
+
 local function set_up_highlights()
   for _, icon_data in pairs(icons) do
     if icon_data.color and icon_data.name then
-      local hl_group = get_highlight_name(icon_data)
-      if hl_group then
-        vim.api.nvim_command("highlight! "..hl_group.. " guifg="..icon_data.color)
-      end
+      set_up_highlight(icon_data)
     end
   end
 end
@@ -998,6 +1022,8 @@ end
 local loaded = false
 
 local function setup(opts)
+  if loaded then return end
+
   loaded = true
 
   local user_icons = opts or {}
@@ -1046,8 +1072,16 @@ local function get_icon(name, ext, opts)
   end
 end
 
+local function set_icon(user_icons)
+  icons = vim.tbl_extend("force", icons, user_icons)
+  for _, icon_data in pairs(user_icons) do
+    set_up_highlight(icon_data)
+  end
+end
+
 return {
   get_icon = get_icon,
+  set_icon = set_icon,
   setup = setup,
   has_loaded = function() return loaded end,
   get_icons = function() return icons end,

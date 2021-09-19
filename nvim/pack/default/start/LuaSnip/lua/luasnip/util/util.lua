@@ -1,3 +1,6 @@
+local events = require("luasnip.util.events")
+local session = require("luasnip.session")
+
 local function get_cursor_0ind()
 	local c = vim.api.nvim_win_get_cursor(0)
 	c[1] = c[1] - 1
@@ -43,14 +46,32 @@ local function indent(text, indentstring)
 	return text
 end
 
-local function expand_tabs(text)
-	local tab_string = string.rep(
-		" ",
-		vim.o.shiftwidth ~= 0 and vim.o.shiftwidth or vim.o.tabstop
-	)
-	for i, str in ipairs(text) do
-		text[i] = string.gsub(str, "\t", tab_string)
+-- in-place expand tabs in leading whitespace.
+local function expand_tabs(text, tabwidth)
+	for i, line in ipairs(text) do
+		local new_line = ""
+		local start_indx = 1
+		while true do
+			local tab_indx = line:find("\t", start_indx, true)
+			-- if no tab found, sub till end (ie. -1).
+			new_line = new_line .. line:sub(start_indx, (tab_indx or 0) - 1)
+			if tab_indx then
+				-- #new_line is index of this tab in new_line.
+				new_line = new_line
+					.. string.rep(" ", tabwidth - #new_line % tabwidth)
+			else
+				-- reached end of string.
+				break
+			end
+			start_indx = tab_indx + 1
+		end
+		text[i] = new_line
 	end
+	return text
+end
+
+local function tab_width()
+	return vim.o.shiftwidth ~= 0 and vim.o.shiftwidth or vim.o.tabstop
 end
 
 local function mark_pos_equal(m1, m2)
@@ -73,41 +94,7 @@ end
 local function bytecol_to_utfcol(pos)
 	local line = vim.api.nvim_buf_get_lines(0, pos[1], pos[1] + 1, false)
 	-- line[1]: get_lines returns table.
-	return { pos[1], vim.str_utfindex(line[1], pos[2]) }
-end
-
-local function get_ext_positions(id)
-	local mark_info = vim.api.nvim_buf_get_extmark_by_id(
-		0,
-		Luasnip_ns_id,
-		id,
-		{ details = true }
-	)
-
-	return bytecol_to_utfcol({ mark_info[1], mark_info[2] }),
-		bytecol_to_utfcol({ mark_info[3].end_row, mark_info[3].end_col })
-end
-
-local function get_ext_position_begin(mark_id)
-	local mark_info = vim.api.nvim_buf_get_extmark_by_id(
-		0,
-		Luasnip_ns_id,
-		mark_id,
-		{ details = false }
-	)
-
-	return bytecol_to_utfcol({ mark_info[1], mark_info[2] })
-end
-
-local function get_ext_position_end(id)
-	local mark_info = vim.api.nvim_buf_get_extmark_by_id(
-		0,
-		Luasnip_ns_id,
-		id,
-		{ details = true }
-	)
-
-	return bytecol_to_utfcol({ mark_info[3].end_row, mark_info[3].end_col })
+	return { pos[1], vim.str_utfindex(line[1] or "", pos[2]) }
 end
 
 local function normal_move_before(new_cur_pos)
@@ -212,13 +199,19 @@ local TM_SELECT = "LUASNIP_TM_SELECT"
 
 local function get_selection()
 	local ok, val = pcall(vim.api.nvim_buf_get_var, 0, SELECT_RAW)
-	-- if one is set, all are set.
 	if ok then
-		return val,
+		local result = {
+			val,
 			vim.api.nvim_buf_get_var(0, SELECT_DEDENT),
-			vim.api.nvim_buf_get_var(0, TM_SELECT)
+			vim.api.nvim_buf_get_var(0, TM_SELECT),
+		}
+
+		vim.api.nvim_buf_del_var(0, SELECT_RAW)
+		vim.api.nvim_buf_del_var(0, SELECT_DEDENT)
+		vim.api.nvim_buf_del_var(0, TM_SELECT)
+
+		return unpack(result)
 	end
-	-- not ok.
 	return {}, {}, {}
 end
 
@@ -228,8 +221,12 @@ local function get_min_indent(lines)
 	for i = 2, #lines do
 		-- %s* -> at least matches
 		local line_indent = lines[i]:match("^(%s*)%S")
-		if #line_indent < #min_indent then
-			min_indent = line_indent
+		-- ignore if not matched.
+		if line_indent then
+			-- if no line until now matched, use line_indent.
+			if not min_indent or #line_indent < #min_indent then
+				min_indent = line_indent
+			end
 		end
 	end
 	return min_indent
@@ -268,7 +265,8 @@ local function store_selection()
 
 	-- init with raw selection.
 	local tm_select, select_dedent = vim.deepcopy(chunks), vim.deepcopy(chunks)
-	local min_indent = get_min_indent(lines)
+	-- may be nil if no indent.
+	local min_indent = get_min_indent(lines) or ""
 	-- TM_SELECTED_TEXT contains text from new cursor position(for V the first
 	-- non-whitespace of first line, v and c-v raw) to end of selection.
 	if mode == "V" then
@@ -358,6 +356,77 @@ local function increase_ext_prio(opts, amount)
 	return opts
 end
 
+local function string_wrap(lines, pos)
+	local new_lines = vim.deepcopy(lines)
+	if #new_lines == 1 and #new_lines[1] == 0 then
+		return { "$" .. (pos and tostring(pos) or "{}") }
+	end
+	new_lines[1] = "${"
+		.. (pos and (tostring(pos) .. ":") or "")
+		.. new_lines[1]
+	new_lines[#new_lines] = new_lines[#new_lines] .. "}"
+	return new_lines
+end
+
+-- Heuristic to extract the comment style from the commentstring
+local _comments_cache = {}
+local function buffer_comment_chars()
+	local commentstring = vim.bo.commentstring
+	if _comments_cache[commentstring] then
+		return _comments_cache[commentstring]
+	end
+	local comments = { "//", "/*", "*/" }
+	local placeholder = "%s"
+	local index_placeholder = commentstring:find(vim.pesc(placeholder))
+	if index_placeholder then
+		index_placeholder = index_placeholder - 1
+		if index_placeholder + #placeholder == #commentstring then
+			comments[1] = vim.trim(commentstring:sub(1, -#placeholder - 1))
+		else
+			comments[2] = vim.trim(commentstring:sub(1, index_placeholder))
+			comments[3] = vim.trim(
+				commentstring:sub(index_placeholder + #placeholder + 1, -1)
+			)
+		end
+	end
+	_comments_cache[commentstring] = comments
+	return comments
+end
+
+local function to_line_table(table_or_string)
+	local tbl = wrap_value(table_or_string)
+
+	-- split entries at \n.
+	local line_table = {}
+	for _, str in ipairs(tbl) do
+		local split = vim.split(str, "\n", true)
+		for i = 1, #split do
+			line_table[#line_table + 1] = split[i]
+		end
+	end
+
+	return line_table
+end
+
+local function find_outer_snippet(node)
+	while node.parent do
+		node = node.parent
+	end
+	return node
+end
+
+-- filetype: string formatted like `'filetype'`.
+local function get_snippet_filetypes(filetype)
+	local fts = vim.split(filetype, ".", true)
+	local snippet_fts = {}
+	for _, ft in ipairs(fts) do
+		vim.list_extend(snippet_fts, session.ft_redirect[ft])
+	end
+	-- add all last.
+	table.insert(snippet_fts, "all")
+	return snippet_fts
+end
+
 return {
 	get_cursor_0ind = get_cursor_0ind,
 	set_cursor_0ind = set_cursor_0ind,
@@ -381,7 +450,13 @@ return {
 	dedent = dedent,
 	indent = indent,
 	expand_tabs = expand_tabs,
+	tab_width = tab_width,
 	make_opts_valid = make_opts_valid,
 	increase_ext_prio = increase_ext_prio,
 	clear_invalid = clear_invalid,
+	buffer_comment_chars = buffer_comment_chars,
+	string_wrap = string_wrap,
+	to_line_table = to_line_table,
+	find_outer_snippet = find_outer_snippet,
+	get_snippet_filetypes = get_snippet_filetypes,
 }

@@ -1,5 +1,3 @@
-local has_devicons, devicons = pcall(require, "nvim-web-devicons")
-
 local Path = require "plenary.path"
 local Job = require "plenary.job"
 
@@ -21,6 +19,10 @@ end
 
 utils.get_default = function(x, default)
   return utils.if_nil(x, default, x)
+end
+
+utils.cycle = function(i, n)
+  return i % n == 0 and n or i % n
 end
 
 utils.get_lazy_default = function(x, defaulter, ...)
@@ -259,6 +261,48 @@ utils.path_shorten = function(filename, len)
   return Path:new(filename):shorten(len)
 end
 
+utils.path_smart = (function()
+  local paths = {}
+  return function(filepath)
+    local final = filepath
+    if #paths ~= 0 then
+      local dirs = vim.split(filepath, "/")
+      local max = 1
+      for _, p in pairs(paths) do
+        if #p > 0 and p ~= filepath then
+          local _dirs = vim.split(p, "/")
+          for i = 1, math.min(#dirs, #_dirs) do
+            if (dirs[i] ~= _dirs[i]) and i > max then
+              max = i
+              break
+            end
+          end
+        end
+      end
+      if #dirs ~= 0 then
+        if max == 1 and #dirs >= 2 then
+          max = #dirs - 2
+        end
+        final = ""
+        for k, v in pairs(dirs) do
+          if k >= max - 1 then
+            final = final .. (#final > 0 and "/" or "") .. v
+          end
+        end
+      end
+    end
+    if not paths[filepath] then
+      paths[filepath] = ""
+      table.insert(paths, filepath)
+    end
+    if final and final ~= filepath then
+      return "../" .. final
+    else
+      return filepath
+    end
+  end
+end)()
+
 utils.path_tail = (function()
   local os_sep = utils.get_separator()
   local match_string = "[^" .. os_sep .. "]*$"
@@ -298,6 +342,8 @@ utils.transform_path = function(opts, path)
   elseif type(path_display) == "table" then
     if vim.tbl_contains(path_display, "tail") or path_display.tail then
       transformed_path = utils.path_tail(transformed_path)
+    elseif vim.tbl_contains(path_display, "smart") or path_display.smart then
+      transformed_path = utils.path_smart(transformed_path)
     else
       if not vim.tbl_contains(path_display, "absolute") or path_display.absolute == false then
         local cwd
@@ -416,6 +462,10 @@ function utils.data_directory()
   return Path:new({ base_directory, "data" }):absolute() .. Path.path.sep
 end
 
+function utils.buffer_dir()
+  return vim.fn.expand "%:p:h"
+end
+
 function utils.display_termcodes(str)
   return str:gsub(string.char(9), "<TAB>"):gsub("", "<C-F>"):gsub(" ", "<Space>")
 end
@@ -456,7 +506,20 @@ utils.align_str = function()
   error "align_str deprecated. please use plenary.strings.align_str"
 end
 
-utils.transform_devicons = (function()
+local load_once = function(f)
+  local resolved = nil
+  return function(...)
+    if resolved == nil then
+      resolved = f()
+    end
+
+    return resolved(...)
+  end
+end
+
+utils.transform_devicons = load_once(function()
+  local has_devicons, devicons = pcall(require, "nvim-web-devicons")
+
   if has_devicons then
     if not devicons.has_loaded() then
       devicons.setup()
@@ -482,9 +545,11 @@ utils.transform_devicons = (function()
       return display
     end
   end
-end)()
+end)
 
-utils.get_devicons = (function()
+utils.get_devicons = load_once(function()
+  local has_devicons, devicons = pcall(require, "nvim-web-devicons")
+
   if has_devicons then
     if not devicons.has_loaded() then
       devicons.setup()
@@ -508,6 +573,6 @@ utils.get_devicons = (function()
       return ""
     end
   end
-end)()
+end)
 
 return utils

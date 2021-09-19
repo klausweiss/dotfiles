@@ -53,11 +53,13 @@ describe('gitsigns', function()
       [7] = {bold = true},
       [8] = {foreground = Screen.colors.White, background = Screen.colors.Red};
       [9] = {foreground = Screen.colors.SeaGreen, bold = true};
+      [10] = {foreground = Screen.colors.Red};
     })
 
     -- Make gitisigns available
     exec_lua('package.path = ...', package.path)
     config = helpers.deepcopy(test_config)
+    command('cd '..system{"dirname", os.tmpname()})
   end)
 
   after_each(function()
@@ -87,19 +89,19 @@ describe('gitsigns', function()
         'watch_index(1): Watching index',
         'watcher_cb(1): Index update error: ENOENT',
         p'run_job: git .* show :0:dummy.txt',
-        'update(1): updates: 1, jobs: 5'
+        'update(1): updates: 1, jobs: 7'
       })
     end)
 
     check {
-      status = {head='HEAD', added=18, changed=0, removed=0},
+      status = {head='', added=18, changed=0, removed=0},
       signs = {added=8}
     }
 
     git{"add", test_file}
 
     check {
-      status = {head='HEAD', added=0, changed=0, removed=0},
+      status = {head='', added=0, changed=0, removed=0},
       signs = {}
     }
   end)
@@ -111,6 +113,7 @@ describe('gitsigns', function()
 
     match_debug_messages {
       'run_job: git --no-pager --version',
+      'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
       'attach(1): Attaching (trigger=BufRead)',
       p'run_job: git .* config user.name',
       'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
@@ -158,6 +161,7 @@ describe('gitsigns', function()
 
       match_debug_messages {
         'run_job: git --no-pager --version',
+        'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
         'attach(1): Attaching (trigger=BufRead)',
         'attach(1): In git dir'
       }
@@ -173,6 +177,7 @@ describe('gitsigns', function()
 
       match_debug_messages {
         'run_job: git --no-pager --version',
+        'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
         'attach(1): Attaching (trigger=BufRead)',
         p'run_job: git .* config user.name',
         'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
@@ -188,6 +193,7 @@ describe('gitsigns', function()
 
       match_debug_messages {
         'run_job: git --no-pager --version',
+        'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
         'attach(1): Attaching (trigger=BufNewFile)',
         p'run_job: git .* config user.name',
         'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
@@ -203,6 +209,7 @@ describe('gitsigns', function()
 
       match_debug_messages {
         'run_job: git --no-pager --version',
+        'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
         'attach(1): Attaching (trigger=BufNewFile)',
         'attach(1): Not a path',
       }
@@ -215,6 +222,7 @@ describe('gitsigns', function()
       command("copen")
       match_debug_messages {
         'run_job: git --no-pager --version',
+        'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
         'attach(2): Attaching (trigger=BufRead)',
         'attach(2): Non-normal buffer',
       }
@@ -251,6 +259,18 @@ describe('gitsigns', function()
     end)
   end)
 
+  describe('configuration', function()
+    it('handled deprecated fields', function()
+      config.current_line_blame_delay = 100
+      setup_gitsigns(config)
+      screen:expect{messages = { {
+        content = { { "current_line_blame_delay is now deprecated, please use current_line_blame_opts.delay", 10 } },
+        kind = ""
+      } } }
+      eq(100, exec_lua([[return package.loaded['gitsigns.config'].config.current_line_blame_opts.delay]]))
+    end)
+  end)
+
   describe('on_attach()', function()
     it('can prevent attaching to a buffer', function()
       setup_test_repo(true)
@@ -266,9 +286,11 @@ describe('gitsigns', function()
       edit(test_file)
       match_debug_messages {
         'run_job: git --no-pager --version',
+        'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
         'attach(1): Attaching (trigger=BufRead)',
         p'run_job: git .* config user.name',
         'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
+        'run_job: git --no-pager rev-parse --short HEAD',
         p'run_job: git %-%-no%-pager %-%-git%-dir=.* %-%-stage %-%-others %-%-exclude%-standard .*',
         'attach(1): User on_attach() returned false',
       }
@@ -306,7 +328,9 @@ describe('gitsigns', function()
   local function testsuite(internal_diff)
     return function()
       before_each(function()
-        config.use_internal_diff = internal_diff
+        config.diff_opts = {
+          internal = internal_diff
+        }
         setup_test_repo()
       end)
 
@@ -441,6 +465,7 @@ describe('gitsigns', function()
         edit(newfile)
         match_debug_messages{
           'run_job: git --no-pager --version',
+          'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
           'attach(1): Attaching (trigger=BufNewFile)',
           'run_job: git --no-pager config user.name',
           'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
@@ -463,7 +488,7 @@ describe('gitsigns', function()
           table.insert(messages, p'run_job: git .* diff .* /tmp/lua_.* /tmp/lua_.*')
         end
 
-        local jobs = internal_diff and 8 or 9
+        local jobs = internal_diff and 9 or 10
         table.insert(messages, "update(1): updates: 1, jobs: "..jobs)
 
         match_debug_messages(messages)
@@ -647,6 +672,7 @@ describe('gitsigns', function()
 
     eq({
       'run_job: git --no-pager --version',
+      'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
       'attach(2): attaching is disabled',
       'attach(3): attaching is disabled',
       'attach(4): attaching is disabled',
@@ -668,6 +694,19 @@ describe('gitsigns', function()
     expectf(function()
       helpers.neq(nil, tonumber('0x'..get_buf_var('gitsigns_head')))
     end)
+  end)
+
+  it('handles a quick undo', function()
+    setup_test_repo()
+    setup_gitsigns(config)
+    edit(test_file)
+    -- This test isn't deterministic so run it a few times
+    for _ = 1, 3 do
+      feed("x")
+      check { signs = {changed=1} }
+      feed("u")
+      check { signs = {} }
+    end
   end)
 
 end)

@@ -14,8 +14,9 @@ local Status            = require("gitsigns.status")
 local debounce_trailing = require('gitsigns.debounce').debounce_trailing
 local gs_debug          = require("gitsigns.debug")
 local dprint            = gs_debug.dprint
+local dprintf           = gs_debug.dprintf
 local eprint            = gs_debug.eprint
-local util              = require('gitsigns.util')
+local subprocess        = require('gitsigns.subprocess')
 
 local gs_hunks          = require("gitsigns.hunks")
 local Hunk              = gs_hunks.Hunk
@@ -77,7 +78,9 @@ end
 -- Speculate on future signs. It's not a big deal if we speculate incorrectly as
 -- update() will overwrite all the signs anyway. This has noticeable effect on
 -- large files and even makes small files feel very snappy.
-local function speculate_signs(buf: integer, last_orig: integer, last_new: integer)
+--
+-- Returns true if signs are added or removed
+local function speculate_signs(buf: integer, last_orig: integer, last_new: integer): boolean
   if last_new < last_orig then
     -- Lines removed
     --
@@ -98,6 +101,7 @@ local function speculate_signs(buf: integer, last_orig: integer, last_new: integ
       else
         signs.remove(buf, 1)
       end
+      return true
     else
       local placed = signs.get(buf, last_orig)[last_orig]
 
@@ -107,6 +111,7 @@ local function speculate_signs(buf: integer, last_orig: integer, last_new: integ
         for i = last_orig+1, last_new do
           signs.add(config, buf, {[i] = {type='add', count=0}})
         end
+        return true
       end
     end
   else
@@ -117,18 +122,44 @@ local function speculate_signs(buf: integer, last_orig: integer, last_new: integ
     -- add a 'change' sign if there are no other signs
     if not placed then
       signs.add(config, buf, {[last_orig] = {type='change', count=0}})
+      return true
     end
   end
 end
 
 M.on_lines = function(buf: integer, last_orig: integer, last_new: integer): boolean
-  if not cache[buf] then
-    dprint('Cache for buffer %d was nil. Detaching', buf)
+  local bcache = cache[buf]
+  if not bcache then
+    dprint('Cache for buffer was nil. Detaching')
     return true
   end
 
-  speculate_signs(buf, last_orig, last_new)
-  M.update_debounced(buf)
+  -- Schedule sign speculation ortherwise CTRL-C in insert mode can cause a
+  -- callback error. See #346
+  vim.schedule(function()
+    if speculate_signs(buf, last_orig, last_new) then
+      -- Speculative signs are added immediately whereas updates are debounced and
+      -- throttled for each buffer. If we perform two quick updates which result
+      -- in a sign begin added then removed, we need to make sure speculative
+      -- signs don't incorrectly persist. Example:
+      --
+      --   -> buffer change
+      --      - speculative signs (#1)
+      --      - update (#1)
+      --   -> undo (quickly after buffer change)
+      --      - speculative signs (#2)
+      --      - update (#2)
+      --
+      -- Update #1 is dropped due to the debounce which results in update #2 not
+      -- updating signs due to the hunks not changing. Since signs are never
+      -- updated, the speculative signs #1 and #2 will persist.
+      --
+      -- To get around this, we just need to invalidate the hunks to force a sign
+      -- refresh.
+      bcache.hunks = nil
+    end
+  end)
+  M.update_debounced(buf, cache[buf])
 end
 
 local ns = api.nvim_create_namespace('gitsigns')
@@ -142,7 +173,7 @@ M.apply_word_diff = function(bufnr: integer, row: integer)
   for _, hunk in ipairs(cache[bufnr].hunks) do
     if lnum >= hunk.start and lnum <= hunk.vend then
       local size = #hunk.lines / 2
-      local regions = require('gitsigns.diff_ffi').run_word_diff(hunk.lines)
+      local regions = require('gitsigns.diff_int').run_word_diff(hunk.lines)
       for _, region in ipairs(regions) do
         local line = region[1]
         if lnum == hunk.start + line - size - 1
@@ -189,9 +220,9 @@ local update0 = function(bufnr: integer, bcache: CacheEntry)
 
   -- Make sure these requires are done in the main event.
   -- See https://github.com/neovim/neovim/issues/15147
-  local run_diff: function({string}, {string}, string): {Hunk}
-  if config.use_internal_diff then
-    run_diff = require('gitsigns.diff_ffi').run_diff
+  local run_diff: function({string}, {string}, string, boolean): {Hunk}
+  if config.diff_opts.internal then
+    run_diff = require('gitsigns.diff_int').run_diff
   else
     run_diff = require('gitsigns.diff_ext').run_diff
   end
@@ -200,7 +231,8 @@ local update0 = function(bufnr: integer, bcache: CacheEntry)
     bcache.compare_text = git_obj:get_show_text(compare_object)
   end
 
-  bcache.hunks = run_diff(bcache.compare_text, buftext, config.diff_algorithm)
+  bcache.hunks = run_diff(bcache.compare_text, buftext,
+    config.diff_opts.algorithm, config.diff_opts.indent_heuristic)
 
   scheduler()
   if gs_hunks.compare_heads(bcache.hunks, old_hunks) then
@@ -216,7 +248,7 @@ local update0 = function(bufnr: integer, bcache: CacheEntry)
 
   update_cnt = update_cnt + 1
 
-  dprint('updates: %s, jobs: %s', update_cnt, util.job_cnt)
+  dprintf('updates: %s, jobs: %s', update_cnt, subprocess.job_cnt)
 end
 
 -- Ensure updates cannot be interleaved.
@@ -231,7 +263,7 @@ do
     if not running then
       running = true
       while scheduled[bufnr] do
-        scheduled[bufnr] = false
+        scheduled[bufnr] = nil
         update0(bufnr, bcache)
       end
       running = false

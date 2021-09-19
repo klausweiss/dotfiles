@@ -2,6 +2,7 @@ local record SchemaElem
   type: string
   deep_extend: boolean
   default: any
+  deprecated: string|boolean
   default_help: string
   description: string
 end
@@ -9,7 +10,15 @@ end
 local record M
   record Config
     debug_mode: boolean
-    diff_algorithm: string
+
+    record DiffOpts
+      algorithm: string
+      internal: boolean
+      indent_heuristic: boolean
+    end
+
+    diff_opts: DiffOpts
+    base: string
 
     record SignsConfig
       show_count: boolean
@@ -37,15 +46,28 @@ local record M
     status_formatter: function({string:any}): string
 
     current_line_blame: boolean
-    current_line_blame_formatter: function(string, {string:any}, current_line_blame_formatter_opts): string
+
     record current_line_blame_formatter_opts
-        relative_time: boolean
+      relative_time: boolean
     end
-    current_line_blame_position: string
-    current_line_blame_delay: integer
+
+    current_line_blame_formatter: function(string, {string:any}, current_line_blame_formatter_opts): string
+
+    record current_line_blame_opts
+      virt_text: boolean
+
+      enum VirtTextPos
+        'eol'
+        'overlay'
+        'right_align'
+      end
+      virt_text_pos: VirtTextPos
+
+      delay: integer
+    end
+
     preview_config: {string:any}
     attach_to_untracked: boolean
-    use_internal_diff: boolean
 
     record yadm
       enable: boolean
@@ -56,6 +78,7 @@ local record M
     _refresh_staged_on_update: boolean
 
     _git_version: string
+    _verbose: boolean
   end
 
   schema: {string:SchemaElem}
@@ -229,21 +252,61 @@ M.schema = {
     ]]
   },
 
-  diff_algorithm = {
-    type = 'string',
-    default = function(): string
-      -- Get algorithm from 'diffopt'
-      local algo = 'myers'
-      for o in vim.gsplit(vim.o.diffopt, ',') do
-        if vim.startswith(o, 'algorithm:') then
-          algo = string.sub(o, 11)
+  diff_opts = {
+    type = 'table',
+    deep_extend = true,
+    default = function(): {string:any}
+      local r = {
+        algorithm = 'myers',
+        internal = false,
+        indent_heuristic = false
+      }
+      for _, o in ipairs(vim.opt.diffopt:get()) do
+        if o == 'indent-heuristic' then
+          r.indent_heuristic = true
+        elseif o == 'internal' then
+          if vim.diff then
+            r.internal = true
+          elseif jit and jit.os ~= "Windows" then
+            -- Use FFI
+            r.internal = true
+          end
+        elseif vim.startswith(o, 'algorithm:') then
+          r.algorithm = string.sub(o, 11)
         end
       end
-      return algo
+      return r
     end,
-    default_help = "taken from 'diffopt'",
+    default_help = "derived from 'diffopt'",
     description = [[
-      Diff algorithm to pass to `git diff` .
+      Diff options.
+
+      Fields: ~
+        • algorithm: string
+            Diff algorithm to use. Values:
+            • "myers"      the default algorithm
+            • "minimal"    spend extra time to generate the
+                           smallest possible diff
+            • "patience"   patience diff algorithm
+            • "histogram"  histogram diff algorithm
+        • internal: boolean
+            Use Neovim's built in xdiff library for running diffs.
+
+            Note Neovim v0.5 uses LuaJIT's FFI interface, whereas v0.5+ uses
+            `vim.diff`.
+        • indent_heuristic: string
+            Use the indent heuristic for the internal
+            diff library.
+    ]]
+  },
+ 
+  base = {
+    type = 'string',
+    default = nil,
+    default_help = 'index',
+    description = [[
+      The object/revision to diff against.
+      See |gitsigns-revision|.
     ]]
   },
 
@@ -335,23 +398,6 @@ M.schema = {
     ]]
   },
 
-  use_internal_diff = {
-    type = 'boolean',
-    default = function(): boolean
-      if not jit or jit.os == "Windows" then
-        return false
-      else
-        return true
-      end
-    end,
-    default_help = "`true` if luajit is present (windows unsupported)",
-    description = [[
-      Use Neovim's built in xdiff library for running diffs.
-
-      This uses LuaJIT's FFI interface.
-    ]]
-  },
-
   current_line_blame = {
     type = 'boolean',
     default = false,
@@ -360,6 +406,32 @@ M.schema = {
       the current line.
 
       The highlight group used for the text is `GitSignsCurrentLineBlame`.
+    ]]
+  },
+
+  current_line_blame_opts = {
+    type = 'table',
+    deep_extend = true,
+    default = {
+      virt_text = true,
+      virt_text_pos = 'eol',
+      delay = 1000
+    },
+    description = [[
+      Options for the current line blame annotation.
+
+      Fields: ~
+        • virt_text: boolean
+          Whether to show a virtual text blame annotation.
+        • virt_text_pos: string
+          Blame annotation position. Available values:
+            `eol`         Right after eol character.
+            `overlay`     Display over the specified column, without
+                          shifting the underlying text.
+            `right_align` Display right aligned in the window.
+        • delay: integer
+          Sets the delay (in milliseconds) before blame virtual text is
+          displayed.
     ]]
   },
 
@@ -376,20 +448,6 @@ M.schema = {
         • relative_time: boolean
     ]]
   },
-
-   current_line_blame_position = {
-      type = 'string',
-      default = 'eol',
-      description = [[
-        Blame annotation position.
-
-        Available values:
-          `eol`         Right after eol character.
-          `overlay`     Display over the specified column, without shifting
-                      the underlying text.
-          `right_align` Display right aligned in the window.
-    ]],
-   },
 
   current_line_blame_formatter = {
     type = 'function',
@@ -471,14 +529,6 @@ M.schema = {
     ]]
   },
 
-  current_line_blame_delay = {
-    type = 'number',
-    default = 1000,
-    description = [[
-      Sets the delay before blame virtual text is displayed in milliseconds.
-    ]]
-  },
-
   yadm = {
     type = 'table',
     default = { enable = false },
@@ -495,12 +545,20 @@ M.schema = {
     ]]
   },
 
+  _verbose = {
+    type = 'boolean',
+    default = false,
+    description = [[
+      More verbose debug message. Requires debug_mode=true.
+    ]]
+  },
+
   word_diff = {
     type = 'boolean',
     default = false,
     description = [[
       Highlight intra-line word differences in the buffer.
-      Requires `config.use_internal_diff = true` .
+      Requires `config.diff_opts.internal = true` .
 
       Uses the highlights:
         • GitSignsAddLn
@@ -526,13 +584,23 @@ M.schema = {
       Enables debug logging and makes the following functions
       available: `dump_cache`, `debug_messages`, `clear_debug`.
     ]]
-  }
+  },
+
+  current_line_blame_delay    = { deprecated = 'current_line_blame_opts.delay' },
+  current_line_blame_position = { deprecated = 'current_line_blame_opts.virt_text_pos' },
+  diff_algorithm              = { deprecated = 'diff_opts.algorithm' },
+  use_decoration_api          = { deprecated = true },
+  use_internal_diff           = { deprecated = 'diff_opts.internal' },
 }
+
+local function warn(s: string, ...:any)
+  vim.notify(s:format(...), vim.log.levels.WARN, {title = 'gitsigns'})
+end
 
 local function validate_config(config: {string:any})
   for k, v in pairs(config) do
     if M.schema[k] == nil then
-      print(("gitsigns: Ignoring invalid configuration field '%s'"):format(k))
+      warn("gitsigns: Ignoring invalid configuration field '%s'", k)
     else
       vim.validate {
         [k] = { v, M.schema[k].type } as {any};
@@ -550,9 +618,28 @@ local function resolve_default(v: SchemaElem): any
 end
 
 local function handle_deprecated(cfg: {string:any})
-  if cfg.use_decoration_api then
-    print('Gitsigns: use_decoration_api is now removed; ignoring')
-    cfg.use_decoration_api = nil
+  for k, v in pairs(M.schema) do
+    if v.deprecated and cfg[k] ~= nil then
+      local dep = v.deprecated
+
+      if dep is string then
+        warn('%s is now deprecated, please use %s', k, dep)
+        local opts_key, field = dep:match('(.*)%.(.*)')
+        if opts_key and field then
+          -- Field moved to an options table
+          local opts = (cfg[opts_key] or {}) as {string:any}
+          opts[field] = cfg[k]
+          cfg[opts_key] = opts
+        else
+          -- Field renamed
+          cfg[dep] = cfg[k]
+        end
+        cfg[k] = nil
+      elseif dep then
+        warn('%s is now removed; ignoring', k)
+        cfg[k] = nil
+      end
+    end
   end
 end
 

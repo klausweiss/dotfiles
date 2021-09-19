@@ -14,6 +14,7 @@ local m = require("luasnip.extras").match
 local n = require("luasnip.extras").nonempty
 local dl = require("luasnip.extras").dynamic_lambda
 local types = require("luasnip.util.types")
+local conds = require("luasnip.extras.conditions")
 
 -- Every unspecified option will be set to the default.
 ls.config.set_config({
@@ -53,6 +54,7 @@ rec_ls = function()
 	)
 end
 
+-- complicated function for dynamicNode.
 local function jdocsnip(args, old_state)
 	local nodes = {
 		t({ "/**", " * " }),
@@ -154,6 +156,13 @@ local date_input = function(args, state, fmt)
 end
 
 ls.snippets = {
+	-- When trying to expand a snippet, luasnip first searches the tables for
+	-- each filetype specified in 'filetype' followed by 'all'.
+	-- If ie. the filetype is 'lua.c'
+	--     - luasnip.lua
+	--     - luasnip.c
+	--     - luasnip.all
+	-- are searched in that order.
 	all = {
 		-- trigger is fn.
 		s("fn", {
@@ -226,7 +235,21 @@ ls.snippets = {
 
 		-- When regTrig is set, trig is treated like a pattern, this snippet will expand after any number.
 		ls.parser.parse_snippet({ trig = "%d", regTrig = true }, "A Number!!"),
-
+		-- Using the condition, it's possible to allow expansion only in specific cases.
+		s("cond", {
+			t("will only expand in c-style comments"),
+		}, {
+			condition = function(line_to_cursor, matched_trigger, captures)
+				-- optional whitespace followed by //
+				return line_to_cursor:match("%s*//")
+			end,
+		}),
+		-- there's some built-in conditions in "luasnip.extras.conditions".
+		s("cond2", {
+			t("will only expand at the beginning of the line"),
+		}, {
+			condition = conds.line_begin,
+		}),
 		-- The last entry of args passed to the user-function is the surrounding snippet.
 		s(
 			{ trig = "a%d", regTrig = true },
@@ -241,6 +264,13 @@ ls.snippets = {
 				return "Captured Text: " .. args[1].captures[1] .. "."
 			end, {})
 		),
+		s({ trig = "c(%d+)", regTrig = true }, {
+			t("will only expand for even numbers"),
+		}, {
+			condition = function(line_to_cursor, matched_trigger, captures)
+				return tonumber(captures[1]) % 2 == 0
+			end,
+		}),
 		-- Use a function to execute any shell command and print its text.
 		s("bash", f(bash, {}, "ls")),
 		-- Short version for applying String transformations using function nodes.
@@ -259,13 +289,17 @@ ls.snippets = {
 			-- Lambdas can also apply transforms USING the text of other nodes:
 			l(l._1:gsub("e", l._2), { 1, 2 }),
 		}),
+		s({ trig = "trafo(%d+)", regTrig = true }, {
+			-- env-variables and captures can also be used:
+			l(l.CAPTURE1:gsub("1", l.TM_FILENAME), {}),
+		}),
 		-- Set store_selection_keys = "<Tab>" (for example) in your
 		-- luasnip.config.setup() call to access TM_SELECTED_TEXT. In
 		-- this case, select a URL, hit Tab, then expand this snippet.
 		s("link_url", {
 			t('<a href="'),
 			f(function(args)
-				return args[1].env.TM_SELECTED_TEXT[1]
+				return args[1].env.TM_SELECTED_TEXT[1] or {}
 			end, {}),
 			t('">'),
 			i(1),
@@ -388,6 +422,11 @@ ls.autosnippets = {
 	},
 }
 
+-- in a lua file: search lua-, then c-, then all-snippets.
+ls.filetype_extend("lua", { "c" })
+-- in a cpp file: search c-snippets, then all-snippets only (no cpp-snippets!!).
+ls.filetype_set("cpp", { "c" })
+
 --[[
 -- Beside defining your own snippets you can also load snippets from "vscode-like" packages
 -- that expose snippets in json files, for example <https://github.com/rafamadriz/friendly-snippets>.
@@ -396,7 +435,9 @@ ls.autosnippets = {
 ]]
 
 require("luasnip/loaders/from_vscode").load({ include = { "python" } }) -- Load only python snippets
+-- The directories will have to be structured like eg. <https://github.com/rafamadriz/friendly-snippets> (include
+-- a similar `package.json`)
 require("luasnip/loaders/from_vscode").load({ paths = { "./my-snippets" } }) -- Load snippets from my-snippets folder
 
 -- You can also use lazy loading so you only get in memory snippets of languages you use
-require("luasnip/loaders/from_vscode").lazy_load() -- You can pass { path = "./my-snippets/"} as well
+require("luasnip/loaders/from_vscode").lazy_load() -- You can pass { paths = "./my-snippets/"} as well

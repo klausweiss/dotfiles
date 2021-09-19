@@ -9,7 +9,6 @@ local SessionLens = {
 
 local defaultConf = {
   theme_conf = { winblend = 10, border = true },
-  path_display = {'shorten'},
   previewer = false
 }
 
@@ -46,8 +45,10 @@ SessionLens.search_session = function(custom_opts)
 
   -- Ignore last session dir on finder if feature is enabled
   if AutoSession.conf.auto_session_enable_last_session then
-    local last_session_dir = AutoSession.conf.auto_session_last_session_dir:gsub(cwd, "")
-    custom_opts["file_ignore_patterns"] = {last_session_dir}
+    if AutoSession.conf.auto_session_last_session_dir then
+      local last_session_dir = AutoSession.conf.auto_session_last_session_dir:gsub(cwd, "")
+      custom_opts["file_ignore_patterns"] = {last_session_dir}
+    end
   end
 
   -- Use default previewer config by setting the value to nil if some sets previewer to true in the custom config.
@@ -59,7 +60,7 @@ SessionLens.search_session = function(custom_opts)
 
   local opts = {
     prompt_title = 'Sessions',
-    -- entry_maker = Lib.make_entry.gen_from_file({cwd = cwd, path_display = path_display}),
+    entry_maker = Lib.make_entry.gen_from_file(custom_opts),
     cwd = cwd,
     -- TOOD: support custom mappings?
     attach_mappings = function(_, map)

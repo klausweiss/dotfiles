@@ -5,6 +5,7 @@ local finders = require "telescope.finders"
 local make_entry = require "telescope.make_entry"
 local pickers = require "telescope.pickers"
 local previewers = require "telescope.previewers"
+local sorters = require "telescope.sorters"
 local utils = require "telescope.utils"
 local conf = require("telescope.config").values
 local log = require "telescope.log"
@@ -80,8 +81,6 @@ files.live_grep = function(opts)
       return nil
     end
 
-    prompt = escape_chars(prompt)
-
     local search_list = {}
 
     if search_dirs then
@@ -94,7 +93,7 @@ files.live_grep = function(opts)
       search_list = filelist
     end
 
-    return flatten { vimgrep_arguments, additional_args, prompt, search_list }
+    return flatten { vimgrep_arguments, additional_args, "--", prompt, search_list }
   end, opts.entry_maker or make_entry.gen_from_vimgrep(
     opts
   ), opts.max_results, opts.cwd)
@@ -103,7 +102,9 @@ files.live_grep = function(opts)
     prompt_title = "Live Grep",
     finder = live_grepper,
     previewer = conf.grep_previewer(opts),
-    sorter = conf.generic_sorter(opts),
+    -- TODO: It would be cool to use `--json` output for this
+    -- and then we could get the highlight positions directly.
+    sorter = sorters.highlighter_only(opts),
   }):find()
 end
 
@@ -130,6 +131,7 @@ files.grep_string = function(opts)
     vimgrep_arguments,
     additional_args,
     word_match,
+    "--",
     search,
   }
 
@@ -142,7 +144,7 @@ files.grep_string = function(opts)
   end
 
   pickers.new(opts, {
-    prompt_title = "Find Word",
+    prompt_title = "Find Word (" .. word .. ")",
     finder = finders.new_oneshot_job(args, opts),
     previewer = conf.grep_previewer(opts),
     sorter = conf.generic_sorter(opts),
@@ -504,8 +506,8 @@ files.current_buffer_fuzzy_find = function(opts)
       end,
     })
     for id, node in query:iter_captures(root, bufnr, 0, -1) do
-      local hl = highlighter_query.hl_cache[id]
-      if hl then
+      local hl = highlighter_query:_get_hl_from_capture(id)
+      if hl and type(hl) ~= "number" then
         local row1, col1, row2, col2 = node:range()
 
         if row1 == row2 then
@@ -556,19 +558,18 @@ files.current_buffer_fuzzy_find = function(opts)
 end
 
 files.tags = function(opts)
-  local ctags_file = opts.ctags_file or "tags"
-
-  if not vim.loop.fs_open(vim.fn.expand(ctags_file, true), "r", 438) then
-    print "Tags file does not exists. Create one with ctags -R"
+  local tagfiles = opts.ctags_file and { opts.ctags_file } or vim.fn.tagfiles()
+  if vim.tbl_isempty(tagfiles) then
+    print "No tags file found. Create one with ctags -R"
     return
   end
 
-  local fd = assert(vim.loop.fs_open(vim.fn.expand(ctags_file, true), "r", 438))
-  local stat = assert(vim.loop.fs_fstat(fd))
-  local data = assert(vim.loop.fs_read(fd, stat.size, 0))
-  assert(vim.loop.fs_close(fd))
-
-  local results = vim.split(data, "\n")
+  local results = {}
+  for _, ctags_file in ipairs(tagfiles) do
+    for line in Path:new(vim.fn.expand(ctags_file)):iter() do
+      results[#results + 1] = line
+    end
+  end
 
   pickers.new(opts, {
     prompt_title = "Tags",

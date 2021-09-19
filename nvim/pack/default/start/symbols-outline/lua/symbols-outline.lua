@@ -4,30 +4,17 @@ local parser = require('symbols-outline.parser')
 local ui = require('symbols-outline.ui')
 local writer = require('symbols-outline.writer')
 local config = require('symbols-outline.config')
-local utils = require('symbols-outline.utils.lsp_utils')
+local lsp_utils = require('symbols-outline.utils.lsp_utils')
+local utils = require('symbols-outline.utils.init')
 local markdown = require('symbols-outline.markdown')
+local view = require('symbols-outline.view')
 
 local M = {}
 
-local function setup_commands()
-    vim.cmd("command! " .. "SymbolsOutline " ..
-                ":lua require'symbols-outline'.toggle_outline()")
-    vim.cmd("command! " .. "SymbolsOutlineOpen " ..
-                ":lua require'symbols-outline'.open_outline()")
-    vim.cmd("command! " .. "SymbolsOutlineClose " ..
-                ":lua require'symbols-outline'.close_outline()")
-end
-
 local function setup_global_autocmd()
-    vim.cmd(
-        "au InsertLeave,BufEnter,BufWinEnter,TabEnter,BufWritePost * :lua require('symbols-outline')._refresh()")
-    vim.cmd "au BufLeave * lua require'symbols-outline'._prevent_buffer_override()"
-    if config.options.auto_preview then
-        vim.cmd "au WinEnter * lua require'symbols-outline.preview'.close_if_not_in_outline()"
-    end
     if config.options.highlight_hovered_item then
         vim.cmd(
-            "autocmd CursorHold * :lua require('symbols-outline')._highlight_current_item()")
+            "au CursorHold * :lua require('symbols-outline')._highlight_current_item()")
     end
 end
 
@@ -35,7 +22,11 @@ local function setup_buffer_autocmd()
     if config.options.auto_preview then
         vim.cmd(
             "au CursorHold <buffer> lua require'symbols-outline.preview'.show()")
+    else
+        vim.cmd(
+            "au CursorMoved <buffer> lua require'symbols-outline.preview'.close()")
     end
+
 end
 
 local function getParams()
@@ -57,7 +48,7 @@ local function wipe_state()
     M.state = {outline_items = {}, flattened_outline_items = {}}
 end
 
-function M._refresh()
+local function __refresh ()
     if M.state.outline_buf ~= nil then
         local function refresh_handler(response)
             if response == nil or type(response) ~= 'table' then
@@ -65,8 +56,7 @@ function M._refresh()
             end
 
             local current_buf = vim.api.nvim_get_current_buf()
-            if (not utils.is_buf_markdown(current_buf)) and
-                (not utils.is_buf_attached_to_lsp(current_buf)) then
+            if lsp_utils.should_not_refresh(current_buf) then
                 return
             end
 
@@ -88,6 +78,8 @@ function M._refresh()
     end
 end
 
+M._refresh = utils.debounce(__refresh, 100)
+
 function M._goto_location(change_focus)
     local current_line = vim.api.nvim_win_get_cursor(M.state.outline_win)[1]
     local node = M.state.flattened_outline_items[current_line]
@@ -97,7 +89,7 @@ function M._goto_location(change_focus)
 end
 
 function M._highlight_current_item(winnr)
-    local doesnt_have_lsp = not utils.is_buf_attached_to_lsp(
+    local doesnt_have_lsp = not lsp_utils.is_buf_attached_to_lsp(
                                 vim.api.nvim_win_get_buf(winnr or 0))
 
     local is_current_buffer_the_outline =
@@ -105,7 +97,7 @@ function M._highlight_current_item(winnr)
 
     local doesnt_have_outline_buf = not M.state.outline_buf
 
-    local is_not_markdown = not utils.is_buf_markdown(0)
+    local is_not_markdown = not lsp_utils.is_buf_markdown(0)
 
     local should_exit = (doesnt_have_lsp and is_not_markdown) or
                             doesnt_have_outline_buf or
@@ -141,104 +133,33 @@ function M._highlight_current_item(winnr)
     end
 end
 
--- credits: https://github.com/kyazdani42/nvim-tree.lua
-function M._prevent_buffer_override()
-    vim.schedule(function()
-        local curwin = vim.api.nvim_get_current_win()
-        local curbuf = vim.api.nvim_win_get_buf(curwin)
-        local wins = vim.api.nvim_list_wins()
-
-        if curwin ~= M.state.outline_win or curbuf ~= M.state.outline_buf then
-            return
-        end
-
-        -- if this is the only window left, return early. Else we won't be able to close the last buffer. #22
-        if #wins == 1 and curbuf == M.state.outline_buf then return end
-
-        vim.cmd("buffer " .. M.state.outline_buf)
-
-        local current_win_width = vim.api.nvim_win_get_width(curwin)
-        if #wins < 2 then
-            vim.cmd(config.get_split_command())
-            vim.cmd("vertical resize " .. math.ceil(current_win_width * 0.75))
-        else
-            vim.cmd("wincmd " .. config.get_position_navigation_direction())
-        end
-
-        vim.cmd("buffer " .. curbuf)
-        if #wins < 2 then
-            vim.cmd("wincmd r")
-            vim.cmd("bprev")
-        end
-    end)
-end
-
 local function setup_keymaps(bufnr)
-    ---maps the table of keys to the action
-    ---@param keys table
-    ---@param action string
-    local function nmap(keys, action)
-        if type(keys) == 'string' then keys = {keys} end
-
-        for _, value in ipairs(keys) do
-            vim.api.nvim_buf_set_keymap(bufnr, "n", value, action,
-                                        {silent = true, noremap = true})
-        end
+    local map = function (...)
+       utils.nmap(bufnr, ...)
     end
-
     -- goto_location of symbol and focus that window
-    nmap(config.options.keymaps.goto_location,
+    map(config.options.keymaps.goto_location,
          ":lua require('symbols-outline')._goto_location(true)<Cr>")
     -- goto_location of symbol but stay in outline
-    nmap(config.options.keymaps.focus_location,
+    map(config.options.keymaps.focus_location,
          ":lua require('symbols-outline')._goto_location(false)<Cr>")
     -- hover symbol
-    nmap(config.options.keymaps.hover_symbol,
+    map(config.options.keymaps.hover_symbol,
          ":lua require('symbols-outline.hover').show_hover()<Cr>")
+    -- preview symbol
+    map(config.options.keymaps.toggle_preview,
+         ":lua require('symbols-outline.preview').toggle()<Cr>")
     -- rename symbol
-    nmap(config.options.keymaps.rename_symbol,
+    map(config.options.keymaps.rename_symbol,
          ":lua require('symbols-outline.rename').rename()<Cr>")
     -- code actions
-    nmap(config.options.keymaps.code_actions,
+    map(config.options.keymaps.code_actions,
          ":lua require('symbols-outline.code_action').show_code_actions()<Cr>")
+    -- show help
+    map(config.options.keymaps.show_help,
+         ":lua require('symbols-outline.config').show_help()<Cr>")
     -- close outline
-    nmap(config.options.keymaps.close, ":bw!<Cr>")
-end
-
-----------------------------
--- WINDOW AND BUFFER STUFF
-----------------------------
-local function setup_buffer()
-    M.state.outline_buf = vim.api.nvim_create_buf(false, true)
-    vim.api.nvim_buf_attach(M.state.outline_buf, false,
-                            {on_detach = function(_, _) wipe_state() end})
-    vim.api.nvim_buf_set_option(M.state.outline_buf, "bufhidden", "delete")
-
-    local current_win = vim.api.nvim_get_current_win()
-    local current_win_width = vim.api.nvim_win_get_width(current_win)
-
-    vim.cmd(config.get_split_command())
-    vim.cmd("vertical resize " ..
-                math.ceil(current_win_width * config.get_width_percentage()))
-    M.state.outline_win = vim.api.nvim_get_current_win()
-    vim.api.nvim_win_set_buf(M.state.outline_win, M.state.outline_buf)
-
-    setup_keymaps(M.state.outline_buf)
-
-    vim.api.nvim_win_set_option(M.state.outline_win, "number", false)
-    vim.api.nvim_win_set_option(M.state.outline_win, "relativenumber", false)
-    vim.api.nvim_win_set_option(M.state.outline_win, "winfixwidth", true)
-    vim.api.nvim_buf_set_name(M.state.outline_buf, "OUTLINE")
-    vim.api.nvim_buf_set_option(M.state.outline_buf, "filetype", "Outline")
-    vim.api.nvim_buf_set_option(M.state.outline_buf, "modifiable", false)
-
-    if config.options.show_numbers or config.options.show_relative_numbers then
-        vim.api.nvim_win_set_option(M.state.outline_win, "nu", true)
-    end
-
-    if config.options.show_relative_numbers then
-        vim.api.nvim_win_set_option(M.state.outline_win, "rnu", true)
-    end
+    map(config.options.keymaps.close, ":bw!<Cr>")
 end
 
 local function handler(response)
@@ -246,7 +167,11 @@ local function handler(response)
 
     M.state.code_win = vim.api.nvim_get_current_win()
 
-    setup_buffer()
+    M.state.outline_buf, M.state.outline_win = view.setup_view()
+    -- clear state when buffer is closed
+    vim.api.nvim_buf_attach(M.state.outline_buf, false,
+                            {on_detach = function(_, _) wipe_state() end})
+    setup_keymaps(M.state.outline_buf)
     setup_buffer_autocmd()
 
     local items = parser.parse(response)
@@ -286,7 +211,6 @@ end
 
 function M.setup(opts)
     config.setup(opts)
-    setup_commands()
     setup_global_autocmd()
 end
 

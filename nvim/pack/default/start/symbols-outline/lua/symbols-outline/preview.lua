@@ -1,6 +1,7 @@
 local vim = vim
 local main = require('symbols-outline')
 local config = require('symbols-outline.config')
+local buf_request = require('symbols-outline.utils.lsp_utils').request
 
 local M = {}
 
@@ -103,8 +104,8 @@ local function update_hover()
     if not node then return end
     local params = get_hover_params(node, main.state.code_win)
 
-    vim.lsp.buf_request(params.bufnr, "textDocument/hover", params,
-                        function(err, _, result)
+    buf_request(params.bufnr, "textDocument/hover", params,
+                        function(err, result)
         if err then print(vim.inspect(err)) end
         local markdown_lines = {}
         if result ~= nil then
@@ -133,18 +134,6 @@ local function setup_hover_buf()
     vim.api.nvim_win_set_option(state.hover_win, "wrap", true)
     vim.api.nvim_win_set_option(state.hover_win, "cursorline", false)
     update_hover()
-end
-
-function M.close_if_not_in_outline()
-    if not is_current_win_outline() and has_code_win() then
-        if state.preview_win ~= nil and
-            vim.api.nvim_win_is_valid(state.preview_win) then
-            vim.api.nvim_win_close(state.preview_win, true)
-        end
-        if state.hover_win ~= nil and vim.api.nvim_win_is_valid(state.hover_win) then
-            vim.api.nvim_win_close(state.hover_win, true)
-        end
-    end
 end
 
 local function show_preview()
@@ -199,11 +188,34 @@ local function show_hover()
 end
 
 function M.show()
-    if not is_current_win_outline() or #vim.api.nvim_list_wins() < 2 then
+    if not is_current_win_outline() or
+        #vim.api.nvim_list_wins() < 2 then
         return
     end
+
     show_preview()
     show_hover()
+end
+
+function M.close()
+    if has_code_win() then
+        if state.preview_win ~= nil and
+            vim.api.nvim_win_is_valid(state.preview_win) then
+            vim.api.nvim_win_close(state.preview_win, true)
+        end
+        if state.hover_win ~= nil and
+            vim.api.nvim_win_is_valid(state.hover_win) then
+            vim.api.nvim_win_close(state.hover_win, true)
+        end
+    end
+end
+
+function M.toggle()
+    if state.preview_win ~= nil then
+        M.close()
+    else
+        M.show()
+    end
 end
 
 return M

@@ -16,6 +16,7 @@ local Config     = gs_config.Config
 local config     = gs_config.config
 
 local gs_debug   = require("gitsigns.debug")
+local dprintf    = gs_debug.dprintf
 local dprint     = gs_debug.dprint
 
 local api = vim.api
@@ -30,6 +31,7 @@ local record M
 
   -- Internal, API unstable
   _update_highlights : function()
+  _update_cwd_head   : function()
   _run_func          : function(range: {integer, integer}, func: string, ...: any)
   _complete          : function(arglead: string, line: string): {string}
   _attach_enable     : function()
@@ -44,7 +46,7 @@ local handle_moved = function(bufnr: integer, bcache: CacheEntry, old_relpath: s
 
   local new_name = git_obj:has_moved()
   if new_name then
-    dprint('File moved to %s', new_name)
+    dprintf('File moved to %s', new_name)
     git_obj.relpath = new_name
     if not git_obj.orig_relpath then
       git_obj.orig_relpath = old_relpath
@@ -53,7 +55,7 @@ local handle_moved = function(bufnr: integer, bcache: CacheEntry, old_relpath: s
   elseif git_obj.orig_relpath then
     local orig_file = git_obj.toplevel..util.path_sep..git_obj.orig_relpath
     if git_obj:file_info(orig_file) then
-      dprint('Moved file reset')
+      dprintf('Moved file reset')
       git_obj.relpath = git_obj.orig_relpath
       git_obj.orig_relpath = nil
       do_update = true
@@ -72,13 +74,13 @@ local handle_moved = function(bufnr: integer, bcache: CacheEntry, old_relpath: s
 end
 
 local watch_index = function(bufnr: integer, gitdir: string): uv.FSPollObj
-  dprint('Watching index')
+  dprintf('Watching index')
   local index = gitdir..util.path_sep..'index'
   local w = uv.new_fs_poll()
   w:start(index, config.watch_index.interval, void(function(err: string)
     local __FUNC__ = 'watcher_cb'
     if err then
-      dprint('Index update error: %s', err)
+      dprintf('Index update error: %s', err)
       return
     end
     dprint('Index update')
@@ -168,7 +170,7 @@ local function get_buf_path(bufnr: integer): string, string
       sub_module_path = sub_module_path:gsub("^/modules", "")
       file = root_path .. sub_module_path .. real_path
       file = uv.fs_realpath(file)
-      dprint("Fugitive buffer for file '%s' from path '%s'", file, orig_path)
+      dprintf("Fugitive buffer for file '%s' from path '%s'", file, orig_path)
       if file then
         return file, commit
       else
@@ -203,7 +205,7 @@ local attach0 = function(cbuf: integer, aucmd: string)
   end
 
   if aucmd then
-    dprint('Attaching (trigger=%s)', aucmd)
+    dprintf('Attaching (trigger=%s)', aucmd)
   else
     dprint('Attaching')
   end
@@ -281,6 +283,7 @@ local attach0 = function(cbuf: integer, aucmd: string)
   end
 
   cache[cbuf] = CacheEntry.new {
+    base          = config.base,
     file          = file,
     commit        = commit,
     index_watcher = watch_index(cbuf, git_obj.gitdir),
@@ -361,24 +364,73 @@ M._complete = function(arglead: string, line: string): {string}
   return matches
 end
 
-M._run_func = function(range: {integer, integer}, func: string, ...: any)
+-- try to parse each argument as a lua value using loadstring, if fails then
+-- keep argument as a string:
+--
+--   'false'    -> false
+--   'nil'      -> nil
+--   'HEAD~300' -> 'HEAD~300'
+local function parse_args_to_lua(...: string): {any}
+  local args = {}
+  for i, a in ipairs({...}) do
+    local f = loadstring('return '..a)
+    local ok = f ~= nil
+    local v: any
+    if ok then
+      ok, v = pcall(f)
+    end
+    if ok then
+      args[i] = v
+    else
+      args[i] = a
+    end
+  end
+  return args
+end
+
+M._run_func = function(range: {integer, integer}, func: string, ...: string)
   local actions = require('gitsigns.actions')
   local actions0 = actions as {string:function}
+
+  local args = parse_args_to_lua(...)
+
   if type(actions0[func]) == 'function' then
     if range and range[1] ~= range[2] then
       actions.user_range = range
     else
       actions.user_range = nil
     end
-    actions0[func](...)
+    actions0[func](unpack(args))
     actions.user_range = nil
     return
   end
   if type(M0[func]) == 'function' then
-    M0[func](...)
+    M0[func](unpack(args))
     return
   end
 end
+
+local _update_cwd_head = function()
+  local cwd = vim.fn.getcwd()
+  local head: string
+  for _, bcache in pairs(cache as {number:CacheEntry}) do
+    if bcache.git_obj.toplevel == cwd then
+      head = bcache.git_obj.abbrev_head
+      break
+    end
+  end
+  if not head then
+    _, _, head = git.get_repo_info(cwd)
+    scheduler()
+  end
+  if head then
+    api.nvim_set_var('gitsigns_head', head)
+  else
+    pcall(api.nvim_del_var, 'gitsigns_head')
+  end
+end
+
+M._update_cwd_head = void(_update_cwd_head)
 
 local function setup_command()
   vim.cmd(table.concat({
@@ -393,9 +445,21 @@ end
 
 M.setup = void(function(cfg: Config)
   gs_config.build(cfg)
+
+  if vim.fn.executable('git') == 0 then
+    print('gitsigns: git not in path. Aborting setup')
+    return
+  end
+  if config.yadm.enable and vim.fn.executable('yadm') == 0 then
+    print("gitsigns: yadm not in path. Ignoring 'yadm.enable' in config")
+    config.yadm.enable = false
+    return
+  end
+
   namespace = api.nvim_create_namespace('gitsigns')
 
   gs_debug.debug_mode = config.debug_mode
+  gs_debug.verbose = config._verbose
 
   if config.debug_mode then
     for nm, f in pairs(gs_debug.add_debug_functions(cache)) do
@@ -429,7 +493,7 @@ M.setup = void(function(cfg: Config)
       manager.apply_win_signs(bufnr, bcache.pending_signs, top+1, bot+1)
 
       -- Returning false prevents the on_line callbacks
-      return config.word_diff and config.use_internal_diff
+      return config.word_diff and config.diff_opts.internal
     end,
     on_line = function(_, _, bufnr: integer, row: integer)
       manager.apply_word_diff(bufnr, row)
@@ -466,6 +530,10 @@ M.setup = void(function(cfg: Config)
   ]]
 
   require('gitsigns.current_line_blame').setup()
+
+  scheduler()
+  M._update_cwd_head()
+  vim.cmd[[autocmd gitsigns DirChanged * lua _G.package.loaded.gitsigns._update_cwd_head()]]
 end)
 
 M.attach = void(attach)

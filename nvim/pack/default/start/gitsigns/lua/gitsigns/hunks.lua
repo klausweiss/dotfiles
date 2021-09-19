@@ -81,7 +81,7 @@ end
 
 function M.process_hunks(hunks)
    local signs = {}
-   for _, hunk in ipairs(hunks) do
+   for _, hunk in ipairs(hunks or {}) do
       local count = hunk.type == 'add' and hunk.added.count or hunk.removed.count
       for i = hunk.start, hunk.dend do
          local topdelete = hunk.type == 'delete' and i == 0
@@ -159,7 +159,7 @@ end
 function M.get_summary(hunks)
    local status = { added = 0, changed = 0, removed = 0 }
 
-   for _, hunk in ipairs(hunks) do
+   for _, hunk in ipairs(hunks or {}) do
       if hunk.type == 'add' then
          status.added = status.added + hunk.added.count
       elseif hunk.type == 'delete' then
@@ -231,7 +231,7 @@ function M.compare_heads(a, b)
    elseif a and #a ~= #b then
       return true
    end
-   for i, ah in ipairs(a) do
+   for i, ah in ipairs(a or {}) do
       if b[i].head ~= ah.head then
          return true
       end

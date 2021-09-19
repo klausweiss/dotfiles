@@ -131,18 +131,19 @@ local record api
   nvim_ui_try_resize: function(number, number)
   nvim_ui_try_resize_grid: function(number, number, number)
   nvim_unsubscribe: function(string)
+  nvim_win_call: function<T>(number, (function(): T)): T
   nvim_win_close: function(number, boolean)
   nvim_win_del_var: function(number, string)
   nvim_win_get_buf: function(number): number
   nvim_win_get_config: function(number): {string:any}
   nvim_win_get_cursor: function(number): {integer}
-  nvim_win_get_height: function(number): number
+  nvim_win_get_height: function(integer): integer
   nvim_win_get_number: function(number): number
   nvim_win_get_option: function(number, string): any
   nvim_win_get_position: function(number): {number}
   nvim_win_get_tabpage: function(number): any
   nvim_win_get_var: function(number, string): any
-  nvim_win_get_width: function(number): number
+  nvim_win_get_width: function(integer): integer
   nvim_win_is_valid: function(number): boolean
   nvim_win_set_buf: function(number, number)
   nvim_win_set_config: function(number, {string:any})
@@ -161,7 +162,9 @@ global record vim
     line: function(string): integer
     join: function({any}, string): string
     getpos: function(string): {integer}
+    executable: function(string): integer
     expand: function(string): string
+    getcwd: function(): string
 
     record QFItem
       bufnr: integer
@@ -225,6 +228,8 @@ global record vim
 
   deepcopy: function<T>(T): T
 
+  diff: function(string|{string}, string|{string}, table)
+
   record o
     diffopt: string
     wrapscan: boolean
@@ -239,6 +244,17 @@ global record vim
 
   record v
     vim_did_enter: integer
+  end
+
+  record opt
+    record Opt<T>
+      get: function<T>(Opt<T>): T
+    end
+
+    diffopt: Opt<{string}>
+    foldopen: Opt<{string}>
+    shortmess: Opt<{string:boolean}>
+    wrapscan: Opt<boolean>
   end
 
   record lsp
@@ -308,11 +324,48 @@ global record vim
     new_tcp: function()
 
     sleep: function(integer)
+
+    record Pipe
+      close: function(Pipe)
+      is_closing: function(Pipe): boolean | string
+      read_start: function(Pipe, err: any, data: string)
+      read_stop: function(Pipe)
+      write: function(Pipe, string, function())
+
+      open: function(any)
+    end
+
+    record Process
+      userdata
+    end
+
+    record SpawnOpts
+      stdio: {Pipe, Pipe, Pipe}
+      args: {string}
+      cwd: string
+      env: {string}
+    end
+
+    spawn: function(string, SpawnOpts, function(integer, integer)): Process, integer
+
+    read_start: function(Pipe, function)
+    new_pipe: function(boolean): Pipe
+    shutdown: function(any, function)
+    close: function(any, function)
   end
 
   in_fast_event: function(): boolean
 
   list_extend: function({any}, {any}, integer, integer)
+  record log
+    record levels
+      WARN: integer
+      ERROR: integer
+      INFO: integer
+      DEBUG: integer
+    end
+  end
+  notify: function(string, integer, table)
   split: function(string, string): {string}
   split: function(string, string, boolean): {string}
 
@@ -344,6 +397,8 @@ global record vim
   tbl_count: function(table): integer
 
   tbl_isempty: function(table): boolean
+
+  tbl_islist: function(table): boolean
 
   tbl_contains: function(table, any): boolean
 

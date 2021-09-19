@@ -92,6 +92,7 @@ function popup.create(what, vim_options)
 
   local option_defaults = {
     posinvert = true,
+    zindex = 50,
   }
 
   local win_opts = {}
@@ -198,6 +199,18 @@ function popup.create(what, vim_options)
   --   textpropwin
   --   textpropid
 
+  -- zindex, Priority for the popup, default 50.  Minimum value is
+  -- ,   1, maximum value is 32000.
+  local zindex = dict_default(vim_options, "zindex", option_defaults)
+  win_opts.zindex = utils.bounded(zindex, 1, 32000)
+
+  -- noautocmd, undocumented vim default per https://github.com/vim/vim/issues/5737
+  win_opts.noautocmd = vim.F.if_nil(vim_options.noautocmd, true)
+
+  -- focusable,
+  -- vim popups are not focusable windows
+  win_opts.focusable = vim.F.if_nil(vim_options.focusable, false)
+
   local win_id
   if vim_options.hidden then
     assert(false, "I have not implemented this yet and don't know how")
@@ -241,7 +254,12 @@ function popup.create(what, vim_options)
   end
 
   if vim_options.wrap ~= nil then
-    vim.api.nvim_win_set_option(win_id, "wrap", vim_options.wrap)
+    -- set_option wrap should/will trigger autocmd, see https://github.com/neovim/neovim/pull/13247
+    if vim_options.noautocmd then
+      vim.cmd(string.format("noautocmd lua vim.api.nvim_set_option(%s, wrap, %s)", win_id, vim_options.wrap))
+    else
+      vim.api.nvim_win_set_option(win_id, "wrap", vim_options.wrap)
+    end
   end
 
   -- ===== Not Implemented Options =====
@@ -338,6 +356,7 @@ function popup.create(what, vim_options)
 
   local border = nil
   if should_show_border then
+    border_options.focusable = vim_options.border_focusable
     border = Border:new(bufnr, win_id, win_opts, border_options)
   end
 
@@ -358,7 +377,11 @@ function popup.create(what, vim_options)
   if should_enter then
     -- set focus after border creation so that it's properly placed (especially
     -- in relative cursor layout)
-    vim.api.nvim_set_current_win(win_id)
+    if vim_options.noautocmd then
+      vim.cmd("noautocmd lua vim.api.nvim_set_current_win(" .. win_id .. ")")
+    else
+      vim.api.nvim_set_current_win(win_id)
+    end
   end
 
   -- callback

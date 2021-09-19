@@ -1,9 +1,9 @@
 local notif = require("neogit.lib.notification")
 local logger = require 'neogit.logger'
-local a = require 'plenary.async_lib'
-local async, await, await_all = a.async, a.await, a.await_all
+local a = require 'plenary.async'
 local process = require('neogit.process')
 local Job = require 'neogit.lib.job'
+local util = require 'neogit.lib.util'
 local split = require('neogit.lib.util').split
 
 local function config(setup)
@@ -71,8 +71,7 @@ local configurations = {
     aliases = {
       get = function(tbl)
         return function(path)
-          tbl._get()
-          return tbl.args(path)
+          return tbl._get.args(path)
         end
       end
     }
@@ -158,6 +157,7 @@ local configurations = {
     flags = {
       amend = '--amend',
       only = '--only',
+      dry_run = '--dry-run',
       no_edit = '--no-edit'
     },
     options = {
@@ -271,16 +271,16 @@ local configurations = {
   })
 }
 
-local git_root = async(function()
-  return vim.trim(await(process.spawn({cmd = 'git', args = {'rev-parse', '--show-toplevel'}})))
-end)
+local function git_root()
+  return util.trim(process.spawn({cmd = 'git', args = {'rev-parse', '--show-toplevel'}}))
+end
 
 local git_root_sync = function()
-  return vim.trim(vim.fn.system("git rev-parse --show-toplevel"))
+  return util.trim(vim.fn.system("git rev-parse --show-toplevel"))
 end
 
 local git_dir_path_sync = function()
-  return vim.trim(vim.fn.system("git rev-parse --git-dir"))
+  return util.trim(vim.fn.system("git rev-parse --git-dir"))
 end
 
 local history = {}
@@ -313,16 +313,12 @@ local function handle_new_cmd(job, popup, hidden_text)
 
   if popup and job.code ~= 0 then
     vim.schedule(function ()
-      notif.create({
-        "Git Error (" .. job.code .. ")!",
-        "",
-        "Press $ to see the git command history."
-      }, { type = "error" })
+      notif.create("Git Error (" .. job.code .. "), press $ to see the git command history", vim.log.levels.ERROR)
     end)
   end
 end
 
-local exec = async(function(cmd, args, cwd, stdin, env, show_popup, hide_text)
+local function exec(cmd, args, cwd, stdin, env, show_popup, hide_text)
   args = args or {}
   if show_popup == nil then 
     show_popup = true 
@@ -330,7 +326,7 @@ local exec = async(function(cmd, args, cwd, stdin, env, show_popup, hide_text)
   table.insert(args, 1, cmd)
 
   if not cwd then
-    cwd = await(git_root())
+    cwd = git_root()
   elseif cwd == '<current>' then
     cwd = nil
   end
@@ -344,7 +340,7 @@ local exec = async(function(cmd, args, cwd, stdin, env, show_popup, hide_text)
     cwd = cwd
   }
 
-  local result, code, errors = await(process.spawn(opts))
+  local result, code, errors = process.spawn(opts)
   local stdout = split(result, '\n')
   local stderr = split(errors, '\n')
 
@@ -358,7 +354,7 @@ local exec = async(function(cmd, args, cwd, stdin, env, show_popup, hide_text)
   --print('git', table.concat(args, ' '), '->', code, errors)
 
   return stdout, code, stderr
-end)
+end
 
 local function new_job(cmd, args, cwd, _stdin, _env, show_popup, hide_text)
   args = args or {}
@@ -521,7 +517,7 @@ local function new_builder(subcommand)
     [k_state] = state,
     [k_config] = configuration,
     [k_command] = subcommand,
-    call = async(function ()
+    call = function ()
       local args = {}
       for _,o in ipairs(state.options) do 
         table.insert(args, o) 
@@ -542,8 +538,8 @@ local function new_builder(subcommand)
 
       logger.debug(string.format("[CLI]: Executing '%s %s'", subcommand, table.concat(args, ' ')))
 
-      return await(exec(subcommand, args, state.cwd, state.input, state.env, state.show_popup, state.hide_text))
-    end),
+      return exec(subcommand, args, state.cwd, state.input, state.env, state.show_popup, state.hide_text)
+    end,
     call_sync = function()
       local args = {}
       for _,o in ipairs(state.options) do 
@@ -598,11 +594,11 @@ local function new_parallel_builder(calls)
     cwd = nil
   }
 
-  local call = async(function ()
+  local function call()
     if #state.calls == 0 then return end
 
     if not state.cwd then
-      state.cwd = await(git_root())
+      state.cwd = git_root()
     end
     if not state.cwd or state.cwd == "" then return end
 
@@ -611,12 +607,12 @@ local function new_parallel_builder(calls)
     end
 
     local processes = {}
-    for _,c in ipairs(state.calls) do
-      table.insert(processes, c())
+    for _, c in ipairs(state.calls) do
+      table.insert(processes, c)
     end
 
-    return await_all(processes)
-  end)
+    return a.util.join(processes)
+  end
 
   return setmetatable({
     call = call
@@ -650,9 +646,119 @@ local meta = {
   end
 }
 
+local function handle_interactive_password_questions(chan, line)
+  logger.debug(string.format("Matching interactive cmd output: '%s'", line))
+  if vim.startswith(line, "Are you sure you want to continue connecting ") then
+    logger.debug "[CLI]: Confirming whether to continue with unauthenticated host"
+    local prompt = line
+    local value = vim.fn.input {
+      prompt = "The authenticity of the host can't be established. " .. prompt .. " ",
+      cancelreturn = "__CANCEL__"
+    }
+    if value ~= "__CANCEL__" then
+      logger.debug "[CLI]: Received answer"
+      vim.fn.chansend(chan, value .. "\n")
+    else
+      logger.debug "[CLI]: Cancelling the interactive cmd"
+      vim.fn.chanclose(chan)
+    end
+  elseif vim.startswith(line, "Username for ") then
+    logger.debug "[CLI]: Asking for username"
+    local prompt = line:match("(.*:?):.*")
+    local value = vim.fn.input {
+      prompt = prompt .. " ",
+      cancelreturn = "__CANCEL__"
+    }
+    if value ~= "__CANCEL__" then
+      logger.debug "[CLI]: Received username"
+      vim.fn.chansend(chan, value .. "\n")
+    else
+      logger.debug "[CLI]: Cancelling the interactive cmd"
+      vim.fn.chanclose(chan)
+    end
+  elseif vim.startswith(line, "Enter passphrase") 
+    or vim.startswith(line, "Password for") 
+    then
+    logger.debug "[CLI]: Asking for password"
+    local prompt = line:match("(.*:?):.*")
+    local value = vim.fn.inputsecret {
+      prompt = prompt .. " ",
+      cancelreturn = "__CANCEL__"
+    }
+    if value ~= "__CANCEL__" then
+      logger.debug "[CLI]: Received password"
+      vim.fn.chansend(chan, value .. "\n")
+    else
+      logger.debug "[CLI]: Cancelling the interactive cmd"
+      vim.fn.chanclose(chan)
+    end
+  else
+    return false
+  end
+
+  return true
+end
+
 local cli = setmetatable({
   history = history,
+  insert = handle_new_cmd,
   git_root = git_root,
+  interactive_git_cmd = a.wrap(function(cmd, handle_line, cb)
+    handle_line = handle_line or handle_interactive_password_questions
+    -- from: https://stackoverflow.com/questions/48948630/lua-ansi-escapes-pattern
+    local ansi_escape_sequence_pattern = "[\27\155][][()#;?%d]*[A-PRZcf-ntqry=><~]"
+    local stdout = {}
+    local raw_stdout = {}
+    local chan
+    local skip_count = 0
+
+    local started_at = os.clock()
+    logger.debug(string.format("[CLI]: Starting interactive git cmd '%s'", cmd))
+    chan = vim.fn.jobstart(vim.fn.has('win32') == 1 and { "cmd", "/C", cmd } or cmd, {
+      pty = true,
+      width = 100,
+      on_stdout = function(_, data)
+        table.insert(raw_stdout, data)
+        local is_end = #data == 1 and data[1] == ""
+        if is_end then
+          return
+        end
+        local data = table.concat(data, "")
+        local data = data:gsub(ansi_escape_sequence_pattern, "")
+        table.insert(stdout, data)
+        local lines = vim.split(data, "\r?[\r\n]")
+
+        for i=1,#lines do
+          if lines[i] ~= "" then
+            if skip_count > 0 then
+              skip_count = skip_count - 1
+            else
+              handle_line(chan, lines[i])
+            end
+          end
+        end
+      end,
+      on_exit = function(_, code)
+        logger.debug(string.format("[CLI]: Interactive git cmd '%s' exited with code %d", cmd, code))
+        handle_new_cmd {
+          cmd = cmd,
+          raw_cmd = cmd,
+          stdout = stdout,
+          stderr = stdout,
+          code = code,
+          time = (os.clock() - started_at) * 1000
+        }
+        cb({
+          code = code,
+          stdout = stdout
+        })
+      end,
+    })
+
+    if not chan then
+      logger.error(string.format("[CLI]: Failed to start interactive git cmd ''", cmd))
+    end
+  end, 3),
   git_root_sync = git_root_sync,
   git_dir_path_sync = git_dir_path_sync,
   in_parallel = function(...)

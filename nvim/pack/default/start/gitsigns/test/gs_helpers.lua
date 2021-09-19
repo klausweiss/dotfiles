@@ -56,7 +56,7 @@ end
 
 
 function M.setup_git()
-  M.git{"init"}
+  M.git{"init", '-b', 'master'}
 
   -- Always force color to test settings don't interfere with gitsigns systems
   -- commands (addresses #23)
@@ -88,9 +88,9 @@ function M.setup_test_repo(no_add)
   end
 end
 
-function M.expectf(cond)
+function M.expectf(cond, interval)
   local duration = 0
-  local interval = 5
+  interval = interval or 5
   while duration < timeout do
     if pcall(cond) then
       return
@@ -176,7 +176,6 @@ local function match_lines2(lines, spec)
     for j = i, #spec do
       table.insert(unmatched, spec[j].text or spec[j])
     end
-    -- print(table.concat(lines, '\n'))
     error(('Did not match patterns:\n    - %s'):format(table.concat(unmatched, '\n    - ')))
   end
 end
@@ -225,7 +224,7 @@ M.it = function(it)
   end
 end
 
-function M.check(attrs)
+function M.check(attrs, interval)
   attrs = attrs or {}
   M.expectf(function()
     local status = attrs.status
@@ -283,7 +282,7 @@ function M.check(attrs)
 
       eq(signs, act, M.inspect(buf_signs))
     end
-  end)
+  end, interval)
 end
 
 return M

@@ -14,7 +14,9 @@ configs[server_name] = {
       GLOB_PATTERN = vim.env.GLOB_PATTERN or '*@(.sh|.inc|.bash|.command)',
     },
     filetypes = { 'sh' },
-    root_dir = util.path.dirname,
+    root_dir = function(fname)
+      return util.root_pattern '.git'(fname) or util.path.dirname(fname)
+    end,
   },
   docs = {
     description = [[
@@ -27,5 +29,3 @@ Language server for bash, written using tree sitter in typescript.
     },
   },
 }
-
--- vim:et ts=2 sw=2

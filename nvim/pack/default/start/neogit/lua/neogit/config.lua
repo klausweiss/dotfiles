@@ -4,7 +4,11 @@ M.values = {
   disable_context_highlighting = false,
   disable_signs = false,
   disable_commit_confirmation = false,
+  disable_builtin_notifications = false,
   auto_refresh = true,
+  commit_popup = {
+      kind = "split",
+  },
   signs = {
     hunk = { "", "" },
     item = { ">", "v" },

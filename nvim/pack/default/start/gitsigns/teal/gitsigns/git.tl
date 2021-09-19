@@ -1,9 +1,9 @@
 local wrap = require('plenary.async.async').wrap
 local scheduler = require('plenary.async.util').scheduler
-local JobSpec = require('plenary.job').JobSpec
 
 local gsd = require("gitsigns.debug")
 local util = require('gitsigns.util')
+local subprocess = require('gitsigns.subprocess')
 
 local gs_hunks = require("gitsigns.hunks")
 local Hunk = gs_hunks.Hunk
@@ -15,12 +15,9 @@ local record GJobSpec
   command: string
   args: {string}
   cwd: string
-  on_stdout: function
-  on_stderr: function
-  on_exit: function
   writer: {string}
 
-  -- gitsigns extensions
+  -- local extensions
   supress_stderr: boolean
 end
 
@@ -43,6 +40,8 @@ local record M
     committer_tz: string
     summary: string
     previous: string
+    previous_filename: string
+    previous_sha: string
     filename: string
   end
 
@@ -56,6 +55,7 @@ local record M
   enable_yadm: boolean
 
   set_version: function(string)
+  get_repo_info: function(path: string, cmd: string): string,string,string
   command    : function(args: {string}, spec: GJobSpec): {string}, string
 
   record Obj
@@ -75,7 +75,7 @@ local record M
     update_file_info     : function(Obj): boolean
     unstage_file         : function(Obj, string, string)
     get_show_text        : function(Obj, string): {string}, string
-    run_blame            : function(Obj, {string}, number): M.BlameInfo
+    run_blame            : function(Obj, {string}, number): BlameInfo
     file_info            : function(Obj, string): string, string, string, boolean
     ensure_file_in_index : function(Obj)
     stage_hunks          : function(Obj, {Hunk}, boolean)
@@ -118,36 +118,36 @@ local function check_version(version: {number,number,number}): boolean
   return true
 end
 
+local type JobSpec = subprocess.JobSpec
+
 M.command = wrap(function(args: {string}, spec: GJobSpec, callback: function({string}, string))
-  local result: {string} = {}
-  local reserr: string
   spec = spec or {}
   spec.command = spec.command or 'git'
-  spec.args = {'--no-pager', unpack(args) }
-  spec.on_stdout = spec.on_stdout or function(_, line: string)
-    table.insert(result, line)
-  end
-  spec.on_stderr = spec.on_stderr or function(err: string, line: string)
+  spec.args = spec.command == 'git' and {'--no-pager', unpack(args) } or args
+  subprocess.run_job(spec as JobSpec, function(_: integer, _: integer, stdout: string, stderr: string)
     if not spec.supress_stderr then
-      if err  then gsd.eprint(err)  end
-      if line then gsd.eprint(line) end
+      if stderr then
+        gsd.eprint(stderr)
+      end
     end
-    if not reserr then
-      reserr = ''
-    else
-      reserr = reserr..'\n'
+
+    local stdout_lines = vim.split(stdout or '', '\n', true)
+
+    -- If stdout ends with a newline, then remove the final empty string after
+    -- the split
+    if stdout_lines[#stdout_lines] == '' then
+      stdout_lines[#stdout_lines] = nil
     end
-    if err  then reserr = reserr..err  end
-    if line then reserr = reserr..line end
-  end
-  local old_on_exit = spec.on_exit
-  spec.on_exit = function()
-    if old_on_exit then
-      old_on_exit()
+
+    if gsd.verbose then
+      gsd.vprintf('%d lines:', #stdout_lines)
+      for i = 1, math.min(10, #stdout_lines) do
+        gsd.vprintf('\t%s', stdout_lines[i])
+      end
     end
-    callback(result, reserr)
-  end
-  util.run_job(spec as JobSpec)
+
+    callback(stdout_lines, stderr)
+  end)
 end, 3)
 
 local function process_abbrev_head(gitdir: string, head_str: string, path: string, cmd: string): string
@@ -155,14 +155,12 @@ local function process_abbrev_head(gitdir: string, head_str: string, path: strin
     return head_str
   end
   if head_str == 'HEAD' then
-    local short_sha: string
-    if not gsd.debug_mode then
-      short_sha = M.command({'rev-parse', '--short', 'HEAD'}, {
+    local short_sha = M.command({'rev-parse', '--short', 'HEAD'}, {
         command = cmd or 'git',
         supress_stderr = true,
         cwd = path,
       })[1] or ''
-    else
+    if gsd.debug_mode and short_sha ~= '' then
       short_sha = 'HEAD'
     end
     if util.path_exists(gitdir..'/rebase-merge')
@@ -174,7 +172,7 @@ local function process_abbrev_head(gitdir: string, head_str: string, path: strin
   return head_str
 end
 
-local get_repo_info = function(path: string, cmd: string): string,string,string
+M.get_repo_info = function(path: string, cmd: string): string,string,string
   -- Does git rev-parse have --absolute-git-dir, added in 2.13:
   --   https://public-inbox.org/git/20170203024829.8071-16-szeder.dev@gmail.com/
   local has_abs_gd = check_version{2,13}
@@ -225,7 +223,7 @@ Obj.command = function(self: Obj, args: {string}, spec: GJobSpec): {string}, str
 end
 
 Obj.update_abbrev_head = function(self: Obj)
-  _, _, self.abbrev_head = get_repo_info(self.toplevel)
+  _, _, self.abbrev_head = M.get_repo_info(self.toplevel)
 end
 
 Obj.update_file_info = function(self: Obj): boolean
@@ -274,15 +272,14 @@ end
 
 --- Get version of file in the index, return array lines
 Obj.get_show_text = function(self: Obj, object: string): {string}, string
-  return self:command({'show', object}, {
-    supress_stderr = true
-  })
+  return self:command({'show', object}, { supress_stderr = true })
 end
 
 Obj.run_blame = function(self: Obj, lines: {string}, lnum: number): M.BlameInfo
-  if not self.object_name then
+  if not self.object_name or self.abbrev_head == '' then
     -- As we support attaching to untracked files we need to return something if
     -- the file isn't isn't tracked in git.
+    -- If abbrev_head is empty, then assume the repo has no commits
     return {
       author             = 'Not Committed Yet',
       ['author-mail']    = '<not.committed.yet>',
@@ -314,6 +311,10 @@ Obj.run_blame = function(self: Obj, lines: {string}, lnum: number): M.BlameInfo
       local cols = vim.split(l, ' ')
       local key = table.remove(cols, 1):gsub('-', '_')
       ret[key] = table.concat(cols, ' ')
+      if key == 'previous' then
+        ret.previous_sha = cols[1]
+        ret.previous_filename = cols[2]
+      end
     end
   end
   return ret as M.BlameInfo
@@ -363,14 +364,14 @@ Obj.has_moved = function(self: Obj): string
 end
 
 Obj.files_changed = function(self: Obj): {string}
+  local results = self:command{'status', '--porcelain', '--ignore-submodules'}
+
   local ret: {string} = {}
-  self:command({'status', '--porcelain'}, {
-    on_stdout = function(_, line: string)
-      if line:sub(1, 2):match('^.M') then
-        ret[#ret+1] = line:sub(4, -1)
-      end
+  for _, line in ipairs(results) do
+    if line:sub(1, 2):match('^.M') then
+      ret[#ret+1] = line:sub(4, -1)
     end
-  })
+  end
   return ret
 end
 
@@ -380,14 +381,14 @@ Obj.new = function(file: string): Obj
   self.file = file
   self.username = M.command({'config', 'user.name'})[1]
   self.toplevel, self.gitdir, self.abbrev_head =
-    get_repo_info(util.dirname(file))
+    M.get_repo_info(util.dirname(file))
 
   -- Try yadm
   if M.enable_yadm and not self.gitdir then
     if vim.startswith(file, os.getenv('HOME'))
       and #M.command({'ls-files', file}, {command = 'yadm'}) ~= 0 then
       self.toplevel, self.gitdir, self.abbrev_head =
-        get_repo_info(util.dirname(file), 'yadm')
+        M.get_repo_info(util.dirname(file), 'yadm')
     end
   end
 

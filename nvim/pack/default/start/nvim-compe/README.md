@@ -1,3 +1,9 @@
+# Warning
+
+nvim-compe is now deprecated. Please use [nvim-cmp](https://github.com/hrsh7th/nvim-cmp) the successor of nvim-compe.
+
+nvim-compe still works but new feature and bugfixes will be stopped.
+
 # nvim-compe
 
 Auto completion plugin for nvim.
@@ -242,15 +248,16 @@ highlight link CompeDocumentation NormalFloat
 - [latex-symbols](https://github.com/GoldsteinE/compe-latex-symbols)
 - [tmux](https://github.com/andersevenrud/compe-tmux)
 - [vCard](https://github.com/cbarrete/completion-vcard)
+- [lbdb](https://github.com/codybuell/compe-lbdb)
 
 ## Known issues
 
 You can see the known issues in here.
 
-[OS related](https://github.com/hrsh7th/nvim-compe/issues?q=+label%3Aos-related+)
-[Server related](https://github.com/hrsh7th/nvim-compe/issues?q=+label%3Aserver-related+)
-[Upstream issue](https://github.com/hrsh7th/nvim-compe/issues?q=+label%3Aupstream-issue+)
-[Next version](https://github.com/hrsh7th/nvim-compe/issues?q=+label%3Anext-version+)
+- [OS related](https://github.com/hrsh7th/nvim-compe/issues?q=+label%3Aos-related+)
+- [Server related](https://github.com/hrsh7th/nvim-compe/issues?q=+label%3Aserver-related+)
+- [Upstream issue](https://github.com/hrsh7th/nvim-compe/issues?q=+label%3Aupstream-issue+)
+- [Next version](https://github.com/hrsh7th/nvim-compe/issues?q=+label%3Anext-version+)
 
 Note: The next-version means [nvim-cmp](https://github.com/hrsh7th/nvim-cmp) now.
 

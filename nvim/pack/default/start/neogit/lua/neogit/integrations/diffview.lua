@@ -2,15 +2,14 @@ local M = {}
 
 local dv = require 'diffview'
 local dv_config = require 'diffview.config'
-local Rev = require'diffview.rev'.Rev
-local RevType = require'diffview.rev'.RevType
-local CView = require'diffview.api.c-view'.CView
+local Rev = require'diffview.git.rev'.Rev
+local RevType = require'diffview.git.rev'.RevType
+local CDiffView = require'diffview.api.views.diff.diff_view'.CDiffView
 local dv_lib = require'diffview.lib'
 
 local neogit = require 'neogit'
 local status = require'neogit.status'
-local a = require 'plenary.async_lib'
-local await, async, void = a.await, a.async, a.void
+local a = require 'plenary.async'
 
 local old_config
 
@@ -44,8 +43,8 @@ function M.open(selected_file_name)
 
   dv.setup(config)
 
-  local left = Rev:new(RevType.INDEX)
-  local right = Rev:new(RevType.LOCAL)
+  local left = Rev(RevType.INDEX)
+  local right = Rev(RevType.LOCAL)
   local git_root = neogit.cli.git_root_sync()
 
   local function update_files()
@@ -79,7 +78,7 @@ function M.open(selected_file_name)
 
   local files = update_files()
 
-  local view = CView:new {
+  local view = CDiffView({
     git_root = git_root,
     left = left,
     right = right,
@@ -98,12 +97,12 @@ function M.open(selected_file_name)
           or nil
       end
     end
-  }
+  })
 
-  view:on_files_staged(void(async(function (_)
-    await(status.refresh({ status = true, diffs = true }))
+  view:on_files_staged(a.void(function (_)
+    status.refresh({ status = true, diffs = true })
     view:update_files()
-  end)))
+  end))
 
   dv_lib.add_view(view)
 

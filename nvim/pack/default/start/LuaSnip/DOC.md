@@ -22,11 +22,13 @@ All code-snippets in this help assume that
 local ls = require"luasnip"
 local s = ls.snippet
 local sn = ls.snippet_node
+local isn = ls.indent_snippet_node
 local t = ls.text_node
 local i = ls.insert_node
 local f = ls.function_node
 local c = ls.choice_node
 local d = ls.dynamic_node
+local events = require("luasnip.util.events")
 ```
 
 # SNIPPETS
@@ -43,13 +45,17 @@ entries:
 
 - `trig`: string, plain text by default. The only entry that must be given.
 - `name`: string, can be used by eg. `nvim-compe` to identify the snippet.
-- `dscr`: string, textual description of the snippet, \n-separated or table
+- `dscr`: string, description of the snippet, \n-separated or table
           for multiple lines.
 - `wordTrig`: boolean, if true, the snippet is only expanded if the word
               (`[%w_]+`) before the cursor matches the trigger entirely.
-			  True by default.
+              True by default.
 - `regTrig`: boolean, whether the trigger should be interpreted as a
              lua pattern. False by default.
+- `docstring`: string, textual representation of the snippet, specified like
+               `dscr`. Overrides docstrings loaded from json.
+- `docTrig`: string, for snippets triggered using a lua pattern: define the
+             trigger that is used during docstring-generation.
 
 `s` can also be a single string, in which case it is used instead of `trig`, all
 other values being defaulted:
@@ -62,12 +68,22 @@ The second argument to `s` is a table containing all nodes that belong to the
 snippet. If the table only has a single node, it can be passed directly
 without wrapping it in a table.
 
-The third argument is the condition-function. The snippet will be expanded only
-if it returns true (default is a function that just returns true) (the function
-is called before the text is modified in any way).
-
-The fourth and following args are passed to the condition-function(allows
-reusing condition-functions).
+The third argument is a table with the following valid keys:
+- `condition`: the condition-function. The snippet will be expanded only
+               if it returns true (default is a function that just returns true)
+               (the function is called before the text is modified in any way).
+               Some parameters are passed to the function: The line up to the
+               cursor, the matched trigger and the captures (table).
+- `callbacks`: Contains functions that are called upon enterin/leaving a node.
+               To print text upon entering the second node of a snippet, set
+               `callbacks` should be set as follows:
+               `{ [2] = { [events.enter] = function() print "2!" end } }`.
+               To register a callback for the snippets' events, the key `[-1]`
+               may be used.
+               The callbacks are passed only one argument, the node that
+               triggered it.
+This `opts`-table can also be passed to eg.	`snippetNode` or `indentSnippetNode`,
+`condition` doesn't have any effect there, but `callbacks` are used.
 
 Snippets contain some interesting tables, eg. `snippet.env` contains variables
 used in the LSP-protocol like `TM_CURRENT_LINE` or `TM_FILENAME` or
@@ -230,6 +246,42 @@ Note that snippetNodes don't expect an `i(0)`.
 
 
 
+# INDENTSNIPPETNODE
+
+By default, all nodes are indented at least as deep as the trigger. With these
+nodes it's possible to override that behaviour:
+
+```lua
+s("isn", {
+	isn(1, {
+		t({"This is indented as deep as the trigger",
+		"and this is at the beginning of the next line"})
+	}, "")
+})
+```
+
+(Note the empty string passed to isn).
+
+Indent is only applied after linebreaks, so it's not possible to remove indent
+on the line where the snippet was triggered using `ISN` (That is possible via
+regex-triggers where the entire line before the trigger is matched).
+
+Another nice usecase for `ISN` is inserting text, eg. `//` or some other comment-
+string before the nodes of the snippet:
+
+```lua
+s("isn2", {
+	isn(1, t({"//This is", "A multiline", "comment"}), "$PARENT_INDENT//")
+})
+```
+
+Here the `//` before `This is` is important, once again, because indent is only
+applied after linebreaks.
+To enable such usage, `$PARENT_INDENT` in the indentstring is replaced by the
+parents' indent (duh).
+
+
+
 # DYNAMICNODE
 
 Very similar to functionNode: returns a snippetNode instead of just text,
@@ -307,6 +359,8 @@ eg. 3, it would change to "3\nSample Text\nSample Text\nSample Text". Text
 that was inserted into any of the dynamicNodes insertNodes is kept when
 changing to a bigger number.
 
+
+
 # LSP-SNIPPETS
 
 Luasnip is capable of parsing lsp-style snippets using
@@ -320,11 +374,13 @@ choiceNode's with:
 	- the given snippet(`"this is ${1:nested}"`) and  
 	- an empty insertNode
 	
+
+
 # VARIABLES
 
 All `TM_something`-variables are supported with two additions:
 `SELECT_RAW` and `SELECT_DEDENT`. These were introduced because
-`TM_SELECTED_TEXT` is designed to be compatible with vscodes' behaviour, which
+`TM_SELECTED_TEXT` is designed to be compatible with vscodes' behavior, which
 can be counterintuitive when the snippet can be expanded at places other than
 the point where selection started (or when doing transformations on selected text).
 
@@ -343,6 +399,8 @@ To use any `*SELECT*` variable, the `store_selection_keys` must be set via
 hitting `<Tab>` while in Visualmode will populate the `*SELECT*`-vars for the next
 snippet and then clear them.
  
+
+
 # VSCODE SNIPPETS LOADER
 
 As luasnip is capable of loading the same format of plugins as vscode, it also
@@ -350,15 +408,20 @@ includes an easy way for loading those automatically. You just have to call:
 ```lua
  	require("luasnip/loaders/from_vscode").load(opts) -- opts can be ommited
 ```
+
 Where `opts` is a table containing the keys:
-	-  `paths`: List of paths to load as a table or as a single string separated
-	   by a comma, if not set it's `'runtimepath'`, you can start the paths with
-	   `~/` or `./` to indicate that the path is relative to your home or to
-	   the folder where your `$MYVIMRC` resides (useful to add your snippets).
+	-  `paths`: List of paths to load. Can be a table or a single,
+		comma-separated string. If not set, `runtimepath` is used. The paths
+		may begin with `~/` or `./` to indicate that the path is relative to
+		your home or to the folder where your `$MYVIMRC` resides (useful to
+		add your snippets). The directories passed this way must be structured
+		like [`friendly-snippets`](https://github.com/rafamadriz/friendly-snippets)
+		eg. include a `package.json`.
 	-  `exclude`: List of languages to exclude, by default is empty.
 	-  `include`: List of languages to include, by default is not set.
 
-The last two are useful mainly to avoid loading snippets from 3erd parties you don't wanna include.
+The last two are useful mainly to avoid loading snippets from 3erd parties you
+don't wanna include.
 
 Keep in mind that it will extend your `snippets` table, so do it after setting
 your snippets or you will have to extend the table as well.
@@ -366,12 +429,16 @@ your snippets or you will have to extend the table as well.
 Another way of using the loader is making it lazily
 
 ```lua
- 	require("luasnip/loaders/from_vscode").lazy_load(opts) -- opts can be ommited
+ 	require("luasnip.loaders.from_vscode").lazy_load(opts) -- opts can be ommited
 ```
 
 In this case `opts` only accepts paths (`runtimepath` if any). That will load
 the general snippets (the ones of filetype 'all') and those of the filetype
 of the buffers, you open every time you open a new one (but it won't reload them).
+
+Apart from what is stipulated by the start each snippet in the json file can 
+contain a "luasnip" field wich is a table for extra parameters for the snippet,
+till now the only valid one is autotrigger.
 
 # EXT\_OPTS
 
@@ -412,6 +479,95 @@ snippet(Node), `ext_base_prio` is increased by `ext_prio_increase`)).
 
 As a shortcut for setting `hl_group`, the highlight-groups
 `Luasnip*Node{Active,Passive}` may be defined (to be actually used by LuaSnip,
-`ls.config.setup` has to be called after defining). They are overridden by the values
-defined in `ext_opts` directly, but otherwise behave the same (active is
+`ls.config.setup` has to be called after defining). They are overridden by the
+values defined in `ext_opts` directly, but otherwise behave the same (active is
 extended by passive).
+
+
+
+# DOCSTRING
+
+Snippet-docstrings can be queried using `snippet:get_docstring()`. The function
+evaluates the snippet as if it was expanded regularly, which can be problematic
+if eg. a dynamicNode in the snippet relies on inputs other than
+the argument-nodes.
+`snip.env` and `snip.captures` are populated with the names of the queried
+variable and the index of the capture respectively
+(`snip.env.TM_SELECTED_TEXT` -> `'$TM_SELECTED_TEXT'`, `snip.captures[1]` ->
+ `'$CAPTURES1'`). Although this leads to more expressive docstrings, it can
+ cause errors in functions that eg. rely on a capture being a number:
+
+```lua
+s({trig = "(%d)", regTrig = true}, {
+	f(function(args)
+		return string.rep("repeatme ", tonumber(args[1].captures[1]))
+	end, {})
+}),
+```
+
+This snippet works fine because	`snippet.captures[1]` is always a number.
+During docstring-generation, however, `snippet.captures[1]` is `'$CAPTURES1'`,
+which will cause an error in the functionNode.
+Issues with `snippet.captures` can be prevented by specifying `docTrig` during
+snippet-definition:
+
+```lua
+s({trig = "(%d)", regTrig = true, docTrig = "3"}, {
+	f(function(args)
+		return string.rep("repeatme ", tonumber(args[1].captures[1]))
+	end, {})
+}),
+```
+
+`snippet.captures` and `snippet.trigger` will be populated as if actually
+triggered with `3`.
+
+Other issues will have to be handled manually by checking the contents of eg.
+`snip.env` or predefining the docstring for the snippet:
+
+```lua
+s({trig = "(%d)", regTrig = true, docstring = "repeatmerepeatmerepeatme"}, {
+	f(function(args)
+		return string.rep("repeatme ", tonumber(args[1].captures[1]))
+	end, {})
+}),
+```
+
+
+
+# DOCSTRING-CACHE
+
+Although generation of docstrings is pretty fast, it's preferable to not
+redo it as long as the snippets haven't changed. Using
+`ls.store_snippet_docstrings(ls.snippets)` and its counterpart
+`ls.load_snippet_docstrings(ls.snippets)`, they may be serialized from or
+deserialized into the snippets.
+Both functions accept a table structured like `ls.snippets`, ie.
+`{ft1={snippets}, ft2={snippets}}`.
+`load` should be called before any of the `loader`-functions as snippets loaded
+from vscode-style packages already have their `docstring` set (`docstrings`
+wouldn't be overwritten, but there'd be unnecessary calls).
+
+The cache is located at `stdpath("cache")/luasnip/docstrings.json` (probably
+`~/.cache/nvim/luasnip/docstrings.json`).
+
+# EVENTS
+
+Upon leaving/entering nodes or changing a choice an event is triggered:
+`User Luasnip<Node>{Enter,Leave}`, where `<Node>` is the name of a node in
+PascalCase, eg. `InsertNode` or `DynamicNode` or `Snippet`.
+The event triggered when changing the choice in a `choiceNode` is
+`User LuasnipChangeChoice`.
+
+A pretty useless, beyond serving as an example here, application of these would
+be printing eg. the nodes' text after entering:
+
+```vim
+au User LuasnipInsertNodeEnter
+	\lua print(require("luasnip").session.event_node:get_text()[1])
+```
+
+# CLEANUP
+The function ls.cleanup()  triggers the `LuasnipCleanup` user-event, that you can listen to do some kind
+of cleaning in your own snippets, by default it will  empty the snippets table and the caches of
+the lazy_load.

@@ -1,4 +1,4 @@
-local a = require 'plenary.async_lib'
+local a = require 'plenary.async'
 
 local M = {}
 
@@ -34,6 +34,8 @@ function M:new_action_group()
   return self
 end
 
+--@param parse Whether the switch is internal to neogit or should be included in the cli command. 
+--             If `false` we don't include it in the cli comand.
 function M:switch(key, cli, description, enabled, parse)
   if enabled == nil then
     enabled = false
@@ -71,7 +73,7 @@ function M:action(key, description, callback)
   table.insert(self.state.actions[#self.state.actions], {
     key = key,
     description = description,
-    callback = callback and a.void(a.async(callback)) or nil
+    callback = callback and a.void(callback) or nil
   })
 
   return self
@@ -82,7 +84,7 @@ function M:action_if(cond, key, description, callback)
     table.insert(self.state.actions[#self.state.actions], {
       key = key,
       description = description,
-      callback = callback and a.void(a.async(callback)) or nil
+      callback = callback and a.void(callback) or nil
     })
   end
 

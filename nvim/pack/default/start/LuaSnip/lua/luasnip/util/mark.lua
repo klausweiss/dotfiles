@@ -30,7 +30,9 @@ end
 local function bytecol_to_utfcol(pos)
 	local line = vim.api.nvim_buf_get_lines(0, pos[1], pos[1] + 1, false)
 	-- line[1]: get_lines returns table.
-	return { pos[1], vim.str_utfindex(line[1], pos[2]) }
+	-- use utf16-index.
+	local utf16_indx, _ = vim.str_utfindex(line[1] or "", pos[2])
+	return { pos[1], utf16_indx }
 end
 
 function Mark:pos_begin_end()
@@ -49,7 +51,8 @@ function Mark:pos_begin()
 	local mark_info = vim.api.nvim_buf_get_extmark_by_id(
 		0,
 		Luasnip_ns_id,
-		self.id({ details = false })
+		self.id,
+		{ details = false }
 	)
 
 	return bytecol_to_utfcol({ mark_info[1], mark_info[2] })
@@ -66,7 +69,7 @@ function Mark:pos_end()
 	return bytecol_to_utfcol({ mark_info[3].end_row, mark_info[3].end_col })
 end
 
-function Mark:pos_begin_end_raw(id)
+function Mark:pos_begin_end_raw()
 	local mark_info = vim.api.nvim_buf_get_extmark_by_id(
 		0,
 		Luasnip_ns_id,
@@ -75,6 +78,16 @@ function Mark:pos_begin_end_raw(id)
 	)
 	return { mark_info[1], mark_info[2] },
 		{ mark_info[3].end_row, mark_info[3].end_col }
+end
+
+function Mark:pos_begin_raw()
+	local mark_info = vim.api.nvim_buf_get_extmark_by_id(
+		0,
+		Luasnip_ns_id,
+		self.id,
+		{ details = false }
+	)
+	return { mark_info[1], mark_info[2] }
 end
 
 function Mark:copy_pos_gravs(opts)
