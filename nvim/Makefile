@@ -34,6 +34,25 @@ define clone-repo
 	$(eval override BRANCH_OPTION = )
 endef
 
+define clone-subdirectory
+	$(eval REPO = $(1))
+	$(eval SUBDIR = $(2))
+	$(eval DIR = $(3))
+	$(eval BRANCH = $(4))
+	$(eval BRANCH_OPTION =
+	ifneq ($(strip $(4)),)
+	override BRANCH_OPTION = --branch $(BRANCH)
+	endif)
+	rm -rf $(DIR)
+	git clone $(REPO) $(DIR) --depth 1 $(BRANCH_OPTION) --sparse --filter=blob:none
+	cd $(DIR); \
+	git sparse-checkout set $(SUBDIR)
+	# commands above create a $(SUBDIR) directory in $(DIR)
+	cp -r $(DIR)/$(SUBDIR)/* $(DIR)
+	rm -rf $(DIR)/$(SUBDIR)
+	$(eval override BRANCH_OPTION = )
+endef
+
 define copy-if-any-srcs
 	if test -n "$(strip $(1))"; then \
 		cp -r $(1) $(2)/; \
@@ -53,6 +72,14 @@ define download-from-repo
 	$(eval BRANCH = $(2))
 	$(eval DEST_DIR = $(PLUGINS_DIR)/$(notdir $(basename $(REPO))))
 	$(call clone-repo, $(REPO), $(DEST_DIR), $(BRANCH))
+	$(call clear-junk, $(DEST_DIR))
+endef
+
+define download-from-git-subdirectory
+	$(eval REPO = $(1))
+	$(eval SUBDIR = $(2))
+	$(eval DEST_DIR = $(PLUGINS_DIR)/$(notdir $(basename $(REPO))))
+	$(call clone-subdirectory, $(REPO), $(SUBDIR), $(DEST_DIR))
 	$(call clear-junk, $(DEST_DIR))
 endef
 
@@ -78,6 +105,9 @@ update-gruvbox-material:
 
 update-hop:
 	$(call download-from-repo, https://github.com/phaazon/hop.nvim)
+
+update-koka:
+	$(call download-from-git-subdirectory, https://github.com/koka-lang/koka, support/vim)
 
 update-lsp_signature:
 	$(call download-from-repo, https://github.com/ray-x/lsp_signature.nvim)
