@@ -13,24 +13,6 @@ local function F(fn, args, ...)
 	})
 end
 
-function FunctionNode:get_args()
-	local args = {}
-	for i, node in ipairs(self.args) do
-		args[i] = util.dedent(node:get_text(), self.parent.indentstr)
-	end
-	args[#args + 1] = self.parent
-	return args
-end
-
-function FunctionNode:get_static_args()
-	local args = {}
-	for i, node in ipairs(self.args) do
-		args[i] = util.dedent(node:get_static_text(), self.parent.indentstr)
-	end
-	args[#args + 1] = self.parent
-	return args
-end
-
 function FunctionNode:input_enter()
 	vim.api.nvim_feedkeys(
 		vim.api.nvim_replace_termcodes("<Esc>", true, false, true),
@@ -53,6 +35,7 @@ function FunctionNode:get_static_text()
 		local success, static_text = pcall(
 			self.fn,
 			self:get_static_args(),
+			self.parent,
 			unpack(self.user_args)
 		)
 
@@ -70,14 +53,24 @@ end
 FunctionNode.get_docstring = FunctionNode.get_static_text
 
 function FunctionNode:update()
+	self.last_args = self:get_args()
 	local text = util.wrap_value(
-		self.fn(self:get_args(), unpack(self.user_args))
+		self.fn(self.last_args, self.parent, unpack(self.user_args))
 	)
 	if vim.o.expandtab then
 		util.expand_tabs(text, util.tab_width())
 	end
 	-- don't expand tabs in parent.indentstr, use it as-is.
 	self.parent:set_text(self, util.indent(text, self.parent.indentstr))
+end
+
+function FunctionNode:update_restore()
+	-- only if args still match.
+	if self.static_text and vim.deep_equal(self:get_args(), self.last_args) then
+		self.parent.set_text(self.static_text)
+	else
+		self:update()
+	end
 end
 
 -- FunctionNode's don't have static text, nop these.

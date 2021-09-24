@@ -17,24 +17,6 @@ local function D(pos, fn, args, ...)
 	})
 end
 
-function DynamicNode:get_args()
-	local args = {}
-	for i, node in ipairs(self.args) do
-		args[i] = util.dedent(node:get_text(), self.parent.indentstr)
-	end
-	args[#args + 1] = self.parent
-	return args
-end
-
-function DynamicNode:get_args_static()
-	local args = {}
-	for i, node in ipairs(self.args) do
-		args[i] = util.dedent(node:get_static_text(), self.parent.indentstr)
-	end
-	args[#args + 1] = self.parent
-	return args
-end
-
 function DynamicNode:input_enter()
 	self.active = true
 	self.mark:update_opts(self.parent.ext_opts[self.type].active)
@@ -53,7 +35,12 @@ end
 function DynamicNode:get_static_text()
 	-- cache static_text, no need to recalculate function.
 	if not self.static_text then
-		local tmp = self.fn(self:get_args_static(), nil, unpack(self.user_args))
+		local tmp = self.fn(
+			self:get_static_args(),
+			self.parent,
+			nil,
+			unpack(self.user_args)
+		)
 		self.static_text = tmp:get_static_text()
 	end
 	return self.static_text
@@ -69,7 +56,8 @@ function DynamicNode:get_docstring()
 	if not self.docstring then
 		local success, tmp = pcall(
 			self.fn,
-			self:get_args_static(),
+			self:get_static_args(),
+			self.parent,
 			nil,
 			unpack(self.user_args)
 		)
@@ -109,10 +97,12 @@ end
 
 function DynamicNode:update()
 	local tmp
+	self.last_args = self:get_args()
 	if self.snip then
 		-- build new snippet before exiting, markers may be needed for construncting.
 		tmp = self.fn(
-			self:get_args(),
+			self.last_args,
+			self.parent,
 			self.snip.old_state,
 			unpack(self.user_args)
 		)
@@ -122,7 +112,7 @@ function DynamicNode:update()
 	else
 		-- also enter node here.
 		self.parent:enter_node(self.indx)
-		tmp = self.fn(self:get_args(), nil, unpack(self.user_args))
+		tmp = self.fn(self.last_args, self.parent, nil, unpack(self.user_args))
 	end
 	self.snip = nil
 
@@ -175,6 +165,29 @@ function DynamicNode:exit()
 	-- snip should exist if exit is called.
 	self.snip:exit()
 	self.active = false
+end
+
+function DynamicNode:set_ext_opts(name)
+	self.mark:update_opts(self.parent.ext_opts[self.type][name])
+	self.snip:set_ext_opts(name)
+end
+
+function DynamicNode:store()
+	self.snip:store()
+end
+
+function DynamicNode:update_restore()
+	-- only restore snippet if arg-values still match.
+	if self.snip and vim.deep_equal(self:get_args(), self.last_args) then
+		self.snip.mark = self.mark:copy_pos_gravs(
+			vim.deepcopy(self.parent.ext_opts[types.snippetNode].passive)
+		)
+		self.parent:enter_node(self.indx)
+		self.snip:put_initial(self.mark:pos_begin_raw())
+		self.snip:update_restore()
+	else
+		self:update()
+	end
 end
 
 return {

@@ -92,10 +92,10 @@ local function virtual_hint(hint, off_y)
     end
     next_line = vim.api.nvim_buf_get_lines(0, cur_line + 1, cur_line + 2, false)[1]
     -- log(prev_line, next_line, r)
-    if prev_line and #prev_line < r[2] then
+    if prev_line and vim.fn.strdisplaywidth(prev_line) < r[2] then
       show_at = cur_line - 1
       pl = prev_line
-    elseif next_line and #next_line < r[2] + 2 and not puvis then
+    elseif next_line and vim.fn.strdisplaywidth(next_line) < r[2] + 2 and not puvis then
       show_at = cur_line + 1
       pl = next_line
     else
@@ -117,15 +117,17 @@ local function virtual_hint(hint, off_y)
   -- log("virtual text: ", cur_line, show_at)
   pl = pl or ""
   local pad = ""
-  if show_at ~= cur_line and #line_to_cursor > #pl + 1 then
-    pad = string.rep(" ", #line_to_cursor - #pl)
+  local line_to_cursor_width = vim.fn.strdisplaywidth(line_to_cursor)
+  local pl_width = vim.fn.strdisplaywidth(pl)
+  if show_at ~= cur_line and line_to_cursor_width > pl_width + 1 then
+    pad = string.rep(" ", line_to_cursor_width - pl_width)
   end
   _LSP_SIG_VT_NS = _LSP_SIG_VT_NS or vim.api.nvim_create_namespace("lsp_signature_vt")
   vim.api.nvim_buf_clear_namespace(0, _LSP_SIG_VT_NS, 0, -1)
   if r ~= nil then
     vim.api.nvim_buf_set_extmark(0, _LSP_SIG_VT_NS, show_at, 0, {
       virt_text = {{pad .. _LSP_SIG_CFG.hint_prefix .. hint, _LSP_SIG_CFG.hint_scheme}},
-      virt_text_pos = "overlay",
+      virt_text_pos = "eol",
       hl_mode = "combine"
       -- hl_group = _LSP_SIG_CFG.hint_scheme
     })
@@ -156,7 +158,7 @@ local signature_handler = helper.mk_handler(function(err, result, ctx, config)
   if not (result and result.signatures and result.signatures[1]) then
     -- only close if this client opened the signature
     if _LSP_SIG_CFG.client_id == client_id then
-      helper.cleanup(true)
+      helper.cleanup_async(true, 0.1)
 
       -- need to close floating window and virtual text (if they are active)
     end
@@ -349,7 +351,7 @@ local signature_handler = helper.mk_handler(function(err, result, ctx, config)
       vim.api.nvim_win_set_option(_LSP_SIG_CFG.winnr, "winblend", _LSP_SIG_CFG.transpancy)
     end
     local sig = result.signatures
-    -- if it is last parameter, close windows after cursor moved<F2>
+    -- if it is last parameter, close windows after cursor moved
     if sig and sig[activeSignature].parameters == nil or result.activeParameter == nil
         or result.activeParameter + 1 == #sig[activeSignature].parameters then
       -- log("last para", close_events)
@@ -446,7 +448,7 @@ function M.on_InsertLeave()
     manager.timer = nil
   end
   log('Insert leave cleanup')
-  helper.cleanup(true)
+  helper.cleanup_async(true, 0.3)  -- defer close after 0.3s
 end
 
 local start_watch_changes_timer = function()

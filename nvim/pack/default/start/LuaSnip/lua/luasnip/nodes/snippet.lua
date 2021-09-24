@@ -79,16 +79,6 @@ function Snippet:init_nodes()
 	self:populate_argnodes()
 end
 
-local function wrap_nodes(nodes)
-	-- safe to assume, if nodes has a metatable, it is a single node, not a
-	-- table.
-	if getmetatable(nodes) then
-		return { nodes }
-	else
-		return nodes
-	end
-end
-
 local function init_opts(opts)
 	opts = opts or {}
 
@@ -126,7 +116,7 @@ local function S(context, nodes, opts)
 
 	opts = init_opts(opts)
 
-	nodes = wrap_nodes(nodes)
+	nodes = util.wrap_nodes(nodes)
 	local snip = Snippet:new({
 		trigger = context.trig,
 		dscr = dscr,
@@ -168,7 +158,7 @@ local function SN(pos, nodes, opts)
 
 	local snip = Snippet:new({
 		pos = pos,
-		nodes = wrap_nodes(nodes),
+		nodes = util.wrap_nodes(nodes),
 		insert_nodes = {},
 		current_insert = 0,
 		callbacks = opts.callbacks,
@@ -649,6 +639,18 @@ function Snippet:update()
 	end
 end
 
+function Snippet:update_restore()
+	for _, node in ipairs(self.nodes) do
+		node:update_restore()
+	end
+end
+
+function Snippet:store()
+	for _, node in ipairs(self.nodes) do
+		node:store()
+	end
+end
+
 function Snippet:indent(prefix)
 	self.indentstr = prefix
 	for _, node in ipairs(self.nodes) do
@@ -678,6 +680,10 @@ end
 
 function Snippet:input_enter()
 	self.active = true
+
+	if self.type == types.snippet then
+		self:set_ext_opts("passive")
+	end
 	self.mark:update_opts(self.ext_opts[self.type].active)
 
 	self:event(events.enter)
@@ -685,10 +691,20 @@ end
 
 function Snippet:input_leave()
 	self:event(events.leave)
-
 	self:update_dependents()
-	self.active = false
+
 	self.mark:update_opts(self.ext_opts[self.type].passive)
+	if self.type == types.snippet then
+		self:set_ext_opts("snippet_passive")
+	end
+
+	self.active = false
+end
+
+function Snippet:set_ext_opts(opt_name)
+	for _, node in ipairs(self.nodes) do
+		node:set_ext_opts(opt_name)
+	end
 end
 
 function Snippet:jump_into(dir, no_move)

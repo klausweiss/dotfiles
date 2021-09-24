@@ -10,7 +10,7 @@
 let s:configuration = gruvbox_material#get_configuration()
 let s:palette = gruvbox_material#get_palette(s:configuration.background, s:configuration.palette)
 let s:path = expand('<sfile>:p') " the path of this script
-let s:last_modified = 'Fri Aug  6 11:27:23 AM UTC 2021'
+let s:last_modified = 'Fri Sep 24 09:36:36 UTC 2021'
 let g:gruvbox_material_loaded_file_types = []
 
 if !(exists('g:colors_name') && g:colors_name ==# 'gruvbox-material' && s:configuration.better_performance)
@@ -1193,6 +1193,27 @@ highlight! link mkdRule Purple
 highlight! link mkdDelimiter Grey
 highlight! link mkdId Yellow
 " }}}
+" ft_end }}}
+" ft_begin: vimwiki {{{
+call gruvbox_material#highlight('VimwikiHeader1', s:palette.red, s:palette.none, 'bold')
+call gruvbox_material#highlight('VimwikiHeader2', s:palette.orange, s:palette.none, 'bold')
+call gruvbox_material#highlight('VimwikiHeader3', s:palette.yellow, s:palette.none, 'bold')
+call gruvbox_material#highlight('VimwikiHeader4', s:palette.green, s:palette.none, 'bold')
+call gruvbox_material#highlight('VimwikiHeader5', s:palette.blue, s:palette.none, 'bold')
+call gruvbox_material#highlight('VimwikiHeader6', s:palette.purple, s:palette.none, 'bold')
+call gruvbox_material#highlight('VimwikiLink', s:palette.blue, s:palette.none, 'underline')
+call gruvbox_material#highlight('VimwikiItalic', s:palette.none, s:palette.none, 'italic')
+call gruvbox_material#highlight('VimwikiBold', s:palette.none, s:palette.none, 'bold')
+call gruvbox_material#highlight('VimwikiUnderline', s:palette.none, s:palette.none, 'underline')
+highlight! link VimwikiList Red
+highlight! link VimwikiTag Aqua
+highlight! link VimwikiCode Green
+highlight! link VimwikiHR Yellow
+highlight! link VimwikiHeaderChar Grey
+highlight! link VimwikiMarkers Grey
+highlight! link VimwikiPre Green
+highlight! link VimwikiPreDelim Green
+highlight! link VimwikiNoExistsLink Red
 " ft_end }}}
 " ft_begin: rst {{{
 " builtin: https://github.com/marshallward/vim-restructuredtext {{{

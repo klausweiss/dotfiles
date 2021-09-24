@@ -54,7 +54,7 @@ M.update = void(function()
     api.nvim_buf_set_extmark(bufnr, namespace, lnum-1, 0, {
       id = 1,
       virt_text = config.current_line_blame_formatter(
-        bcache.git_obj.username,
+        bcache.git_obj.repo.username,
         result,
         config.current_line_blame_formatter_opts
       ),
@@ -65,7 +65,12 @@ M.update = void(function()
 end)
 
 M.setup = function()
-  vim.cmd('augroup gitsigns_blame | autocmd! | augroup END')
+  vim.cmd([[
+    augroup gitsigns_blame
+      autocmd!
+    augroup END
+  ]])
+
   for k, _ in pairs(cache as {integer:any}) do
     M.reset(k)
   end

@@ -143,6 +143,37 @@ function Node:event(event)
 	vim.cmd("doautocmd User Luasnip" .. events.to_string(self.type, event))
 end
 
+local function get_args(node, get_text_func_name)
+	local args = {}
+
+	for i, arg_node in ipairs(node.args) do
+		args[i] = util.dedent(
+			arg_node[get_text_func_name](arg_node),
+			node.parent.indentstr
+		)
+	end
+
+	return args
+end
+
+function Node:get_args()
+	return get_args(self, "get_text")
+end
+function Node:get_static_args()
+	return get_args(self, "get_static_text")
+end
+
+function Node:set_ext_opts(name)
+	self.mark:update_opts(self.parent.ext_opts[self.type][name])
+end
+
+-- for insert,functionNode.
+function Node:store()
+	self.static_text = self:get_text()
+end
+
+function Node:update_restore() end
+
 Node.ext_gravities_active = { false, true }
 
 return {

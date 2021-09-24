@@ -38,10 +38,18 @@ local function dedent(text, indentstring)
 	return text
 end
 
--- in-place insert indenstrig before each
+-- in-place insert indenstrig before each line.
 local function indent(text, indentstring)
-	for i = 2, #text do
-		text[i] = text[i]:gsub("^", indentstring)
+	for i = 2, #text - 1, 1 do
+		-- only indent if there is actually text.
+		if #text[i] > 0 then
+			text[i] = indentstring .. text[i]
+		end
+	end
+	-- assuming that the last line should be indented as it is probably
+	-- followed by some other node, therefore isn't an empty line.
+	if #text > 1 then
+		text[#text] = indentstring .. text[#text]
 	end
 	return text
 end
@@ -193,6 +201,17 @@ local function wrap_value(value)
 	return { value }
 end
 
+-- Wrap node in a table if it is not one
+local function wrap_nodes(nodes)
+	-- safe to assume, if nodes has a metatable, it is a single node, not a
+	-- table.
+	if getmetatable(nodes) then
+		return { nodes }
+	else
+		return nodes
+	end
+end
+
 local SELECT_RAW = "LUASNIP_SELECT_RAW"
 local SELECT_DEDENT = "LUASNIP_SELECT_DEDENT"
 local TM_SELECT = "LUASNIP_TM_SELECT"
@@ -315,7 +334,14 @@ end
 
 local function clear_invalid(opts)
 	for key, val in pairs(opts) do
-		local act_group, pas_group = val.active.hl_group, val.passive.hl_group
+		local act_group, pas_group, snip_pas_group =
+			val.active.hl_group,
+			val.passive.hl_group,
+			val.snippet_passive.hl_group
+		opts[key].snippet_passive.hl_group = vim.fn.hlexists(snip_pas_group)
+					== 1
+				and snip_pas_group
+			or nil
 		opts[key].passive.hl_group = vim.fn.hlexists(pas_group) == 1
 				and pas_group
 			or nil
@@ -327,21 +353,36 @@ end
 
 local function make_opts_valid(user_opts, default_opts)
 	local opts = vim.deepcopy(default_opts)
-	for key, val in pairs(opts) do
+	for key, default_val in pairs(opts) do
 		-- prevent nil-indexing error.
 		user_opts[key] = user_opts[key] or {}
 
-		-- override defaults with user for passive.
-		val.passive = vim.tbl_extend(
+		-- override defaults with user for snippet_passive.
+		default_val.snippet_passive = vim.tbl_extend(
 			"force",
-			val.passive,
-			user_opts[key].passive or {}
+			default_val.snippet_passive,
+			user_opts[key].snippet_passive or {}
 		)
-		-- override default active with user, then fill in missing values from passive.
-		val.active = vim.tbl_extend(
-			"keep",
-			vim.tbl_extend("force", val.active, user_opts[key].active or {}),
-			val.passive
+		-- override default-passive with user, get missing values from default
+		-- snippet_passive
+		default_val.passive = vim.tbl_extend(
+			"force",
+			user_opts[key].snippet_passive or {},
+			vim.tbl_extend(
+				"force",
+				default_val.passive,
+				user_opts[key].passive or {}
+			)
+		)
+		-- same here, but with passive and active
+		default_val.active = vim.tbl_extend(
+			"force",
+			default_val.passive,
+			vim.tbl_extend(
+				"force",
+				default_val.active,
+				user_opts[key].active or {}
+			)
 		)
 	end
 	return opts
@@ -444,6 +485,7 @@ return {
 	word_under_cursor = word_under_cursor,
 	put = put,
 	wrap_value = wrap_value,
+	wrap_nodes = wrap_nodes,
 	store_selection = store_selection,
 	get_selection = get_selection,
 	pos_equal = pos_equal,
