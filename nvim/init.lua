@@ -309,6 +309,9 @@ setup_lsp('hls', {
   },
 })
 
+-- purescript
+setup_lsp('purescriptls', {})
+
 
 -- keymap
 local remap = {noremap = false, silent = true}
