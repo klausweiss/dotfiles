@@ -99,14 +99,14 @@ c = {
             au!
             autocmd User LuasnipCleanup lua require("luasnip").snippets = {}
             autocmd %s * lua require("luasnip").active_update_dependents()
-            autocmd %s * lua require("luasnip").exit_out_of_region(Luasnip_current_nodes[vim.api.nvim_get_current_buf()])
+            autocmd %s * lua require("luasnip").exit_out_of_region(require("luasnip").session.current_nodes[vim.api.nvim_get_current_buf()])
             autocmd %s * lua require("luasnip").unlink_current_if_deleted()
 			"Remove buffers' nodes on deletion+wipeout.
-			autocmd BufDelete,BufWipeout * lua if Luasnip_current_nodes then Luasnip_current_nodes[tonumber(vim.fn.expand("<abuf>"))] = nil end
+			autocmd BufDelete,BufWipeout * lua current_nodes = require("luasnip").session.current_nodes if current_nodes then current_nodes[tonumber(vim.fn.expand("<abuf>"))] = nil end
 		]]
 					.. (c.config.enable_autosnippets and [[
 			autocmd InsertCharPre * lua Luasnip_just_inserted = true
-			autocmd TextChangedI,TextChangedP * lua if Luasnip_just_inserted then require("luasnip").expand_auto() Luasnip_just_inserted=false end
+			autocmd TextChangedI,TextChangedP * lua if Luasnip_just_inserted then require("luasnip").expand_auto() Luasnip_just_inserted=nil end
 		]] or "")
 					.. [[
 		augroup END

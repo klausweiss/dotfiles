@@ -172,12 +172,12 @@ M.apply_word_diff = function(bufnr, row)
 
    for _, hunk in ipairs(cache[bufnr].hunks) do
       if lnum >= hunk.start and lnum <= hunk.vend then
-         local size = #hunk.lines / 2
-         local regions = require('gitsigns.diff_int').run_word_diff(hunk.lines)
+         local size = (#hunk.added.lines + #hunk.removed.lines) / 2
+         local regions = require('gitsigns.diff_int').run_word_diff(hunk.removed.lines, hunk.added.lines)
          for _, region in ipairs(regions) do
             local line = region[1]
-            if lnum == hunk.start + line - size - 1 and
-               vim.startswith(hunk.lines[line], '+') then
+            if lnum == hunk.start + line - size - 1 then
+
                local rtype, scol, ecol = region[2], region[3], region[4]
                if scol <= cols then
                   if ecol > cols then
@@ -201,6 +201,17 @@ M.apply_word_diff = function(bufnr, row)
    end
 end
 
+local function get_lines(bufnr)
+
+   local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
+   if api.nvim_buf_get_option(bufnr, 'fileformat') == 'dos' then
+      for i = 1, #buftext do
+         buftext[i] = buftext[i] .. '\r'
+      end
+   end
+   return buftext
+end
+
 local update_cnt = 0
 
 local update0 = function(bufnr, bcache)
@@ -213,7 +224,7 @@ local update0 = function(bufnr, bcache)
    bcache.hunks = nil
 
    scheduler()
-   local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
+   local buftext = get_lines(bufnr)
    local git_obj = bcache.git_obj
 
    local compare_object = bcache:get_compare_obj()

@@ -16,6 +16,7 @@ local CacheEntry = gs_cache.CacheEntry
 
 local gs_hunks = require('gitsigns.hunks')
 local Hunk = gs_hunks.Hunk
+local Hunk_Public = gs_hunks.Hunk_Public
 
 local api = vim.api
 local current_buf = api.nvim_get_current_buf
@@ -79,26 +80,15 @@ end
 
 
 
-
-
-local function get_range_hunks(bufnr, hunks, range, strict)
-   bufnr = bufnr or current_buf()
-   hunks = hunks or cache[bufnr].hunks
-
+local function get_range_hunks(hunks, range)
    local ret = {}
    for _, hunk in ipairs(hunks) do
       if range[1] == 1 and hunk.start == 0 and hunk.vend == 0 then
          return { hunk }
       end
 
-      if strict then
-         if (range[1] <= hunk.start and range[2] >= hunk.vend) then
-            ret[#ret + 1] = hunk
-         end
-      else
-         if (range[2] >= hunk.start and range[1] <= hunk.vend) then
-            ret[#ret + 1] = hunk
-         end
+      if (range[2] >= hunk.start and range[1] <= hunk.vend) then
+         ret[#ret + 1] = hunk
       end
    end
 
@@ -124,7 +114,7 @@ M.stage_hunk = mk_repeatable(void(function(range)
    if range and range[1] ~= range[2] then
       valid_range = true
       table.sort(range)
-      hunks = get_range_hunks(bufnr, bcache.hunks, range)
+      hunks = get_range_hunks(bcache.hunks, range)
    else
       hunks[1] = get_cursor_hunk(bufnr, bcache.hunks)
    end
@@ -165,7 +155,7 @@ M.reset_hunk = mk_repeatable(function(range)
 
    if range and range[1] ~= range[2] then
       table.sort(range)
-      hunks = get_range_hunks(bufnr, nil, range)
+      hunks = get_range_hunks(cache[bufnr].hunks, range)
    else
       hunks[1] = get_cursor_hunk(bufnr)
    end
@@ -182,14 +172,10 @@ M.reset_hunk = mk_repeatable(function(range)
          lstart = hunk.start
          lend = hunk.start
       else
-         local length = vim.tbl_count(vim.tbl_filter(function(l)
-            return vim.startswith(l, '+')
-         end, hunk.lines))
-
          lstart = hunk.start - 1
-         lend = hunk.start - 1 + length
+         lend = hunk.start - 1 + hunk.added.count
       end
-      local lines = gs_hunks.extract_removed(hunk)
+      local lines = hunk.removed.lines
       api.nvim_buf_set_lines(bufnr, lstart + offset, lend + offset, false, lines)
       offset = offset + (#lines - (lend - lstart))
    end
@@ -361,17 +347,16 @@ M.prev_hunk = function(opts)
    nav_hunk(opts)
 end
 
-local function highlight_hunk_lines(bufnr, offset, hunk_lines)
-   for i, l in ipairs(hunk_lines) do
-      local hl = 
-      vim.startswith(l, '+') and 'DiffAdded' or
-      vim.startswith(l, '-') and 'DiffRemoved' or
-      'Normal'
-      api.nvim_buf_add_highlight(bufnr, -1, hl, offset + i - 1, 0, -1)
+local function highlight_hunk_lines(bufnr, offset, hunk)
+   for i = 1, #hunk.removed.lines do
+      api.nvim_buf_add_highlight(bufnr, -1, 'DiffRemoved', offset + i - 1, 0, -1)
+   end
+   for i = 1, #hunk.added.lines do
+      api.nvim_buf_add_highlight(bufnr, -1, 'DiffAdded', #hunk.removed.lines + offset + i - 1, 0, -1)
    end
 
    if config.diff_opts.internal then
-      local regions = require('gitsigns.diff_int').run_word_diff(hunk_lines)
+      local regions = require('gitsigns.diff_int').run_word_diff(hunk.removed.lines, hunk.added.lines)
       for _, region in ipairs(regions) do
          local line, scol, ecol = region[1], region[3], region[4]
          api.nvim_buf_add_highlight(bufnr, -1, 'TermCursor', line + offset - 1, scol, ecol)
@@ -389,6 +374,22 @@ local function noautocmd(f)
 end
 
 
+local function strip_cr(xs0)
+   for i = 1, #xs0 do
+      if xs0[i]:sub(-1) ~= '\r' then
+
+         return xs0
+      end
+   end
+
+   local xs = vim.deepcopy(xs0)
+   for i = 1, #xs do
+      xs[i] = xs[i]:sub(1, -2)
+   end
+   return xs
+end
+
+
 M.preview_hunk = noautocmd(function()
    local cbuf = current_buf()
    local bcache = cache[cbuf]
@@ -396,9 +397,14 @@ M.preview_hunk = noautocmd(function()
 
    if not hunk then return end
 
+   local hlines = gs_hunks.patch_lines(hunk)
+   if vim.bo[cbuf].fileformat == 'dos' then
+      hlines = strip_cr(hlines)
+   end
+
    local lines = {
       ('Hunk %d of %d'):format(index, #bcache.hunks),
-      unpack(hunk.lines),
+      unpack(hlines),
    }
 
    local _, bufnr = popup.create(lines, config.preview_config)
@@ -408,8 +414,8 @@ M.preview_hunk = noautocmd(function()
    api.nvim_buf_set_var(cbuf, '_gitsigns_preview_open', true)
    vim.cmd([[autocmd CursorMoved,CursorMovedI <buffer> ++once silent! unlet b:_gitsigns_preview_open]])
 
-   local offset = #lines - #hunk.lines
-   highlight_hunk_lines(bufnr, offset, hunk.lines)
+   local offset = #lines - hunk.removed.count - hunk.added.count
+   highlight_hunk_lines(bufnr, offset, hunk)
 end)
 
 M.select_hunk = function()
@@ -426,7 +432,7 @@ M.get_hunks = function(bufnr)
    for _, h in ipairs(cache[bufnr].hunks) do
       ret[#ret + 1] = {
          head = h.head,
-         lines = h.lines,
+         lines = gs_hunks.patch_lines(h),
          type = h.type,
          added = h.added,
          removed = h.removed,
@@ -536,7 +542,7 @@ M.blame_line = void(function(full)
       lines[#lines + 1] = ''
       lines[#lines + 1] = ('Hunk %d of %d'):format(ihunk, nhunk)
       add_highlight('Title')
-      vim.list_extend(lines, hunk.lines)
+      vim.list_extend(lines, gs_hunks.patch_lines(hunk))
    end
 
    scheduler()
@@ -548,8 +554,8 @@ M.blame_line = void(function(full)
    end
 
    if hunk then
-      local offset = #lines - #hunk.lines
-      highlight_hunk_lines(pbufnr, offset, hunk.lines)
+      local offset = #lines - hunk.removed.count - hunk.added.count
+      highlight_hunk_lines(pbufnr, offset, hunk)
    end
 end)
 
@@ -595,11 +601,16 @@ M.diffthis = void(function(base)
 
    if api.nvim_win_get_option(0, 'diff') then return end
 
+   local ff = vim.bo[bufnr].fileformat
+
    local text
    local err
    local comp_obj = bcache:get_compare_obj(calc_base(base))
    if base then
       text, err = bcache.git_obj.repo:get_show_text(comp_obj)
+      if ff == 'dos' then
+         text = strip_cr(text)
+      end
       if err then
          print(err)
          return

@@ -1,6 +1,7 @@
 local config = require'nvim-tree.config'
 local utils = require'nvim-tree.utils'
 local view = require'nvim-tree.view'
+local _padding = require'nvim-tree.renderer.padding'
 
 local api = vim.api
 
@@ -197,7 +198,7 @@ if icon_state.show_git_icon then
       { icon = icon_state.icons.git_icons.staged, hl = "NvimTreeGitStaged" },
       { icon = icon_state.icons.git_icons.unstaged, hl = "NvimTreeGitDirty" }
     },
-    ["??"] = { { icon = icon_state.icons.git_icons.untracked, hl = "NvimTreeGitDirty" } },
+    ["??"] = { { icon = icon_state.icons.git_icons.untracked, hl = "NvimTreeGitNew" } },
     ["R "] = { { icon = icon_state.icons.git_icons.renamed, hl = "NvimTreeGitRenamed" } },
     ["RM"] = {
       { icon = icon_state.icons.git_icons.unstaged, hl = "NvimTreeGitDirty" },
@@ -231,45 +232,13 @@ if icon_state.show_git_icon then
       icons = git_icon_state.dirty
     end
     for _, v in ipairs(icons) do
-      table.insert(hl, { v.hl, line, depth+icon_len+#icon, depth+icon_len+#icon+#v.icon })
-      icon = icon..v.icon..icon_padding
+      if #v.icon > 0 then
+        table.insert(hl, { v.hl, line, depth+icon_len+#icon, depth+icon_len+#icon+#v.icon })
+        icon = icon..v.icon..icon_padding
+      end
     end
 
     return icon
-  end
-end
-
-local get_padding = function(depth)
-  return string.rep(' ', depth)
-end
-
-if icon_state.show_folder_icon and icon_state.show_folder_arrows then
-  get_padding = function(depth, _, _, node)
-    if node.entries then
-      local icon = icon_state.icons.folder_icons[node.open and 'arrow_open' or 'arrow_closed']
-      return string.rep(' ', depth - 2)..icon..' '
-    end
-    return string.rep(' ', depth)
-  end
-end
-
-if vim.g.nvim_tree_indent_markers == 1 then
-  get_padding = function(depth, idx, tree, _, markers)
-    local padding = ""
-    if depth ~= 0 then
-      local rdepth = depth/2
-      markers[rdepth] = idx ~= #tree.entries
-      for i=1,rdepth do
-        if idx == #tree.entries and i == rdepth then
-          padding = padding..'└ '
-        elseif markers[i] then
-          padding = padding..'│ '
-        else
-          padding = padding..'  '
-        end
-      end
-    end
-    return padding
   end
 end
 
@@ -280,16 +249,15 @@ local picture = {
   gif = true,
 }
 
-local special = vim.g.nvim_tree_special_files or {
-  ["Cargo.toml"] = true,
-  Makefile = true,
-  ["README.md"] = true,
-  ["readme.md"] = true,
-}
-
-local root_folder_modifier = vim.g.nvim_tree_root_folder_modifier or ':~'
-
 local function update_draw_data(tree, depth, markers)
+  local root_folder_modifier = vim.g.nvim_tree_root_folder_modifier or ':~'
+  local special = vim.g.nvim_tree_special_files or {
+    ["Cargo.toml"] = true,
+    Makefile = true,
+    ["README.md"] = true,
+    ["readme.md"] = true,
+  }
+
   if tree.cwd and tree.cwd ~= '/' then
     local root_name = utils.path_join({
       utils.path_remove_trailing(vim.fn.fnamemodify(tree.cwd, root_folder_modifier)),
@@ -301,7 +269,7 @@ local function update_draw_data(tree, depth, markers)
   end
 
   for idx, node in ipairs(tree.entries) do
-    local padding = get_padding(depth, idx, tree, node, markers)
+    local padding = _padding.get_padding(depth, idx, tree, node, markers)
     local offset = string.len(padding)
     if depth > 0 then
       table.insert(hl, { 'NvimTreeIndentMarker', index, 0, offset })
@@ -386,9 +354,11 @@ local M = {}
 function M.draw_help()
   local help_lines = {'HELP'}
   local help_hl = {{'NvimTreeRootFolder', 0, 0, #help_lines[1]}}
-  local bindings = view.View.bindings
+  local mappings = vim.tbl_filter(function(v)
+    return v.cb ~= nil and v.cb ~= ""
+  end, view.View.mappings)
   local processed = {}
-  for _, b in pairs(bindings) do
+  for _, b in pairs(mappings) do
     local cb = b.cb
     local key = b.key
     local name
@@ -441,6 +411,8 @@ function M.draw(tree, reload)
     hl = {}
 
     local show_arrows = icon_state.show_folder_icon and icon_state.show_folder_arrows
+    _padding.reload_padding_function()
+    icon_state = config.get_icon_state()
     update_draw_data(tree, show_arrows and 2 or 0, {})
   end
 

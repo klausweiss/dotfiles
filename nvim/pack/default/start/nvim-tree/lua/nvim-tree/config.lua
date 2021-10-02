@@ -3,8 +3,8 @@ local M = {}
 function M.get_icon_state()
   local show_icons = vim.g.nvim_tree_show_icons or { git = 1, folders = 1, files = 1, folder_arrows = 1 }
   local icons = {
-    default = "",
-    symlink = "",
+    default = '',
+    symlink = '',
     git_icons = {
       unstaged = "✗",
       staged = "✓",
@@ -58,8 +58,9 @@ function M.get_icon_state()
     end
   end
 
+  local has_devicons = pcall(require, 'nvim-web-devicons')
   return {
-    show_file_icon = show_icons.files == 1 and vim.g.nvim_web_devicons == 1,
+    show_file_icon = show_icons.files == 1 and has_devicons,
     show_folder_icon = show_icons.folders == 1,
     show_git_icon = show_icons.git == 1,
     show_folder_arrows = show_icons.folder_arrows == 1,

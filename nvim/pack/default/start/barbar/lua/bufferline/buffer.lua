@@ -58,8 +58,20 @@ local function get_name(opts, number)
     end
   end
 
-  if len(name) > opts.maximum_length then
-    name = '…' .. slice(name, -opts.maximum_length, -1)
+  local ellipsis = '…'
+  local max_len = opts.maximum_length
+  if #name > max_len then
+    local ext_index = string.find(string.reverse(name), '%.')
+
+    if ext_index ~= nil and (ext_index < max_len - #ellipsis) then
+      local extension = string.sub(name, -ext_index)
+      name = string.sub(name, 1, max_len - #ellipsis - #extension) .. ellipsis .. extension
+    else
+      name = string.sub(name, 1, max_len - #ellipsis) .. ellipsis
+    end
+
+    -- safety to prevent recursion in any future edge case
+    name = string.sub(name, 1, max_len)
   end
 
   return name

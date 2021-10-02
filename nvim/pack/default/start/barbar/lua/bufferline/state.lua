@@ -165,17 +165,21 @@ local function open_buffers(new_buffers)
   end
 
   -- Insert the buffers where they go
-  for i, new_buffer in ipairs(new_buffers) do
+  for _, new_buffer in ipairs(new_buffers) do
 
     if index_of(m.buffers, new_buffer) == nil then
       local actual_index = new_index
 
+      local should_insert_at_start = opts.insert_at_start
       local should_insert_at_end =
         opts.insert_at_end or
+        -- We add special buffers at the end
         vim.fn.getbufvar(new_buffer, '&buftype') ~= ''
 
-      -- For special buffers, we add them at the end
-      if should_insert_at_end then
+      if should_insert_at_start then
+        actual_index = 1
+        new_index = new_index + 1
+      elseif should_insert_at_end then
         actual_index = len(m.buffers) + 1
       else
         new_index = new_index + 1
@@ -209,6 +213,38 @@ local function open_buffers(new_buffers)
   for i, buffer_number in ipairs(new_buffers) do
     open_buffer_start_animation(layout, buffer_number)
   end
+end
+
+local function set_current_win_listed_buffer()
+  local current = vim.fn.bufnr('%')
+  local is_listed = nvim.buf_get_option(current, 'buflisted')
+
+  -- Check previous window first
+  if not is_listed then
+    nvim.command('wincmd p')
+    current = vim.fn.bufnr('%')
+    is_listed = nvim.buf_get_option(current, 'buflisted')
+  end
+  -- Check all windows now
+  if not is_listed then
+    local wins = nvim.list_wins()
+    for _, win in ipairs(wins) do
+      current = nvim.win_get_buf(win)
+      is_listed = nvim.buf_get_option(current, 'buflisted')
+      if is_listed then
+        nvim.set_current_win(win)
+        break
+      end
+    end
+  end
+
+  return current
+end
+
+local function open_buffer_in_listed_window(buffer_number)
+  set_current_win_listed_buffer()
+
+  nvim.command('buffer ' .. buffer_number)
 end
 
 -- Close & cleanup buffers
@@ -518,27 +554,7 @@ end
 local function goto_buffer_relative(steps)
   m.get_updated_buffers()
 
-  local current = vim.fn.bufnr('%')
-  local is_listed = nvim.buf_get_option(current, 'buflisted')
-
-  -- Check previous window first
-  if not is_listed then
-    nvim.command('wincmd p')
-    current = vim.fn.bufnr('%')
-    is_listed = nvim.buf_get_option(current, 'buflisted')
-  end
-  -- Check all windows now
-  if not is_listed then
-    local wins = nvim.list_wins()
-    for _, win in ipairs(wins) do
-      current = nvim.win_get_buf(win)
-      is_listed = nvim.buf_get_option(current, 'buflisted')
-      if is_listed then
-        nvim.set_current_win(win)
-        break
-      end
-    end
-  end
+  local current = set_current_win_listed_buffer()
 
   local idx = index_of(m.buffers, current)
 
@@ -731,6 +747,8 @@ end
 
 m.set_scroll = set_scroll
 m.set_offset = set_offset
+
+m.open_buffer_in_listed_window = open_buffer_in_listed_window
 
 m.close_buffer = close_buffer
 m.close_buffer_animated = close_buffer_animated

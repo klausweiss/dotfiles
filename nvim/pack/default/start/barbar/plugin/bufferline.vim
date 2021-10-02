@@ -76,11 +76,11 @@ command!          -bang BufferOrderByLanguage  call bufferline#order_by_language
 command!          -bang BufferOrderByWindowNumber    call bufferline#order_by_window_number()
 
 command! -bang -complete=buffer -nargs=?
-                      \ BufferClose            call bufferline#bbye#delete('bdelete', <q-bang>, <q-args>)
+                      \ BufferClose            call bufferline#bbye#delete('bdelete', <q-bang>, <q-args>, <q-mods>)
 command! -bang -complete=buffer -nargs=?
-                      \ BufferDelete           call bufferline#bbye#delete('bdelete', <q-bang>, <q-args>)
+                      \ BufferDelete           call bufferline#bbye#delete('bdelete', <q-bang>, <q-args>, <q-mods>)
 command! -bang -complete=buffer -nargs=?
-                      \ BufferWipeout          call bufferline#bbye#delete('bwipeout', <q-bang>, <q-args>)
+                      \ BufferWipeout          call bufferline#bbye#delete('bwipeout', <q-bang>, <q-args>, <q-mods>)
 
 command!                BufferCloseAllButCurrent   lua require'bufferline.state'.close_all_but_current()
 command!                BufferCloseAllButPinned    lua require'bufferline.state'.close_all_but_pinned()
@@ -105,6 +105,7 @@ let s:DEFAULT_OPTIONS = {
 \ 'icon_separator_inactive': '▎',
 \ 'icons': v:true,
 \ 'icon_custom_colors': v:false,
+\ 'insert_at_start': v:false,
 \ 'insert_at_end': v:false,
 \ 'letters': 'asdfjkl;ghnmxcvbziowerutyqpASDFJKLGHNMXCVBZIOWERUTYQP',
 \ 'maximum_padding': 4,
@@ -204,6 +205,7 @@ endfunc
 
 function! s:on_buffer_close(bufnr)
    call luaeval("require'bufferline.jump_mode'.unassign_letter_for(_A)", a:bufnr)
+   call bufferline#update_async() " BufDelete is called before buffer deletion
 endfunc
 
 function! s:check_modified()
@@ -229,7 +231,7 @@ function! BufferlineMainClickHandler(minwid, clicks, btn, modifiers) abort
    if a:btn =~ 'm'
       call bufferline#bbye#delete('bdelete', '', a:minwid)
    else
-      execute 'buffer ' . a:minwid
+      call luaeval("require'bufferline.state'.open_buffer_in_listed_window(_A)", a:minwid)
    end
 endfunction
 

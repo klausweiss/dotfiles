@@ -146,9 +146,7 @@ function M.unroll_dir(node)
     renderer.draw(M.Tree, true)
   end
 
-  if vim.g.nvim_tree_lsp_diagnostics == 1 then
-    diagnostics.update()
-  end
+  diagnostics.update()
 end
 
 local function refresh_git(node)
@@ -176,7 +174,9 @@ end
 local refreshing = false
 
 function M.refresh_tree(disable_clock)
-  if (not disable_clock and refreshing) or vim.v.exiting ~= vim.NIL then return end
+  if not M.Tree.cwd or (not disable_clock and refreshing) or vim.v.exiting ~= vim.NIL then
+    return
+  end
   refreshing = true
 
   refresh_nodes(M.Tree)
@@ -190,9 +190,7 @@ function M.refresh_tree(disable_clock)
     end)
   end
 
-  if vim.g.nvim_tree_lsp_diagnostics == 1 then
-    vim.schedule(diagnostics.update)
-  end
+  vim.schedule(diagnostics.update)
 
   if view.win_open() then
     renderer.draw(M.Tree, true)
@@ -558,7 +556,7 @@ end
 
 function M.toggle_help()
   view.toggle_help()
-  return M.refresh_tree()
+  return M.redraw()
 end
 
 function M.dir_up(node)
