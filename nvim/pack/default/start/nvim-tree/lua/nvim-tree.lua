@@ -12,15 +12,6 @@ local _config = {
   is_windows          = vim.fn.has('win32') == 1 or vim.fn.has('win32unix') == 1,
   is_macos            = vim.fn.has('mac') == 1 or vim.fn.has('macunix') == 1,
   is_unix             = vim.fn.has('unix') == 1,
-  update_focused_file = {
-    enable = false,
-    update_cwd = false,
-    ignore_list = {},
-  },
-  system_open         = {},
-  ignore_ft_on_setup  = {},
-  open_on_setup       = false,
-  update_to_buf_dir   = true,
 }
 
 local M = {}
@@ -302,7 +293,8 @@ function M.on_leave()
 end
 
 function M.open_on_directory()
-  if not (_config.update_to_buf_dir and (_config.open_on_setup or view.win_open())) then
+  local should_proceed = _config.update_to_buf_dir.auto_open or view.win_open()
+  if not _config.update_to_buf_dir.enable or not should_proceed then
     return
   end
   local buf = api.nvim_get_current_buf()
@@ -408,7 +400,10 @@ local DEFAULT_OPTS = {
   hijack_netrw        = true,
   open_on_setup       = false,
   open_on_tab         = false,
-  update_to_buf_dir   = true,
+  update_to_buf_dir   = {
+    enable = true,
+    auto_open = true,
+  },
   auto_close          = false,
   hijack_cursor       = false,
   update_cwd          = false,
@@ -434,7 +429,15 @@ function M.setup(conf)
   _config.system_open = opts.system_open
   _config.open_on_setup = opts.open_on_setup
   _config.ignore_ft_on_setup = opts.ignore_ft_on_setup
-  _config.update_to_buf_dir = opts.update_to_buf_dir
+  if type(opts.update_to_buf_dir) == "boolean" then
+    require'nvim-tree.utils'.echo_warning("update_to_buf_dir is now a table, see :help nvim-tree.update_to_buf_dir")
+    _config.update_to_buf_dir = {
+      enable = opts.update_to_buf_dir,
+      auto_open = opts.update_to_buf_dir,
+    }
+  else
+    _config.update_to_buf_dir = opts.update_to_buf_dir
+  end
 
   require'nvim-tree.colors'.setup()
   require'nvim-tree.view'.setup(opts.view or {})
@@ -446,37 +449,5 @@ function M.setup(conf)
   -- scheduling to make sure current buffer has initialized before running buffer checks for auto open
   vim.schedule(function() M.on_enter(opts) end)
 end
-
-local function startup_check_new_setup()
-  local out_config = {
-    "nvim_tree_disable_netrw",
-    "nvim_tree_hijack_netrw",
-    "nvim_tree_auto_open",
-    "nvim_tree_auto_close",
-    "nvim_tree_tab_open",
-    "nvim_tree_update_cwd",
-    "nvim_tree_hijack_cursor",
-    "nvim_tree_system_open_command",
-    "nvim_tree_system_open_command_args",
-    "nvim_tree_follow",
-    "nvim_tree_follow_update_path",
-    "nvim_tree_lsp_diagnostics",
-    "nvim_tree_auto_resize",
-    "nvim_tree_bindings",
-    "nvim_tree_disable_keybindings",
-    "nvim_tree_disable_default_keybindings",
-  }
-
-  local x = vim.tbl_filter(function(v)
-    return vim.fn.exists('g:'..v) ~= 0
-  end, out_config)
-
-  if #x > 0 then
-    local msg = "following options are now set in the setup, please read the new documentation for the setup function: "
-    require'nvim-tree.utils'.echo_warning(msg..table.concat(x, " | "))
-  end
-end
-
-vim.defer_fn(startup_check_new_setup, 1000)
 
 return M
