@@ -94,7 +94,6 @@ vim.g.undotree_SetFocusWhenToggle = 1
 -- nvim tree
 -- vim.g.nvim_tree_update_cwd = 1 -- TODO: upstream issue: https://github.com/kyazdani42/nvim-tree.lua/issues/441
 vim.g.nvim_tree_quit_on_open = 0
-vim.g.nvim_tree_follow = 1
 vim.g.nvim_tree_show_icons = {
   git= 1,
   files= 1,
@@ -108,6 +107,18 @@ vim.g.nvim_tree_window_picker_exclude = {
   buftype = {
     'terminal'
   }
+}
+require'nvim-tree'.setup {
+  auto_close = true,
+  update_focused_file = {
+    enable      = true,
+    -- update the root directory of the tree to the one of the folder containing the file if the file is not under the current root directory
+    -- only relevant when `update_focused_file.enable` is true
+    update_cwd  = false,
+    -- list of buffer names / filetypes that will not update the cwd if the file isn't found under the current root directory
+    -- only relevant when `update_focused_file.update_cwd` is true and `update_focused_file.enable` is true
+    ignore_list = {}
+  },
 }
 
 -- session
