@@ -57,6 +57,7 @@ local function get_links()
     EmptyFolderName = 'Directory',
     OpenedFolderName = 'Directory',
     Normal = 'Normal',
+    NormalNC = 'NvimTreeNormal',
     EndOfBuffer = 'EndOfBuffer',
     CursorLine = 'CursorLine',
     VertSplit = 'VertSplit',
@@ -69,17 +70,14 @@ local function get_links()
     FileDeleted = 'NvimTreeGitDeleted',
     Popup = 'Normal',
     GitIgnored = 'Comment',
-    LspDiagnosticsError = "LspDiagnosticsDefaultError",
-    LspDiagnosticsWarning = "LspDiagnosticsDefaultWarning",
-    LspDiagnosticsInformation = "LspDiagnosticsDefaultInformation",
-    LspDiagnosticsHint = "LspDiagnosticsDefaultHint",
     StatusLine = "StatusLine",
     StatusLineNC = "StatusLineNC",
+    SignColumn = 'NvimTreeNormal',
   }
 end
 
 function M.setup()
-  if config.get_icon_state().show_file_icon then
+  if config.get_icon_state().show_file_icon and config.get_icon_state().has_devicons then
     require'nvim-web-devicons'.setup()
   end
   local higlight_groups = get_hl_groups()

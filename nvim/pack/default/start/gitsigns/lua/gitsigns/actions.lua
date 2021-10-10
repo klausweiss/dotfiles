@@ -191,7 +191,7 @@ M.reset_buffer = function()
    api.nvim_buf_set_lines(bufnr, 0, -1, false, bcache:get_compare_text())
 end
 
-M.undo_stage_hunk = mk_repeatable(void(function()
+M.undo_stage_hunk = void(function()
    local bufnr = current_buf()
    local bcache = cache[bufnr]
    if not bcache then
@@ -211,7 +211,7 @@ M.undo_stage_hunk = mk_repeatable(void(function()
       signs.add(config, bufnr, gs_hunks.process_hunks({ hunk }))
    end
    manager.update(bufnr)
-end))
+end)
 
 M.stage_buffer = void(function()
    local bufnr = current_buf()
@@ -718,30 +718,30 @@ M.setloclist = function(nr, target)
 end
 
 M.get_actions = function()
-   local hunk = get_cursor_hunk()
-
-
-
-
-
-
-
-
-
+   local bufnr = current_buf()
+   local bcache = cache[bufnr]
+   if not bcache then
+      return
+   end
+   local hunk = get_cursor_hunk(bufnr, bcache.hunks)
 
    local actions_l = {}
+
+   local function add_action(action)
+      actions_l[#actions_l + 1] = action
+   end
+
    if hunk then
-      actions_l = {
-         'stage_hunk',
-         'undo_stage_hunk',
-         'reset_hunk',
-         'preview_hunk',
-         'select_hunk',
-      }
+      add_action('stage_hunk')
+      add_action('reset_hunk')
+      add_action('preview_hunk')
+      add_action('select_hunk')
    else
-      actions_l = {
-         'blame_line',
-      }
+      add_action('blame_line')
+   end
+
+   if bcache.staged_diffs then
+      add_action('undo_stage_hunk')
    end
 
    local actions = {}

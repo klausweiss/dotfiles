@@ -444,6 +444,9 @@ local function close(skip_close)
   notif.delete_all()
   M.status_buffer = nil
   vim.o.autochdir = M.prev_autochdir
+  if M.cwd_changed then
+    vim.cmd "cd -"
+  end
 end
 
 local function generate_patch_from_selection(item, hunk, from, to, reverse)
@@ -573,25 +576,40 @@ end
 local stage = function()
   M.current_operation = "stage"
   local section, item = get_current_section_item()
+  local mode = vim.api.nvim_get_mode()
 
   if section == nil
     or (section.name ~= "unstaged" and section.name ~= "untracked" and section.name ~= "unmerged")
-    or item == nil then
+    or (mode.mode == "V" and item == nil) then
     return
   end
-
-  local mode = vim.api.nvim_get_mode()
 
   if mode.mode == "V" then
     stage_selection()
   else
     local on_hunk = current_line_is_hunk()
-    if on_hunk and section.name ~= "untracked" then
-      local hunk = get_current_hunk_of_item(item)
-      local patch = generate_patch_from_selection(item, hunk)
-      cli.apply.cached.with_patch(patch).call()
+    if item == nil then
+      if section.name == "unstaged" then
+        git.status.stage_modified()
+      elseif section.name == "untracked" then
+        local add = git.cli.add;
+        for i,_ in ipairs(section.files) do
+          local item = section.files[i];
+          add.files(item.name)
+        end
+        add.call()
+      end
+      refresh(true)
+      M.current_operation = nil
+      return
     else
-      git.status.stage(item.name)
+      if on_hunk and section.name ~= "untracked" then
+          local hunk = get_current_hunk_of_item(item)
+          local patch = generate_patch_from_selection(item, hunk)
+          cli.apply.cached.with_patch(patch).call()
+        else
+          git.status.stage(item.name)
+        end
     end
   end
 
@@ -601,25 +619,31 @@ end
 
 local unstage = function()
   local section, item = get_current_section_item()
+  local mode = vim.api.nvim_get_mode()
 
-  if section == nil or section.name ~= "staged" or item == nil then
+  if section == nil or section.name ~= "staged" or (mode.mode == "V" and item == nil) then
     return
   end
   M.current_operation = "unstage"
 
-  local mode = vim.api.nvim_get_mode()
-
   if mode.mode == "V" then
     unstage_selection()
   else
-    local on_hunk = current_line_is_hunk()
-
-    if on_hunk then
-      local hunk = get_current_hunk_of_item(item)
-      local patch = generate_patch_from_selection(item, hunk, nil, nil, true)
-      cli.apply.reverse.cached.with_patch(patch).call()
+    if item == nil then
+      git.status.unstage_all(".")
+      refresh(true)
+      M.current_operation = nil
+      return
     else
-      git.status.unstage(item.name)
+      local on_hunk = current_line_is_hunk()
+
+      if on_hunk then
+        local hunk = get_current_hunk_of_item(item)
+        local patch = generate_patch_from_selection(item, hunk, nil, nil, true)
+        cli.apply.reverse.cached.with_patch(patch).call()
+      else
+        git.status.unstage(item.name)
+      end
     end
   end
 
@@ -820,7 +844,7 @@ local cmd_func_map = function ()
   }
 end
 
-local function create(kind)
+local function create(kind, cwd)
   kind = kind or "tab"
 
   if M.status_buffer then
@@ -841,6 +865,11 @@ local function create(kind)
       M.status_buffer = buffer
 
       M.prev_autochdir = vim.o.autochdir
+
+      if cwd then
+        M.cwd_changed = true
+        vim.cmd(string.format("cd %s", cwd))
+      end
 
       vim.o.autochdir = false
 

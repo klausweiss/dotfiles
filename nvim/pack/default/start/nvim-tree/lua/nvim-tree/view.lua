@@ -28,9 +28,10 @@ M.View = {
       'Normal:NvimTreeNormal',
       'CursorLine:NvimTreeCursorLine',
       'VertSplit:NvimTreeVertSplit',
-      'SignColumn:NvimTreeNormal',
       'StatusLine:NvimTreeStatusLine',
-      'StatusLineNC:NvimTreeStatuslineNC'
+      'StatusLineNC:NvimTreeStatuslineNC',
+      'SignColumn:NvimTreeSignColumn',
+      'NormalNC:NvimTreeNormalNC',
     }, ',')
   },
   bufopts = {
@@ -106,6 +107,7 @@ end
 
 local DEFAULT_CONFIG = {
   width = 30,
+  height = 30,
   side = 'left',
   auto_resize = false,
   mappings = {
@@ -141,6 +143,7 @@ function M.setup(opts)
   local options = vim.tbl_deep_extend('force', DEFAULT_CONFIG, opts)
   M.View.side = options.side
   M.View.width = options.width
+  M.View.height = options.height
   M.View.auto_resize = opts.auto_resize
   if options.mappings.custom_only then
     M.View.mappings = options.mappings.list
@@ -186,12 +189,16 @@ function M._prevent_buffer_override()
     end
 
     if #vim.api.nvim_list_wins() < 2 then
-      vim.cmd("vsplit")
+      local cmd = M.is_vertical() and "vsplit" or "split"
+      vim.cmd(cmd)
     else
       vim.cmd("wincmd "..move_cmd[M.View.side])
     end
     vim.cmd("buffer "..curbuf)
     M.resize()
+    if vim.g.nvim_tree_quit_on_open == 1 then
+      M.close()
+    end
   end)
 end
 
@@ -228,12 +235,18 @@ function M.focus(winnr, open_if_closed)
   a.nvim_set_current_win(wnr)
 end
 
-local function get_width()
-  if type(M.View.width) == "number" then
-    return M.View.width
+function M.is_vertical()
+  return M.View.side == 'left' or M.View.side == 'right'
+end
+
+local function get_size()
+  local width_or_height = M.is_vertical() and 'width' or 'height'
+  local size = M.View[width_or_height]
+  if type(size) == "number" then
+    return size
   end
-  local width_as_number = tonumber(M.View.width:sub(0, -2))
-  local percent_as_decimal = width_as_number / 100
+  local size_as_number = tonumber(size:sub(0, -2))
+  local percent_as_decimal = size_as_number / 100
   return math.floor(vim.o.columns * percent_as_decimal)
 end
 
@@ -242,7 +255,11 @@ function M.resize()
     return
   end
 
-  a.nvim_win_set_width(M.get_winnr(), get_width())
+  if M.is_vertical() then
+    a.nvim_win_set_width(M.get_winnr(), get_size())
+  else
+    a.nvim_win_set_height(M.get_winnr(), get_size())
+  end
 end
 
 local move_tbl = {
@@ -268,7 +285,8 @@ end
 function M.replace_window()
   local move_to = move_tbl[M.View.side]
   a.nvim_command("wincmd "..move_to)
-  a.nvim_command("vertical resize "..get_width())
+  local resize_direction = M.is_vertical() and 'vertical ' or ''
+  a.nvim_command(resize_direction.."resize "..get_size())
 end
 
 local function open_window()
@@ -292,7 +310,7 @@ function M.open(options)
     open_window()
   end
 
-  vim.cmd("buffer "..M.View.bufnr)
+  pcall(vim.cmd, "buffer "..M.View.bufnr)
   for k, v in pairs(M.View.winopts) do
     set_local(k, v)
   end

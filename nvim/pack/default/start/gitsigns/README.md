@@ -200,6 +200,34 @@ Open diffview with any revision/commit                   | :white_check_mark:   
 
 As of 2021-07-05
 
+## Integrations
+
+### [vim-repeat](https://github.com/tpope/vim-repeat)
+
+If installed, `stage_hunk()` and `reset_hunk()` are repeatable with the `.` (dot) operator.
+
+### [vim-fugitive](https://github.com/tpope/vim-fugitive)
+
+When viewing revisions of a file (via `:0Gclog` for example), Gitsigns will attach to the fugitive buffer with the base set to the commit immediately before the commit of that revision. This means the signs placed in the buffer reflect the changes introduced by that revision of the file.
+
+### [null-ls](https://github.com/jose-elias-alvarez/null-ls.nvim)
+
+Null-ls can provide code actions from Gitsigns. To setup:
+
+```lua
+local null_ls = require("null-ls")
+
+null_ls.setup {
+  sources = {
+    null_ls.builtins.code_actions.gitsigns,
+    ...
+  }
+}
+```
+
+Will enable `:lua vim.lsp.buf.code_action()` to retrieve code actions from Gitsigns.
+Alternatively if you have [telescope.nvim](https://github.com/nvim-telescope/telescope.nvim) installed, you can use `:Telescope lsp_code_actions`.
+
 ## Similar plugins
 
 - [coc-git](https://github.com/neoclide/coc-git)

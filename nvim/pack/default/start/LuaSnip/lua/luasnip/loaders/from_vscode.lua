@@ -2,9 +2,10 @@ local ls = require("luasnip")
 local uv = vim.loop
 local caches = require("luasnip.loaders._caches")
 local util = require("luasnip.util.util")
+local session = require("luasnip.session")
 
 local function json_decode(data)
-	local status, result = pcall(vim.fn.json_decode, data)
+	local status, result = pcall(util.json_decode, data)
 	if status then
 		return result
 	else
@@ -100,6 +101,8 @@ local function load_snippet_file(langs, snippet_set_path)
 				end
 				ls.snippets[lang] = lang_snips
 				ls.autosnippets[lang] = auto_lang_snips
+				session.latest_load_ft = lang
+				vim.cmd("doautocmd User LuasnipSnippetsAdded")
 			end
 		end)
 	)

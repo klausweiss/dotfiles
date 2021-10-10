@@ -13,7 +13,6 @@ local populate = pops.populate
 local refresh_entries = pops.refresh_entries
 
 local first_init_done = false
-local window_opts = config.window_options()
 
 local M = {}
 
@@ -91,8 +90,8 @@ local function get_line_from_node(node, find_parent)
       end
 
       line = line + 1
-      if n.open == true and recursive then
-        local _, child = iter(n.entries, recursive)
+      if entry.open == true and recursive then
+        local _, child = iter(entry.entries, recursive)
         if child ~= nil then return line, child end
       end
     end
@@ -108,7 +107,7 @@ function M.get_node_at_cursor()
   local cursor = api.nvim_win_get_cursor(view.get_winnr())
   local line = cursor[1]
   if view.is_help_ui() then
-    local help_lines, _ = renderer.draw_help()
+    local help_lines = require'nvim-tree.renderer.help'.compute_lines()
     local help_text = get_node_at_line(line+1)(help_lines)
     return {name = help_text}
   else
@@ -368,7 +367,9 @@ function M.open_file(mode, filename)
     if not target_winid or not vim.tbl_contains(win_ids, target_winid) then
       -- Target is invalid, or window does not exist in current tabpage: create
       -- new window
-      vim.cmd(window_opts.split_command .. " vsp")
+      local window_opts = config.window_options()
+      local splitside = view.is_vertical() and "vsp" or "sp"
+      vim.cmd(window_opts.split_command .. " " .. splitside)
       target_winid = api.nvim_get_current_win()
       M.Tree.target_winid = target_winid
 
@@ -442,11 +443,26 @@ function M.open_file_in_tab(filename)
   vim.cmd("tabe " .. vim.fn.fnameescape(filename))
 end
 
+function M.collapse_all()
+  local function iter(nodes)
+    for _, node in pairs(nodes) do
+      if node.open then
+        node.open = false
+      end
+      if node.entries then
+        iter(node.entries)
+      end
+    end
+  end
+
+  iter(M.Tree.entries)
+  M.redraw()
+end
+
 function M.change_dir(name)
-  local changed_win = vim.v.event and vim.v.event.changed_window
   local foldername = name == '..' and vim.fn.fnamemodify(M.Tree.cwd, ':h') or name
   local no_cwd_change = vim.fn.expand(foldername) == M.Tree.cwd
-  if changed_win or no_cwd_change then
+  if no_cwd_change then
     return
   end
 

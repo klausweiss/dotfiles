@@ -7,6 +7,7 @@ local colors = require'nvim-tree.colors'
 local renderer = require'nvim-tree.renderer'
 local fs = require'nvim-tree.fs'
 local view = require'nvim-tree.view'
+local utils = require'nvim-tree.utils'
 
 local _config = {
   is_windows          = vim.fn.has('win32') == 1 or vim.fn.has('win32unix') == 1,
@@ -255,21 +256,22 @@ function M.find_file(with_open)
   local bufname = vim.fn.bufname()
   local bufnr = api.nvim_get_current_buf()
   local filepath = vim.fn.fnamemodify(bufname, ':p')
+  if not is_file_readable(filepath) then
+    return
+  end
 
   if with_open then
     M.open()
     view.focus()
   end
 
-  if not is_file_readable(filepath) then
-    return
-  end
   update_base_dir_with_filepath(filepath, bufnr)
   lib.set_index_and_redraw(filepath)
 end
 
 function M.resize(size)
   view.View.width = size
+  view.View.height = size
   view.resize()
 end
 
@@ -363,6 +365,14 @@ local function setup_vim_commands()
   ]]
 end
 
+function M.change_dir(name)
+  lib.change_dir(name)
+
+  if _config.update_focused_file.enable then
+    M.find_file(false)
+  end
+end
+
 local function setup_autocommands(opts)
   vim.cmd "augroup NvimTree"
   vim.cmd [[
@@ -386,7 +396,7 @@ local function setup_autocommands(opts)
     vim.cmd "au CursorMoved NvimTree lua require'nvim-tree'.place_cursor_on_node()"
   end
   if opts.update_cwd then
-    vim.cmd "au DirChanged * lua require'nvim-tree.lib'.change_dir(vim.loop.cwd())"
+    vim.cmd "au DirChanged * lua require'nvim-tree'.change_dir(vim.loop.cwd())"
   end
   if opts.update_focused_file.enable then
     vim.cmd "au BufEnter * lua require'nvim-tree'.find_file(false)"
@@ -407,7 +417,6 @@ local DEFAULT_OPTS = {
   auto_close          = false,
   hijack_cursor       = false,
   update_cwd          = false,
-  lsp_diagnostics     = false,
   update_focused_file = {
     enable = false,
     update_cwd = false,
@@ -417,6 +426,15 @@ local DEFAULT_OPTS = {
   system_open = {
     cmd  = nil,
     args = {}
+  },
+  diagnostics = {
+    enable = false,
+    icons = {
+      hint = "",
+      info = "",
+      warning = "",
+      error = "",
+    }
   },
 }
 
@@ -430,13 +448,17 @@ function M.setup(conf)
   _config.open_on_setup = opts.open_on_setup
   _config.ignore_ft_on_setup = opts.ignore_ft_on_setup
   if type(opts.update_to_buf_dir) == "boolean" then
-    require'nvim-tree.utils'.echo_warning("update_to_buf_dir is now a table, see :help nvim-tree.update_to_buf_dir")
+    utils.echo_warning("update_to_buf_dir is now a table, see :help nvim-tree.update_to_buf_dir")
     _config.update_to_buf_dir = {
       enable = opts.update_to_buf_dir,
       auto_open = opts.update_to_buf_dir,
     }
   else
     _config.update_to_buf_dir = opts.update_to_buf_dir
+  end
+
+  if opts.lsp_diagnostics ~= nil then
+    utils.echo_warning("setup.lsp_diagnostics has been removed, see :help nvim-tree.diagnostics")
   end
 
   require'nvim-tree.colors'.setup()

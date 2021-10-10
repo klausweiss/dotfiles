@@ -1,12 +1,11 @@
 local vim = vim
 
 local parser = require('symbols-outline.parser')
+local providers = require('symbols-outline.providers.init')
 local ui = require('symbols-outline.ui')
 local writer = require('symbols-outline.writer')
 local config = require('symbols-outline.config')
-local lsp_utils = require('symbols-outline.utils.lsp_utils')
 local utils = require('symbols-outline.utils.init')
-local markdown = require('symbols-outline.markdown')
 local view = require('symbols-outline.view')
 
 local M = {}
@@ -29,10 +28,6 @@ local function setup_buffer_autocmd()
 
 end
 
-local function getParams()
-    return {textDocument = vim.lsp.util.make_text_document_params()}
-end
-
 -------------------------
 -- STATE
 -------------------------
@@ -48,15 +43,10 @@ local function wipe_state()
     M.state = {outline_items = {}, flattened_outline_items = {}}
 end
 
-local function __refresh ()
+local function __refresh()
     if M.state.outline_buf ~= nil then
         local function refresh_handler(response)
             if response == nil or type(response) ~= 'table' then
-                return
-            end
-
-            local current_buf = vim.api.nvim_get_current_buf()
-            if lsp_utils.should_not_refresh(current_buf) then
                 return
             end
 
@@ -70,11 +60,7 @@ local function __refresh ()
                                    M.state.flattened_outline_items)
         end
 
-        if vim.api.nvim_buf_get_option(0, 'ft') == 'markdown' then
-            refresh_handler(markdown.handle_markdown())
-        end
-        vim.lsp.buf_request_all(0, "textDocument/documentSymbol", getParams(),
-                                refresh_handler)
+        providers.request_symbols(refresh_handler)
     end
 end
 
@@ -89,17 +75,14 @@ function M._goto_location(change_focus)
 end
 
 function M._highlight_current_item(winnr)
-    local doesnt_have_lsp = not lsp_utils.is_buf_attached_to_lsp(
-                                vim.api.nvim_win_get_buf(winnr or 0))
+    local has_provider = providers.has_provider()
 
     local is_current_buffer_the_outline =
         M.state.outline_buf == vim.api.nvim_get_current_buf()
 
     local doesnt_have_outline_buf = not M.state.outline_buf
 
-    local is_not_markdown = not lsp_utils.is_buf_markdown(0)
-
-    local should_exit = (doesnt_have_lsp and is_not_markdown) or
+    local should_exit = (not has_provider) or
                             doesnt_have_outline_buf or
                             is_current_buffer_the_outline
 
@@ -195,16 +178,12 @@ end
 
 function M.open_outline()
     if M.state.outline_buf == nil then
-        if vim.api.nvim_buf_get_option(0, 'ft') == 'markdown' then
-            handler(markdown.handle_markdown())
-        end
-        vim.lsp.buf_request_all(0, "textDocument/documentSymbol", getParams(),
-                                handler)
+        providers.request_symbols(handler)
     end
 end
 
 function M.close_outline()
-    if M.state.outline_buf ~= nil then
+    if M.state.outline_buf then
         vim.api.nvim_win_close(M.state.outline_win, true)
     end
 end

@@ -2,6 +2,7 @@ local config = require'nvim-tree.config'
 local utils = require'nvim-tree.utils'
 local view = require'nvim-tree.view'
 local _padding = require'nvim-tree.renderer.padding'
+local _help = require'nvim-tree.renderer.help'
 
 local api = vim.api
 
@@ -54,26 +55,31 @@ if icon_state.show_folder_icon then
   end
 end
 
-local get_file_icon = function() return icon_state.icons.default end
+local get_file_icon = function() return "" end
 if icon_state.show_file_icon then
-  local web_devicons = require'nvim-web-devicons'
+  if icon_state.has_devicons then
+    local web_devicons = require'nvim-web-devicons'
 
-  get_file_icon = function(fname, extension, line, depth)
-    local icon, hl_group = web_devicons.get_icon(fname, extension)
+    get_file_icon = function(fname, extension, line, depth)
+      local icon, hl_group = web_devicons.get_icon(fname, extension)
 
-    if icon and hl_group ~= "DevIconDefault" then
-      if hl_group then
-        table.insert(hl, { hl_group, line, depth, depth + #icon + 1 })
+      if icon and hl_group ~= "DevIconDefault" then
+        if hl_group then
+          table.insert(hl, { hl_group, line, depth, depth + #icon + 1 })
+        end
+        return icon..icon_padding
+      elseif string.match(extension, "%.(.*)") then
+        -- If there are more extensions to the file, try to grab the icon for them recursively
+        return get_file_icon(fname, string.match(extension, "%.(.*)"), line, depth)
+      else
+        return #icon_state.icons.default > 0 and icon_state.icons.default..icon_padding or ""
       end
-      return icon..icon_padding
-    elseif string.match(extension, "%.(.*)") then
-      -- If there are more extensions to the file, try to grab the icon for them recursively
-      return get_file_icon(fname, string.match(extension, "%.(.*)"), line, depth)
-    else
+    end
+  else
+    get_file_icon = function()
       return #icon_state.icons.default > 0 and icon_state.icons.default..icon_padding or ""
     end
   end
-
 end
 
 local get_symlink_icon = function() return icon_state.icons.symlink end
@@ -83,7 +89,7 @@ if icon_state.show_file_icon then
   end
 end
 
-local get_special_icon = function() return icon_state.icons.default end
+local get_special_icon = function() return "" end
 if icon_state.show_file_icon then
   get_special_icon = function()
     return #icon_state.icons.default > 0 and icon_state.icons.default..icon_padding or ""
@@ -291,6 +297,9 @@ local function update_draw_data(tree, depth, markers)
       end
       if not has_children then folder_hl = "NvimTreeEmptyFolderName" end
       if node.open then folder_hl = "NvimTreeOpenedFolderName" end
+      if special[node.absolute_path] then
+        folder_hl = "NvimTreeSpecialFolderName"
+      end
       set_folder_hl(index, offset, #icon, #name+#git_icon, folder_hl)
       if git_hl then
         set_folder_hl(index, offset, #icon, #name+#git_icon, git_hl)
@@ -313,7 +322,7 @@ local function update_draw_data(tree, depth, markers)
     else
       local icon
       local git_icons
-      if special[node.name] then
+      if special[node.absolute_path] or special[node.name] then
         icon = get_special_icon()
         git_icons = get_git_icons(node, index, offset, 0)
         table.insert(hl, {'NvimTreeSpecialFile', index, offset+#git_icons, -1})
@@ -351,54 +360,6 @@ end
 
 local M = {}
 
-function M.draw_help()
-  local help_lines = {'HELP'}
-  local help_hl = {{'NvimTreeRootFolder', 0, 0, #help_lines[1]}}
-  local mappings = vim.tbl_filter(function(v)
-    return v.cb ~= nil and v.cb ~= ""
-  end, view.View.mappings)
-  local processed = {}
-  for _, b in pairs(mappings) do
-    local cb = b.cb
-    local key = b.key
-    local name
-    if cb:sub(1,35) == view.nvim_tree_callback('test'):sub(1,35) then
-      name = cb:match("'[^']+'[^']*$")
-      name = name:match("'[^']+'")
-      table.insert(processed, {key, name, true})
-    else
-      name = (b.name ~= nil) and b.name or cb
-      name = '"' .. name .. '"'
-      table.insert(processed, {key, name, false})
-    end
-  end
-  table.sort(processed, function(a,b)
-    return (a[3] == b[3]
-      and (a[2] < b[2] or (a[2] == b[2] and #a[1] < #b[1])))
-      or (a[3] and not b[3])
-  end)
-
-  local num = 0
-  for _, val in pairs(processed) do
-    local keys = type(val[1]) == "string" and {val[1]} or val[1]
-    local map_name = val[2]
-    local builtin = val[3]
-    for _, key in pairs(keys) do
-      num = num + 1
-      local bind_string = string.format("%6s : %s", key, map_name)
-      table.insert(help_lines, bind_string)
-
-      local hl_len = math.max(6, string.len(key)) + 2
-      table.insert(help_hl, {'NvimTreeFolderName', num, 0, hl_len})
-
-      if not builtin then
-        table.insert(help_hl, {'NvimTreeFileRenamed', num, hl_len, -1})
-      end
-    end
-  end
-  return help_lines, help_hl
-end
-
 function M.draw(tree, reload)
   if not api.nvim_buf_is_loaded(view.View.bufnr) then return end
   local cursor
@@ -417,7 +378,7 @@ function M.draw(tree, reload)
   end
 
   if view.is_help_ui() then
-    lines, hl = M.draw_help()
+    lines, hl = _help.compute_lines()
   end
   api.nvim_buf_set_option(view.View.bufnr, 'modifiable', true)
   api.nvim_buf_set_lines(view.View.bufnr, 0, -1, false, lines)

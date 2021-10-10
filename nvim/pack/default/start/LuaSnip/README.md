@@ -42,7 +42,64 @@ smap <silent><expr> <C-E> luasnip#choice_active() ? '<Plug>luasnip-next-choice' 
 ```
   </details>
    <details>
-   <summary>or in lua (includes supertab-like functionality with nvim-compe)</summary>
+   <summary>or in lua (includes supertab-like functionality with nvim-cmp)</summary>
+
+```lua
+local function prequire(...)
+local status, lib = pcall(require, ...)
+if (status) then return lib end
+    return nil
+end
+
+local luasnip = prequire('luasnip')
+local cmp = prequire("cmp")
+
+local t = function(str)
+    return vim.api.nvim_replace_termcodes(str, true, true, true)
+end
+
+local check_back_space = function()
+    local col = vim.fn.col('.') - 1
+    if col == 0 or vim.fn.getline('.'):sub(col, col):match('%s') then
+        return true
+    else
+        return false
+    end
+end
+
+_G.tab_complete = function()
+    if cmp and cmp.visible() then
+        cmp.select_next_item()
+    elseif luasnip and luasnip.expand_or_jumpable() then
+        luasnip.expand_or_jump()
+    elseif check_back_space() then
+        return t "<Tab>"
+    else
+        cmp.complete()
+    end
+    return ""
+end
+_G.s_tab_complete = function()
+    if cmp and cmp.visible() then
+        cmp.select_prev_item()
+    elseif luasnip and luasnip.jumpable(-1) then
+        luasnip.jump(-1)
+    else
+        return t "<S-Tab>"
+    end
+    return ""
+end
+
+vim.api.nvim_set_keymap("i", "<Tab>", "v:lua.tab_complete()", {expr = true})
+vim.api.nvim_set_keymap("s", "<Tab>", "v:lua.tab_complete()", {expr = true})
+vim.api.nvim_set_keymap("i", "<S-Tab>", "v:lua.s_tab_complete()", {expr = true})
+vim.api.nvim_set_keymap("s", "<S-Tab>", "v:lua.s_tab_complete()", {expr = true})
+vim.api.nvim_set_keymap("i", "<C-E>", "<Plug>luasnip-next-choice", {})
+vim.api.nvim_set_keymap("s", "<C-E>", "<Plug>luasnip-next-choice", {})
+```
+  </details>
+   <details>
+   <summary>or in lua with nvim-compe</summary>
  
 ```lua
 local function prequire(...)
@@ -70,21 +127,23 @@ _G.tab_complete = function()
     if vim.fn.pumvisible() == 1 then
         return t "<C-n>"
     elseif luasnip and luasnip.expand_or_jumpable() then
-        return t "<Plug>luasnip-expand-or-jump"
+        luasnip.expand_or_jump()
     elseif check_back_space() then
         return t "<Tab>"
     else
         return vim.fn['compe#complete']()
     end
+    return ""
 end
 _G.s_tab_complete = function()
     if vim.fn.pumvisible() == 1 then
         return t "<C-p>"
     elseif luasnip and luasnip.jumpable(-1) then
-        return t "<Plug>luasnip-jump-prev"
+        luasnip.jump(-1)
     else
         return t "<S-Tab>"
     end
+    return ""
 end
 
 vim.api.nvim_set_keymap("i", "<Tab>", "v:lua.tab_complete()", {expr = true})
@@ -95,6 +154,11 @@ vim.api.nvim_set_keymap("i", "<C-E>", "<Plug>luasnip-next-choice", {})
 vim.api.nvim_set_keymap("s", "<C-E>", "<Plug>luasnip-next-choice", {})
 ```
   </details>
+
+For nvim-cmp, it is also possible to follow the
+[example recommendation](https://github.com/hrsh7th/nvim-cmp/wiki/Example-mappings#luasnip):
+from the nvim-cmp wiki.
+
 
 ## Add Snippets
 Snippets have to be added to the [`require'luasnip'.snippets`-table](https://github.com/L3MON4D3/LuaSnip/blob/master/Examples/snippets.lua#L157).  
