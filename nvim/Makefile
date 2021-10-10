@@ -137,6 +137,9 @@ update-nvim-tree: \
 
 	$(call download-from-repo, https://github.com/kyazdani42/nvim-tree.lua)
 
+update-nvim-treesitter:
+	$(call download-from-repo, https://github.com/nvim-treesitter/nvim-treesitter)
+
 update-nvim-web-devicons:
 	$(call download-from-repo, https://github.com/kyazdani42/nvim-web-devicons)
 
