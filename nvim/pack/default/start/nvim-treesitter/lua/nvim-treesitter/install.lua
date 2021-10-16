@@ -11,7 +11,7 @@ local shell = require "nvim-treesitter.shell_command_selectors"
 local M = {}
 local lockfile = {}
 
-M.compilers = { vim.fn.getenv "CC", "cc", "gcc", "clang", "cl" }
+M.compilers = { vim.fn.getenv "CC", "cc", "gcc", "clang", "cl", "zig" }
 M.prefer_git = fn.has "win32" == 1
 M.command_extra_args = {}
 
@@ -429,13 +429,13 @@ function M.update(options)
         end
       end
       if installed == 0 then
-        print "Parsers are up-to-date!"
+        utils.notify "Parsers are up-to-date!"
       end
     else
       local parsers_to_update = configs.get_update_strategy() == "lockfile" and outdated_parsers()
         or info.installed_parsers()
       if #parsers_to_update == 0 then
-        print "All parsers are up-to-date!"
+        utils.notify "All parsers are up-to-date!"
       end
       for _, lang in pairs(parsers_to_update) do
         install {

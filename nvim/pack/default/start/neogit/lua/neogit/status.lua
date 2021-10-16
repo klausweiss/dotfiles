@@ -112,6 +112,10 @@ local function draw_buffer()
   M.status_buffer:clear_sign_group('fold_markers')
 
   local output = LineBuffer.new()
+  if not config.values.disable_hint then
+    output:append("Hint: [<tab>] toggle diff | [s]tage | [u]nstage | [x] discard | [c]ommit | [?] more help")
+    output:append("")
+  end
   output:append(string.format("Head: %s %s", M.repo.head.branch, M.repo.head.commit_message or '(no commits)'))
   if M.repo.upstream.branch then
     output:append(string.format("Push: %s %s", M.repo.upstream.branch, M.repo.upstream.commit_message or '(no commits)'))
@@ -122,8 +126,8 @@ local function draw_buffer()
   local locations_lookup = Collection.new(M.locations):key_by('name')
 
   local function render_section(header, data, key)
-    if #data.files == 0 then return end
-    output:append(string.format('%s (%d)', header, #data.files))
+    if #data.items == 0 then return end
+    output:append(string.format('%s (%d)', header, #data.items))
 
     local location = locations_lookup[key] or {
       name = key,
@@ -136,7 +140,7 @@ local function draw_buffer()
       local files_lookup = Collection.new(location.files):key_by('name')
       location.files = {}
 
-      for _, f in ipairs(data.files) do
+      for _, f in ipairs(data.items) do
         if f.mode and f.original_name then
           output:append(string.format('%s %s -> %s', mode_to_text[f.mode], f.original_name, f.name))
         elseif f.mode then output:append(string.format('%s %s', mode_to_text[f.mode], f.name))
@@ -194,6 +198,7 @@ local function draw_buffer()
   render_section('Stashes', M.repo.stashes, 'stashes')
   render_section('Unpulled changes', M.repo.unpulled, 'unpulled')
   render_section('Unmerged changes', M.repo.unmerged, 'unmerged')
+  render_section('Recent commits', M.repo.recent, 'recent')
 
   M.status_buffer:replace_content_with(output)
   M.locations = new_locations
@@ -340,6 +345,12 @@ local function refresh (which)
       table.insert(refreshes, function() 
         logger.debug("[STATUS BUFFER]: Refreshing unpushed commits")
         M.repo:update_unmerged() 
+      end)
+    end
+    if which == true or which.recent then
+      table.insert(refreshes, function()
+        logger.debug("[STATUS BUFFER]: Refreshing recent commits")
+        M.repo:update_recent()
       end)
     end
     if which == true or which.diffs then
@@ -659,7 +670,7 @@ local discard = function()
   end
   M.current_operation = "discard"
 
-  if not input.get_confirmation("Do you really want to do this?", {
+  if not input.get_confirmation("Discard '"..item.name.."' ?", {
     values = { "&Yes", "&No" },
     default = 2
   }) then
@@ -793,11 +804,11 @@ local cmd_func_map = function ()
           local relpath = vim.fn.fnamemodify(repo_root .. '/' .. path, ':.')
 
           vim.cmd("e " .. relpath)
-        elseif section.name == "unpulled" or section.name == "unmerged" then
+        elseif vim.tbl_contains({ "unmerged", "unpulled", "recent", "stashes" }, section.name) then
           if M.commit_view and M.commit_view.is_open then
             M.commit_view:close()
           end
-          M.commit_view = CommitView.new(item.name:match("(.-) "), true)
+          M.commit_view = CommitView.new(item.name:match("(.-):? "), true)
           M.commit_view:open()
         else
           return
@@ -845,7 +856,7 @@ local cmd_func_map = function ()
 end
 
 local function create(kind, cwd)
-  kind = kind or "tab"
+  kind = kind or config.values.kind
 
   if M.status_buffer then
     logger.debug "Status buffer already exists. Focusing the existing one"

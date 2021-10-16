@@ -49,6 +49,11 @@ It will also open the leafs of the tree leading to the file in the buffer
 (if you opened a file with something else than the NvimTree, like `fzf` or
 `:split`)
 
+|:NvimTreeFindFileToggle|			  *:NvimTreeFindFileToggle*
+
+close the tree or change the cursor in the tree for the current bufname,
+similar to combination of |:NvimTreeToggle| and |:NvimTreeFindFile|
+
 |:NvimTreeClipboard|			          *:NvimTreeClipboard*
 
 Print clipboard content for both cut and copy
@@ -224,6 +229,11 @@ Here is a list of the options available in the setup call:
 
 *nvim-tree.view*
 - |view|: window / buffer setup
+
+  - |view.hide_root_folder|: hide the path of the current working 
+    directory on top of the tree
+      type: `boolean`
+      default: `false`
 
   - |view.width|: width of the window, can be either a `%` string or
     a number representing columns. Only works with |view.side| `left` or `right`
@@ -562,8 +572,9 @@ HIGHLIGHT GROUPS				        *nvim-tree-highlight*
 
 |nvim_tree_highlight|				        *nvim_tree_highlight*
 
-All the following highlight groups can be configured by hand. It is not
-advised to colorize the background of these groups.
+All the following highlight groups can be configured by hand. Aside from
+`NvimTreeWindowPicker`, it is not advised to colorize the background of these
+groups.
 
 Example (in your `init.vim`):
 >
@@ -614,6 +625,8 @@ NvimTreeGitRenamed
 NvimTreeGitNew
 NvimTreeGitDeleted
 
+NvimTreeWindowPicker
+
 There are also links to normal bindings to style the tree itself.
 
 Normal
@@ -631,8 +644,6 @@ NvimTreeFileMerge
 NvimTreeFileRenamed
 NvimTreeFileNew
 NvimTreeFileDeleted
-
- vim:tw=78:ts=8:noet:ft=help:norl:
 
 ==============================================================================
 EVENTS                                                 *nvim-tree-events*
@@ -713,3 +724,5 @@ on_folder_removed({handler})
                 Parameters: ~
                     {handler}    (function) Handler function, with the
                                  signature `function(payload)`.
+
+ vim:tw=78:ts=8:noet:ft=help:norl:

@@ -2,7 +2,7 @@ if exists("b:current_syntax")
   finish
 endif
 
-syn match NeogitObjectId /^[a-z0-9]\{7} /
+syn match NeogitObjectId /^[a-z0-9]\{7,}\>/
 syn match NeogitCommitMessage /.*/ contained
 syn match NeogitBranch /\S\+/ contained nextgroup=NeogitCommitMessage
 syn match NeogitRemote /\S\+/ contained nextgroup=NeogitCommitMessage
@@ -12,7 +12,7 @@ syn match NeogitStash /stash@{[0-9]*}\ze/
 syn match NeogitUnmergedInto /Unmerged into/ contained
 syn match NeogitUnpulledFrom /Unpulled from/ contained
 
-let b:sections = ["Untracked files", "Unstaged changes", "Unmerged changes", "Unpulled changes", "Staged changes", "Stashes"]
+let b:sections = ["Untracked files", "Unstaged changes", "Unmerged changes", "Unpulled changes", "Recent commits", "Staged changes", "Stashes"]
 
 for section in b:sections
   let id = join(split(section, " "), "")

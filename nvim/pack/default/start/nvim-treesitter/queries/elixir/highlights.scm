@@ -1,4 +1,8 @@
-(ERROR) @error
+; Punctuation
+[
+  ","
+  ";"
+] @punctuation.delimiter
 
 [
   "("
@@ -12,96 +16,84 @@
 ] @punctuation.bracket
 
 [
-  ","
-  "->"
-  "."
-] @punctuation.delimiter
-
-[
-  (sigil_start)
-  (sigil_end)
-  (heredoc_start)
-  (heredoc_end)
+  "%"
 ] @punctuation.special
 
-(interpolation ["#{" "}"] @punctuation.special)
+; Parser Errors
+(ERROR) @error
 
-[
-  "after"
-  "and" 
-  "catch"
-  "do"
-  "else"
-  "end"
-  "fn"
-  "in"
-  "not in"
-  "not"
-  "or"
-  "rescue"
-  "when" 
-] @keyword
-
-[
-  (comment) 
-  (unused_identifier)
-] @comment
-
-[
-  (heredoc_content)
-  (sigil_content)
-  (string)
-] @string
-
-; __MODULE__ and friends
-(special_identifier) @constant.builtin
-
-(map ["%{" "}"] @constructor)
-
-(struct ["%" "{" "}"] @constructor)
-
-(binary_op operator: _ @operator)
-
-(unary_op operator: _ @operator)
-
-(atom) @symbol
-
-(keyword) @parameter
-
-[
-  (true) 
-  (false)
-] @boolean
-
-(nil) @constant.builtin
-
-(sigil) @string.special
-
+; Identifiers
 (identifier) @variable
 
-(module) @type
+; Unused Identifiers
+((identifier) @comment (#match? @comment "^_"))
 
-(function_identifier) @function
+; Comments
+(comment) @comment
 
+; Strings
+(string) @string
+
+; Modules
+(alias) @type
+
+; Atoms & Keywords
+[
+  (atom)
+  (quoted_atom) 
+  (keyword)
+  (quoted_keyword)
+] @symbol
+
+; Interpolation
+(interpolation "#{" @string.escape "}" @string.escape)
+
+; Escape sequences
+(escape_sequence) @string.escape
+
+; Integers
 (integer) @number
 
+; Floats
 (float) @float
 
+; Characters
 [
-  (sigil_start) 
-  (sigil_end)
-] @string.special
+  (char)
+  (charlist)
+] @character
 
-; Module attributes as "attributes"
-(unary_op operator: "@" @attribute [
-  (call function: (function_identifier) @attribute) 
-  (identifier) @attribute
-])
+; Booleans
+(boolean) @boolean
 
-; Erlang modules (when they are the remote of a function call) are highlighted as Elixir modules
-(dot_call remote: (atom) @type)
+; Nil
+(nil) @constant.builtin
 
-(call (function_identifier) @keyword.function (#any-of? @keyword.function 
+; Operators
+(operator_identifier) @operator
+
+(unary_operator operator: _ @operator)
+
+(binary_operator operator: _ @operator)
+
+; Pipe Operator
+(binary_operator operator: "|>" right: (identifier) @function)
+
+(dot operator: _ @operator)
+
+(stab_clause operator: _ @operator)
+
+; Local Function Calls
+(call target: (identifier) @function) 
+
+; Remote Function Calls
+(call target: (dot left: [
+  (atom) @type 
+  (_)
+] right: (identifier) @function) (arguments))
+
+; Definition Function Calls
+(call target: ((identifier) @keyword.function (#any-of? @keyword.function
   "def"
   "defdelegate"
   "defexception"
@@ -111,44 +103,116 @@
   "defmacro"
   "defmacrop"
   "defmodule"
+  "defn"
+  "defnp"
   "defoverridable"
   "defp"
   "defprotocol"
   "defstruct"
-) [(identifier) @function (_)]) ; 0-arity function def without parens
+)) (arguments [
+  (identifier) @function
+  (binary_operator left: (identifier) @function operator: "when")])?)
 
-(call (function_identifier) @include (#any-of? @include 
-  "alias" 
-  "import" 
-  "require" 
-  "use"
-))
-
-(call (function_identifier) @conditional (#any-of? @conditional 
+; Kernel Keywords & Special Forms
+(call target: ((identifier) @keyword (#any-of? @keyword
+  "alias"
   "case"
+  "catch"
   "cond"
   "else"
+  "for"
   "if"
-  "unless"
-  "with"
-  "receive"
-))
-
-(call (function_identifier) @exception (#any-of? @exception 
+  "import"
+  "quote"
   "raise"
+  "receive"
+  "require"
   "reraise"
+  "super"
   "throw"
   "try"
+  "unless"
+  "unquote"
+  "unquote_splicing"
+  "use"
+  "with"
+)))
+
+; Special Constants
+((identifier) @constant.builtin (#any-of? @constant.builtin
+  "__CALLER__"
+  "__DIR__"
+  "__ENV__"
+  "__MODULE__"
+  "__STACKTRACE__"
 ))
 
-(call (function_identifier) @repeat (#any-of? @repeat 
-  "for"
-))
+; Reserved Keywords
+[
+  "after"
+  "catch"
+  "do"
+  "end"
+  "fn"
+  "rescue" 
+  "when"
+  "else"
+] @keyword
 
-(call (function_identifier) @keyword.function (#any-of? @keyword.function 
-  "describe"
-  "setup"
-  "setup_all"
-  "test"
-  "using"
-))
+; Operator Keywords
+[
+  "and"
+  "in"
+  "not in"
+  "not"
+  "or"
+] @keyword.operator
+
+; Capture Operator
+(unary_operator
+  operator: "&"
+  operand: [
+    (integer) @operator
+    (binary_operator
+      left: [
+        (call target: (dot left: (_) right: (identifier) @function))
+        (identifier) @function
+      ] operator: "/" right: (integer) @operator)
+  ])
+
+; Module attributes
+(unary_operator 
+  operator: "@" @constant 
+  operand: [
+    (identifier) @constant
+    (call target: (identifier) @constant)])
+
+; Sigils
+(sigil 
+  "~" @string.special
+  ((sigil_name) @string.special) @_sigil_name
+  quoted_start: _ @string.special 
+  quoted_end: _ @string.special
+  ((sigil_modifiers) @string.special)?
+  (#not-any-of? @_sigil_name "s" "S"))
+
+(sigil 
+  "~" @string
+  ((sigil_name) @string) @_sigil_name
+  quoted_start: _ @string 
+  (quoted_content) @string
+  quoted_end: _ @string
+  ((sigil_modifiers) @string)?
+  (#any-of? @_sigil_name "s" "S"))
+
+; Documentation
+(unary_operator 
+  operator: "@" @comment 
+  operand: (call 
+    target: (((identifier) @comment) @_identifier)
+    (arguments [
+      (string) @comment
+      (charlist) @comment
+      (boolean) @comment
+    ]))
+  (#any-of? @_identifier "moduledoc" "typedoc" "shortdoc" "doc"))

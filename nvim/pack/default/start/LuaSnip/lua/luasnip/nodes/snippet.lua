@@ -10,6 +10,16 @@ local conf = require("luasnip.config")
 local session = require("luasnip.session")
 local pattern_tokenizer = require("luasnip.util.pattern_tokenizer")
 
+local true_func = function()
+	return true
+end
+local callbacks_mt = {
+	__index = function(table, key)
+		rawset(table, key, {})
+		return {}
+	end,
+}
+
 local Snippet = node_mod.Node:new()
 
 local Parent_indexer = {}
@@ -82,15 +92,9 @@ local function init_opts(opts)
 
 	opts.callbacks = opts.callbacks or {}
 	-- return empty table for non-specified callbacks.
-	setmetatable(opts.callbacks, {
-		__index = function(table, key)
-			rawset(table, key, {})
-			return {}
-		end,
-	})
-	opts.condition = opts.condition or function()
-		return true
-	end
+	setmetatable(opts.callbacks, callbacks_mt)
+	opts.condition = opts.condition or true_func
+	opts.show_condition = opts.show_condition or true_func
 	return opts
 end
 
@@ -127,11 +131,13 @@ local function S(context, nodes, opts)
 		insert_nodes = {},
 		current_insert = 0,
 		condition = opts.condition,
+		show_condition = opts.show_condition,
 		callbacks = opts.callbacks,
 		mark = nil,
 		dependents = {},
 		active = false,
 		type = types.snippet,
+		hidden = context.hidden,
 	})
 	-- is propagated to all subsnippets, used to quickly find the outer snippet
 	snip.snippet = snip
@@ -451,7 +457,7 @@ function Snippet:set_text(node, text)
 	local node_from, node_to = node.mark:pos_begin_end_raw()
 
 	self:enter_node(node.indx)
-	local ok, msg = pcall(
+	local ok = pcall(
 		vim.api.nvim_buf_set_text,
 		0,
 		node_from[1],
@@ -460,18 +466,10 @@ function Snippet:set_text(node, text)
 		node_to[2],
 		text
 	)
+	-- we can assume that (part of) the snippet was deleted; remove it from
+	-- the jumplist.
 	if not ok then
-		-- get correct column-indices:
-		node_from = util.bytecol_to_utfcol(node_from)
-		node_to = util.bytecol_to_utfcol(node_to)
-		print(
-			"[LuaSnip Failed]:",
-			node_from[1],
-			node_from[2],
-			node_to[1],
-			node_to[2],
-			vim.inspect(text)
-		)
+		error("[LuaSnip Failed]: " .. vim.inspect(text))
 	end
 end
 

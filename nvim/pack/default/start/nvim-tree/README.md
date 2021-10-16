@@ -58,7 +58,7 @@ require'nvim-tree'.setup {
   },
   -- hijack the cursor in the tree to put it at the start of the filename
   hijack_cursor       = false,
-  -- updates the root directory of the tree on `DirChanged` (when your run `:cd` usually)
+  -- updates the root directory of the tree on `DirChanged` (when you run `:cd` usually)
   update_cwd          = false,
   -- show lsp diagnostics in the signcolumn
   diagnostics = {
@@ -94,6 +94,8 @@ require'nvim-tree'.setup {
     width = 30,
     -- height of the window, can be either a number (columns) or a string in `%`, for top or bottom side placement
     height = 30,
+    -- Hide the root path of the current folder on top of the tree 
+    hide_root_folder = false,
     -- side of the tree, can be one of 'left' | 'right' | 'top' | 'bottom'
     side = 'left',
     -- if true the tree will resize itself after opening a file
@@ -181,7 +183,7 @@ let g:nvim_tree_icons = {
 nnoremap <C-n> :NvimTreeToggle<CR>
 nnoremap <leader>r :NvimTreeRefresh<CR>
 nnoremap <leader>n :NvimTreeFindFile<CR>
-" NvimTreeOpen, NvimTreeClose, NvimTreeFocus and NvimTreeResize are also available if you need them
+" NvimTreeOpen, NvimTreeClose, NvimTreeFocus, NvimTreeFindFileToggle, and NvimTreeResize are also available if you need them
 
 set termguicolors " this variable must be enabled for colors to be applied properly
 

@@ -258,16 +258,15 @@ lsp.code_actions = function(opts)
   local transform_action = opts.transform_action
     or function(action)
       -- Remove 0 -version from LSP codeaction request payload.
-      -- Is only run on lsp codeactions which contain a comand or a arguments field
+      -- Is only run on the "java.apply.workspaceEdit" codeaction.
       -- Fixed Java/jdtls compatibility with Telescope
       -- See fix_zero_version commentary for more information
-      if (action.command and action.command.arguments) or action.arguments then
-        if action.command.command then
-          action.edit = fix_zero_version(action.command.arguments[1])
-        else
-          action.edit = fix_zero_version(action.arguments[1])
-        end
+      local command = (action.command and action.command.command) or action.command
+      if not (command == "java.apply.workspaceEdit") then
+        return action
       end
+      local arguments = (action.command and action.command.arguments) or action.arguments
+      action.edit = fix_zero_version(arguments[1])
       return action
     end
 
@@ -314,7 +313,11 @@ lsp.code_actions = function(opts)
               vim.notify(resolved_err.code .. ": " .. resolved_err.message, vim.log.levels.ERROR)
               return
             end
-            execute_action(transform_action(resolved_action))
+            if resolved_action then
+              execute_action(transform_action(resolved_action))
+            else
+              execute_action(transform_action(action))
+            end
           end)
         else
           execute_action(transform_action(action))
@@ -381,7 +384,7 @@ lsp.workspace_symbols = function(opts)
   }):find()
 end
 
-local function get_workspace_symbols_requester(bufnr)
+local function get_workspace_symbols_requester(bufnr, opts)
   local cancel = function() end
 
   return function(prompt)
@@ -400,6 +403,9 @@ local function get_workspace_symbols_requester(bufnr)
     assert(not err, err)
 
     local locations = vim.lsp.util.symbols_to_items(results_lsp or {}, bufnr) or {}
+    if not vim.tbl_isempty(locations) then
+      locations = utils.filter_symbols(locations, opts) or {}
+    end
     return locations
   end
 end
@@ -411,7 +417,7 @@ lsp.dynamic_workspace_symbols = function(opts)
     prompt_title = "LSP Dynamic Workspace Symbols",
     finder = finders.new_dynamic {
       entry_maker = opts.entry_maker or make_entry.gen_from_lsp_symbols(opts),
-      fn = get_workspace_symbols_requester(curr_bufnr),
+      fn = get_workspace_symbols_requester(curr_bufnr, opts),
     },
     previewer = conf.qflist_previewer(opts),
     sorter = conf.generic_sorter(opts),

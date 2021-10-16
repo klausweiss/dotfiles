@@ -338,10 +338,13 @@ end
 
 internal.loclist = function(opts)
   local locations = vim.fn.getloclist(0)
-  local filename = vim.api.nvim_buf_get_name(0)
-
+  local filenames = {}
   for _, value in pairs(locations) do
-    value.filename = filename
+    local bufnr = value.bufnr
+    if filenames[bufnr] == nil then
+      filenames[bufnr] = vim.api.nvim_buf_get_name(bufnr)
+    end
+    value.filename = filenames[bufnr]
   end
 
   if vim.tbl_isempty(locations) then
@@ -370,7 +373,8 @@ internal.oldfiles = function(opts)
   if opts.include_current_session then
     for _, buffer in ipairs(vim.split(vim.fn.execute ":buffers! t", "\n")) do
       local match = tonumber(string.match(buffer, "%s*(%d+)"))
-      if match then
+      local open_by_lsp = string.match(buffer, "line 0$")
+      if match and not open_by_lsp then
         local file = vim.api.nvim_buf_get_name(match)
         if vim.loop.fs_stat(file) and match ~= current_buffer then
           table.insert(results, file)

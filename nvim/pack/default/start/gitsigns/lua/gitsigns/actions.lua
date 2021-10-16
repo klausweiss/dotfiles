@@ -670,13 +670,17 @@ local function buildqflist(target)
       local repos = {}
       for _, bcache in pairs(cache) do
          local repo = bcache.git_obj.repo
-         repos[repo] = true
+         if not repos[repo.gitdir] then
+            repos[repo.gitdir] = repo
+         end
       end
 
       local repo = git.Repo.new(vim.fn.getcwd())
-      repos[repo] = true
+      if not repos[repo.gitdir] then
+         repos[repo.gitdir] = repo
+      end
 
-      for r, _ in pairs(repos) do
+      for _, r in pairs(repos) do
          for _, f in ipairs(r:files_changed()) do
             local f_abs = r.toplevel .. '/' .. f
             local stat = vim.loop.fs_stat(f_abs)
@@ -703,10 +707,18 @@ M.setqflist = void(function(target, opts)
    if opts.use_location_list then
       local nr = opts.nr or 0
       vim.fn.setloclist(nr, {}, ' ', qfopts)
-      vim.cmd([[lopen]])
+      if config.trouble then
+         require('trouble').open("loclist")
+      else
+         vim.cmd([[lopen]])
+      end
    else
       vim.fn.setqflist({}, ' ', qfopts)
-      vim.cmd([[copen]])
+      if config.trouble then
+         require('trouble').open("quickfix")
+      else
+         vim.cmd([[copen]])
+      end
    end
 end)
 
