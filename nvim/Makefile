@@ -118,12 +118,6 @@ update-lualine:
 update-luasnip:
 	$(call download-from-repo, https://github.com/L3MON4D3/LuaSnip)
 
-update-neuron: \
-	update-plenary \
-	update-telescope \
-
-	$(call download-from-repo, https://github.com/oberblastmeister/neuron.nvim, unstable)
-
 update-neogit: \
 	update-plenary \
 

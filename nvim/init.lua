@@ -164,11 +164,6 @@ require('gitsigns').setup{
   }
 }
 
--- neuron
-require'neuron'.setup{
-  neuron_dir = '~/doc/neuron',
-  leader = ' z',
-}
 
 -- snippets
 local luasnip = require('luasnip')
