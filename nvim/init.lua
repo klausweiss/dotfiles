@@ -38,6 +38,15 @@ require('lualine').setup{
   options = {theme = 'gruvbox'}
 }
 
+-- telescope
+require('telescope').setup{
+  pickers = {
+    lsp_code_actions = {
+      theme = "cursor",
+    }
+  }
+}
+
 -- leader key
 vim.g.mapleader = ' '
 
@@ -317,7 +326,6 @@ setup_lsp('hls', {
 -- purescript
 setup_lsp('purescriptls', {})
 
-
 -- keymap
 local remap = {noremap = false, silent = true}
 local noremap = {noremap = true, silent = true}
@@ -334,7 +342,7 @@ end
 local function leader_shortcut(k, cmd)
   vim.api.nvim_set_keymap('', '<leader>' .. k, '<cmd>' .. cmd .. '<CR>', noremap)
 end
-local function mk_prefix(p) 
+local function mk_prefix(p)
   return function (k, ...) return leader_shortcut(p .. k, ...) end
 end
 local command_key = mk_prefix('c')
