@@ -126,6 +126,9 @@ update-neogit: \
 update-nvim-lsp-config:
 	$(call download-from-repo, https://github.com/neovim/nvim-lspconfig)
 
+update-nvim-lsp-installer:
+	$(call download-from-repo, https://github.com/williamboman/nvim-lsp-installer)
+
 update-nvim-tree: \
 	update-nvim-web-devicons \
 

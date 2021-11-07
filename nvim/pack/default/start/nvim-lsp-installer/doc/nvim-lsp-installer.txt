@@ -1,0 +1,388 @@
+*nvim-lsp-installer* Companion plugin for nvim-lspconfig.
+
+Minimum version of neovim: 0.5.0
+
+Author: William Boman <william@redwill.se>
+
+==============================================================================
+INTRODUCTION                                *nvim-lsp-installer-introduction*
+
+Companion plugin for nvim-lspconfig (https://github.com/neovim/nvim-lspconfig)
+that allows you to seamlessly install LSP servers locally (inside `:echo stdpath("data")`).
+
+On top of just providing commands for installing & uninstalling LSP servers, it:
+
+-   provides a graphical UI
+-   optimized for blazing fast startup times
+-   supports installing custom versions of LSP servers (for example
+    `:LspInstall rust_analyzer@nightly`)
+-   common install tasks are abstracted behind composable Lua APIs (has direct
+    integration with libuv via vim.loop)
+-   minimum requirements are relaxed by attempting multiple different
+    utilities (for example, only one of `wget`, `curl`, or `Invoke-WebRequest`
+    is required for HTTP requests)
+-   full support for Windows
+
+Requires neovim `>= 0.5.0` and nvim-lspconfig. The full requirements to
+install all servers are:
+
+-   For Unix systems: bash(1), git(1), curl(1) or wget(1), unzip(1), tar(1),
+    gzip(1)
+-   For Windows systems: powershell, git, gzip, tar, and 7zip or peazip or
+    archiver or winzip
+-   Node.js (LTS) & npm
+-   Python3 & pip3
+-   go
+-   javac
+-   Ruby & gem
+
+To write a custom server installer, please refer to the docs at
+https://github.com/williamboman/nvim-lsp-installer/blob/main/CUSTOM_SERVERS.md.
+
+==============================================================================
+QUICK START                                   *nvim-lsp-installer-quickstart*
+
+To view the UI for nvim-lsp-installer, run: >
+
+    :LspInstallInfo
+<
+
+Install a language server via `:LspInstall`, for example: >
+
+    :LspInstall tsserver
+<
+
+You may also install multiple languages at a time: >
+
+    :LspInstall tsserver graphql rust_analyzer
+<
+
+To install a specific version of a language server, you may provide it as part
+of the server name, like so: >
+
+    :LspInstall tsserver@0.6.3 graphql@latest rust_analyzer@nightly
+<
+
+Please refer to each server's own release page to find which versions are
+available.
+
+Then, somewhere in your initialization script (see `:h init.lua`): >
+
+    local lsp_installer = require("nvim-lsp-installer")
+
+    -- Register a handler that will be called for all installed servers.
+    -- Alternatively, you may also register handlers on specific server instances instead (see example below).
+    lsp_installer.on_server_ready(function(server)
+        local opts = {}
+
+        -- (optional) Customize the options passed to the server
+        -- if server.name == "tsserver" then
+        --     opts.root_dir = function() ... end
+        -- end
+
+        -- This setup() function is exactly the same as lspconfig's setup function.
+        -- Refer to https://github.com/neovim/nvim-lspconfig/blob/master/ADVANCED_README.md
+        server:setup(opts)
+    end)
+<
+
+For more advanced use cases you may also interact with more APIs
+nvim-lsp-installer has to offer, for example the following (refer
+to `:help nvim-lsp-installer` for more docs): >
+
+    local lsp_installer_servers = require'nvim-lsp-installer.servers'
+
+    local server_available, requested_server = lsp_installer_servers.get_server("rust_analyzer")
+    if server_available then
+        requested_server:on_ready(function ()
+            local opts = {}
+            requested_server:setup(opts)
+        end)
+        if not requested_server:is_installed() then
+             -- Queue the server to be installed
+            requested_server:install()
+        end
+    end
+<
+
+==============================================================================
+COMMANDS                                        *nvim-lsp-installer-commands*
+
+                                                            *:LspInstallInfo*
+:LspInstallInfo
+
+Opens the UI for nvim-lsp-installer.
+
+                                                                *:LspInstall*
+:LspInstall [--sync] {server_name} ...
+
+Installs language servers. If the `--sync` argument is passed, the command will
+be blocking until all installations complete. This is useful for headless
+installations, for example: >
+
+    $ nvim --headless -c "LspInstall --sync rust_analyzer clangd clojure_lsp" -c q
+
+<
+                                                              *:LspUninstall*
+:LspUninstall [--sync] {server_name} ...
+
+Uninstalls language servers. If the `--sync` argument is passed, the command will
+be blocking until all installations complete. This is useful for headless
+installations, for example: >
+
+    $ nvim --headless -c "LspUninstall --sync rust_analyzer clangd clojure_lsp" -c q
+<
+
+                                                           *:LspUninstallAll*
+:LspUninstallAll [--no-confirm]
+
+Uninstalls all installed language servers. If the --no-confirm argument is
+passed, there will be no confirmation prompt before uninstalling all servers.
+
+                                                             *:LspInstallLog*
+:LspInstallLog
+
+Opens the log file in a new tab window.
+
+                                                         *:LspPrintInstalled*
+:LspPrintInstalled
+
+Prints all installed language servers.
+
+
+==============================================================================
+SETTINGS                                       *nvim-lsp-installer-settings*
+
+You can configure certain behavior of nvim-lsp-installer by calling the
+`.settings()` function.
+
+Make sure to provide your settings before any other interactions with
+nvim-lsp-installer!
+
+Refer to the |nvim-lsp-installer-default-settings| for all available settings.
+
+Example: >
+
+    local lsp_installer = require("nvim-lsp-installer")
+
+    -- Provide settings first!
+    lsp_installer.settings {
+        ui = {
+            icons = {
+                server_installed = "✓",
+                server_pending = "➜",
+                server_uninstalled = "✗"
+            }
+        }
+    }
+
+    lsp_installer.on_server_ready(function (server)
+        server:setup {}
+    end)
+<
+                                       *nvim-lsp-installer-default-settings*
+
+The following settings are applied by default. >
+
+    local DEFAULT_SETTINGS = {
+        ui = {
+            icons = {
+                -- The list icon to use for installed servers.
+                server_installed = "◍",
+                -- The list icon to use for servers that are pending installation.
+                server_pending = "◍",
+                -- The list icon to use for servers that are not installed.
+                server_uninstalled = "◍",
+            },
+            keymaps = {
+                -- Keymap to expand a server in the UI
+                toggle_server_expand = "<CR>",
+                -- Keymap to install a server
+                install_server = "i",
+                -- Keymap to reinstall/update a server
+                update_server = "u",
+                -- Keymap to uninstall a server
+                uninstall_server = "X",
+            },
+        },
+
+        -- The directory in which to install all servers.
+        install_root_dir = path.concat { vim.fn.stdpath "data", "lsp_servers" },
+
+        pip = {
+            -- These args will be added to `pip install` calls. Note that setting extra args might impact intended behavior
+            -- and is not recommended.
+            --
+            -- Example: { "--proxy", "https://proxyserver" }
+            install_args = {},
+        },
+
+        -- Controls to which degree logs are written to the log file. It's useful to set this to vim.log.levels.DEBUG when
+        -- debugging issues with server installations.
+        log_level = vim.log.levels.INFO,
+
+        -- Limit for the maximum amount of servers to be installed at the same time. Once this limit is reached, any further
+        -- servers that are requested to be installed will be put in a queue.
+        max_concurrent_installers = 4,
+    }
+<
+
+==============================================================================
+DEBUGGING                                      *nvim-lsp-installer-debugging*
+
+To help with debugging issues with installing/uninstall servers, please make
+sure to set nvim-lsp-installer's log level to DEBUG or TRACE, like so: >
+
+    :lua require("nvim-lsp-installer").settings { log_level = vim.log.levels.DEBUG }
+<
+
+You may find the logs by entering the command `:LspInstallLog`. Providing the
+contents of this file when reporting an issue will help tremendously.
+
+==============================================================================
+Lua module: nvim-lsp-installer
+
+                                               *nvim-lsp-installer.install()*
+install({server_name})
+        Installs the provided {server_name}. If {server_name} is already
+        installed, it is reinstalled. Note that you may also provide the
+        desired version of the server here, through the @version notation, for
+        example `"rust_analyzer@nightly"`.
+
+        This will also open the `:LspInstallInfo` UI window. To install a
+        server without opening the window, see |nvim-lsp-installer.Server|.
+
+        Parameters: ~
+            {server_name} (string) The server to install.
+
+                                             *nvim-lsp-installer.uninstall()*
+uninstall({server_name})
+        Uninstalls the provided {server_name}.
+
+        Parameters: ~
+            {server_name} (string) The server to uninstall.
+
+                                       *nvim-lsp-installer.on_server_ready()*
+on_server_ready({cb})
+        Registers a callback to be executed each time a server is ready to be
+        initiated.
+
+        When called, all currently installed servers will be considered ready
+        to be initiated and will each individually be invoked on {cb}.
+
+        Parameters: ~
+            {cb} (function) Function to be invoked when a server is ready to
+            be initiated.
+
+        Return: ~
+            Returns a function which when called will de-register the {cb}
+            from any future dispatches.
+
+                                      *nvim-lsp-installer.info_window.open()*
+info_window.open()
+    Opens the `:LspInstallInfo` UI window.
+
+                                      *nvim-lsp-installer.info_window.close()*
+info_window.close()
+    Closes the `:LspInstallInfo` UI window.
+
+==============================================================================
+Lua module: nvim-lsp-installer.servers           *nvim-lsp-installer.servers*
+
+                                 *nvim-lsp-installer.get_available_servers()*
+get_available_servers()
+        Return: ~
+            |lsp_installer.Server|[] A list containing all available language servers.
+
+                                 *nvim-lsp-installer.get_installed_servers()*
+get_installed_servers()
+        Return: ~
+            |lsp_installer.Server|[] A list of servers that are currently installed.
+
+                               *nvim-lsp-installer.get_uninstalled_servers()*
+get_uninstalled_servers()
+        Return: ~
+            |lsp_installer.Server|[] A list of servers that are not installed.
+
+                                              *nvim-lsp-installer.register()*
+register({server})
+        Registers a {server} instance with nvim-lsp-installer.
+
+        {server} must be an instance of |lsp_installer.Server|.
+
+        Parameters: ~
+            {server} (|lsp_installer.Server|) The server to register.
+
+                                            *nvim-lsp-installer.get_server()*
+get_server({server_name})
+        Parameters: ~
+            {server_name} (string) The server instance to retrieve.
+
+        Return: ~
+            ok: boolean, server: |lsp_installer.Server|
+
+        Example: ~
+>
+            local lsp_installer = require'nvim-lsp-installer'
+            local ok, rust_server = lsp_installer.get_server("rust_analyzer")
+            if ok then
+                rust_server:install()
+            end
+<
+
+
+==============================================================================
+Lua module: nvim-lsp-installer.server             *nvim-lsp-installer.server*
+
+                                                  *nvim-lsp-installer.Server*
+class: Server
+        This class enables installing, uninstalling, and setting up language
+        servers.
+
+        Methods: ~
+            - setup({opts})
+                    Sets up the language server and attaches all open buffers.
+
+                    See:
+                        - setup_lsp({opts})
+                        - attach_buffers()
+
+                    Parameters: ~
+                        {opts} (table) The lspconfig server configuration.
+                        See https://github.com/neovim/nvim-lspconfig/blob/master/CONFIG.md
+
+            - setup_lsp({opts})
+                    Sets up the language server via lspconfig.
+                    This function has the same signature as the setup function
+                    in nvim-lspconfig.
+
+                    Parameters: ~
+                        {opts} (table) The lspconfig server configuration.
+                        See https://github.com/neovim/nvim-lspconfig/blob/master/CONFIG.md
+
+            - attach_buffers()
+                    Attaches this server to all current open buffers with a
+                    'filetype' that matches the server's configured filetypes.
+
+            - get_default_options()
+                    Returns a deep copy of the default options provided to
+                    lspconfig in the setup({opts}) method.
+
+            - on_ready({handler})
+                    Registers the provided {handler} to be called when the
+                    server is ready to be setup.
+
+                    Parameters: ~
+                        {handler} (function) Function to be called when the
+                        server is ready.
+
+            - is_installed()
+                    Returns {true} is server is installed, else returns {false}.
+
+            - install()
+                    Installs this instance of an LSP server.
+
+            - uninstall()
+                    Uninstalls this instance of an LSP server.
+
+ vim:tw=78:ft=help:norl:expandtab:sw=4

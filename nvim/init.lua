@@ -281,8 +281,10 @@ local on_attach = function(client, bufnr)
   require "lsp_signature".on_attach(cfg)
 end
 
-function setup_lsp(server, options)
-	local options = table_merge(options, {
+-- lsp installer
+local lsp_installer = require("nvim-lsp-installer")
+
+local default_lsp_options = {
 		on_attach = on_attach,
 		flags = {
 			debounce_text_changes = 150,
@@ -296,9 +298,20 @@ function setup_lsp(server, options)
         },
       },
     },
-	})
+	}
+
+function setup_lsp(server, options)
+	local options = table_merge(options, default_lsp_options)
 	require'lspconfig'[server].setup(options)
 end
+
+local lsp_installer = require("nvim-lsp-installer")
+
+-- Register a handler that will be called for all installed servers.
+-- Alternatively, you may also register handlers on specific server instances instead (see example below).
+lsp_installer.on_server_ready(function(server)
+    server:setup(default_lsp_options)
+end)
 
 -- lsp event handlers
 local telescope_builtin = require'telescope.builtin'
