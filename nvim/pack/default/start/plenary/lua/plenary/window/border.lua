@@ -46,7 +46,7 @@ local create_horizontal_line = function(title, pos, width, left_char, mid_char, 
     string.rep(mid_char, width - title_len - left_start),
     right_char
   )
-  local ranges
+  local ranges = {}
   if title_len ~= 0 then
     -- Need to calculate again due to multi-byte characters
     local r_start = string.len(left_char) + math.max(left_start, 0) * string.len(mid_char)
@@ -164,7 +164,8 @@ function Border._create_lines(content_win_options, border_win_options)
 end
 
 local set_title_highlights = function(bufnr, ranges, hl)
-  if hl and ranges then
+  -- Check if both `hl` and `ranges` are provided, and `ranges` is not the empty table.
+  if hl and ranges and next(ranges) then
     for _, r in pairs(ranges) do
       vim.api.nvim_buf_add_highlight(bufnr, -1, hl, r[1], r[2], r[3])
     end
@@ -234,6 +235,8 @@ function Border:move(content_win_options, border_win_options)
 
   -- Set config for border window
   vim.api.nvim_win_set_config(self.win_id, nvim_win_config)
+
+  set_title_highlights(self.bufnr, self.title_ranges, self._border_win_options.titlehighlight)
 end
 
 function Border:new(content_bufnr, content_win_id, content_win_options, border_win_options)

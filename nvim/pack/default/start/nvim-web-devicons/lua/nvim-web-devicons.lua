@@ -742,6 +742,11 @@ local icons = {
     color = "#701516",
     name = "Rb"
   };
+  ["Brewfile"] = {
+    icon = "",
+    color = "#701516",
+    name = "Brewfile"
+  };
   ["rlib"] = {
     icon = "",
     color = "#dea584",
@@ -836,6 +841,11 @@ local icons = {
     icon = "",
     color = "#519aba",
     name = "Tor"
+  };
+  ["txt"] = {
+    icon = "",
+    color = "#89e051",
+    name = "Txt"
   };
   ["tex"] = {
     icon = "ﭨ",

@@ -9,7 +9,7 @@
 ---
 --- Furthermore, there are a collection of previewers already defined which
 --- can be used for every picker, as long as the entries of the picker provide
---- the necessary fields. The more important once are
+--- the necessary fields. The more important ones are
 ---   - `previewers.cat`
 ---   - `previewers.vimgrep`
 ---   - `previewers.qflist`
@@ -305,7 +305,6 @@ previewers.help = buffer_previewer.help
 previewers.man = buffer_previewer.man
 previewers.autocommands = buffer_previewer.autocommands
 previewers.highlights = buffer_previewer.highlights
-previewers.buffers = buffer_previewer.buffers
 previewers.pickers = buffer_previewer.pickers
 
 --- A deprecated way of displaying content more easily. Was written at a time,

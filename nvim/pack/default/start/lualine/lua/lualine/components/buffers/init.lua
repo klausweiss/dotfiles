@@ -8,6 +8,7 @@ local highlight = require 'lualine.highlight'
 local default_options = {
   show_filename_only = true,
   show_modified_status = true,
+  mode = 0,
   max_length = 0,
   filetype_names = {
     TelescopePrompt = 'Telescope',
@@ -93,6 +94,10 @@ function M:update_status()
   end
 
   local max_length = self.options.max_length
+  if type(max_length) == 'function' then
+    max_length = max_length(self)
+  end
+
   if max_length == 0 then
     max_length = math.floor(2 * vim.o.columns / 3)
   end

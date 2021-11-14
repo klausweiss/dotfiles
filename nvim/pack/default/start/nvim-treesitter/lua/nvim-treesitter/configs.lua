@@ -10,6 +10,7 @@ local M = {}
 
 local config = {
   modules = {},
+  sync_install = false,
   ensure_installed = {},
   ignore_install = {},
   update_strategy = "lockfile",
@@ -334,8 +335,9 @@ M.commands = {
 }
 
 -- @param mod: module (string)
--- @param ft: filetype (string)
-function M.is_enabled(mod, lang)
+-- @param lang: the language of the buffer (string)
+-- @param bufnr: the bufnr (number)
+function M.is_enabled(mod, lang, bufnr)
   if not parsers.list[lang] or not parsers.has_parser(lang) then
     return false
   end
@@ -346,6 +348,10 @@ function M.is_enabled(mod, lang)
   end
 
   if not module_config.enable or not module_config.is_supported(lang) then
+    return false
+  end
+
+  if module_config.cond and not module_config.cond(lang, bufnr) then
     return false
   end
 
@@ -366,7 +372,11 @@ function M.setup(user_data)
 
   local ensure_installed = user_data.ensure_installed or {}
   if #ensure_installed > 0 then
-    require("nvim-treesitter.install").ensure_installed(ensure_installed)
+    if user_data.sync_install then
+      require("nvim-treesitter.install").ensure_installed_sync(ensure_installed)
+    else
+      require("nvim-treesitter.install").ensure_installed(ensure_installed)
+    end
   end
 
   config.modules.ensure_installed = nil
@@ -440,7 +450,7 @@ function M.attach_module(mod_name, bufnr, lang)
   local lang = lang or parsers.get_buf_lang(bufnr)
   local resolved_mod = resolve_module(mod_name)
 
-  if resolved_mod and not attached_buffers_by_module.has(mod_name, bufnr) and M.is_enabled(mod_name, lang) then
+  if resolved_mod and not attached_buffers_by_module.has(mod_name, bufnr) and M.is_enabled(mod_name, lang, bufnr) then
     attached_buffers_by_module.set(mod_name, bufnr, true)
     resolved_mod.attach(bufnr, lang)
   end

@@ -107,6 +107,7 @@ All modules are disabled by default and need to be activated explicitly in your 
 lua <<EOF
 require'nvim-treesitter.configs'.setup {
   ensure_installed = "maintained", -- one of "all", "maintained" (parsers with maintainers), or a list of languages
+  sync_install = false, -- install languages synchronously (only applied to `ensure_installed`)
   ignore_install = { "javascript" }, -- List of parsers to ignore installing
   highlight = {
     enable = true,              -- false will disable the whole extension
@@ -183,6 +184,7 @@ We are looking for maintainers to add more parsers and to write query files for 
 - [x] [heex](https://github.com/connorlay/tree-sitter-heex) (maintained by @connorlay)
 - [x] [hjson](https://github.com/winston0410/tree-sitter-hjson) (maintained by @winston0410)
 - [x] [html](https://github.com/tree-sitter/tree-sitter-html) (maintained by @TravonteD)
+- [x] [http](https://github.com/NTBBloodbath/tree-sitter-http) (maintained by @NTBBloodbath)
 - [x] [java](https://github.com/tree-sitter/tree-sitter-java) (maintained by @p00f)
 - [x] [javascript](https://github.com/tree-sitter/tree-sitter-javascript) (maintained by @steelsojka)
 - [x] [jsdoc](https://github.com/tree-sitter/tree-sitter-jsdoc) (maintained by @steelsojka)
@@ -361,7 +363,7 @@ EOF
 
 ## Adding queries
 
-Queries are what `nvim-treesitter` uses to extract informations from the syntax tree; they are
+Queries are what `nvim-treesitter` uses to extract information from the syntax tree; they are
 located in the `queries/{language}/*` runtime directories (like the `queries` folder of this plugin), e.g., `queries/{language}/{locals,highlights,textobjects}.scm`.
 Other modules may require additional queries such as `folding.scm`.
 

@@ -4,9 +4,9 @@
 - [Luarocks](https://luarocks.org/)
     - `brew install luarocks`
 - [Teal](https://github.com/teal-language/tl)
-    - `luarocks --lua-verions=5.1 install tl`
+    - `luarocks --lua-version=5.1 install tl`
 - [Inspect](https://github.com/kikito/inspect.lua)
-    - `luarocks --lua-verions=5.1 install inspect`
+    - `luarocks --lua-version=5.1 install inspect`
 
 ## Writing Teal
 
@@ -83,7 +83,8 @@ require('lspconfig').diagnosticls.setup{
 ```
 local null_ls = require("null-ls")
 
-null_ls.setup {sources = {
+null_ls.config {sources = {
   null_ls.builtins.diagnostics.teal
 }}
+require("lspconfig")["null-ls"].setup {}
 ```

@@ -54,38 +54,53 @@ function configs.__newindex(t, config_name, config_def)
       pcall(util.on_setup, config)
     end
 
-    local trigger
-    if config.filetypes then
-      trigger = 'FileType ' .. table.concat(config.filetypes, ',')
-    else
-      trigger = 'BufReadPost *'
-    end
-    if not (config.autostart == false) then
+    if config.autostart == true then
+      local event
+      local pattern
+      if config.filetypes then
+        event = 'FileType'
+        pattern = table.concat(config.filetypes, ',')
+      else
+        event = 'BufReadPost'
+        pattern = '*'
+      end
       api.nvim_command(
-        string.format("autocmd %s unsilent lua require'lspconfig'[%q].manager.try_add()", trigger, config.name)
+        string.format(
+          "autocmd %s %s unsilent lua require'lspconfig'[%q].manager.try_add()",
+          event,
+          pattern,
+          config.name
+        )
       )
     end
 
     local get_root_dir = config.root_dir
 
-    function M.autostart()
+    function M.launch()
       local root_dir = get_root_dir(api.nvim_buf_get_name(0), api.nvim_get_current_buf())
-      if not root_dir then
-        vim.notify(string.format('Autostart for %s failed: matching root directory not detected.', config_name))
-        return
-      end
-      api.nvim_command(
-        string.format(
-          "autocmd %s unsilent lua require'lspconfig'[%q].manager.try_add_wrapper()",
-          'BufReadPost ' .. root_dir .. '/*',
-          config.name
+      if root_dir then
+        api.nvim_command(
+          string.format(
+            "autocmd %s unsilent lua require'lspconfig'[%q].manager.try_add_wrapper()",
+            'BufReadPost ' .. root_dir .. '/*',
+            config.name
+          )
         )
-      )
-      for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
-        local buf_dir = api.nvim_buf_get_name(bufnr)
-        if buf_dir:sub(1, root_dir:len()) == root_dir then
-          M.manager.try_add_wrapper(bufnr)
+        for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
+          local buf_dir = api.nvim_buf_get_name(bufnr)
+          if buf_dir:sub(1, root_dir:len()) == root_dir then
+            M.manager.try_add_wrapper(bufnr)
+          end
         end
+      elseif config.single_file_support then
+        -- This allows on_new_config to use the parent directory of the file
+        -- Effectively this is the root from lspconfig's perspective, as we use
+        -- this to attach additional files in the same parent folder to the same server.
+        -- We just no longer send rootDirectory or workspaceFolders during initialization.
+        local pseudo_root = util.path.dirname(api.nvim_buf_get_name(0))
+        M.manager.add(pseudo_root, true)
+      else
+        vim.notify(string.format('Autostart for %s failed: matching root directory not detected.', config_name))
       end
     end
 
@@ -94,7 +109,7 @@ function configs.__newindex(t, config_name, config_def)
     M.filetypes = config.filetypes
     M.handlers = config.handlers
     M.cmd = config.cmd
-    M._autostart = config.autostart
+    M.autostart = config.autostart
 
     -- In the case of a reload, close existing things.
     local reload = false
@@ -123,7 +138,13 @@ function configs.__newindex(t, config_name, config_def)
         pcall(config.on_new_config, new_config, _root_dir)
       end
 
-      new_config.on_init = util.add_hook_after(new_config.on_init, function(client, _result)
+      new_config.on_init = util.add_hook_after(new_config.on_init, function(client, result)
+        -- Handle offset encoding by default
+        if result.offsetEncoding then
+          client.offset_encoding = result.offsetEncoding
+        end
+
+        -- Send `settings to server via workspace/didChangeConfiguration
         function client.workspace_did_change_configuration(settings)
           if not settings then
             return
@@ -168,11 +189,23 @@ function configs.__newindex(t, config_name, config_def)
 
     function manager.try_add(bufnr)
       bufnr = bufnr or api.nvim_get_current_buf()
+
       if vim.api.nvim_buf_get_option(bufnr, 'buftype') == 'nofile' then
         return
       end
+
+      local id
       local root_dir = get_root_dir(api.nvim_buf_get_name(bufnr), bufnr)
-      local id = manager.add(root_dir)
+
+      if root_dir then
+        id = manager.add(root_dir, false)
+      elseif config.single_file_support then
+        local pseudo_root = util.path.dirname(api.nvim_buf_get_name(0))
+        id = manager.add(pseudo_root, true)
+      else
+        vim.notify(string.format('Autostart for %s failed: matching root directory not detected.', config_name))
+      end
+
       if id then
         lsp.buf_attach_client(bufnr, id)
       end

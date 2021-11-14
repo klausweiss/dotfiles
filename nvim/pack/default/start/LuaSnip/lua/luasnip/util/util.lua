@@ -107,7 +107,7 @@ end
 
 local function normal_move_before(new_cur_pos)
 	-- +1: indexing
-	if new_cur_pos[2] - 1 ~= 0 then
+	if new_cur_pos[2] - 1 > 0 then
 		vim.api.nvim_feedkeys(
 			tostring(new_cur_pos[1] + 1)
 				.. "G0"
@@ -117,8 +117,11 @@ local function normal_move_before(new_cur_pos)
 			"n",
 			true
 		)
+	elseif new_cur_pos[2] - 1 == 0 then
+		vim.api.nvim_feedkeys(tostring(new_cur_pos[1] + 1) .. "G0zv", "n", true)
 	else
-		vim.api.nvim_feedkeys(tostring(new_cur_pos[1] + 1) .. "G0", "n", true)
+		-- column is 0, includes end of previous line. Move there.
+		vim.api.nvim_feedkeys(tostring(new_cur_pos[1]) .. "G$zv", "n", true)
 	end
 end
 
@@ -251,9 +254,26 @@ local function get_min_indent(lines)
 	return min_indent
 end
 
+-- there's probably a better way to do this.
+local function byte_start_to_byte_end(pos)
+	local line = vim.api.nvim_buf_get_lines(0, pos[1], pos[1] + 1, false)
+	-- line[1]: get_lines returns table.
+	-- col may be one past the end (for linebreak)
+	-- byteindex rounds toward end of the multibyte-character.
+	return vim.str_byteindex(
+		line[1] .. " " or "",
+		vim.str_utfindex(line[1] .. " " or "", pos[2])
+	)
+end
+
 local function store_selection()
 	local start_line, start_col = vim.fn.line("'<"), vim.fn.col("'<")
-	local end_line, end_col = vim.fn.line("'>"), vim.fn.col("'>")
+
+	local end_line = vim.fn.line("'>")
+	-- col of '>/'< is the first byte, in case of multibyte. As the entire
+	-- multibyte-string has to be in the selection, this needs to be converted.
+	local end_col = byte_start_to_byte_end({ end_line - 1, vim.fn.col("'>") })
+
 	local mode = vim.fn.visualmode()
 	if
 		not vim.o.selection == "exclusive"

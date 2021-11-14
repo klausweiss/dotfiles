@@ -5,9 +5,8 @@ local server_name = 'lemminx'
 configs[server_name] = {
   default_config = {
     filetypes = { 'xml', 'xsd', 'svg' },
-    root_dir = function(filename)
-      return util.root_pattern '.git'(filename) or util.path.dirname(filename)
-    end,
+    root_dir = util.find_git_ancestor,
+    single_file_support = true,
   },
   docs = {
     description = [[
@@ -27,6 +26,9 @@ require'lspconfig'.lemminx.setup{
 NOTE to macOS users: Binaries from unidentified developers are blocked by default. If you trust the downloaded binary from jboss.org, run it once, cancel the prompt, then remove the binary from Gatekeeper quarantine with `xattr -d com.apple.quarantine lemminx`. It should now run without being blocked.
 
 ]],
+    default_config = {
+      root_dir = [[util.find_git_ancestor]],
+    },
   },
 }
 

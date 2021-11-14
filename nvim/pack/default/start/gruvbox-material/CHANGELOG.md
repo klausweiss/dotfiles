@@ -11,6 +11,13 @@ All notable changes to this project will be documented in this file.
 - Add [Diagnostic](https://github.com/neovim/neovim/pull/15585) highlight groups.
 - Optimize `vimwiki/vimwiki`.
 - Optimize `hrsh7th/nvim-cmp`.
+- Optimize `folke/trouble.nvim`.
+- Optimize `TimUntersberger/neogit`.
+- Optimize `lambdalisue/fern.vim`.
+- Optimize `romgrk/barbar.nvim`.
+- Optimize `rcarriga/nvim-notify`.
+- Support `nvim-lualine/lualine.nvim`.
+- Optimize performance in vim by disabling hi groups of neovim-only plugins.
 
 ## [1.2.2] - 2021-08-06
 

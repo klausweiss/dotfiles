@@ -259,11 +259,6 @@ utils.diagnostics_to_tbl = function(opts)
   return items
 end
 
-utils.path_shorten = function(filename, len)
-  log.warn "`utils.path_shorten` is deprecated. Use `require('plenary.path').shorten`."
-  return Path:new(filename):shorten(len)
-end
-
 utils.path_smart = (function()
   local paths = {}
   return function(filepath)
@@ -368,7 +363,12 @@ utils.transform_path = function(opts, path)
       end
 
       if vim.tbl_contains(path_display, "shorten") or path_display["shorten"] ~= nil then
-        transformed_path = Path:new(transformed_path):shorten(path_display["shorten"])
+        if type(path_display["shorten"]) == "table" then
+          local shorten = path_display["shorten"]
+          transformed_path = Path:new(transformed_path):shorten(shorten.len, shorten.exclude)
+        else
+          transformed_path = Path:new(transformed_path):shorten(path_display["shorten"])
+        end
       end
       if vim.tbl_contains(path_display, "truncate") or path_display.truncate then
         if opts.__length == nil then
@@ -503,22 +503,6 @@ function utils.get_os_command_output(cmd, cwd)
     })
     :sync()
   return stdout, ret, stderr
-end
-
-utils.strdisplaywidth = function()
-  error "strdisplaywidth deprecated. please use plenary.strings.strdisplaywidth"
-end
-
-utils.utf_ptr2len = function()
-  error "utf_ptr2len deprecated. please use plenary.strings.utf_ptr2len"
-end
-
-utils.strcharpart = function()
-  error "strcharpart deprecated. please use plenary.strings.strcharpart"
-end
-
-utils.align_str = function()
-  error "align_str deprecated. please use plenary.strings.align_str"
 end
 
 local load_once = function(f)

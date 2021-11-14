@@ -32,7 +32,7 @@ _LSP_SIG_CFG = {
   hint_prefix = "🐼 ",
   hint_scheme = "String",
   hi_parameter = "LspSignatureActiveParameter",
-  handler_opts = {border = "single"},
+  handler_opts = {border = "rounded"},
   padding = '', -- character to pad on left and right of signature
   use_lspsaga = false,
   always_trigger = false, -- sometime show signature on new line can be confusing, set it to false for #58
@@ -45,7 +45,7 @@ _LSP_SIG_CFG = {
   extra_trigger_chars = {}, -- Array of extra characters that will trigger signature completion, e.g., {"(", ","}
   -- decorator = {"`", "`"} -- set to nil if using guihua.lua
   zindex = 200,
-  transpancy = nil, -- disabled by default
+  transparency = nil, -- disabled by default
   shadow_blend = 36, -- if you using shadow as border use this set the opacity
   shadow_guibg = 'Black', -- if you using shadow as border use this set the color e.g. 'Green' or '#121315'
   timer_interval = 200, -- default timer check interval
@@ -356,8 +356,8 @@ local signature_handler = helper.mk_handler(function(err, result, ctx, config)
       log("sig_cfg new bufnr, winnr ", _LSP_SIG_CFG.bufnr, _LSP_SIG_CFG.winnr)
     end
 
-    if _LSP_SIG_CFG.transpancy and _LSP_SIG_CFG.transpancy > 1 and _LSP_SIG_CFG.transpancy < 100 then
-      vim.api.nvim_win_set_option(_LSP_SIG_CFG.winnr, "winblend", _LSP_SIG_CFG.transpancy)
+    if _LSP_SIG_CFG.transparency and _LSP_SIG_CFG.transparency > 1 and _LSP_SIG_CFG.transparency < 100 then
+      vim.api.nvim_win_set_option(_LSP_SIG_CFG.winnr, "winblend", _LSP_SIG_CFG.transparency)
     end
     local sig = result.signatures
     -- if it is last parameter, close windows after cursor moved
@@ -521,6 +521,8 @@ M.on_attach = function(cfg, bufnr)
   api.nvim_command("autocmd InsertLeave <buffer> lua require'lsp_signature'.on_InsertLeave()")
   api.nvim_command("autocmd InsertCharPre <buffer> lua require'lsp_signature'.on_InsertCharPre()")
   api.nvim_command("autocmd CompleteDone <buffer> lua require'lsp_signature'.on_CompleteDone()")
+
+  api.nvim_command("autocmd CursorHold,CursorHoldI <buffer> lua require'lsp_signature'.check_signature_should_close()")
   api.nvim_command("augroup end")
 
   if type(cfg) == "table" then
@@ -547,6 +549,47 @@ M.on_attach = function(cfg, bufnr)
                                 {silent = true, noremap = true})
   end
   _LSP_SIG_VT_NS = api.nvim_create_namespace("lsp_signature_vt")
+
+end
+
+local signature_should_close_handler = helper.mk_handler(function(err, result, ctx, _)
+  if err ~= nil then
+    print(err)
+    helper.cleanup_async(true, 0.01)
+    return
+  end
+
+  -- log("sig result", ctx, result, config)
+  local client_id = ctx.client_id
+  if not (result and result.signatures and result.signatures[1]) then
+    -- only close if this client opened the signature
+    if _LSP_SIG_CFG.client_id == client_id then
+      helper.cleanup_async(true, 0.01)
+    end
+    return
+  end
+
+end)
+
+M.check_signature_should_close = function()
+  if _LSP_SIG_CFG.winnr and _LSP_SIG_CFG.winnr > 0 and vim.api.nvim_win_is_valid(_LSP_SIG_CFG.winnr) then
+    local params = vim.lsp.util.make_position_params()
+    local pos = api.nvim_win_get_cursor(0)
+    local line = api.nvim_get_current_line()
+    local line_to_cursor = line:sub(1, pos[2])
+    -- Try using the already binded one, otherwise use it without custom config.
+    -- LuaFormatter off
+  vim.lsp.buf_request(0, "textDocument/signatureHelp", params,
+                      vim.lsp.with(signature_should_close_handler, {
+                        check_pumvisible = true,
+                        trigger_from_lsp_sig = true,
+                        line_to_cursor = line_to_cursor,
+                        border = _LSP_SIG_CFG.handler_opts.border,
+                      }))
+
+  end
+
+  -- LuaFormatter on
 
 end
 

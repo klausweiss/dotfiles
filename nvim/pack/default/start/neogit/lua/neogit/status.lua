@@ -125,13 +125,18 @@ local function draw_buffer()
   local new_locations = {}
   local locations_lookup = Collection.new(M.locations):key_by('name')
 
-  local function render_section(header, data, key)
+  local function render_section(header, key)
+    local section_config = config.values.sections[key]
+    if section_config == false then
+      return
+    end
+    local data = M.repo[key]
     if #data.items == 0 then return end
     output:append(string.format('%s (%d)', header, #data.items))
 
     local location = locations_lookup[key] or {
       name = key,
-      folded = false,
+      folded = section_config.folded,
       files = {}
     }
     location.first = #output
@@ -192,13 +197,13 @@ local function draw_buffer()
     table.insert(new_locations, location)
   end
 
-  render_section('Untracked files', M.repo.untracked, 'untracked')
-  render_section('Unstaged changes', M.repo.unstaged, 'unstaged')
-  render_section('Staged changes', M.repo.staged, 'staged')
-  render_section('Stashes', M.repo.stashes, 'stashes')
-  render_section('Unpulled changes', M.repo.unpulled, 'unpulled')
-  render_section('Unmerged changes', M.repo.unmerged, 'unmerged')
-  render_section('Recent commits', M.repo.recent, 'recent')
+  render_section('Untracked files', 'untracked')
+  render_section('Unstaged changes', 'unstaged')
+  render_section('Staged changes', 'staged')
+  render_section('Stashes', 'stashes')
+  render_section('Unpulled changes', 'unpulled')
+  render_section('Unmerged changes', 'unmerged')
+  render_section('Recent commits', 'recent')
 
   M.status_buffer:replace_content_with(output)
   M.locations = new_locations
@@ -797,13 +802,23 @@ local cmd_func_map = function ()
       if item and section then
         if section.name == "unstaged" or section.name == "staged" or section.name == "untracked" then
           local path = item.name
+          local hunk = get_current_hunk_of_item(item)
 
           notif.delete_all()
           M.status_buffer:close()
 
           local relpath = vim.fn.fnamemodify(repo_root .. '/' .. path, ':.')
 
+          if vim.fn.bufname() ~= "" then
+            vim.cmd("w")
+          end
+
           vim.cmd("e " .. relpath)
+
+          if hunk then
+            vim.cmd(":" .. hunk.disk_from)
+          end
+
         elseif vim.tbl_contains({ "unmerged", "unpulled", "recent", "stashes" }, section.name) then
           if M.commit_view and M.commit_view.is_open then
             M.commit_view:close()

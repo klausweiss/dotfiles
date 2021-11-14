@@ -457,6 +457,7 @@ list.glimmer = {
   readme_name = "Glimmer and Ember",
   maintainers = { "@alexlafroscia" },
   filetype = "handlebars",
+  used_by = { "html.handlebars" },
 }
 
 list.vue = {
@@ -761,13 +762,28 @@ list.llvm = {
   maintainers = { "@benwilliamgraham" },
 }
 
+list.http = {
+  install_info = {
+    url = "https://github.com/NTBBloodbath/tree-sitter-http",
+    branch = "main",
+    files = { "src/parser.c" },
+    generate_requires_npm = true,
+  },
+  maintainers = { "@NTBBloodbath" },
+}
+
 local M = {
   list = list,
 }
 
 function M.ft_to_lang(ft)
-  ft = vim.split(ft, ".", true)[1]
-  return ft_to_parsername[ft] or ft
+  local result = ft_to_parsername[ft]
+  if result then
+    return result
+  else
+    ft = vim.split(ft, ".", true)[1]
+    return ft_to_parsername[ft] or ft
+  end
 end
 
 function M.available_parsers()

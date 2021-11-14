@@ -11,9 +11,8 @@ configs[server_name] = {
     init_options = {
       provideFormatter = true,
     },
-    root_dir = function(fname)
-      return util.root_pattern '.git'(fname) or util.path.dirname(fname)
-    end,
+    root_dir = util.find_git_ancestor,
+    single_file_support = true,
   },
   docs = {
     -- this language server config is in VSCode built-in package.json
@@ -55,7 +54,7 @@ require'lspconfig'.jsonls.setup {
 ```
 ]],
     default_config = {
-      root_dir = [[root_pattern(".git") or dirname]],
+      root_dir = [[util.find_git_ancestor]],
     },
   },
 }

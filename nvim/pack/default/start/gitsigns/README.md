@@ -153,6 +153,10 @@ For information on configuring neovim via lua please see
 
 This plugin is actively developed and by one of the most well regarded vim plugin developers. Gitsigns will only implement features of this plugin if: it is simple, or, the technologies leveraged by Gitsigns (LuaJIT, Libuv, Neovim's API, etc) can provide a better experience.
 
+### Support for other VCS
+
+There aren't any active developers of this plugin who use other kinds of VCS, so adding support for them isn't feasible. However a well written PR with a commitment of future support could change this.
+
 ## Status Line
 
 Use `b:gitsigns_status` or `b:gitsigns_status_dict`. `b:gitsigns_status` is
@@ -194,7 +198,7 @@ Optional line highlighting                               | :white_check_mark:   
 Optional line number highlighting                        | :white_check_mark:   | :white_check_mark:                            |
 Optional counts on signs                                 | :white_check_mark:   |                                               |
 Customizable signs and mappings                          | :white_check_mark:   | :white_check_mark:                            |
-Customizable extra git-diff arguments                    |                      | :white_check_mark:                            |
+Customizable extra diff arguments                        | :white_check_mark:   | :white_check_mark:                            |
 Can be toggled globally or per buffer                    | :white_check_mark: * | :white_check_mark:                            | * Through the detach/attach functions
 Statusline integration                                   | :white_check_mark:   | :white_check_mark:                            |
 Works with [yadm](https://yadm.io/)                      | :white_check_mark:   |                                               |

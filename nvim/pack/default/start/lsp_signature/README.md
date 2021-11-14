@@ -42,7 +42,6 @@ In case some of the languages allow function overload, the plugin will show all 
 <img width="600" alt="multiple_signature" src="https://user-images.githubusercontent.com/1681295/120487194-17e3a500-c3f9-11eb-9561-82b3854694c5.png">
 <img width="600" alt="signature2" src="https://user-images.githubusercontent.com/1681295/120487380-43ff2600-c3f9-11eb-9684-f6e7a1f8e170.png">
 
-
 # Install:
 
 ```vim
@@ -100,7 +99,7 @@ local example_setup = {
     require "lsp_signature".on_attach({
       bind = true, -- This is mandatory, otherwise border config won't get registered.
       handler_opts = {
-        border = "single"
+        border = "rounded"
       }
     }, bufnr)
     ...
@@ -116,7 +115,7 @@ Or:
   require "lsp_signature".setup({
     bind = true, -- This is mandatory, otherwise border config won't get registered.
     handler_opts = {
-      border = "single"
+      border = "rounded"
     }
   })
 
@@ -152,9 +151,8 @@ Or:
   max_height = 12, -- max height of signature floating_window, if content is more than max_height, you can scroll down
                    -- to view the hiding contents
   max_width = 120, -- max_width of signature floating_window, line will be wrapped if exceed max_width
-  transpancy = 10, -- set this value if you want the floating windows to be transpant (100 fully transpant), nil to disable(default)
   handler_opts = {
-    border = "single"   -- double, single, shadow, none
+    border = "rounded"   -- double, rounded, single, shadow, none
   },
 
   always_trigger = false, -- sometime show signature on new line or in middle of parameter can be confusing, set it to false for #58
@@ -165,7 +163,7 @@ Or:
 
   padding = '', -- character to pad on left and right of signature can be ' ', or '|'  etc
 
-  transpancy = nil, -- disabled by default, allow floating win transparent value 1~100
+  transparency = nil, -- disabled by default, allow floating win transparent value 1~100
   shadow_blend = 36, -- if you using shadow as border use this set the opacity
   shadow_guibg = 'Black', -- if you using shadow as border use this set the color e.g. 'Green' or '#121315'
   timer_interval = 200, -- default timer check interval set to lower value if you want to reduce latency
@@ -208,7 +206,7 @@ Q: What is the default colorscheme in screenshot:
 
 A: [aurora](https://github.com/ray-x/aurora)
 
-Q: I can not see border after enable border = "single"
+Q: I can not see border after enable border = "single"/"rounded"
 
 A: Try another colorscheme (e.g. colorscheme aurora, or colorscheme luna). If issue persists, please submit an issue
 

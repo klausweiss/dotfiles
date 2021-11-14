@@ -22,6 +22,9 @@ return {
   cmake = {
     filetypes = { "cmake" }
   },
+  codeqlls = {
+    filetypes = { "ql" }
+  },
   cssls = {
     filetypes = { "css", "scss", "less" }
   },
@@ -58,11 +61,11 @@ return {
   eslint = {
     filetypes = { "javascript", "javascriptreact", "javascript.jsx", "typescript", "typescriptreact", "typescript.tsx", "vue" }
   },
-  eslintls = {
-    filetypes = { "javascript", "javascriptreact", "typescript", "typescriptreact" }
-  },
   fortls = {
     filetypes = { "fortran" }
+  },
+  fsautocomplete = {
+    filetypes = { "fsharp" }
   },
   gopls = {
     filetypes = { "go", "gomod" }
@@ -143,6 +146,9 @@ return {
     filetypes = { "solidity" }
   },
   solargraph = {
+    filetypes = { "ruby" }
+  },
+  sorbet = {
     filetypes = { "ruby" }
   },
   sqlls = {
