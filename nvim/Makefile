@@ -92,6 +92,9 @@ update-barbar: \
 
 	$(call download-from-repo, https://github.com/romgrk/barbar.nvim)
 
+update-Comment:
+	$(call download-from-repo, https://github.com/numToStr/Comment.nvim)
+
 update-compe:
 	$(call download-from-repo, https://github.com/hrsh7th/nvim-compe)
 
