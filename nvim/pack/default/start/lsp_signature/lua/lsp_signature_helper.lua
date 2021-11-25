@@ -395,11 +395,16 @@ function helper.cal_woff(line_to_cursor, label)
   local sig_woff = label:find("%([^%(]*$")
   if woff and sig_woff then
     local function_name = label:sub(1, sig_woff - 1)
+    -- run this again for some language have multiple `()`
+    local sig_woff2 = function_name:find("%([^%(]*$")
+    if sig_woff2 then
+      function_name = label:sub(1, sig_woff2 - 1)
+    end
     local function_on_line = line_to_cursor:match('.*' .. function_name)
     if function_on_line then
       woff = #line_to_cursor - #function_on_line + #function_name
     else
-      woff = sig_woff + (#line_to_cursor - woff)
+      woff = (sig_woff2 or sig_woff) + (#line_to_cursor - woff)
     end
     woff = -woff
   else

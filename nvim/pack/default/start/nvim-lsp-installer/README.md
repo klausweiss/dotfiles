@@ -109,7 +109,7 @@ end
 
 You can configure certain behavior of nvim-lsp-installer by calling the `.settings()` function.
 
-Make sure to provide your settings before any other interactions with nvim-lsp-installer!
+_Make sure to provide your settings before any other interactions with nvim-lsp-installer!_
 
 Refer to the [default configuration](#default-configuration) for all available settings.
 
@@ -118,7 +118,6 @@ Example:
 ```lua
 local lsp_installer = require("nvim-lsp-installer")
 
--- Provide settings first!
 lsp_installer.settings({
     ui = {
         icons = {
@@ -128,8 +127,6 @@ lsp_installer.settings({
         }
     }
 })
-
-lsp_installer.on_server_ready(function (server) server:setup {} end)
 ```
 
 ## Available LSPs
@@ -146,6 +143,7 @@ lsp_installer.on_server_ready(function (server) server:setup {} end)
 | CSS                                 | `cssls`                  |
 | Clojure                             | `clojure_lsp`            |
 | CodeQL                              | `codeqlls`               |
+| Dart                                | `dartls`                 |
 | Deno                                | `denols`                 |
 | Diagnostic (general purpose server) | `diagnosticls`           |
 | Dlang                               | `serve_d`                |
@@ -158,8 +156,8 @@ lsp_installer.on_server_ready(function (server) server:setup {} end)
 | Ember                               | `ember`                  |
 | Emmet                               | `emmet_ls`               |
 | Erlang                              | `erlangls`               |
-| Fortran                             | `fortls`                 |
 | F#                                  | `fsautocomplete`         |
+| Fortran                             | `fortls`                 |
 | Go                                  | `gopls`                  |
 | GraphQL                             | `graphql`                |
 | Groovy                              | `groovyls`               |
@@ -167,9 +165,9 @@ lsp_installer.on_server_ready(function (server) server:setup {} end)
 | Haskell                             | `hls`                    |
 | JSON                                | `jsonls`                 |
 | Java                                | `jdtls`                  |
-| Jedi                                | `jedi_language_server`   |
+| Jsonnet                             | `jsonnet_ls`             |
 | Kotlin                              | `kotlin_language_server` |
-| LaTeX (unstable preview)            | `ltex`                   |
+| LaTeX                               | `ltex`                   |
 | LaTeX                               | `texlab`                 |
 | Lua                                 | `sumneko_lua`            |
 | OCaml                               | `ocamlls`                |
@@ -179,6 +177,7 @@ lsp_installer.on_server_ready(function (server) server:setup {} end)
 | Prisma                              | `prismals`               |
 | Puppet                              | `puppet`                 |
 | PureScript                          | `purescriptls`           |
+| Python                              | `jedi_language_server`   |
 | Python                              | `pylsp`                  |
 | Python                              | `pyright`                |
 | ReScript                            | `rescriptls`             |
@@ -189,6 +188,7 @@ lsp_installer.on_server_ready(function (server) server:setup {} end)
 | SQL                                 | `sqls`                   |
 | Solang Solidity                     | `solang`                 |
 | Sorbet                              | `sorbet`                 |
+| Sphinx                              | `esbonio`                |
 | Stylelint                           | `stylelint_lsp`          |
 | Svelte                              | `svelte`                 |
 | Tailwind CSS                        | `tailwindcss`            |

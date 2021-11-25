@@ -33,7 +33,7 @@ function configs.__newindex(t, config_name, config_def)
   function M.setup(config)
     validate {
       cmd = { config.cmd, 't', true },
-      root_dir = { config.root_dir, 'f', default_config.root_dir ~= nil },
+      root_dir = { config.root_dir, 'f', true },
       filetypes = { config.filetype, 't', true },
       on_new_config = { config.on_new_config, 'f', true },
       on_attach = { config.on_attach, 'f', true },
@@ -77,7 +77,11 @@ function configs.__newindex(t, config_name, config_def)
     local get_root_dir = config.root_dir
 
     function M.launch()
-      local root_dir = get_root_dir(api.nvim_buf_get_name(0), api.nvim_get_current_buf())
+      local root_dir
+      if get_root_dir then
+        root_dir = get_root_dir(api.nvim_buf_get_name(0), api.nvim_get_current_buf())
+      end
+
       if root_dir then
         api.nvim_command(
           string.format(
@@ -180,6 +184,12 @@ function configs.__newindex(t, config_name, config_def)
       end)
 
       new_config.root_dir = _root_dir
+      new_config.workspace_folders = {
+        {
+          uri = vim.uri_from_fname(_root_dir),
+          name = string.format('%s', _root_dir),
+        },
+      }
       return new_config
     end
 
@@ -195,7 +205,11 @@ function configs.__newindex(t, config_name, config_def)
       end
 
       local id
-      local root_dir = get_root_dir(api.nvim_buf_get_name(bufnr), bufnr)
+      local root_dir
+
+      if get_root_dir then
+        root_dir = get_root_dir(api.nvim_buf_get_name(bufnr), bufnr)
+      end
 
       if root_dir then
         id = manager.add(root_dir, false)

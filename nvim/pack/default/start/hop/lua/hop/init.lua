@@ -101,13 +101,41 @@ end
 
 -- Move the cursor at a given location.
 --
+-- If inclusive is `true`, the jump target will be incremented visually by 1, so that operator-pending motions can
+-- correctly take into account the right offset. This is the main difference between motions such as `f` (inclusive)
+-- and `t` (exclusive).
+--
 -- This function will update the jump list.
-function M.move_cursor_to(w, line, column)
+function M.move_cursor_to(w, line, column, inclusive)
+  -- If we do not ask for inclusive jump, we don’t have to retreive any additional lines because we will jump to the
+  -- actual jump target. If we do want an inclusive jump, we need to retreive the line the jump target lies in so that
+  -- we can compute the offset correctly. This is linked to the fact that currently, Neovim doesn’s have an API to «
+  -- offset something by 1 visual column. »
+  if inclusive then
+    local buf_line = vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(w), line - 1, line, false)[1]
+    column = vim.fn.byteidx(buf_line, column + 1)
+  end
+
+  -- update the jump list
   vim.cmd("normal! m'")
   vim.api.nvim_win_set_cursor(w, { line, column})
 end
 
 function M.hint_with(jump_target_gtr, opts)
+  if opts == nil then
+    opts = override_opts(opts)
+  end
+
+  M.hint_with_callback(jump_target_gtr, opts, function(jt)
+    M.move_cursor_to(jt.window, jt.line + 1, jt.column - 1, opts.inclusive_jump)
+  end)
+end
+
+function M.hint_with_callback(jump_target_gtr, opts, callback)
+  if opts == nil then
+    opts = override_opts(opts)
+  end
+
   if not M.initialized then
     vim.notify('Hop is not initialized; please call the setup function', 4)
     return
@@ -132,7 +160,7 @@ function M.hint_with(jump_target_gtr, opts)
     return
   elseif jump_target_count == 1 and opts.jump_on_sole_occurrence then
     local jt = generated.jump_targets[1]
-    M.move_cursor_to(jt.window, jt.line + 1, jt.column - 1)
+    callback(jt)
 
     clear_namespace(0, hl_ns)
     clear_namespace(0, dim_ns)
@@ -140,7 +168,6 @@ function M.hint_with(jump_target_gtr, opts)
   end
 
   -- we have at least two targets, so generate hints to display
-  -- print(vim.inspect(indirect_jump_targets))
   local hints = hint.create_hints(generated.jump_targets, generated.indirect_jump_targets, opts)
 
   local hint_state = {
@@ -156,9 +183,9 @@ function M.hint_with(jump_target_gtr, opts)
   add_virt_cur(hl_ns)
   if vim.fn.has("nvim-0.6") == 1 then
     hint_state.diag_ns = vim.diagnostic.get_namespaces()
-    for ns in pairs(hint_state.diag_ns) do vim.diagnostic.hide(ns) end
+    for ns in pairs(hint_state.diag_ns) do vim.diagnostic.show(ns, 0, nil, { virtual_text = false }) end
   end
-  hint.set_hint_extmarks(hl_ns, hints)
+  hint.set_hint_extmarks(hl_ns, hints, opts)
   vim.cmd('redraw')
 
   while h == nil do
@@ -182,11 +209,11 @@ function M.hint_with(jump_target_gtr, opts)
 
     if not_special_key and opts.keys:find(key, 1, true) then
       -- If this is a key used in Hop (via opts.keys), deal with it in Hop
-      h = M.refine_hints(0, key, opts.teasing, hint_state)
-      vim.cmd('redraw')
+      h = M.refine_hints(0, key, hint_state, callback, opts)
     else
       -- If it's not, quit Hop
       M.quit(0, hint_state)
+
       -- If the key captured via getchar() is not the quit_key, pass it through
       -- to nvim to be handled normally (including mappings)
       if key ~= vim.api.nvim_replace_termcodes(opts.quit_key, true, false, true) then
@@ -201,19 +228,19 @@ end
 --
 -- Refining hints allows to advance the state machine by one step. If a terminal step is reached, this function jumps to
 -- the location. Otherwise, it stores the new state machine.
-function M.refine_hints(buf_handle, key, teasing, hint_state)
+function M.refine_hints(buf_handle, key, hint_state, callback, opts)
   local h, hints = hint.reduce_hints(hint_state.hints, key)
 
   if h == nil then
     if #hints == 0 then
-      eprintln('no remaining sequence starts with ' .. key, teasing)
+      eprintln('no remaining sequence starts with ' .. key, opts.teasing)
       return
     end
 
     hint_state.hints = hints
 
     clear_namespace(buf_handle, hint_state.hl_ns)
-    hint.set_hint_extmarks(hint_state.hl_ns, hints)
+    hint.set_hint_extmarks(hint_state.hl_ns, hints, opts)
     vim.cmd('redraw')
   else
     M.quit(buf_handle, hint_state)
@@ -221,18 +248,16 @@ function M.refine_hints(buf_handle, key, teasing, hint_state)
     -- prior to jump, register the current position into the jump list
     vim.cmd("normal! m'")
 
-    -- JUMP!
-    M.move_cursor_to(h.jump_target.window, h.jump_target.line + 1, h.jump_target.column - 1)
+    callback(h.jump_target)
     return h
   end
 end
 
 -- Quit Hop and delete its resources.
---
--- This works only if the current buffer is Hop one.
 function M.quit(buf_handle, hint_state)
   clear_namespace(buf_handle, hint_state.hl_ns)
   clear_namespace(buf_handle, hint_state.dim_ns)
+
   if vim.fn.has("nvim-0.6") == 1 then
     for ns in pairs(hint_state.diag_ns) do vim.diagnostic.show(ns, buf_handle) end
   end
@@ -318,7 +343,13 @@ function M.hint_char2(opts)
     return
   end
 
-  local pattern = vim.fn.nr2char(a) .. vim.fn.nr2char(b)
+  local pattern = vim.fn.nr2char(a)
+
+  -- if we have a fallback key defined in the opts, if the second character is that key, we then fallback to the same
+  -- behavior as hint_char1()
+  if opts.char2_fallback_key == nil or b ~= vim.fn.char2nr(vim.api.nvim_replace_termcodes(opts.char2_fallback_key, true, false, true)) then
+    pattern = pattern .. vim.fn.nr2char(b)
+  end
 
   local generator
   if opts.current_line_only then

@@ -41,7 +41,8 @@ For those who want to break the norms. You can create custom looks in lualine.
 
 - [evil_lualine](examples/evil_lualine.lua)
   <img width='700' src='https://user-images.githubusercontent.com/13149513/113875129-4453ba00-97d8-11eb-8f21-94a9ef565db3.png'/>
-
+- [slanted-gaps](examples/slanted-gaps.lua)
+  <img width='700' src='https://user-images.githubusercontent.com/13149513/143395518-f6d6f748-c1ca-491b-9dab-246d0a8cf23f.png'/>
 - [bubbles](examples/bubbles.lua)
   <img width='700' src='https://user-images.githubusercontent.com/20235646/131350468-fc556196-5f46-4bfe-a72e-960f6a58db2c.png'/>
 
@@ -84,7 +85,7 @@ use {
 }
 ```
 
-You'll also have need to have a patched font if you want icons.
+You'll also need to have a patched font if you want icons.
 
 ## Usage and customization
 
@@ -98,7 +99,7 @@ Lualine has sections as shown below.
 
 Each sections holds it's components e.g. current vim's mode.
 
-<details><summary>Configuring lualine in init.vim</summary>
+#### Configuring lualine in init.vim
 
 All the examples below are in lua. You can use the same examples
 in `.vim` file by wrapping them in lua heredoc like this:
@@ -111,9 +112,8 @@ END
 
 checkout `:help lua-heredoc`.
 
-</details>
 
-<details><summary>Default config</summary>
+#### Default config
 
 ```lua
 require'lualine'.setup {
@@ -147,7 +147,6 @@ require'lualine'.setup {
 }
 ```
 
-</details>
 
 If you want to get your current lualine config. you can
 do so with
@@ -177,8 +176,7 @@ All available themes are listed in [THEMES.md](./THEMES.md)
 
 Please create a pr if you managed to port a popular theme before me, [here is how to do it](./CONTRIBUTING.md).
 
-<details>
-<summary>Customizing themes</summary>
+#### Customizing themes
 
 ```lua
 local custom_gruvbox = require'lualine.themes.gruvbox'
@@ -192,7 +190,6 @@ require'lualine'.setup{
 
 Theme structure is available [here](./CONTRIBUTING.md#adding-a-theme)
 
-</details>
 
 ---
 
@@ -213,13 +210,12 @@ options = {
 Here left means it'll be used for left sections (a, b, c) and right means
 it'll be used for right sections (x, y, z).
 
-<details><summary>Disabling separators</summary>
+#### Disabling separators
 
 ```lua
 options = {section_separators = '', component_separators = ''}
 ```
 
-</details>
 
 ---
 
@@ -229,8 +225,7 @@ options = {section_separators = '', component_separators = ''}
 sections = {lualine_a = {'mode'}}
 ```
 
-<details>
-<summary><b>Available components</b></summary>
+#### Available components
 
 * `branch` (git branch)
 * `buffers` (shows currently available buffers)
@@ -247,7 +242,6 @@ sections = {lualine_a = {'mode'}}
 * `progress` (%progress in file)
 * `tabs` (shows currently available tabs)
 
-</details>
 
 #### Custom components
 
@@ -266,7 +260,7 @@ sections = {lualine_a = {hello}}
 sections = {lualine_a = {'FugitiveHead'}}
 ```
 
-#### Vim's statusline items as lualine component
+##### Vim's statusline items as lualine component
 
 ```lua
 sections = {lualine_c = {'%=', '%t%m', '%3p'}}
@@ -322,9 +316,6 @@ shown . On the other hand branch will be formatted with global formatter
 
 #### Available options
 
-<details>
-<summary><b>Global options</b></summary>
-
 #### Global options
 
 These are `options` that are used in options table.
@@ -350,12 +341,7 @@ options = {
 }
 ```
 
-</details>
-
-<details>
-<summary><b>General component options</b></summary>
-
-#### General options
+#### General component options
 
 These are options that control behavior at component level
 and are available for all components.
@@ -404,10 +390,8 @@ sections = {
 }
 ```
 
-</details>
 
-<details>
-<summary><b>Component specific options</b></summary>
+#### Component specific options
 
 These are options that are available on specific components.
 For example you have option on `diagnostics` component to
@@ -464,8 +448,8 @@ sections = {
         warn  = 'DiagnosticWarn',  -- changes diagnostic's warn color
         info  = 'DiagnosticInfo',  -- Changes diagnostic's info color
         hint  = 'DiagnosticHint',  -- Changes diagnostic's hint color
-      }
-      symbols = {error = 'E', warn = 'W', info = 'I', hint = 'H'}
+      },
+      symbols = {error = 'E', warn = 'W', info = 'I', hint = 'H'},
       colored = true, -- displays diagnostics status in color if set to true
       update_in_insert = false, -- Update diagnostics in insert mode
       always_visible = false, -- Show diagnostics even if count is 0, boolean or function returning boolean
@@ -488,8 +472,8 @@ sections = {
         added    = 'DiffAdd',    -- changes diff's added color
         modified = 'DiffChange', -- changes diff's modified color
         removed  = 'DiffDelete', -- changes diff's removed color you
-      }
-      symbols = {added = '+', modified = '~', removed = '-'} -- changes diff symbols
+      },
+      symbols = {added = '+', modified = '~', removed = '-'}, -- changes diff symbols
       source = nil, -- A function that works as a data source for diff.
                     -- it must return a table like
                     -- {added = add_count, modified = modified_count, removed = removed_count }
@@ -568,7 +552,6 @@ sections = {
 }
 ```
 
-</details>
 
 ---
 
@@ -637,8 +620,7 @@ You can load extensions with:
 extensions = {'quickfix'}
 ```
 
-<details>
-<summary><b>Available extensions</b></summary>
+#### Available extensions
 
 * chadtree
 * fern
@@ -649,10 +631,8 @@ extensions = {'quickfix'}
 * quickfix
 * toggleterm
 
-</details>
 
-<details>
-<summary><b>Custom extensions</b></summary>
+#### Custom extensions
 
 You can define your own extensions. If you think an extension might be useful for others then please submit a pr.
 
@@ -660,8 +640,6 @@ You can define your own extensions. If you think an extension might be useful fo
 local my_extension = {sections = {lualine_a = 'mode'}, filetypes = {'lua'}}
 require'lualine'.setup {extensions = {my_extension}}
 ```
-
-</details>
 
 ---
 

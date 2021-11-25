@@ -186,7 +186,7 @@ M.path = (function()
 
   -- Iterate the path until we find the rootdir.
   local function iterate_parents(path)
-    local function it(s, v)
+    local function it(_, v)
       if v and not is_fs_root(v) then
         v = dirname(v)
       else
@@ -258,15 +258,12 @@ function M.server_per_root_dir_manager(_make_config)
         return
       end
       if not new_config.cmd then
-        print(
+        vim.notify(
           string.format(
-            'Error: cmd not defined for %q. You must manually set cmd in the setup{} call according to server_configurations.md, see :help lspconfig-index.',
+            'Error: cmd not defined for %q. Manually set cmd in the setup {} call according to server_configurations.md, see :help lspconfig-index.',
             new_config.name
           )
         )
-        return
-      elseif vim.fn.executable(new_config.cmd[1]) == 0 then
-        vim.notify(string.format('cmd [%q] is not executable.', new_config.cmd[1]), vim.log.levels.Error)
         return
       end
       new_config.on_exit = M.add_hook_before(new_config.on_exit, function()
@@ -282,8 +279,15 @@ function M.server_per_root_dir_manager(_make_config)
       -- root directory.
       if single_file_mode then
         new_config.root_dir = nil
+        new_config.workspace_folders = nil
       end
       client_id = lsp.start_client(new_config)
+
+      -- Handle failures in start_client
+      if not client_id then
+        return
+      end
+
       if single_file_mode then
         single_file_clients[root_dir] = client_id
       else
@@ -343,7 +347,8 @@ function M.root_pattern(...)
 end
 function M.find_git_ancestor(startpath)
   return M.search_ancestors(startpath, function(path)
-    if M.path.is_dir(M.path.join(path, '.git')) then
+    -- Support git directories and git files (worktrees)
+    if M.path.is_dir(M.path.join(path, '.git')) or M.path.is_file(M.path.join(path, '.git')) then
       return path
     end
   end)

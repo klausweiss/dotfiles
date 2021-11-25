@@ -1,3 +1,12 @@
+local warn: function(string, ...: any)
+do
+  -- this is included in gen_help.lua so don't error if requires fail
+  local ok, ret = pcall(require, 'gitsigns.message')
+  if ok then
+    warn = ret.warn
+  end
+end
+
 local record SchemaElem
   type: string
   deep_extend: boolean
@@ -71,6 +80,7 @@ local record M
       virt_text_pos: VirtTextPos
 
       delay: integer
+      ignore_whitespace: boolean
     end
 
     preview_config: {string:any}
@@ -149,7 +159,7 @@ M.schema = {
       ['v <leader>hr'] = '<cmd>lua require"gitsigns".reset_hunk({vim.fn.line("."), vim.fn.line("v")})<CR>',
       ['n <leader>hR'] = '<cmd>lua require"gitsigns".reset_buffer()<CR>',
       ['n <leader>hp'] = '<cmd>lua require"gitsigns".preview_hunk()<CR>',
-      ['n <leader>hb'] = '<cmd>lua require"gitsigns".blame_line(true)<CR>',
+      ['n <leader>hb'] = '<cmd>lua require"gitsigns".blame_line{full=true}<CR>',
       ['n <leader>hS'] = '<cmd>lua require"gitsigns".stage_buffer()<CR>',
       ['n <leader>hU'] = '<cmd>lua require"gitsigns".reset_buffer_index()<CR>',
 
@@ -441,6 +451,8 @@ M.schema = {
         • delay: integer
           Sets the delay (in milliseconds) before blame virtual text is
           displayed.
+        • ignore_whitespace: boolean
+          Ignore whitespace when running blame.
     ]]
   },
 
@@ -616,7 +628,7 @@ M.schema = {
   use_internal_diff           = { deprecated = {new_field = 'diff_opts.internal'} },
 }
 
-local function warn(s: string, ...:any)
+warn = function(s: string, ...: any)
   vim.notify(s:format(...), vim.log.levels.WARN, {title = 'gitsigns'})
 end
 

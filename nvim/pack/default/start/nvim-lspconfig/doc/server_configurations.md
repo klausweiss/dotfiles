@@ -54,10 +54,12 @@ that config.
 - [jdtls](#jdtls)
 - [jedi_language_server](#jedi_language_server)
 - [jsonls](#jsonls)
+- [jsonnet_ls](#jsonnet_ls)
 - [julials](#julials)
 - [kotlin_language_server](#kotlin_language_server)
 - [lean3ls](#lean3ls)
 - [leanls](#leanls)
+- [lelwel_ls](#lelwel_ls)
 - [lemminx](#lemminx)
 - [ltex](#ltex)
 - [metals](#metals)
@@ -77,20 +79,24 @@ that config.
 - [puppet](#puppet)
 - [purescriptls](#purescriptls)
 - [pylsp](#pylsp)
+- [pyre](#pyre)
 - [pyright](#pyright)
 - [r_language_server](#r_language_server)
 - [racket_langserver](#racket_langserver)
 - [rescriptls](#rescriptls)
 - [rls](#rls)
 - [rnix](#rnix)
+- [robotframework_ls](#robotframework_ls)
 - [rome](#rome)
 - [rust_analyzer](#rust_analyzer)
 - [scry](#scry)
 - [serve_d](#serve_d)
+- [sixtyfps](#sixtyfps)
 - [solang](#solang)
 - [solargraph](#solargraph)
 - [sorbet](#sorbet)
 - [sourcekit](#sourcekit)
+- [spectral_ls](#spectral_ls)
 - [sqlls](#sqlls)
 - [sqls](#sqls)
 - [stylelint_lsp](#stylelint_lsp)
@@ -99,11 +105,13 @@ that config.
 - [svls](#svls)
 - [tailwindcss](#tailwindcss)
 - [taplo](#taplo)
+- [terraform_lsp](#terraform_lsp)
 - [terraformls](#terraformls)
 - [texlab](#texlab)
 - [tflint](#tflint)
 - [theme_check](#theme_check)
 - [tsserver](#tsserver)
+- [typeprof](#typeprof)
 - [vala_ls](#vala_ls)
 - [vdmj](#vdmj)
 - [vimls](#vimls)
@@ -468,7 +476,7 @@ require'lspconfig'.ccls.setup{}
     cmd = { "ccls" }
     filetypes = { "c", "cpp", "objc", "objcpp" }
     root_dir = root_pattern("compile_commands.json", ".ccls", "compile_flags.txt", ".git") or dirname
-    single_file_support = true
+    single_file_support = false
 ```
 
 
@@ -523,7 +531,7 @@ require'lspconfig'.clojure_lsp.setup{}
   Default Values:
     cmd = { "clojure-lsp" }
     filetypes = { "clojure", "edn" }
-    root_dir = root_pattern("project.clj", "deps.edn", "build.boot", ".git")
+    root_dir = root_pattern("project.clj", "deps.edn", "build.boot", "shadow-cljs.edn", ".git")
 ```
 
 
@@ -760,13 +768,19 @@ require'lspconfig'.dartls.setup{}
     cmd = { "dart", "./snapshots/analysis_server.dart.snapshot", "--lsp" }
     filetypes = { "dart" }
     init_options = {
-      closingLabels = false,
-      flutterOutline = false,
-      onlyAnalyzeProjectsWithOpenFiles = false,
-      outline = false,
+      closingLabels = true,
+      flutterOutline = true,
+      onlyAnalyzeProjectsWithOpenFiles = true,
+      outline = true,
       suggestFromUnimportedLibraries = true
     }
     root_dir = root_pattern("pubspec.yaml")
+    settings = {
+      dart = {
+        completeFunctionCalls = true,
+        showTodos = true
+      }
+    }
 ```
 
 
@@ -812,7 +826,7 @@ require'lspconfig'.denols.setup{}
       lint = false,
       unstable = false
     }
-    root_dir = root_pattern("deno.json", "deno.jsonc", "package.json", "tsconfig.json", ".git")
+    root_dir = root_pattern("deno.json", "deno.jsonc", "tsconfig.json", ".git")
 ```
 
 
@@ -896,6 +910,7 @@ require'lspconfig'.dockerls.setup{}
     cmd = { "docker-langserver", "--stdio" }
     filetypes = { "dockerfile" }
     root_dir = root_pattern("Dockerfile")
+    single_file_support = true
 ```
 
 
@@ -1311,7 +1326,8 @@ require'lspconfig'.esbonio.setup{}
     cmd = { "python3", "-m", "esbonio" }
     filetypes = { "rst" }
     root_dir = function(path)
-        if M.path.is_dir(M.path.join(path, '.git')) then
+        -- Support git directories and git files (worktrees)
+        if M.path.is_dir(M.path.join(path, '.git')) or M.path.is_file(M.path.join(path, '.git')) then
           return path
         end
       end)
@@ -1837,7 +1853,7 @@ require'lspconfig'.groovyls.setup{}
   Default Values:
     cmd = { "java", "-jar", "groovy-language-server-all.jar" }
     filetypes = { "groovy" }
-    root_dir = util.find_git_ancestor or or vim.loop.os_homedir()
+    root_dir = <function 1>
 ```
 
 
@@ -2587,6 +2603,12 @@ This server accepts configuration via the `settings` key.
   
   Specifies how modifications on build files update the Java classpath\/configuration
 
+- **`java.configuration.workspaceCacheLimit`**: `null|integer`
+
+  Default: `vim.NIL`
+  
+  The number of days \(if enabled\) to keep unused workspace cache data\. Beyond this limit\, cached workspace data may be removed\.
+
 - **`java.contentProvider.preferred`**: `string`
 
   Default: `vim.NIL`
@@ -2656,6 +2678,10 @@ This server accepts configuration via the `settings` key.
   Default: `{ "**/node_modules/**", "**/.metadata/**", "**/archetype-resources/**", "**/META-INF/maven/**" }`
   
   Configure glob patterns for excluding folders\. Use \`\!\` to negate patterns to allow subfolders imports\. You have to include a parent directory\. The order is important\.
+
+- **`java.import.generatesMetadataFilesAtProjectRoot`**: `boolean`
+
+  null
 
 - **`java.import.gradle.arguments`**: `string`
 
@@ -3049,6 +3075,35 @@ require'lspconfig'.jsonls.setup{}
 ```
 
 
+## jsonnet_ls
+
+https://github.com/jdbaldry/jsonnet-language-server
+
+A Language Server Protocol (LSP) server for Jsonnet.
+
+
+
+**Snippet to enable the language server:**
+```lua
+require'lspconfig'.jsonnet_ls.setup{}
+```
+
+**Commands and default values:**
+```lua
+  Commands:
+  
+  Default Values:
+    cmd = { "jsonnet-language-server" }
+    filetypes = { "jsonnet", "libsonnet" }
+    on_new_config = function(new_config, root_dir)
+          new_config.cmd_env = {
+            JSONNET_PATH = jsonnet_path(root_dir),
+          }
+        end,
+    root_dir = root_pattern("jsonnetfile.json")
+```
+
+
 ## julials
 
 https://github.com/julia-vscode/julia-vscode
@@ -3085,6 +3140,12 @@ This server accepts configuration via the `settings` key.
   Default: `{}`
   
   Additional Julia arguments\.
+
+- **`julia.cellDelimiters`**: `array`
+
+  Default: `{ "^##(?!#)", "^#(\\s?)%%", "^#-" }`
+  
+  Cell delimiter regular expressions for Julia files\.
 
 - **`julia.completionmode`**: `enum { "exportedonly", "import", "qualify" }`
 
@@ -3338,12 +3399,9 @@ require'lspconfig'.julials.setup{}
     on_new_config = function(new_config, root_dir)
           new_config.cmd_cwd = root_dir
         end,
-    root_dir = function(path)
-        if M.path.is_dir(M.path.join(path, '.git')) then
-          return path
-        end
-      end)
-    end
+    root_dir = function(fname)
+          return util.root_pattern 'Project.toml'(fname) or util.find_git_ancestor(fname)
+        end,
     single_file_support = true
 ```
 
@@ -3377,7 +3435,7 @@ This server accepts configuration via the `settings` key.
 
   Default: `250`
   
-  \[DEPRECATED\] Specifies the debounce time limit\. Lower to increase responsiveness at the cost of possibile stability issues\.
+  \[DEPRECATED\] Specifies the debounce time limit\. Lower to increase responsiveness at the cost of possible stability issues\.
 
 - **`kotlin.debugAdapter.enabled`**: `boolean`
 
@@ -3421,7 +3479,7 @@ This server accepts configuration via the `settings` key.
 
   Default: `5005`
   
-  \[DEBUG\] If transport is stdio this enables you to attach to the running langugage server with a debugger\. This is ONLY useful if you need to debug the language server ITSELF\.
+  \[DEBUG\] If transport is stdio this enables you to attach to the running language server with a debugger\. This is ONLY useful if you need to debug the language server ITSELF\.
 
 - **`kotlin.languageServer.enabled`**: `boolean`
 
@@ -3451,7 +3509,7 @@ This server accepts configuration via the `settings` key.
 
   Default: `250`
   
-  \[DEBUG\] Specifies the debounce time limit\. Lower to increase responsiveness at the cost of possibile stability issues\.
+  \[DEBUG\] Specifies the debounce time limit\. Lower to increase responsiveness at the cost of possible stability issues\.
 
 - **`kotlin.snippetsEnabled`**: `boolean`
 
@@ -3514,11 +3572,6 @@ require'lspconfig'.lean3ls.setup{}
   Default Values:
     cmd = { "lean-language-server", "--stdio", "--", "-M", "4096", "-T", "100000" }
     filetypes = { "lean3" }
-    on_new_config = function(config, root)
-          if not config.cmd_cwd then
-            config.cmd_cwd = root
-          end
-        end,
     root_dir = root_pattern("leanpkg.toml") or root_pattern(".git") or path.dirname
     single_file_support = true
 ```
@@ -3552,13 +3605,43 @@ require'lspconfig'.leanls.setup{}
   Default Values:
     cmd = { "lean", "--server" }
     filetypes = { "lean" }
-    on_new_config = function(config, root)
-          if not config.cmd_cwd then
-            config.cmd_cwd = root
-          end
-        end,
     root_dir = root_pattern("lakefile.lean", "lean-toolchain", "leanpkg.toml", ".git")
     single_file_support = true
+```
+
+
+## lelwel_ls
+
+https://github.com/0x2a-42/lelwel
+
+Language server for lelwel grammars.
+
+You can install `lelwel-ls` via cargo:
+```sh
+cargo install --features="lsp" lelwel
+```
+
+
+
+**Snippet to enable the language server:**
+```lua
+require'lspconfig'.lelwel_ls.setup{}
+```
+
+**Commands and default values:**
+```lua
+  Commands:
+  
+  Default Values:
+    cmd = { "lelwel-ls" }
+    filetypes = { "llw" }
+    root_dir = function(path)
+        -- Support git directories and git files (worktrees)
+        if M.path.is_dir(M.path.join(path, '.git')) or M.path.is_file(M.path.join(path, '.git')) then
+          return path
+        end
+      end)
+    end
 ```
 
 
@@ -3837,7 +3920,8 @@ require'lspconfig'.ltex.setup{}
           end
         end,
     root_dir = function(path)
-        if M.path.is_dir(M.path.join(path, '.git')) then
+        -- Support git directories and git files (worktrees)
+        if M.path.is_dir(M.path.join(path, '.git')) or M.path.is_file(M.path.join(path, '.git')) then
           return path
         end
       end)
@@ -3964,7 +4048,8 @@ require'lspconfig'.nickel_ls.setup{}
     cmd = { "nls" }
     filetypes = { "ncl", "nickel" }
     root_dir = function(path)
-        if M.path.is_dir(M.path.join(path, '.git')) then
+        -- Support git directories and git files (worktrees)
+        if M.path.is_dir(M.path.join(path, '.git')) or M.path.is_file(M.path.join(path, '.git')) then
           return path
         end
       end)
@@ -4088,7 +4173,7 @@ https://github.com/ocaml-lsp/ocaml-language-server
 
 `ocaml-language-server` can be installed via `npm`
 ```sh
-npm install -g ocaml-langauge-server
+npm install -g ocaml-language-server
 ```
     
 
@@ -4227,7 +4312,8 @@ require'lspconfig'.pasls.setup{}
     cmd = { "pasls" }
     filetypes = { "pascal" }
     root_dir = function(path)
-        if M.path.is_dir(M.path.join(path, '.git')) then
+        -- Support git directories and git files (worktrees)
+        if M.path.is_dir(M.path.join(path, '.git')) or M.path.is_file(M.path.join(path, '.git')) then
           return path
         end
       end)
@@ -4515,6 +4601,17 @@ require'lspconfig'.powershell_es.setup{
 }
 ```
 
+By default the languageserver is started in `pwsh` (PowerShell Core). This can be changed by specifying `shell`.
+
+```lua
+require'lspconfig'.powershell_es.setup{
+  bundle_path = 'c:/w/PowerShellEditorServices',
+  shell = 'powershell.exe',
+}
+```
+
+Note that the execution policy needs to be set to `Unrestricted` for the languageserver run under PowerShell
+
 If necessary, specific `cmd` can be defined instead of `bundle_path`.
 See [PowerShellEditorServices](https://github.com/PowerShell/PowerShellEditorServices#stdio)
 to learn more.
@@ -4539,10 +4636,13 @@ require'lspconfig'.powershell_es.setup{}
   Default Values:
     filetypes = { "ps1" }
     on_new_config = function(new_config, _)
-          local bundle_path = new_config.bundle_path
-          new_config.cmd = make_cmd(bundle_path)
+          -- Don't overwrite cmd if already set
+          if not new_config.cmd then
+            new_config.cmd = make_cmd(new_config)
+          end
         end,
     root_dir = git root or current directory
+    shell = "pwsh"
     single_file_mode = true
 ```
 
@@ -4884,7 +4984,7 @@ This server accepts configuration via the `settings` key.
 
 - **`purescript.fullBuildOnSave`**: `boolean`
 
-  Whether to perform a full build on save with the configured build command \(rather than IDE server fast rebuild\)\. This is not generally recommended because it is slow\, but it does mean that dependant modules are rebuilt as necessary\.
+  Whether to perform a full build on save with the configured build command \(rather than IDE server fast rebuild\)\. This is not generally recommended because it is slow\, but it does mean that dependent modules are rebuilt as necessary\.
 
 - **`purescript.importsPreferredModules`**: `array`
 
@@ -4997,6 +5097,38 @@ require'lspconfig'.pylsp.setup{}
           return util.root_pattern(unpack(root_files))(fname) or util.find_git_ancestor(fname)
         end,
     single_file_support = true
+```
+
+
+## pyre
+
+https://pyre-check.org/
+
+`pyre` a static type checker for Python 3.
+
+`pyre` offers an extremely limited featureset. It currently only supports diagnostics,
+which are triggered on save.
+
+Do not report issues for missing features in `pyre` to `lspconfig`.
+
+
+
+
+**Snippet to enable the language server:**
+```lua
+require'lspconfig'.pyre.setup{}
+```
+
+**Commands and default values:**
+```lua
+  Commands:
+  
+  Default Values:
+    cmd = { "pyre", "persistent" }
+    filetypes = { "python" }
+    root_dir = function(startpath)
+        return M.search_ancestors(startpath, matcher)
+      end
 ```
 
 
@@ -5369,6 +5501,30 @@ require'lspconfig'.rnix.setup{}
 ```
 
 
+## robotframework_ls
+
+https://github.com/robocorp/robotframework-lsp
+
+Language Server Protocol implementation for Robot Framework.
+
+
+
+**Snippet to enable the language server:**
+```lua
+require'lspconfig'.robotframework_ls.setup{}
+```
+
+**Commands and default values:**
+```lua
+  Commands:
+  
+  Default Values:
+    cmd = { "robotframework_ls" }
+    filetypes = { "robot" }
+    root_dir = util.root_pattern('robotidy.toml', 'pyproject.toml')(fname) or util.find_git_ancestor(fname)
+```
+
+
 ## rome
 
 https://rome.tools
@@ -5442,6 +5598,12 @@ This server accepts configuration via the `settings` key.
 - **`rust-analyzer.assist.importPrefix`**: `enum { "plain", "self", "crate" }`
 
   Default: `"plain"`
+  
+  null
+
+- **`rust-analyzer.cache.warmup`**: `boolean`
+
+  Default: `true`
   
   null
 
@@ -6066,6 +6228,44 @@ require'lspconfig'.serve_d.setup{}
 ```
 
 
+## sixtyfps
+
+https://github.com/sixtyfpsui/sixtyfps
+`SixtyFPS`'s language server
+
+You can build and install `sixtyfps-lsp` binary with `cargo`:
+```sh
+cargo install sixtyfps-lsp
+```
+
+Vim does not have built-in syntax for the `sixtyfps` filetype currently.
+
+This can be added via an autocmd:
+
+```lua
+vim.cmd [[ autocmd BufRead,BufNewFile *.60 set filetype=sixtyfps ]]
+```
+
+or by installing a filetype plugin such as https://github.com/RustemB/sixtyfps-vim
+
+
+
+**Snippet to enable the language server:**
+```lua
+require'lspconfig'.sixtyfps.setup{}
+```
+
+**Commands and default values:**
+```lua
+  Commands:
+  
+  Default Values:
+    cmd = { "sixtyfps-lsp" }
+    filetypes = { "sixtyfps" }
+    single_file_support = true
+```
+
+
 ## solang
 
 A language server for Solidity
@@ -6323,6 +6523,83 @@ require'lspconfig'.sourcekit.setup{}
 ```
 
 
+## spectral_ls
+
+https://github.com/luizcorreia/spectral-language-server
+ `A flexible JSON/YAML linter for creating automated style guides, with baked in support for OpenAPI v2 & v3.`
+
+`spectral-language-server` can be installed via `npm`:
+```sh
+npm i -g spectral-language-server
+```
+See [vscode-spectral](https://github.com/stoplightio/vscode-spectral#extension-settings) for configuration options.
+
+This server accepts configuration via the `settings` key.
+<details><summary>Available settings:</summary>
+
+- **`spectral.enable`**: `boolean`
+
+  Default: `true`
+  
+  Controls whether or not Spectral is enabled\.
+
+- **`spectral.rulesetFile`**: `string`
+
+  Location of the ruleset file to use when validating\. If omitted\, the default is a \.spectral\.yml\/\.spectral\.json in the same folder as the document being validated\. Paths are relative to the workspace\.
+
+- **`spectral.run`**: `enum { "onSave", "onType" }`
+
+  Default: `"onType"`
+  
+  Run the linter on save \(onSave\) or as you type \(onType\)\.
+
+- **`spectral.trace.server`**: `enum { "off", "messages", "verbose" }`
+
+  Default: `"off"`
+  
+  Traces the communication between VS Code and the language server\.
+
+- **`spectral.validateFiles`**: `array`
+
+  Array items: `{type = "string"}`
+  
+  An array of file globs \(e\.g\.\, \`\*\*\/\*\.yaml\`\) in minimatch glob format which should be validated by Spectral\. If language identifiers are also specified\, the file must match both in order to be validated\.
+
+- **`spectral.validateLanguages`**: `array`
+
+  Default: `{ "json", "yaml" }`
+  
+  Array items: `{type = "string"}`
+  
+  An array of language IDs which should be validated by Spectral\. If file globs are also specified\, the file must match both in order to be validated\.
+
+</details>
+
+
+**Snippet to enable the language server:**
+```lua
+require'lspconfig'.spectral_ls.setup{}
+```
+
+**Commands and default values:**
+```lua
+  Commands:
+  
+  Default Values:
+    cmd = { "spectral-language-server", "--stdio" }
+    filetypes = { "yaml", "json", "yml" }
+    root_dir = function(startpath)
+        return M.search_ancestors(startpath, matcher)
+      end
+    settings = {
+      enable = true,
+      run = "onType",
+      validateLanguages = { "yaml", "json", "yml" }
+    }
+    single_file_support = true
+```
+
+
 ## sqlls
 
 https://github.com/joe-re/sql-language-server
@@ -6558,6 +6835,22 @@ require'lspconfig'.sumneko_lua.setup {
 
 This server accepts configuration via the `settings` key.
 <details><summary>Available settings:</summary>
+
+- **`Lua.IntelliSense.traceBeSetted`**: `boolean`
+
+  null
+
+- **`Lua.IntelliSense.traceFieldInject`**: `boolean`
+
+  null
+
+- **`Lua.IntelliSense.traceLocalSet`**: `boolean`
+
+  null
+
+- **`Lua.IntelliSense.traceReturn`**: `boolean`
+
+  null
 
 - **`Lua.color.mode`**: `enum { "Grammar", "Semantic", "SemanticEnhanced" }`
 
@@ -7025,12 +7318,82 @@ require'lspconfig'.taplo.setup{}
 ```
 
 
+## terraform_lsp
+
+https://github.com/juliosueiras/terraform-lsp
+
+Terraform language server
+Download a released binary from
+https://github.com/juliosueiras/terraform-lsp/releases.
+
+From https://github.com/hashicorp/terraform-ls#terraform-ls-vs-terraform-lsp:
+
+Both HashiCorp and the maintainer of terraform-lsp expressed interest in
+collaborating on a language server and are working towards a _long-term_
+goal of a single stable and feature-complete implementation.
+
+For the time being both projects continue to exist, giving users the
+choice:
+
+- `terraform-ls` providing
+  - overall stability (by relying only on public APIs)
+  - compatibility with any provider and any Terraform >=0.12.0 currently
+    less features
+  - due to project being younger and relying on public APIs which may
+    not offer the same functionality yet
+
+- `terraform-lsp` providing
+  - currently more features
+  - compatibility with a single particular Terraform (0.12.20 at time of writing)
+    - configs designed for other 0.12 versions may work, but interpretation may be inaccurate
+  - less stability (due to reliance on Terraform's own internal packages)
+
+
+
+**Snippet to enable the language server:**
+```lua
+require'lspconfig'.terraform_lsp.setup{}
+```
+
+**Commands and default values:**
+```lua
+  Commands:
+  
+  Default Values:
+    cmd = { "terraform-lsp" }
+    filetypes = { "terraform", "hcl" }
+    root_dir = root_pattern(".terraform", ".git")
+```
+
+
 ## terraformls
 
 https://github.com/hashicorp/terraform-ls
 
 Terraform language server
 Download a released binary from https://github.com/hashicorp/terraform-ls/releases.
+
+From https://github.com/hashicorp/terraform-ls#terraform-ls-vs-terraform-lsp:
+
+Both HashiCorp and the maintainer of terraform-lsp expressed interest in
+collaborating on a language server and are working towards a _long-term_
+goal of a single stable and feature-complete implementation.
+
+For the time being both projects continue to exist, giving users the
+choice:
+
+- `terraform-ls` providing
+  - overall stability (by relying only on public APIs)
+  - compatibility with any provider and any Terraform >=0.12.0 currently
+    less features
+  - due to project being younger and relying on public APIs which may
+    not offer the same functionality yet
+
+- `terraform-lsp` providing
+  - currently more features
+  - compatibility with a single particular Terraform (0.12.20 at time of writing)
+    - configs designed for other 0.12 versions may work, but interpretation may be inaccurate
+  - less stability (due to reliance on Terraform's own internal packages)
 
 This server accepts configuration via the `settings` key.
 <details><summary>Available settings:</summary>
@@ -7130,7 +7493,9 @@ require'lspconfig'.texlab.setup{}
   Default Values:
     cmd = { "texlab" }
     filetypes = { "tex", "bib" }
-    root_dir = vim's starting directory
+    root_dir = function(fname)
+          return util.root_pattern '.latexmkrc'(fname) or util.find_git_ancestor(fname)
+        end,
     settings = {
       texlab = {
         auxDirectory = ".",
@@ -7274,9 +7639,33 @@ require'lspconfig'.tsserver.setup{}
 ```
 
 
+## typeprof
+
+https://github.com/ruby/typeprof
+
+`typeprof` is the built-in analysis and LSP tool for Ruby 3.1+.
+    
+
+
+**Snippet to enable the language server:**
+```lua
+require'lspconfig'.typeprof.setup{}
+```
+
+**Commands and default values:**
+```lua
+  Commands:
+  
+  Default Values:
+    cmd = { "typeprof", "--lsp", "--stdio" }
+    filetypes = { "ruby", "eruby" }
+    root_dir = root_pattern("Gemfile", ".git")
+```
+
+
 ## vala_ls
 
-https://github.com/benwaffle/vala-language-server
+https://github.com/Prince781/vala-language-server
 
 
 **Snippet to enable the language server:**
@@ -7292,6 +7681,7 @@ require'lspconfig'.vala_ls.setup{}
     cmd = { "vala-language-server" }
     filetypes = { "vala", "genie" }
     root_dir = root_pattern("meson.build", ".git")
+    single_file_support = true
 ```
 
 
@@ -7434,19 +7824,68 @@ require'lspconfig'.vls.setup{}
 https://github.com/johnsoncodehk/volar/tree/master/packages/server
 
 Volar language server for Vue
-Volar can be installed via npm
+
+Volar can be installed via npm:
+
 ```sh
 npm install -g @volar/server
 ```
 
-With Vue 3 projects - it works out of the box.
+Volar by default supports Vue 3 projects. Vue 2 projects need [additional configuration](https://github.com/johnsoncodehk/volar/blob/master/extensions/vscode-vue-language-features/README.md?plain=1#L28-L63).
 
-With Vue 2 projects - requires [additional configuration](https://github.com/johnsoncodehk/volar#using)
+**Take Over Mode**
+Volar can serve as a language server for both Vue and TypeScript via [Take Over Mode](https://github.com/johnsoncodehk/volar/discussions/471).
 
-Do not run `vuels` and `volar` at the same time.
+To enable Take Over Mode, override the default filetypes in `setup{}` as follows:
 
-To check which language servers are running, open a `.vue` file and run the `:LspInfo` command.
+```lua
+require'lspconfig'.volar.setup{
+  filetypes = {'typescript', 'javascript', 'javascriptreact', 'typescriptreact', 'vue', 'json'}
+}
+```
 
+**Overriding the default TypeScript Server used by Volar**
+The default config looks for TS in the local node_modules. The alternatives are:
+
+- use a global TypeScript Server installation
+
+```lua
+require'lspconfig'.volar.setup{
+  init_options = {
+    typescript = {
+      serverPath = '/path/to/.npm/lib/node_modules/typescript/lib/tsserverlib.js'
+    }
+  }
+}
+```
+
+- use a global TypeScript Server installation if a local server is not found
+
+```lua
+local util = require 'lspconfig/util'
+
+local function get_typescript_server_path(root_dir)
+  local project_root = util.find_node_modules_ancestor(root_dir)
+
+  local local_tsserverlib = project_root ~= nil and util.path.join(project_root, 'node_modules', 'typescript', 'lib', 'tsserverlibrary.js')
+  local global_tsserverlib = '/home/[yourusernamehere]/.npm/lib/node_modules/typescript/lib/tsserverlibrary.js'
+
+  if local_tsserverlib and util.path.exists(local_tsserverlib) then
+    return local_tsserverlib
+  else
+    return global_tsserverlib
+  end
+end
+
+require'lspconfig'.volar.setup{
+  config = {
+    on_new_config = function(new_config, new_root_dir)
+      new_config.init_options.typescript.serverPath = get_typescript_server_path(new_root_dir)
+    end,
+  }
+}
+```
+    
 
 
 **Snippet to enable the language server:**

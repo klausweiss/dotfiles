@@ -75,7 +75,11 @@ local function prompt_commit_message(args, msg, skip_gen)
   if not skip_gen then
     if msg_template_path then
       a.util.scheduler()
-      local msg_template = uv_utils.read_file_sync(vim.fn.glob(msg_template_path))
+      local expanded_path = vim.fn.glob(msg_template_path)
+      if expanded_path == "" then
+        return
+      end
+      local msg_template = uv_utils.read_file_sync(expanded_path)
       for _, line in pairs(msg_template) do
         table.insert(output, line)
       end
@@ -149,7 +153,7 @@ function M.create()
       local commit_file = get_commit_file()
       local msg = cli.log.max_count(1).pretty('%B').call()
 
-      do_commit(popup, msg, tostring(cli.commit.commit_message_file(commit_file).amend))
+      do_commit(popup, msg, tostring(cli.commit.commit_message_file(commit_file).amend), true)
     end)
     :new_action_group()
     :action("f", "Fixup")

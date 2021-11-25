@@ -363,22 +363,25 @@ EOF
 
 ## Adding queries
 
-Queries are what `nvim-treesitter` uses to extract information from the syntax tree; they are
-located in the `queries/{language}/*` runtime directories (like the `queries` folder of this plugin), e.g., `queries/{language}/{locals,highlights,textobjects}.scm`.
+Queries are what `nvim-treesitter` uses to extract information from the syntax tree;
+they are located in the `queries/{language}/*` runtime directories (see `:h rtp`),
+like the `queries` folder of this plugin, e.g. `queries/{language}/{locals,highlights,textobjects}.scm`.
 Other modules may require additional queries such as `folding.scm`.
 
-`nvim-treesitter` considers queries as any runtime file (see `:h rtp`), i.e.,
+All queries found in the runtime directories will be combined.
+By convention, if you want to write a query, use the `queries/` directory,
+but if you want to extend a query use the `after/queries/` directory.
 
-- if the file is in any `after/queries/` folder, then it will be used to extend the already defined
-  queries.
-- Otherwise, it will be used as a base to define the query, the first query found (with the highest
-  priority) will be the only one to be used.
+If you want to completely override a query, you can use `:h set_query()`.
+For example, to override the `injections` queries from `c` with your own:
 
-This hybrid approach is the most standard way; in this case
+```vim
+lua <<EOF
+require("vim.treesitter.query").set_query("c", "injections", "(comment) @comment")
+EOF
+```
 
-- if you want to rewrite (or write) a query, don't use `after/queries`;
-- if you want to override a part of a query (only one match for example), use the `after/queries`
-  directory.
+Note: when using `set_query`, all queries in the runtime directories will be ignored.
 
 ## Adding modules
 
@@ -466,6 +469,17 @@ This is probably due to a change in a parser's grammar or its queries.
 Try updating the parser that you suspect has changed (`:TSUpdate {language}`) or all of them (`:TSUpdate`).
 If the error persists after updating all parsers,
 please [open an issue](https://github.com/nvim-treesitter/nvim-treesitter/issues/new/choose).
+
+#### I get `query error: invalid node type at position`
+
+This could be due a query file outside this plugin using outdated nodes,
+or due to an outdated parser.
+
+- Make sure you have the parsers up to date with `:TSUpdate`
+- Make sure you don't have more than one `parser` runtime directory.
+  You can execute this command `:echo nvim_get_runtime_file('parser', v:true)` to find all runtime directories.
+  If you get more than one path, remove the ones that are outside this plugin (`nvim-treesitter` directory),
+  so the correct version of the parser is used.
 
 #### I experience weird highlighting issues similar to [#78](https://github.com/nvim-treesitter/nvim-treesitter/issues/78)
 

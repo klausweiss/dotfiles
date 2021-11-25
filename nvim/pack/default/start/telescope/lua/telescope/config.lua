@@ -190,6 +190,23 @@ append(
 append("layout_config", layout_config_defaults, layout_config_description)
 
 append(
+  "cycle_layout_list",
+  { "horizontal", "vertical" },
+  [[
+  Determines the layouts to cycle through when using `actions.cycle_layout_next`
+  and `actions.cycle_layout_prev`.
+  Should be a list of "layout setups".
+  Each "layout setup" can take one of two forms:
+  1. string <br>
+      This is interpreted as the name of a `layout_strategy`
+  2. table <br>
+      A table with possible keys `layout_strategy`, `layout_config` and `previewer`
+
+  Default: { "horizontal", "vertical" }
+  ]]
+)
+
+append(
   "winblend",
   0,
   [[
@@ -431,6 +448,7 @@ append(
     timeout = 250,
     treesitter = true,
     msg_bg_fillchar = "╱",
+    hide_on_startup = false,
   },
   [[
     This field handles the global configuration for previewers.
@@ -511,6 +529,9 @@ append(
                           Default: true
       - msg_bg_fillchar:  Character to fill background of unpreviewable buffers with
                           Default: "╱"
+      - hide_on_startup:  Hide previewer when picker starts. Previewer can be toggled
+                          with actions.toggle_preview.
+                          Default: false
     ]]
 )
 

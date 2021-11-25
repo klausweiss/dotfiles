@@ -57,9 +57,21 @@ end
 --
 -- This function associates jump targets with permutations, creating hints. A hint is then a jump target along with a
 -- label.
+--
+-- If `indirect_jump_targets` is `nil`, `jump_targets` is assumed already ordered with all jump target with the same
+-- score (0)
 function M.create_hints(jump_targets, indirect_jump_targets, opts)
   local hints = {}
   local perms = perm.permutations(opts.keys, #jump_targets, opts)
+
+  -- get or generate indirect_jump_targets
+  if indirect_jump_targets == nil then
+    indirect_jump_targets = {}
+
+    for i = 1, #jump_targets do
+      indirect_jump_targets[i] = { index = i, score = 0 }
+    end
+  end
 
   for i, indirect in pairs(indirect_jump_targets) do
     hints[indirect.index] = {
@@ -72,20 +84,27 @@ function M.create_hints(jump_targets, indirect_jump_targets, opts)
 end
 
 -- Create the extmarks for per-line hints.
-function M.set_hint_extmarks(hl_ns, hints)
+--
+-- Passing `opts.uppercase_labels = true` will display the hint as uppercase.
+function M.set_hint_extmarks(hl_ns, hints, opts)
   for _, hint in pairs(hints) do
-    if vim.fn.strdisplaywidth(hint.label) == 1 then
+    local label = hint.label
+    if opts.uppercase_labels then
+      label = label:upper()
+    end
+
+    if vim.fn.strdisplaywidth(label) == 1 then
       vim.api.nvim_buf_set_extmark(hint.jump_target.buffer, hl_ns, hint.jump_target.line, hint.jump_target.column - 1, {
-        virt_text = { { hint.label, "HopNextKey" } },
+        virt_text = { { label, "HopNextKey" } },
         virt_text_pos = 'overlay',
         hl_mode = 'combine',
         priority = prio.HINT_PRIO
       })
     else
       -- get the byte index of the second hint so that we can slice it correctly
-      local snd_idx = vim.fn.byteidx(hint.label, 1)
+      local snd_idx = vim.fn.byteidx(label, 1)
       vim.api.nvim_buf_set_extmark(hint.jump_target.buffer, hl_ns, hint.jump_target.line, hint.jump_target.column - 1, { -- HERE
-        virt_text = { { hint.label:sub(1, snd_idx), "HopNextKey1" }, { hint.label:sub(snd_idx + 1), "HopNextKey2" } },
+        virt_text = { { label:sub(1, snd_idx), "HopNextKey1" }, { label:sub(snd_idx + 1), "HopNextKey2" } },
         virt_text_pos = 'overlay',
         hl_mode = 'combine',
         priority = prio.HINT_PRIO

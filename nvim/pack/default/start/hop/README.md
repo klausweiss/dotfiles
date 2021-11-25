@@ -27,6 +27,7 @@ target in your document reachable in a few keystrokes.
   * [Visual extend](#visual-extend)
   * [Jump on sole occurrence](#jump-on-sole-occurrence)
   * [Use as operator motion](#use-as-operator-motion)
+  * [Inclusive / exclusive motion](#inclusive--exclusive-motion)
 * [Getting started](#getting-started)
   * [Installation](#installation)
     * [Important note about versioning](#important-note-about-versioning)
@@ -105,6 +106,9 @@ to any.
 
 ![](https://phaazon.net/media/uploads/hop_char2_mode.gif)
 
+Note that it’s possible to _fallback to 1-char mode_ if you hit a special key as second key. This key can be controlled
+via the user configuration. `:h hop-config-char2_fallback_key`.
+
 ## Pattern mode (`:HopPattern`)
 
 Akin to `/`, this mode prompts you for a pattern (regex) to search. Occurrences will be highlighted, allowing you to
@@ -129,6 +133,15 @@ extra key.
 
 You can use Hop with any command that expects a motion, such as `d`, `y`, `c`, and it does what you would expect:
 Delete/yank/change the document up to the new cursor position.
+
+## Inclusive / exclusive motion
+
+By default, Hop will operate in exclusive mode, which is similar to what you get with `t`: deleting from the cursor
+position up to the next `)` (without deleting the `)`), which is normally done with `dt)`. However, if you want to be
+inclusive (i.e. delete the `)`, which is `df)` in vanilla), you can set the `inclusive_jump` option to `true`.
+
+Some limitations currently exist, requiring `virtualedit` special settings. `:h hop-config-inclusive_jump` for more
+information.
 
 # Getting started
 
@@ -205,12 +218,16 @@ If you would rather use the Lua API, you can test it via the command prompt:
 
 Hop doesn’t set any keybindings; you will have to define them by yourself.
 
-If you want to create a key binding (<kbd>$</kbd> in this example) from within Lua:
+If you want to create a key binding from within Lua:
 
 ```lua
 -- place this in one of your configuration file(s)
 vim.api.nvim_set_keymap('n', 'f', "<cmd>lua require'hop'.hint_char1({ direction = require'hop.hint'.HintDirection.AFTER_CURSOR, current_line_only = true })<cr>", {})
 vim.api.nvim_set_keymap('n', 'F', "<cmd>lua require'hop'.hint_char1({ direction = require'hop.hint'.HintDirection.BEFORE_CURSOR, current_line_only = true })<cr>", {})
+vim.api.nvim_set_keymap('o', 'f', "<cmd>lua require'hop'.hint_char1({ direction = require'hop.hint'.HintDirection.AFTER_CURSOR, current_line_only = true, inclusive_jump = true })<cr>", {})
+vim.api.nvim_set_keymap('o', 'F', "<cmd>lua require'hop'.hint_char1({ direction = require'hop.hint'.HintDirection.BEFORE_CURSOR, current_line_only = true, inclusive_jump = true })<cr>", {})
+vim.api.nvim_set_keymap('', 't', "<cmd>lua require'hop'.hint_char1({ direction = require'hop.hint'.HintDirection.AFTER_CURSOR, current_line_only = true })<cr>", {})
+vim.api.nvim_set_keymap('', 'T', "<cmd>lua require'hop'.hint_char1({ direction = require'hop.hint'.HintDirection.BEFORE_CURSOR, current_line_only = true })<cr>", {})
 ```
 
 For a more complete user guide and help pages:
@@ -232,7 +249,7 @@ You can configure Hop via several different mechanisms:
   "
   " Use better keys for the bépo keyboard layout and set
   " a balanced distribution of terminal / sequence keys
-  lua require'hop'.setup { keys = 'etovxqpdygfblzhckisuran', term_seq_bias = 0.5 }
+  lua require'hop'.setup { keys = 'etovxqpdygfblzhckisuran', jump_on_sole_occurrence = false }
   ```
 - _Local configuration overrides_ are available only on the Lua API and are `{opts}` Lua tables passed to the various
   Lua functions. Those options have precedence over global options, so they allow to locally override options. Useful if

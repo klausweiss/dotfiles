@@ -28,6 +28,9 @@ return {
   cssls = {
     filetypes = { "css", "scss", "less" }
   },
+  dartls = {
+    filetypes = { "dart" }
+  },
   denols = {
     filetypes = { "javascript", "javascriptreact", "javascript.jsx", "typescript", "typescriptreact", "typescript.tsx" }
   },
@@ -57,6 +60,9 @@ return {
   },
   erlangls = {
     filetypes = { "erlang" }
+  },
+  esbonio = {
+    filetypes = { "rst" }
   },
   eslint = {
     filetypes = { "javascript", "javascriptreact", "javascript.jsx", "typescript", "typescriptreact", "typescript.tsx", "vue" }
@@ -93,6 +99,9 @@ return {
   },
   jsonls = {
     filetypes = { "json" }
+  },
+  jsonnet_ls = {
+    filetypes = { "jsonnet", "libsonnet" }
   },
   kotlin_language_server = {
     filetypes = { "kotlin" }

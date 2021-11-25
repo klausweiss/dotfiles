@@ -76,6 +76,7 @@ require('lualine').setup{
 | auto_session_enable_last_session  | false, true               | false                                 | Loads the last loaded session if session for cwd does not exist |
 | auto_session_root_dir             | "/some/path/you/want"     | vim.fn.stdpath('data').."/sessions/"  | Changes the root dir for sessions                               |
 | auto_session_enabled              | false, true               | true                                  | Enables/disables the plugin's auto save _and_ restore features  |
+| auto_session_create_enabled       | false, true               | true                                  | Enables/disables the plugin's session auto creation |
 | auto_save_enabled                 | false, true, nil          | nil                                   | Enables/disables auto saving                                    |
 | auto_restore_enabled              | false, true, nil          | nil                                   | Enables/disables auto restoring                                 |
 | auto_session_suppress_dirs        | ["list", "of paths"]      | nil                                   | Suppress session create/restore if in one of the list of dirs   |
@@ -86,16 +87,15 @@ For a better experience with the plugin overall using this config for `sessionop
 
 **Lua**
 ```lua
-vim.o.sessionoptions="blank,buffers,curdir,folds,help,options,tabpages,winsize,resize,winpos,terminal"
+vim.o.sessionoptions="blank,buffers,curdir,folds,help,tabpages,winsize,winpos,terminal"
 ```
 
 **VimL**
 ```viml
-set sessionoptions+=options,resize,winpos,terminal
+set sessionoptions+=winpos,terminal
 ```
 
-**Note**: if you use [packer.nvim](https://github.com/wbthomason/packer.nvim)'s lazy loading feature, you might want to _not_ add the `options` value to `sessionoptions`.
-It might lead to weird behaviour with the lazy loading, especially around key-based lazy loading.
+**Note**: if you use [packer.nvim](https://github.com/wbthomason/packer.nvim)'s lazy loading feature, and you have the `options` value in your `sessionoptions`. Beware it might lead to weird behaviour with the lazy loading, especially around key-based lazy loading where keymaps are kept and thus the lazy loading mapping packer creates never gets set again.
 
 ### Last Session
 This optional feature enables the keeping track and loading of the last session.
@@ -150,15 +150,32 @@ let g:auto_session_pre_save_cmds = ["tabdo NERDTreeClose"]
 ```
 
 Hooks can also be lua functions
-Example:
+For example to update the directory of the session in nvim-tree:
 ```lua
-local function custom_hook()
-    -- insert hook here
+local function restore_nvim_tree()
+    local nvim_tree = require('nvim-tree')
+    nvim_tree.change_dir(vim.fn.getcwd())
+    nvim_tree.refresh()
 end
 
 require('auto-session').setup {
-    {hook_name}_cmds = {"{vim_cmd_1}", custom_hook, "{vim_cmd_2}"}
+    {hook_name}_cmds = {"{vim_cmd_1}", restore_nvim_tree, "{vim_cmd_2}"}
 }
+```
+
+## Disabling the plugin
+One might run into issues with Firenvim or another plugin and want to disable auto_session altogether based on some condition.
+For this example, as to not try and save sessions for Firenvim, we disable the plugin if the started_by_firenvim variable is set.
+
+```viml
+if exists('g:started_by_firenvim')
+  let g:auto_session_enabled = v:false
+endif
+```
+
+One can also disable the plugin by setting the `auto_session_enabled` option to false at startup.
+```sh
+nvim "+let g:auto_session_enabled = v:false"
 ```
 
 ## 🔭 Session Lens
