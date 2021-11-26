@@ -95,8 +95,13 @@ update-barbar: \
 update-Comment:
 	$(call download-from-repo, https://github.com/numToStr/Comment.nvim)
 
-update-compe:
-	$(call download-from-repo, https://github.com/hrsh7th/nvim-compe)
+update-cmp:
+	$(call download-from-repo, https://github.com/hrsh7th/nvim-cmp)
+	$(call download-from-repo, https://github.com/hrsh7th/cmp-nvim-lsp)
+	$(call download-from-repo, https://github.com/hrsh7th/cmp-buffer)
+	$(call download-from-repo, https://github.com/hrsh7th/cmp-path)
+	$(call download-from-repo, https://github.com/hrsh7th/cmp-cmdline)
+	$(call download-from-repo, https://github.com/saadparwaiz1/cmp_luasnip)
 
 update-gitsigns: \
 	update-plenary \
