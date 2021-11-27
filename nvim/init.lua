@@ -83,7 +83,10 @@ cmp.setup({
     -- { name = 'snippy' }, -- For snippy users.
   }, {
     { name = 'buffer' },
-  })
+  }),
+  experimental = {
+    native_menu = is_gnvim,  -- only use native_menu in gnvim
+  },
 })
 
 -- Use buffer source for `/` (if you enabled `native_menu`, this won't work anymore).
