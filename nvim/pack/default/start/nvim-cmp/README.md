@@ -134,9 +134,9 @@ Also, checkout [mappings](https://github.com/hrsh7th/nvim-cmp/wiki/Example-mappi
 
 You can search for various completion sources [here](https://github.com/topics/nvim-cmp).
 
-### How can I get my completion menu to look cool?
+### Where can I find the advanced configuration examples?
 
-Please see the corresponding [FAQ](#how-to-show-name-of-item-kind-and-source-like-compe) section.
+Please see the corresponding [FAQ](#how-to-show-name-of-item-kind-and-source-like-compe) section or [Wiki pages](https://github.com/hrsh7th/nvim-cmp/wiki).
 
 Configuration options
 ====================
@@ -263,6 +263,10 @@ The source customization options. It is defined by each source.
 
 The priority of the source.  If you don't specify it, the source priority will
 be determined by the default algorithm (see `sorting.priority_weight`).
+
+#### sources[number].trigger_characters (type: string[])
+
+The source specific triggerCharacters for override.
 
 #### sources[number].keyword_pattern (type: string)
 
@@ -472,6 +476,18 @@ The fuzzy matched characters highlight.
 #### `CmpItemKind`
 
 The kind field.
+
+#### `CmpItemKind%KIND_NAME%`
+
+The specific kind highlights.
+You can see the name on [lsp.lua#L108](./lua/cmp/types/lsp.lua#L108).
+
+For example, You can change the highlight like this if you want to override only the `Method` kind.
+
+```
+highlight! CmpItemKindMethod guibg=NONE guifg=LightYellow
+```
+
 
 #### `CmpItemMenu`
 

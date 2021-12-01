@@ -23,7 +23,9 @@ Install with [packer](https://github.com/wbthomason/packer.nvim):
 ```lua
 use {
     'kyazdani42/nvim-tree.lua',
-    requires = 'kyazdani42/nvim-web-devicons',
+    requires = {
+      'kyazdani42/nvim-web-devicons', -- optional, for file icon
+    },
     config = function() require'nvim-tree'.setup {} end
 }
 ```
@@ -72,6 +74,11 @@ require'nvim-tree'.setup {
     dotfiles = false,
     custom = {}
   },
+  git = {
+    enable = true,
+    ignore = true,
+    timeout = 500,
+  },
   view = {
     width = 30,
     height = 30,
@@ -81,7 +88,13 @@ require'nvim-tree'.setup {
     mappings = {
       custom_only = false,
       list = {}
-    }
+    },
+    number = false,
+    relativenumber = false
+  },
+  trash = {
+    cmd = "trash",
+    require_confirm = true
   }
 }
 ```
@@ -89,7 +102,6 @@ require'nvim-tree'.setup {
 These additional options must be set **BEFORE** calling `require'nvim-tree'` or calling setup.
 They are being migrated to the setup function bit by bit, check [this issue](https://github.com/kyazdani42/nvim-tree.lua/issues/674) if you encounter any problems related to configs not working after update.
 ```vim
-let g:nvim_tree_gitignore = 1 "0 by default
 let g:nvim_tree_quit_on_open = 1 "0 by default, closes the tree when you open a file
 let g:nvim_tree_indent_markers = 1 "0 by default, this option shows indent markers when folders are open
 let g:nvim_tree_git_hl = 1 "0 by default, will enable file highlight for git attributes (can be used without the icons).
@@ -184,6 +196,7 @@ highlight NvimTreeFolderIcon guibg=blue
 - type `gy` will copy absolute path to system clipboard
 - type `p` to paste from clipboard. Cut clipboard has precedence over copy (will prompt for confirmation)
 - type `d` to delete a file (will prompt for confirmation)
+- type `D` to trash a file (configured in setup())
 - type `]c` to go to next git item
 - type `[c` to go to prev git item
 - type `-` to navigate up to the parent directory of the current file/directory
@@ -235,6 +248,7 @@ local list = {
   { key = "R",                            cb = tree_cb("refresh") },
   { key = "a",                            cb = tree_cb("create") },
   { key = "d",                            cb = tree_cb("remove") },
+  { key = "D",                            cb = tree_cb("trash") },
   { key = "r",                            cb = tree_cb("rename") },
   { key = "<C-r>",                        cb = tree_cb("full_rename") },
   { key = "x",                            cb = tree_cb("cut") },

@@ -89,6 +89,24 @@ if you want to disable the module for some languages you can pass a list to the 
   EOF
 <
 
+For more fine-grained control, `disable` can also take a function and
+whenever it returns `true`, the module is disabled for that buffer.
+The function is called once when a module starts in a buffer and receives the
+language and buffer number as arguments:
+
+>
+  lua <<EOF
+  require'nvim-treesitter.configs'.setup {
+    highlight = {
+      enable = true,
+      disable = function(lang, bufnr) -- Disable in large C++ buffers
+        return lang == "cpp" and api.nvim_buf_line_count(bufnr) > 50000
+      end,
+    },
+  }
+  EOF
+<
+
 Options that define or accept a keymap use the same format you use to define
 keymaps in Neovim, so you can write keymaps as  `gd`, `<space>a`, `<leader>a`
 `<C-a>` (control + a), `<A-n>` (alt + n), `<CR>` (enter), etc.

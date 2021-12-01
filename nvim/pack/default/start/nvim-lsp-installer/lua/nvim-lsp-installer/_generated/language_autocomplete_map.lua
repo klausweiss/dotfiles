@@ -1,7 +1,7 @@
 -- THIS FILE IS GENERATED. DO NOT EDIT MANUALLY.
 -- stylua: ignore start
 return {
-  ["c#"] = { "omnisharp" },
+  ["c#"] = { "csharp_ls", "omnisharp" },
   ["c++"] = { "clangd" },
   d = { "serve_d" },
   ["f#"] = { "fsautocomplete" },
@@ -14,6 +14,7 @@ return {
   php = { "intelephense", "phpactor" },
   python = { "jedi_language_server", "pylsp", "pyright" },
   ruby = { "solargraph", "sorbet" },
+  solidity = { "solang" },
   sphinx = { "esbonio" },
   sql = { "sqlls", "sqls" },
   terraform = { "terraformls", "tflint" },

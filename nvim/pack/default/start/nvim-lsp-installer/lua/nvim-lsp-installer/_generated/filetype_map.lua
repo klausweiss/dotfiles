@@ -11,7 +11,7 @@ return {
   clojure = { "clojure_lsp" },
   cmake = { "cmake" },
   cpp = { "clangd" },
-  cs = { "omnisharp" },
+  cs = { "csharp_ls", "omnisharp" },
   css = { "cssls", "emmet_ls", "stylelint_lsp", "tailwindcss" },
   d = { "serve_d" },
   dart = { "dartls" },
@@ -106,6 +106,7 @@ return {
   xsd = { "lemminx" },
   yaml = { "ansiblels", "yamlls" },
   ["yaml.ansible"] = { "ansiblels" },
+  ["yaml.docker-compose"] = { "yamlls" },
   zig = { "zls" },
   zir = { "zls" }
 }

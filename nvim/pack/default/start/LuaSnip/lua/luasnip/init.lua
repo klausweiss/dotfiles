@@ -210,7 +210,8 @@ local function change_choice(val)
 	local new_active = no_region_check_wrap(
 		session.active_choice_node.change_choice,
 		session.active_choice_node,
-		val
+		val,
+		session.current_nodes[vim.api.nvim_get_current_buf()]
 	)
 	session.current_nodes[vim.api.nvim_get_current_buf()] = new_active
 end
@@ -438,6 +439,7 @@ ls = {
 	i = require("luasnip.nodes.insertNode").I,
 	c = require("luasnip.nodes.choiceNode").C,
 	d = require("luasnip.nodes.dynamicNode").D,
+	r = require("luasnip.nodes.restoreNode").R,
 	snippet = snip_mod.S,
 	snippet_node = snip_mod.SN,
 	parent_indexer = snip_mod.P,
@@ -447,6 +449,7 @@ ls = {
 	insert_node = require("luasnip.nodes.insertNode").I,
 	choice_node = require("luasnip.nodes.choiceNode").C,
 	dynamic_node = require("luasnip.nodes.dynamicNode").D,
+	restore_node = require("luasnip.nodes.restoreNode").R,
 	parser = require("luasnip.util.parser"),
 	config = require("luasnip.config"),
 	snippets = { all = {} },

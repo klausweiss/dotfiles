@@ -2,50 +2,31 @@ local cmp = require('cmp')
 
 local definitions = {
   {
-    ctype = 'customlist',
+    ctype = 'cmdline',
     regex = [=[[^[:blank:]]*$]=],
     kind = cmp.lsp.CompletionItemKind.Variable,
-    fallback = true,
-    isIncomplete = false,
-    exec = function(arglead, cmdline, curpos)
-      local name = cmdline:match([=[^[ <'>]*(%a*)]=])
-      if not name then
-        return {}
-      end
-      for name_, option in pairs(vim.api.nvim_get_commands({ builtin = false })) do
-        if name_ == name then
-          if vim.tbl_contains({ 'customlist', 'custom' }, option.complete) then
-            local ok, items = pcall(function()
-              local func = string.gsub(option.complete_arg, 's:', ('<SNR>%d_'):format(option.script_id))
-              return vim.fn.eval(('%s("%s", "%s", "%s")'):format(
-                func,
-                vim.fn.escape(arglead, '"'),
-                vim.fn.escape(cmdline, '"'),
-                vim.fn.escape(curpos, '"')
-              ))
-            end)
-            if not ok then
-              return {}
-            end
-            if type(items) == 'string' then
-              return vim.split(items, '\n')
-            elseif type(items) == 'table' then
-              return items
-            end
-            return {}
-          end
-        end
-      end
-      return {}
-    end
-  },
-  {
-    ctype = 'cmdline',
-    regex = [=[^[^!].*]=],
-    kind = cmp.lsp.CompletionItemKind.Variable,
     isIncomplete = true,
-    exec = function(_, cmdline, _)
-      return vim.fn.getcompletion(cmdline, 'cmdline')
+    exec = function(arglead, cmdline, _)
+      local s = vim.regex([[\k*$]]):match_str(arglead)
+      local input = string.sub(arglead, 1, s or #arglead)
+
+      local items = vim.fn.getcompletion(cmdline, 'cmdline')
+      items = vim.tbl_map(function(item)
+        return type(item) == 'string' and { word = item } or item
+      end, items)
+
+      local filtered = vim.tbl_filter(function(item)
+        return string.find(item.word, input, 1, true) == 1
+      end, items)
+
+      if #filtered == 0 then
+        filtered = vim.tbl_map(function(item)
+          item.word = input .. item.word
+          return item
+        end, items)
+      end
+
+      return filtered
     end
   },
 }
@@ -62,7 +43,7 @@ source.new = function()
 end
 
 source.get_keyword_pattern = function()
-  return [=[\k*]=]
+  return [=[[^[:blank:]]*]=]
 end
 
 source.get_trigger_characters = function()

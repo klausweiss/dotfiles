@@ -159,10 +159,10 @@ function Picker:new(opts)
   return obj
 end
 
---- Take a row and get an index.
+--- Take an index and get a row.
 ---@note: Rows are 0-indexed, and `index` is 1 indexed (table index)
----@param index number: The row being displayed
----@return number The row for the picker to display in
+---@param index number: The index in line_manager
+---@return number: The row for the picker to display in
 function Picker:get_row(index)
   if self.sorting_strategy == "ascending" then
     return index - 1
@@ -174,7 +174,7 @@ end
 --- Take a row and get an index
 ---@note: Rows are 0-indexed, and `index` is 1 indexed (table index)
 ---@param row number: The row being displayed
----@return number The index in line_manager
+---@return number: The index in line_manager
 function Picker:get_index(row)
   if self.sorting_strategy == "ascending" then
     return row + 1
@@ -291,6 +291,9 @@ function Picker:_create_window(bufnr, popup_opts, nowrap)
     a.nvim_win_set_option(win, "wrap", false)
   end
   local border_win = opts and opts.border and opts.border.win_id
+  if border_win then
+    a.nvim_win_set_option(border_win, "winblend", self.window.winblend)
+  end
   return win, opts, border_win
 end
 
@@ -317,11 +320,11 @@ function Picker:find()
 
   -- `popup.nvim` massaging so people don't have to remember minheight shenanigans
   popup_opts.results.minheight = popup_opts.results.height
-  popup_opts.results.highlight = "TelescopeNormal"
+  popup_opts.results.highlight = "TelescopeResultsNormal"
   popup_opts.results.borderhighlight = "TelescopeResultsBorder"
   popup_opts.results.titlehighlight = "TelescopeResultsTitle"
   popup_opts.prompt.minheight = popup_opts.prompt.height
-  popup_opts.prompt.highlight = "TelescopeNormal"
+  popup_opts.prompt.highlight = "TelescopePromptNormal"
   popup_opts.prompt.borderhighlight = "TelescopePromptBorder"
   popup_opts.prompt.titlehighlight = "TelescopePromptTitle"
   if popup_opts.preview then
@@ -554,6 +557,9 @@ function Picker:recalculate_layout()
       self.preview_win = preview_win
       self.preview_border_win = preview_border_win
       self.preview_border = preview_opts and preview_opts.border
+      if self.previewer and self.previewer.state and self.previewer.state.winid then
+        self.previewer.state.winid = preview_win
+      end
 
       -- Move prompt and results after preview created
       vim.defer_fn(function()

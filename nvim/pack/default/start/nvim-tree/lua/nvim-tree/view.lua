@@ -61,6 +61,7 @@ M.View = {
     { key = "R",                            cb = M.nvim_tree_callback("refresh") },
     { key = "a",                            cb = M.nvim_tree_callback("create") },
     { key = "d",                            cb = M.nvim_tree_callback("remove") },
+    { key = "D",                            cb = M.nvim_tree_callback("trash") },
     { key = "r",                            cb = M.nvim_tree_callback("rename") },
     { key = "<C-r>",                        cb = M.nvim_tree_callback("full_rename") },
     { key = "x",                            cb = M.nvim_tree_callback("cut") },
@@ -114,7 +115,9 @@ local DEFAULT_CONFIG = {
   mappings = {
     custom_only = false,
     list = {}
-  }
+  },
+  number = false,
+  relativenumber = false
 }
 
 local function merge_mappings(user_mappings)
@@ -147,6 +150,8 @@ function M.setup(opts)
   M.View.height = options.height
   M.View.hide_root_folder = options.hide_root_folder
   M.View.auto_resize = opts.auto_resize
+  M.View.winopts.number = options.number
+  M.View.winopts.relativenumber = options.relativenumber
   if options.mappings.custom_only then
     M.View.mappings = options.mappings.list
   else
@@ -304,7 +309,9 @@ local function is_buf_valid(bufnr)
 end
 
 function M.open(options)
+  local should_redraw = false
   if not is_buf_valid(M.View.bufnr) then
+    should_redraw = true
     create_buffer()
   end
 
@@ -322,6 +329,7 @@ function M.open(options)
 	if not opts.focus_tree then
 		vim.cmd("wincmd p")
 	end
+  return should_redraw
 end
 
 local function get_existing_buffers()

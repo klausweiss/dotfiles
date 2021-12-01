@@ -236,9 +236,9 @@ function M.server_per_root_dir_manager(_make_config)
   local single_file_clients = {}
   local manager = {}
 
-  function manager.add(root_dir, single_file_mode)
+  function manager.add(root_dir, single_file_support)
     local client_id
-    if single_file_mode then
+    if single_file_support then
       client_id = single_file_clients[root_dir]
     else
       if not root_dir then
@@ -260,9 +260,10 @@ function M.server_per_root_dir_manager(_make_config)
       if not new_config.cmd then
         vim.notify(
           string.format(
-            'Error: cmd not defined for %q. Manually set cmd in the setup {} call according to server_configurations.md, see :help lspconfig-index.',
+            '[lspconfig] cmd not defined for %q. Manually set cmd in the setup {} call according to server_configurations.md, see :help lspconfig-index.',
             new_config.name
-          )
+          ),
+          vim.log.levels.ERROR
         )
         return
       end
@@ -271,13 +272,16 @@ function M.server_per_root_dir_manager(_make_config)
         single_file_clients[root_dir] = nil
       end)
 
-      -- Launch the server in the root directory used internally by lspconfig, if applicable
-      new_config.cwd = root_dir
+      -- Launch the server in the root directory used internally by lspconfig, if otherwise unset
+      -- also check that the path exist
+      if not new_config.cmd_cwd and uv.fs_realpath(root_dir) then
+        new_config.cmd_cwd = root_dir
+      end
 
       -- Sending rootDirectory and workspaceFolders as null is not explicitly
       -- codified in the spec. Certain servers crash if initialized with a NULL
       -- root directory.
-      if single_file_mode then
+      if single_file_support then
         new_config.root_dir = nil
         new_config.workspace_folders = nil
       end
@@ -288,7 +292,7 @@ function M.server_per_root_dir_manager(_make_config)
         return
       end
 
-      if single_file_mode then
+      if single_file_support then
         single_file_clients[root_dir] = client_id
       else
         clients[root_dir] = client_id
@@ -383,7 +387,7 @@ function M.get_active_clients_list_by_ft(filetype)
 end
 
 function M.get_other_matching_providers(filetype)
-  local configs = require 'lspconfig/configs'
+  local configs = require 'lspconfig.configs'
   local active_clients_list = M.get_active_clients_list_by_ft(filetype)
   local other_matching_configs = {}
   for _, config in pairs(configs) do
@@ -408,6 +412,14 @@ function M.get_clients_from_cmd_args(arg)
     return vim.lsp.get_active_clients()
   end
   return vim.tbl_values(result)
+end
+
+function M.get_active_client_by_name(bufnr, servername)
+  for _, client in pairs(vim.lsp.buf_get_clients(bufnr)) do
+    if client.name == servername then
+      return client
+    end
+  end
 end
 
 return M

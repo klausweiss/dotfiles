@@ -1,7 +1,7 @@
 local cmp = require'cmp'
 
 local NAME_REGEX = '\\%([^/\\\\:\\*?<>\'"`\\|]\\)'
-local PATH_REGEX = vim.regex(([[\%(/PAT\+\)*/\zePAT*$]]):gsub('PAT', NAME_REGEX))
+local PATH_REGEX = vim.regex(([[\%([/"\']PAT\+\)*[/"\']\zePAT*$]]):gsub('PAT', NAME_REGEX))
 
 local source = {}
 
@@ -14,7 +14,7 @@ source.new = function()
 end
 
 source.get_trigger_characters = function()
-  return { '/', '.' }
+  return { '/', '.', '"', '\'' }
 end
 
 source.get_keyword_pattern = function()
@@ -56,7 +56,7 @@ source._dirname = function(self, params)
   if prefix:match('%.%./$') then
     return vim.fn.resolve(buf_dirname .. '/../' .. dirname)
   end
-  if prefix:match('%./$') then
+  if (prefix:match('%./$') or prefix:match('"$') or prefix:match('\'$')) then
     return vim.fn.resolve(buf_dirname .. '/' .. dirname)
   end
   if prefix:match('~/$') then
@@ -100,7 +100,7 @@ local function lines_from(file, count)
   local bfile = assert(io.open(file, 'rb'))
   local first_k = bfile:read(1024)
   if first_k:find('\0') then
-	  return {'binary file'}
+    return {'binary file'}
   end
   local lines = {'```'}
   for line in first_k:gmatch("[^\r\n]+") do
@@ -111,15 +111,6 @@ local function lines_from(file, count)
   end
   lines[#lines + 1] = '```'
   return lines
-end
-
-local function try_get_lines(file, count)
-  status, ret = pcall(lines_from, file, count)
-  if status then
-    return ret
-  else
-    return nil
-  end
 end
 
 source._candidates = function(_, params, dirname, offset, callback)
@@ -211,7 +202,13 @@ end
 
 function source:resolve(completion_item, callback)
   if completion_item.kind == cmp.lsp.CompletionItemKind.File then
-    completion_item.documentation = try_get_lines(completion_item.data.path, defaults.max_lines)
+    local path = completion_item.data.path
+    if not vim.startswith(path, '/dev') then
+      local ok, preview_lines = pcall(lines_from, path, defaults.max_lines)
+      if ok then
+        completion_item.documentation = preview_lines
+      end
+    end
   end
   callback(completion_item)
 end

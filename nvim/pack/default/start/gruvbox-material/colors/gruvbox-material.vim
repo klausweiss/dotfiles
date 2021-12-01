@@ -10,7 +10,7 @@
 let s:configuration = gruvbox_material#get_configuration()
 let s:palette = gruvbox_material#get_palette(s:configuration.background, s:configuration.palette)
 let s:path = expand('<sfile>:p') " the path of this script
-let s:last_modified = 'Thu Nov 11 07:37:02 AM UTC 2021'
+let s:last_modified = 'Tue Nov 30 08:08:00 UTC 2021'
 let g:gruvbox_material_loaded_file_types = []
 
 if !(exists('g:colors_name') && g:colors_name ==# 'gruvbox-material' && s:configuration.better_performance)
@@ -489,7 +489,7 @@ highlight! link TSNumber Purple
 highlight! link TSOperator Orange
 highlight! link TSParameter Fg
 highlight! link TSParameterReference Fg
-highlight! link TSProperty Green
+highlight! link TSProperty Fg
 highlight! link TSPunctBracket Fg
 highlight! link TSPunctDelimiter Grey
 highlight! link TSPunctSpecial Blue
@@ -548,7 +548,7 @@ highlight! link CocSem_number TSNumber
 highlight! link CocSem_operator TSOperator
 highlight! link CocSem_parameter TSParameter
 highlight! link CocSem_parenthesis TSPunctBracket
-highlight! link CocSem_property TSVariable
+highlight! link CocSem_property TSProperty
 highlight! link CocSem_punctuation TSOperator
 highlight! link CocSem_regexp TSStringRegex
 highlight! link CocSem_selfKeyword TSConstBuiltin
@@ -609,7 +609,7 @@ highlight! link CocSymbolArray TSVariable
 highlight! link CocSymbolObject TSVariable
 highlight! link CocSymbolKey TSKeyword
 highlight! link CocSymbolNull TSVariableBuiltin
-highlight! link CocSymbolEnumMember TSProperty
+highlight! link CocSymbolEnumMember TSNumber
 highlight! link CocSymbolStruct TSStructure
 highlight! link CocSymbolEvent TSLabel
 highlight! link CocSymbolOperator TSOperator
@@ -957,6 +957,31 @@ highlight! link CmpItemAbbr Fg
 highlight! link CmpItemAbbrDeprecated Fg
 highlight! link CmpItemMenu Fg
 highlight! link CmpItemKind Yellow
+highlight! link CmpItemKindText Fg
+highlight! link CmpItemKindMethod Green
+highlight! link CmpItemKindFunction Green
+highlight! link CmpItemKindConstructor Green
+highlight! link CmpItemKindField Green
+highlight! link CmpItemKindVariable Blue
+highlight! link CmpItemKindClass Yellow
+highlight! link CmpItemKindInterface Yellow
+highlight! link CmpItemKindModule Yellow
+highlight! link CmpItemKindProperty Blue
+highlight! link CmpItemKindUnit Purple
+highlight! link CmpItemKindValue Purple
+highlight! link CmpItemKindEnum Yellow
+highlight! link CmpItemKindKeyword Red
+highlight! link CmpItemKindSnippet Aqua
+highlight! link CmpItemKindColor Aqua
+highlight! link CmpItemKindFile Aqua
+highlight! link CmpItemKindReference Aqua
+highlight! link CmpItemKindFolder Aqua
+highlight! link CmpItemKindEnumMember Purple
+highlight! link CmpItemKindConstant Blue
+highlight! link CmpItemKindStruct Yellow
+highlight! link CmpItemKindEvent Orange
+highlight! link CmpItemKindOperator Orange
+highlight! link CmpItemKindTypeParameter Yellow
 " }}}
 " folke/trouble.nvim {{{
 highlight! link TroubleText Fg
@@ -1846,7 +1871,7 @@ highlight! link cppSTLVariable Aqua
 highlight! link Member TSVariable
 highlight! link Variable TSVariable
 highlight! link Namespace TSNamespace
-highlight! link EnumConstant TSStructure
+highlight! link EnumConstant TSNumber
 highlight! link chromaticaException TSException
 highlight! link chromaticaCast TSLabel
 highlight! link OperatorOverload TSOperator

@@ -131,6 +131,16 @@ list.rust = {
   maintainers = { "@vigoux" },
 }
 
+list.fusion = {
+  install_info = {
+    url = "https://gitlab.com/jirgn/tree-sitter-fusion.git",
+    files = { "src/parser.c" },
+    branch = "main",
+  },
+  maintainers = { "@jirgn" },
+  experimental = true,
+}
+
 list.ledger = {
   install_info = {
     url = "https://github.com/cbarrete/tree-sitter-ledger",
@@ -460,6 +470,15 @@ list.glimmer = {
   used_by = { "html.handlebars" },
 }
 
+list.pug = {
+  install_info = {
+    url = "https://github.com/zealot128/tree-sitter-pug",
+    files = { "src/parser.c", "src/scanner.cc" },
+  },
+  maintainers = { "@zealot128" },
+  filetype = "pug",
+}
+
 list.vue = {
   install_info = {
     url = "https://github.com/ikatyang/tree-sitter-vue",
@@ -616,7 +635,7 @@ list.gdscript = {
   maintainers = { "@Shatur95" },
 }
 
-list.godotResource = {
+list.godot_resource = {
   install_info = {
     url = "https://github.com/PrestonKnopp/tree-sitter-godot-resource",
     files = { "src/parser.c", "src/scanner.c" },
@@ -770,6 +789,14 @@ list.http = {
     generate_requires_npm = true,
   },
   maintainers = { "@NTBBloodbath" },
+}
+list.prisma = {
+  install_info = {
+    url = "https://github.com/victorhqc/tree-sitter-prisma",
+    branch = "master",
+    files = { "src/parser.c" },
+  },
+  maintainers = { "@elianiva" },
 }
 
 local M = {

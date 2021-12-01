@@ -6,6 +6,7 @@ local types = require("luasnip.util.types")
 local events = require("luasnip.util.events")
 local mark = require("luasnip.util.mark").mark
 local session = require("luasnip.session")
+local sNode = require("luasnip.nodes.snippet").SN
 
 function ChoiceNode:init_nodes()
 	for i, node in ipairs(self.choices) do
@@ -39,7 +40,22 @@ function ChoiceNode:init_nodes()
 	self.active_choice = self.choices[1]
 end
 
-local function C(pos, choices)
+local function C(pos, choices, opts)
+	opts = opts or {}
+	if opts.restore_cursor == nil then
+		-- disable by default, can affect performance.
+		opts.restore_cursor = false
+	end
+
+	-- allow passing table of nodes in choices, will be turned into a
+	-- snippetNode.
+	for indx, choice in ipairs(choices) do
+		if not getmetatable(choice) then
+			-- is a normal table, not a node.
+			choices[indx] = sNode(nil, choice)
+		end
+	end
+
 	local c = ChoiceNode:new({
 		active = false,
 		pos = pos,
@@ -47,6 +63,8 @@ local function C(pos, choices)
 		type = types.choiceNode,
 		mark = nil,
 		dependents = {},
+		-- default to true.
+		restore_cursor = opts.restore_cursor,
 	})
 	c:init_nodes()
 	return c
@@ -165,18 +183,50 @@ end
 
 function ChoiceNode:setup_choice_jumps() end
 
-function ChoiceNode:change_choice(dir)
+function ChoiceNode:find_node(predicate)
+	if self.active_choice then
+		if predicate(self.active_choice) then
+			return self.active_choice
+		else
+			return self.active_choice:find_node(predicate)
+		end
+	end
+	return nil
+end
+
+-- used to uniquely identify this change-choice-action.
+local change_choice_id = 0
+
+function ChoiceNode:change_choice(dir, current_node)
+	change_choice_id = change_choice_id + 1
+	-- to uniquely identify this node later (storing the pointer isn't enough
+	-- because this is supposed to work with restoreNodes, which are copied).
+	current_node.change_choice_id = change_choice_id
+
+	local insert_pre_cc = vim.fn.mode() == "i"
+	-- is byte-indexed! Doesn't matter here, but important to be aware of.
+	local cursor_pos_pre_relative = util.pos_sub(
+		util.get_cursor_0ind(),
+		current_node.mark:pos_begin_raw()
+	)
+
 	self.active_choice:store()
 	-- tear down current choice.
 	self.active_choice:input_leave()
+	self.active_choice:exit()
+
+	-- store in old_choice, active_choice has to be disabled to prevent reading
+	-- from cleared mark in set_mark_rgrav (which will be called in
+	-- parent:set_text(self,...) a few lines below).
+	local old_choice = self.active_choice
+	self.active_choice = nil
+
 	-- clear text.
 	self.parent:set_text(self, { "" })
 
-	self.active_choice:exit()
-
 	-- stylua: ignore
-	self.active_choice = dir == 1 and self.active_choice.next_choice
-	                               or self.active_choice.prev_choice
+	self.active_choice = dir == 1 and old_choice.next_choice
+	                               or old_choice.prev_choice
 
 	self.active_choice.mark = self.mark:copy_pos_gravs(
 		vim.deepcopy(self.parent.ext_opts[self.active_choice.type].passive)
@@ -190,6 +240,43 @@ function ChoiceNode:change_choice(dir)
 	-- Another node may have been entered in update_dependents.
 	self.parent:enter_node(self.indx)
 	self:event(events.change_choice)
+
+	if self.restore_cursor then
+		local target_node = self:find_node(function(test_node)
+			return test_node.change_choice_id == change_choice_id
+		end)
+
+		if target_node then
+			-- the node that the cursor was in when changeChoice was called exists
+			-- in the active choice! jump_into it!
+			--
+			-- if in INSERT before change_choice, don't actually move into the node.
+			-- The new cursor will be set to the actual edit-position later.
+			local jump_node = self.active_choice:jump_into(1, insert_pre_cc)
+
+			local jumps = 1
+			while jump_node ~= target_node do
+				jump_node = jump_node:jump_from(1, insert_pre_cc)
+
+				-- just for testing...
+				if jumps > 1000 then
+					print("FAIL! Too many jumps!!")
+					return self.active_choice:jump_into(1, insert_pre_cc)
+				end
+				jumps = jumps + 1
+			end
+			if insert_pre_cc then
+				util.set_cursor_0ind(
+					util.pos_add(
+						target_node.mark:pos_begin_raw(),
+						cursor_pos_pre_relative
+					)
+				)
+			end
+			return jump_node
+		end
+	end
+
 	return self.active_choice:jump_into(1)
 end
 
@@ -218,7 +305,10 @@ end
 -- val_begin/end may be nil, in this case that gravity won't be changed.
 function ChoiceNode:set_mark_rgrav(rgrav_beg, rgrav_end)
 	node.set_mark_rgrav(self, rgrav_beg, rgrav_end)
-	self.active_choice:set_mark_rgrav(rgrav_beg, rgrav_end)
+	-- may be set to temporarily in change_choice.
+	if self.active_choice then
+		self.active_choice:set_mark_rgrav(rgrav_beg, rgrav_end)
+	end
 end
 
 function ChoiceNode:set_ext_opts(name)

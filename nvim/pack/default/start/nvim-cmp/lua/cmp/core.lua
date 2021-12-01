@@ -230,17 +230,17 @@ core.complete = function(self, ctx)
         if s_.incomplete and new:changed(s_.context) then
           s_:complete(new, callback)
         else
-        for _, s__ in ipairs(self:get_sources({ source.SourceStatus.FETCHING })) do
-          if s_ == s__ then
-            break
+          for _, s__ in ipairs(self:get_sources({ source.SourceStatus.FETCHING })) do
+            if s_ == s__ then
+              break
+            end
+            if not s__.incomplete and SOURCE_TIMEOUT > s__:get_fetching_time() then
+              return
+            end
           end
-          if not s__.incomplete and SOURCE_TIMEOUT > s__:get_fetching_time() then
-            return
-          end
+          self.filter.timeout = self.view:visible() and THROTTLE_TIME or 0
+          self:filter()
         end
-        self.filter.timeout = self.view:visible() and THROTTLE_TIME or 0
-        self:filter()
-      end
       end
     end)(s)
     s:complete(ctx, callback)
@@ -265,6 +265,9 @@ core.filter = async.throttle(
     local sources = {}
     for _, s in ipairs(self:get_sources({ source.SourceStatus.FETCHING, source.SourceStatus.COMPLETED })) do
       if not s.incomplete and SOURCE_TIMEOUT > s:get_fetching_time() then
+        -- Reserve filter call for timeout.
+        self.filter.timeout = SOURCE_TIMEOUT - s:get_fetching_time()
+        self:filter()
         break
       end
       table.insert(sources, s)
@@ -314,8 +317,8 @@ core.confirm = function(self, e, option, callback)
     end
   end)
   feedkeys.call('', 'n', function()
+    local ctx = context.new()
     if #(misc.safe(e:get_completion_item().additionalTextEdits) or {}) == 0 then
-      local pre = context.new()
       e:resolve(function()
         local new = context.new()
         local text_edits = misc.safe(e:get_completion_item().additionalTextEdits) or {}
@@ -324,8 +327,8 @@ core.confirm = function(self, e, option, callback)
         end
 
         local has_cursor_line_text_edit = (function()
-          local minrow = math.min(pre.cursor.row, new.cursor.row)
-          local maxrow = math.max(pre.cursor.row, new.cursor.row)
+          local minrow = math.min(ctx.cursor.row, new.cursor.row)
+          local maxrow = math.max(ctx.cursor.row, new.cursor.row)
           for _, te in ipairs(text_edits) do
             local srow = te.range.start.line + 1
             local erow = te.range['end'].line + 1
@@ -338,10 +341,10 @@ core.confirm = function(self, e, option, callback)
         if has_cursor_line_text_edit then
           return
         end
-        vim.fn['cmp#apply_text_edits'](new.bufnr, text_edits)
+        vim.lsp.util.apply_text_edits(text_edits, ctx.bufnr)
       end)
     else
-      vim.fn['cmp#apply_text_edits'](vim.api.nvim_get_current_buf(), e:get_completion_item().additionalTextEdits)
+      vim.lsp.util.apply_text_edits(e:get_completion_item().additionalTextEdits, ctx.bufnr)
     end
   end)
   feedkeys.call('', 'n', function()
@@ -371,7 +374,7 @@ core.confirm = function(self, e, option, callback)
       if is_snippet then
         completion_item.textEdit.newText = ''
       end
-      vim.fn['cmp#apply_text_edits'](ctx.bufnr, { completion_item.textEdit })
+      vim.lsp.util.apply_text_edits({ completion_item.textEdit }, ctx.bufnr)
       local texts = vim.split(completion_item.textEdit.newText, '\n')
       local position = completion_item.textEdit.range.start
       position.line = position.line + (#texts - 1)
