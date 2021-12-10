@@ -15,7 +15,7 @@ local A = vim.api
 ---Whether to create basic (operator-pending) and extended mappings
 ---@class Mappings
 ---Enable operator-pending mapping
----Includes `gcc`, `gcb`, `gc[count]{motion}` and `gb[count]{motion}`
+---Includes `gcc`, `gbc`, `gc[count]{motion}` and `gb[count]{motion}`
 ---NOTE: These mappings can be changed individually by `opleader` and `toggler` config
 ---@field basic boolean
 ---Enable extra mapping
@@ -245,23 +245,23 @@ function C.setup(opts)
         -- Extended Mappings
         if cfg.mappings.extended then
             function C.ggt(vmode)
-                Op.opfunc(cfg, vmode, U.cmode.comment, U.ctype.line, U.cmotion._)
+                Op.opfunc(vmode, cfg, U.cmode.comment, U.ctype.line, U.cmotion._)
             end
             function C.ggtc(vmode)
-                Op.opfunc(cfg, vmode, U.cmode.comment, U.ctype.line, U.cmotion.line)
+                Op.opfunc(vmode, cfg, U.cmode.comment, U.ctype.line, U.cmotion.line)
             end
             function C.ggtb(vmode)
-                Op.opfunc(cfg, vmode, U.cmode.comment, U.ctype.block, U.cmotion.line)
+                Op.opfunc(vmode, cfg, U.cmode.comment, U.ctype.block, U.cmotion.line)
             end
 
             function C.glt(vmode)
-                Op.opfunc(cfg, vmode, U.cmode.uncomment, U.ctype.line, U.cmotion._)
+                Op.opfunc(vmode, cfg, U.cmode.uncomment, U.ctype.line, U.cmotion._)
             end
             function C.gltc(vmode)
-                Op.opfunc(cfg, vmode, U.cmode.uncomment, U.ctype.line, U.cmotion.line)
+                Op.opfunc(vmode, cfg, U.cmode.uncomment, U.ctype.line, U.cmotion.line)
             end
             function C.gltb(vmode)
-                Op.opfunc(cfg, vmode, U.cmode.uncomment, U.ctype.block, U.cmotion.line)
+                Op.opfunc(vmode, cfg, U.cmode.uncomment, U.ctype.block, U.cmotion.line)
             end
 
             -- NORMAL mode extended

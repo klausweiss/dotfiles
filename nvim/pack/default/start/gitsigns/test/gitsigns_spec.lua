@@ -74,7 +74,7 @@ describe('gitsigns', function()
 
   it('gitdir watcher works on a fresh repo', function()
     screen:try_resize(20,6)
-    setup_test_repo(true)
+    setup_test_repo{no_add=true}
     config.watch_gitdir = {interval = 5}
     setup_gitsigns(config)
     edit(test_file)
@@ -85,7 +85,7 @@ describe('gitsigns', function()
         'attach(1): Attaching (trigger=BufRead)',
         p'run_job: git .* config user.name',
         'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
-        p('run_job: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard '..test_file),
+        p('run_job: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard %-%-eol '..test_file),
         'watch_gitdir(1): Watching git dir',
         p'run_job: git .* show :0:dummy.txt',
         'update(1): updates: 1, jobs: 7'
@@ -196,7 +196,7 @@ describe('gitsigns', function()
         'attach(1): Attaching (trigger=BufNewFile)',
         p'run_job: git .* config user.name',
         'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
-        p('run_job: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard '..newfile),
+        p('run_job: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard %-%-eol '..newfile),
         'attach(1): Not a file',
       }
 
@@ -248,7 +248,7 @@ describe('gitsigns', function()
 
   describe('current line blame', function()
     it('doesn\'t error on untracked files', function()
-      setup_test_repo(true)
+      setup_test_repo{no_add=true}
       config.current_line_blame = true
       setup_gitsigns(config)
       edit(newfile)
@@ -268,7 +268,7 @@ describe('gitsigns', function()
 
   describe('on_attach()', function()
     it('can prevent attaching to a buffer', function()
-      setup_test_repo(true)
+      setup_test_repo{no_add=true}
 
       -- Functions can't be serialized over rpc so need to setup config
       -- remotely
@@ -286,7 +286,7 @@ describe('gitsigns', function()
         p'run_job: git .* config user.name',
         'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
         'run_job: git --no-pager rev-parse --short HEAD',
-        p'run_job: git %-%-no%-pager %-%-git%-dir=.* %-%-stage %-%-others %-%-exclude%-standard .*',
+        p'run_job: git %-%-no%-pager %-%-git%-dir=.* %-%-stage %-%-others %-%-exclude%-standard %-%-eol.*',
         'attach(1): User on_attach() returned false',
       }
     end)
@@ -349,71 +349,6 @@ describe('gitsigns', function()
           signs  = {topdelete=1, changedelete=1, added=1, delete=1, changed=1}
         }
 
-      end)
-
-      it('perform actions', function()
-        setup_gitsigns(config)
-        edit(test_file)
-        command("set signcolumn=yes")
-
-        feed("jjj")
-        feed("cc")
-        feed("EDIT<esc>")
-
-        check {
-          status = {head='master', added=0, changed=1, removed=0},
-          signs  = {changed=1}
-        }
-
-        -- Stage
-        feed("mhs")
-
-        check {
-          status = {head='master', added=0, changed=0, removed=0},
-          signs  = {}
-        }
-
-        -- Undo stage
-        feed("mhu")
-
-        check {
-          status = {head='master', added=0, changed=1, removed=0},
-          signs  = {changed=1}
-        }
-
-        -- Add multiple edits
-        feed('gg')
-        feed('cc')
-        feed('That<esc>')
-
-        check {
-          status = {head='master', added=0, changed=2, removed=0},
-          signs  = {changed=2}
-        }
-
-        -- Stage buffer
-        feed("mhS")
-
-        check {
-          status = {head='master', added=0, changed=0, removed=0},
-          signs  = {}
-        }
-
-        -- Unstage buffer
-        feed("mhU")
-
-        check {
-          status = {head='master', added=0, changed=2, removed=0},
-          signs  = {changed=2}
-        }
-
-        -- Reset
-        feed("mhr")
-
-        check {
-          status = {head='master', added=0, changed=1, removed=0},
-          signs  = {changed=1}
-        }
       end)
 
       it('can enable numhl', function()

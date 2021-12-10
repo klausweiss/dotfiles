@@ -54,7 +54,7 @@ local handle_moved = function(bufnr, bcache, old_relpath)
       do_update = true
    elseif git_obj.orig_relpath then
       local orig_file = git_obj.repo.toplevel .. util.path_sep .. git_obj.orig_relpath
-      if git_obj:file_info(orig_file) then
+      if git_obj:file_info(orig_file).relpath then
          dprintf('Moved file reset')
          git_obj.relpath = git_obj.orig_relpath
          git_obj.orig_relpath = nil
@@ -67,7 +67,7 @@ local handle_moved = function(bufnr, bcache, old_relpath)
    if do_update then
       git_obj.file = git_obj.repo.toplevel .. util.path_sep .. git_obj.relpath
       bcache.file = git_obj.file
-      bcache.git_obj:update_file_info()
+      git_obj:update_file_info()
       scheduler()
       api.nvim_buf_set_name(bufnr, bcache.file)
    end
@@ -123,12 +123,24 @@ local watch_gitdir = function(bufnr, gitdir)
 end
 
 
+M.detach_all = function()
+   for k, _ in pairs(cache) do
+      M.detach(k)
+   end
+end
 
 
 
 
 
-M.detach = function(bufnr, keep_signs)
+
+M.detach = function(bufnr, _keep_signs)
+
+
+
+
+
+
    bufnr = bufnr or current_buf()
    dprint('Detached')
    local bcache = cache[bufnr]
@@ -137,7 +149,7 @@ M.detach = function(bufnr, keep_signs)
       return
    end
 
-   if not keep_signs then
+   if not _keep_signs then
       signs.remove(bufnr)
    end
 
@@ -145,12 +157,6 @@ M.detach = function(bufnr, keep_signs)
    Status:clear(bufnr)
 
    cache:destroy(bufnr)
-end
-
-M.detach_all = function()
-   for k, _ in pairs(cache) do
-      M.detach(k)
-   end
 end
 
 local function get_buf_path(bufnr)
@@ -343,6 +349,15 @@ local attach = function(cbuf, trigger)
    attach_running[cbuf] = nil
 end
 
+
+
+
+
+
+
+
+M.attach = void(attach)
+
 local M0 = M
 
 M._complete = function(arglead, line)
@@ -394,8 +409,8 @@ M._run_func = function(range, func, ...)
    local args = parse_args_to_lua(...)
 
    if type(actions0[func]) == 'function' then
-      if range and range[1] ~= range[2] then
-         actions.user_range = range
+      if range and range[1] > 0 then
+         actions.user_range = { range[2], range[3] }
       else
          actions.user_range = nil
       end
@@ -439,9 +454,17 @@ local function setup_command()
       '-nargs=+',
       '-complete=customlist,v:lua.package.loaded.gitsigns._complete',
       'Gitsigns',
-      'lua require("gitsigns")._run_func({<line1>, <line2>}, <f-args>)',
+      'lua require("gitsigns")._run_func({<range>, <line1>, <line2>}, <f-args>)',
    }, ' '))
 end
+
+
+
+
+
+
+
+
 
 M.setup = void(function(cfg)
    gs_config.build(cfg)
@@ -537,8 +560,6 @@ M.setup = void(function(cfg)
    M._update_cwd_head()
    vim.cmd([[autocmd gitsigns DirChanged * lua _G.package.loaded.gitsigns._update_cwd_head()]])
 end)
-
-M.attach = void(attach)
 
 
 M._update_highlights = function()

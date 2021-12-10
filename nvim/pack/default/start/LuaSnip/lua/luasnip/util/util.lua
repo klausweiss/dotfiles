@@ -477,12 +477,15 @@ local function find_outer_snippet(node)
 end
 
 -- filetype: string formatted like `'filetype'`.
-local function get_snippet_filetypes(filetype)
-	local fts = vim.split(filetype, ".", true)
+local function get_snippet_filetypes()
+	local config = require("luasnip.config").config
+	local fts = config.ft_func()
+
 	local snippet_fts = {}
 	for _, ft in ipairs(fts) do
 		vim.list_extend(snippet_fts, session.ft_redirect[ft])
 	end
+
 	-- add all last.
 	table.insert(snippet_fts, "all")
 	return snippet_fts

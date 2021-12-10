@@ -5,7 +5,9 @@ local M = {
     cxx_l = '//%s',
     cxx_b = '/*%s*/',
     hash = '#%s',
+    double_hash = '##%s',
     dash = '--%s',
+    dash_bracket = '--[[%s]]',
     haskell_b = '{-%s-}',
     fsharp_b = '(*%s*)',
     html_b = '<!--%s-->',
@@ -18,25 +20,29 @@ local L = {
     bib = { M.latex },
     c = { M.cxx_l, M.cxx_b },
     cmake = { M.hash, '#[[%s]]' },
+    conkyrc = { M.dash, M.dash_bracket },
     cpp = { M.cxx_l, M.cxx_b },
     cs = { M.cxx_l, M.cxx_b },
     css = { M.cxx_b, M.cxx_b },
     dhall = { M.dash, M.haskell_b },
     dot = { M.cxx_l, M.cxx_b },
     elm = { M.dash, M.haskell_b },
+    fish = { M.hash },
     fsharp = { M.cxx_l, M.fsharp_b },
     go = { M.cxx_l, M.cxx_b },
     graphql = { M.hash },
     groovy = { M.cxx_l, M.cxx_b },
     haskell = { M.dash, M.haskell_b },
     html = { M.html_b, M.html_b },
+    htmldjango = { M.html_b, M.html_b },
     idris = { M.dash, M.haskell_b },
     java = { M.cxx_l, M.cxx_b },
     javascript = { M.cxx_l, M.cxx_b },
     javascriptreact = { M.cxx_l, M.cxx_b },
     julia = { M.hash, '#=%s=#' },
     lidris = { M.dash, M.haskell_b },
-    lua = { M.dash, '--[[%s]]' },
+    lua = { M.dash, M.dash_bracket },
+    mbsyncrc = { M.double_hash },
     nix = { M.hash, M.cxx_b },
     ocaml = { M.fsharp_b, M.fsharp_b },
     plantuml = { "'%s", "/'%s'/" },
@@ -48,14 +54,17 @@ local L = {
     sh = { M.hash },
     sql = { M.dash, M.cxx_b },
     swift = { M.cxx_l, M.cxx_b },
+    sxhkdrc = { M.hash },
     terraform = { M.hash, M.cxx_b },
     tex = { M.latex },
+    template = { M.double_hash },
     toml = { M.hash },
     typescript = { M.cxx_l, M.cxx_b },
     typescriptreact = { M.cxx_l, M.cxx_b },
     vim = { '"%s' },
     vue = { M.html_b, M.html_b },
     xml = { M.html_b, M.html_b },
+    xdefaults = { '!%s' },
     yaml = { M.hash },
     zig = { M.cxx_l }, -- Zig doesn't have block comments. waaaattttt!
 }
@@ -87,10 +96,10 @@ end
 function ft.calculate(ctx)
     local buf = A.nvim_get_current_buf()
     local ok, langtree = pcall(vim.treesitter.get_parser, buf)
-    local filetype = A.nvim_buf_get_option(buf, 'filetype')
+    local default = ft.get(A.nvim_buf_get_option(buf, 'filetype'), ctx.ctype)
 
     if not ok then
-        return ft.get(filetype, ctx.ctype)
+        return default
     end
 
     local range = {
@@ -103,11 +112,11 @@ function ft.calculate(ctx)
     for lang, tree in pairs(langtree:children()) do
         if tree:contains(range) then
             -- If the language is in range but commentstring is not found, then fallback to filetype commentstring
-            return ft.get(lang, ctx.ctype) or ft.get(filetype, ctx.ctype)
+            return ft.get(lang, ctx.ctype) or default
         end
     end
 
-    return ft.get(filetype, ctx.ctype)
+    return default
 end
 
 return setmetatable(ft, {

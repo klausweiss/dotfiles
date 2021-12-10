@@ -69,6 +69,37 @@ local M = {QFListOpts = {}, }
 
 
 
+
+
+M.toggle_signs = function()
+   config.signcolumn = not config.signcolumn
+   M.refresh()
+end
+
+
+M.toggle_numhl = function()
+   config.numhl = not config.numhl
+   M.refresh()
+end
+
+
+M.toggle_linehl = function()
+   config.linehl = not config.linehl
+   M.refresh()
+end
+
+
+M.toggle_word_diff = function()
+   config.word_diff = not config.word_diff
+   M.refresh()
+end
+
+
+M.toggle_current_line_blame = function()
+   config.current_line_blame = not config.current_line_blame
+   M.refresh()
+end
+
 local function get_cursor_hunk(bufnr, hunks)
    bufnr = bufnr or current_buf()
    hunks = hunks or cache[bufnr].hunks
@@ -81,24 +112,16 @@ end
 
 
 
-local function get_range_hunks(hunks, range)
-   local ret = {}
-   for _, hunk in ipairs(hunks) do
-      if range[1] == 1 and hunk.start == 0 and hunk.vend == 0 then
-         return { hunk }
-      end
 
-      if (range[2] >= hunk.start and range[1] <= hunk.vend) then
-         ret[#ret + 1] = hunk
-      end
-   end
 
-   return ret
-end
+
+
+
+
+
 
 M.stage_hunk = mk_repeatable(void(function(range)
    range = range or M.user_range
-   local valid_range = false
    local bufnr = current_buf()
    local bcache = cache[bufnr]
    if not bcache then
@@ -110,29 +133,33 @@ M.stage_hunk = mk_repeatable(void(function(range)
       return
    end
 
-   local hunks = {}
+   local hunk
 
-   if range and range[1] ~= range[2] then
-      valid_range = true
+   if range then
       table.sort(range)
-      hunks = get_range_hunks(bcache.hunks, range)
+      local top, bot = range[1], range[2]
+      hunk = gs_hunks.create_partial_hunk(bcache.hunks, top, bot)
+      hunk.added.lines = api.nvim_buf_get_lines(bufnr, top - 1, bot, false)
+      hunk.removed.lines = vim.list_slice(
+      bcache.compare_text,
+      hunk.removed.start,
+      hunk.removed.start + hunk.removed.count - 1)
+
    else
-      hunks[1] = get_cursor_hunk(bufnr, bcache.hunks)
+      hunk = get_cursor_hunk(bufnr, bcache.hunks)
    end
 
-   if #hunks == 0 then
+   if not hunk then
       return
    end
 
-   bcache.git_obj:stage_hunks(hunks)
+   bcache.git_obj:stage_hunks({ hunk })
 
-   for _, hunk in ipairs(hunks) do
-      table.insert(bcache.staged_diffs, hunk)
-   end
+   table.insert(bcache.staged_diffs, hunk)
 
    bcache.compare_text = nil
 
-   local hunk_signs = gs_hunks.process_hunks(hunks)
+   local hunk_signs = gs_hunks.process_hunks({ hunk })
 
    scheduler()
 
@@ -149,38 +176,55 @@ M.stage_hunk = mk_repeatable(void(function(range)
    void(manager.update)(bufnr)
 end))
 
+
+
+
+
+
+
+
+
+
 M.reset_hunk = mk_repeatable(function(range)
    range = range or M.user_range
    local bufnr = current_buf()
-   local hunks = {}
-
-   if range and range[1] ~= range[2] then
-      table.sort(range)
-      hunks = get_range_hunks(cache[bufnr].hunks, range)
-   else
-      hunks[1] = get_cursor_hunk(bufnr)
-   end
-
-   if #hunks == 0 then
+   local bcache = cache[bufnr]
+   if not bcache then
       return
    end
 
-   local offset = 0
+   local hunk
 
-   for _, hunk in ipairs(hunks) do
-      local lstart, lend
-      if hunk.type == 'delete' then
-         lstart = hunk.start
-         lend = hunk.start
-      else
-         lstart = hunk.start - 1
-         lend = hunk.start - 1 + hunk.added.count
-      end
-      local lines = hunk.removed.lines
-      api.nvim_buf_set_lines(bufnr, lstart + offset, lend + offset, false, lines)
-      offset = offset + (#lines - (lend - lstart))
+   if range then
+      table.sort(range)
+      local top, bot = range[1], range[2]
+      hunk = gs_hunks.create_partial_hunk(bcache.hunks, top, bot)
+      hunk.added.lines = api.nvim_buf_get_lines(bufnr, top - 1, bot, false)
+      hunk.removed.lines = vim.list_slice(
+      bcache.compare_text,
+      hunk.removed.start,
+      hunk.removed.start + hunk.removed.count - 1)
+
+   else
+      hunk = get_cursor_hunk(bufnr)
    end
+
+   if not hunk then
+      return
+   end
+
+   local lstart, lend
+   if hunk.type == 'delete' then
+      lstart = hunk.start
+      lend = hunk.start
+   else
+      lstart = hunk.start - 1
+      lend = hunk.start - 1 + hunk.added.count
+   end
+   local lines = hunk.removed.lines
+   api.nvim_buf_set_lines(bufnr, lstart, lend, false, lines)
 end)
+
 
 M.reset_buffer = function()
    local bufnr = current_buf()
@@ -191,6 +235,13 @@ M.reset_buffer = function()
 
    api.nvim_buf_set_lines(bufnr, 0, -1, false, bcache:get_compare_text())
 end
+
+
+
+
+
+
+
 
 M.undo_stage_hunk = void(function()
    local bufnr = current_buf()
@@ -213,6 +264,10 @@ M.undo_stage_hunk = void(function()
    end
    manager.update(bufnr)
 end)
+
+
+
+
 
 M.stage_buffer = void(function()
    local bufnr = current_buf()
@@ -247,6 +302,12 @@ M.stage_buffer = void(function()
    end
    Status:clear_diff(bufnr)
 end)
+
+
+
+
+
+
 
 M.reset_buffer_index = void(function()
    local bufnr = current_buf()
@@ -337,11 +398,29 @@ local function nav_hunk(opts)
    end
 end
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 M.next_hunk = function(opts)
    opts = opts or {}
    opts.forwards = true
    nav_hunk(opts)
 end
+
+
+
+
 
 M.prev_hunk = function(opts)
    opts = opts or {}
@@ -392,7 +471,9 @@ local function strip_cr(xs0)
 end
 
 
+
 M.preview_hunk = noautocmd(function()
+
    local cbuf = current_buf()
    local bcache = cache[cbuf]
    local hunk, index = get_cursor_hunk(cbuf, bcache.hunks)
@@ -420,12 +501,33 @@ M.preview_hunk = noautocmd(function()
    highlight_hunk_lines(bufnr, offset, hunk)
 end)
 
+
 M.select_hunk = function()
    local hunk = get_cursor_hunk()
    if not hunk then return end
 
    vim.cmd('normal! ' .. hunk.start .. 'GV' .. hunk.vend .. 'G')
 end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 M.get_hunks = function(bufnr)
    bufnr = current_buf()
@@ -477,6 +579,19 @@ local function get_blame_hunk(repo, info)
 end
 
 local BlameOpts = {}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -591,6 +706,39 @@ local function update_buf_base(buf, bcache, base)
    manager.update(buf, bcache)
 end
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 M.change_base = void(function(base, global)
    base = calc_base(base)
 
@@ -609,9 +757,29 @@ M.change_base = void(function(base, global)
    end
 end)
 
+
+
+
+
 M.reset_base = function(global)
    M.change_base(nil, global)
 end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 M.diffthis = void(function(base)
    local bufnr = current_buf()
@@ -624,9 +792,10 @@ M.diffthis = void(function(base)
 
    local text
    local err
-   local comp_obj = bcache:get_compare_obj(calc_base(base))
+   local comp_rev = bcache:get_compare_rev(calc_base(base))
+
    if base then
-      text, err = bcache.git_obj.repo:get_show_text(comp_obj)
+      text, err = bcache.git_obj:get_show_text(comp_rev)
       if ff == 'dos' then
          text = strip_cr(text)
       end
@@ -641,7 +810,11 @@ M.diffthis = void(function(base)
 
    local ft = api.nvim_buf_get_option(bufnr, 'filetype')
 
-   local bufname = string.format('gitsigns://%s/%s', bcache.git_obj.repo.gitdir, comp_obj)
+   local bufname = string.format(
+   'gitsigns://%s/%s',
+   bcache.git_obj.repo.gitdir,
+   comp_rev .. ':' .. bcache.git_obj.relpath)
+
 
 
    vim.cmd("keepalt aboveleft vertical split " .. bufname)
@@ -716,8 +889,39 @@ local function buildqflist(target)
    return qflist
 end
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 M.setqflist = void(function(target, opts)
    opts = opts or {}
+   if opts.open == nil then
+      opts.open = true
+   end
    local qfopts = {
       items = buildqflist(target),
       title = 'Hunks',
@@ -726,20 +930,36 @@ M.setqflist = void(function(target, opts)
    if opts.use_location_list then
       local nr = opts.nr or 0
       vim.fn.setloclist(nr, {}, ' ', qfopts)
-      if config.trouble then
-         require('trouble').open("loclist")
-      else
-         vim.cmd([[lopen]])
+      if opts.open then
+         if config.trouble then
+            require('trouble').open("loclist")
+         else
+            vim.cmd([[lopen]])
+         end
       end
    else
       vim.fn.setqflist({}, ' ', qfopts)
-      if config.trouble then
-         require('trouble').open("quickfix")
-      else
-         vim.cmd([[copen]])
+      if opts.open then
+         if config.trouble then
+            require('trouble').open("quickfix")
+         else
+            vim.cmd([[copen]])
+         end
       end
    end
 end)
+
+
+
+
+
+
+
+
+
+
+
+
 
 M.setloclist = function(nr, target)
    M.setqflist(target, {
@@ -747,6 +967,12 @@ M.setloclist = function(nr, target)
       use_location_list = true,
    })
 end
+
+
+
+
+
+
 
 M.get_actions = function()
    local bufnr = current_buf()
@@ -783,6 +1009,10 @@ M.get_actions = function()
    return actions
 end
 
+
+
+
+
 M.refresh = void(function()
    manager.setup_signs_and_highlights(true)
    require('gitsigns.current_line_blame').setup()
@@ -793,30 +1023,5 @@ M.refresh = void(function()
       manager.update(k, v)
    end
 end)
-
-M.toggle_signs = function()
-   config.signcolumn = not config.signcolumn
-   M.refresh()
-end
-
-M.toggle_numhl = function()
-   config.numhl = not config.numhl
-   M.refresh()
-end
-
-M.toggle_linehl = function()
-   config.linehl = not config.linehl
-   M.refresh()
-end
-
-M.toggle_word_diff = function()
-   config.word_diff = not config.word_diff
-   M.refresh()
-end
-
-M.toggle_current_line_blame = function()
-   config.current_line_blame = not config.current_line_blame
-   M.refresh()
-end
 
 return M

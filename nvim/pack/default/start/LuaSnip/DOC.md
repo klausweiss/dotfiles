@@ -1,13 +1,13 @@
 ```
-            __                       ____                          
-           /\ \                     /\  _`\           __           
-           \ \ \      __  __     __ \ \,\L\_\    ___ /\_\  _____   
-            \ \ \  __/\ \/\ \  /'__`\\/_\__ \  /' _ `\/\ \/\ '__`\ 
+            __                       ____
+           /\ \                     /\  _`\           __
+           \ \ \      __  __     __ \ \,\L\_\    ___ /\_\  _____
+            \ \ \  __/\ \/\ \  /'__`\\/_\__ \  /' _ `\/\ \/\ '__`\
              \ \ \L\ \ \ \_\ \/\ \L\.\_/\ \L\ \/\ \/\ \ \ \ \ \L\ \
               \ \____/\ \____/\ \__/.\_\ `\____\ \_\ \_\ \_\ \ ,__/
-               \/___/  \/___/  \/__/\/_/\/_____/\/_/\/_/\/_/\ \ \/ 
-                                                             \ \_\ 
-                                                              \/_/ 
+               \/___/  \/___/  \/__/\/_/\/_____/\/_/\/_/\/_/\ \ \/
+                                                             \ \_\
+                                                              \/_/
 ```
 
 Luasnip is a snippet-engine written entirely in lua. It has some great
@@ -34,7 +34,7 @@ local events = require("luasnip.util.events")
 
 # SNIPPETS
 
-The most direct way to define snippets is `s`: 
+The most direct way to define snippets is `s`:
 ```lua
 s({trig="trigger"}, {})
 ```
@@ -157,7 +157,7 @@ s("trigger", {
 	t({"", "After jumping once more, the snippet is exited there ->"}), i(0),
 })
 ```
-The above snippet will use the same jump flow as above which is: 
+The above snippet will use the same jump flow as above which is:
 - After expansion, we will be at InsertNode 1.
 - After jumping forward, we will be at InsertNode 2.
 - After jumping forward again, we will be at InsertNode 0.
@@ -187,16 +187,16 @@ user-defined function:
  })
 ```
 The first parameter of `f` is the function. Its parameters are
-- 1.: A table of the text of currently contained in the argnodes.
+1. A table of the text of currently contained in the argnodes.
       (eg. `{{line1}, {line1, line2}}`). The snippet-indent will be removed from
       all lines following the first.
 
-- 2.: The surrounding snippet. It is included here as it allows access to
+2. The surrounding snippet. It is included here as it allows access to
       anything that could be useful in functionNodes (ie. `snippet.env` or
       `snippet.captures`, which contains capture groups of regex-triggered
       snippets).
 
-- 3.: Any parameters passed to `f` behind the second (included to more easily
+3. Any parameters passed to `f` behind the second (included to more easily
       reuse functions, ie. ternary if based on text in an insertNode).
 
 The second parameter is a table of indices of jumpable nodes whose text is
@@ -257,7 +257,7 @@ ChoiceNodes allow choosing between multiple nodes.
 `c()` expects as its first arg, as with any jumpable node, its position in the
 jumplist, and as its second a table with nodes, the choices. This table can
 either contain a single node or a table of nodes. In the latter case the table
-will be converted into a `snippetNode`.  
+will be converted into a `snippetNode`.
 The third parameter is a table of options with the following keys:
 - `restore_cursor`: `false` by default. If it is set and the node that was
 	being edited also appears in the switched-to choice (can be the case if a
@@ -399,7 +399,7 @@ local function lines(args, snip, old_state, initial_text)
 	else
 		nodes[1] = t("Enter a number!")
 	end
-	
+
 	local snip = sn(nil, nodes)
 	snip.old_state = old_state
 	return snip
@@ -457,6 +457,10 @@ The content for a key may also be defined in the `opts`-parameter of the
 snippet-constructor, as seen in the example above. The `stored`-table accepts
 the same values as the `nodes`-parameter passed to `r`.
 If no content is defined for a key, it defaults to the empty `insertNode`.
+
+An important-to-know limitation of `restoreNode` is that, for a given key, only
+one may be visible at a time. See
+[this issue](https://github.com/L3MON4D3/LuaSnip/issues/234) for details.
 
 The `restoreNode` is also useful for storing user-input across updates of a
 `dynamicNode`. Consider this:
@@ -543,10 +547,10 @@ ls.parser.parse_snippet({trig = "lsp"}, "$1 is ${2|hard,easy,challenging|}")
 ```
 
 Nested placeholders(`"${1:this is ${2:nested}}"`) will be turned into
-choiceNode's with:  
-	- the given snippet(`"this is ${1:nested}"`) and  
+choiceNode's with:
+	- the given snippet(`"this is ${1:nested}"`) and
 	- an empty insertNode
-	
+
 
 
 # VARIABLES
@@ -571,7 +575,7 @@ To use any `*SELECT*` variable, the `store_selection_keys` must be set via
 `require("luasnip").config.setup({store_selection_keys="<Tab>"})`. In this case,
 hitting `<Tab>` while in Visualmode will populate the `*SELECT*`-vars for the next
 snippet and then clear them.
- 
+
 
 
 # VSCODE SNIPPETS LOADER
@@ -609,12 +613,16 @@ In this case `opts` only accepts paths (`runtimepath` if any). That will load
 the general snippets (the ones of filetype 'all') and those of the filetype
 of the buffers, you open every time you open a new one (but it won't reload them).
 
-Apart from what is stipulated by the start each snippet in the json file can 
+Apart from what is stipulated by the start each snippet in the json file can
 contain a "luasnip" field which is a table for extra parameters for the snippet,
 till now the only valid one is autotrigger.
 
 After snippets were lazy-loaded, the `User LuasnipSnippetsAdded`-event will be
 triggered.
+
+Note load vscode-style packages using `require("luasnip.loaders.from_vscode").load()`, if 
+you've configured luasnip to detect the filetype based on the cursor position. Else the
+snippets won't be available to the `from_cursor_pos` function.
 
 # EXT\_OPTS
 
@@ -772,7 +780,7 @@ the lazy_load.
 - `expand_or_jumpable()`: returns `expandable() or jumpable(1)` (exists only
   because commonly, one key is used to both jump forward and expand).
 
-- `expand_or_locally_jumpable()`: same as `expand_or_jumpable()` except jumpable 
+- `expand_or_locally_jumpable()`: same as `expand_or_jumpable()` except jumpable
   is ignored if the cursor is not inside the current snippet.
 
 - `expand_or_jump()`: returns true if jump/expand was succesful.
@@ -780,6 +788,29 @@ the lazy_load.
 - `expand_auto()`: expands the autosnippets before the cursor (not necessary
   to call manually, will be called via autocmd if `enable_autosnippet` is set
   in the config).
+
+- `snip_expand(snip, opts)`: expand `snip` at the current cursor position.
+  `opts` may contain the following keys:
+    - `clear_region`: A region of text to clear after expanding (but before
+      jumping into) snip. It has to be at this point (and therefore passed to
+      this function) as clearing before expansion will populate `TM_CURRENT_LINE`
+      and `TM_CURRENT_WORD` with wrong values (they would miss the snippet trigger)
+      and clearing after expansion may move the text currently under the cursor
+      and have it end up not at the `i(1)`, but a `#trigger` chars to it's right.
+      The actual values used for clearing are `from` and `to`, both (0,0)-indexed
+      byte-positions.
+      If the variables don't have to be populated with the correct values, it's
+      safe to remove the text manually.
+    - `expand_params`: table, for overriding the `trigger` used in the snippet
+      and setting the `captures` (useful for pattern-triggered nodes where the
+      trigger has to be changed from the pattern to the actual text triggering the
+      node).
+      Pass as `trigger` and `captures`.
+    - `pos`: position (`{line, col}`), (0,0)-indexed (in bytes, as returned by
+      `nvim_win_get_cursor()`), where the snippet should be expanded. The
+      snippet will be put between `(line,col-1)` and `(line,col)`. The snippet
+      will be expanded at the current cursor if pos is nil.
+  `opts` and either of its parameter may be nil.
 
 - `get_active_snip()`: returns the currently active snippet (not node!).
 
@@ -792,8 +823,9 @@ the lazy_load.
   if luasnip fails to automatically detect eg. deletion of a snippet) and
   sets the current node behind the snippet, or, if not possible, before it.
 
-- `lsp_expand(snip_string)`: expand the lsp-syntax-snippet defined via 
+- `lsp_expand(snip_string, opts)`: expand the lsp-syntax-snippet defined via
   `snip_string` at the cursor.
+  `opts` can have the same options as `opts` in `snip_expand`.
 
 - `active_update_dependents()`: update all function/dynamicNodes that have
   the current node as their argument (will only actually update them if

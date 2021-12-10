@@ -101,7 +101,7 @@ Following are the **default** config for the [`setup()`](#setup). If you want to
     ---@type table
     mappings = {
         ---operator-pending mapping
-        ---Includes `gcc`, `gcb`, `gc[count]{motion}` and `gb[count]{motion}`
+        ---Includes `gcc`, `gbc`, `gc[count]{motion}` and `gb[count]{motion}`
         ---NOTE: These mappings can be changed individually by `opleader` and `toggler` config
         basic = true,
         ---extra mapping
@@ -122,7 +122,7 @@ Following are the **default** config for the [`setup()`](#setup). If you want to
 }
 ```
 
-The configuration is also exported by the following method. But make to sure to call [setup](#setup) first.
+The configuration is also exported by the following method. But make sure to call [setup](#setup) first.
 
 ```lua
 -- NOTE: This directly returns the config without copying it. So modifying it directly could have some side effects.

@@ -110,9 +110,29 @@ do
     ordinal = 1,
   }
 
+  local find = (function()
+    if Path.path.sep == "\\" then
+      return function(t)
+        local start, _, filename, lnum, col, text = string.find(t, [[([^:]+):(%d+):(%d+):(.*)]])
+
+        -- Handle Windows drive letter (e.g. "C:") at the beginning (if present)
+        if start == 3 then
+          filename = string.sub(t.value, 1, 3) .. filename
+        end
+
+        return filename, lnum, col, text
+      end
+    else
+      return function(t)
+        local _, _, filename, lnum, col, text = string.find(t, [[([^:]+):(%d+):(%d+):(.*)]])
+        return filename, lnum, col, text
+      end
+    end
+  end)()
+
   -- Gets called only once to parse everything out for the vimgrep, after that looks up directly.
   local parse = function(t)
-    local _, _, filename, lnum, col, text = string.find(t.value, [[([^:]+):(%d+):(%d+):(.*)]])
+    local filename, lnum, col, text = find(t.value)
 
     local ok
     ok, lnum = pcall(tonumber, lnum)
@@ -229,16 +249,40 @@ do
   end
 end
 
-function make_entry.gen_from_git_stash()
+function make_entry.gen_from_git_stash(opts)
+  local displayer = entry_display.create {
+    separator = " ",
+    items = {
+      { width = 10 },
+      opts.show_branch and { width = 15 } or "",
+      { remaining = true },
+    },
+  }
+
+  local make_display = function(entry)
+    return displayer {
+      { entry.value, "TelescopeResultsLineNr" },
+      opts.show_branch and { entry.branch_name, "TelescopeResultsIdentifier" } or "",
+      entry.commit_info,
+    }
+  end
+
   return function(entry)
     if entry == "" then
       return nil
     end
-    local splitted = vim.split(entry, ":")
+
+    local splitted = utils.max_split(entry, ": ", 2)
+    local stash_idx = splitted[1]
+    local _, branch_name = string.match(splitted[2], "^([WIP on|On]+) (.+)")
+    local commit_info = splitted[3]
+
     return {
-      value = splitted[1],
-      ordinal = splitted[3],
-      display = splitted[3],
+      value = stash_idx,
+      ordinal = commit_info,
+      branch_name = branch_name,
+      commit_info = commit_info,
+      display = make_display,
     }
   end
 end

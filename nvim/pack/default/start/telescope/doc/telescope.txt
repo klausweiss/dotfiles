@@ -119,10 +119,10 @@ telescope.setup({opts})                                    *telescope.setup()*
             prompt_position = "top"
           },
           center = {
-            height = 0.9,
+            height = 0.4,
             preview_cutoff = 40,
             prompt_position = "top",
-            width = 0.8
+            width = 0.5
           },
           cursor = {
             height = 0.9,
@@ -989,6 +989,8 @@ builtin.git_stash({opts})                                *builtin.git_stash()*
         {cwd}          (string)   specify the path of the repo
         {use_git_root} (boolean)  if we should use git root as cwd or the cwd
                                   (important for submodule) (default: true)
+        {show_branch}  (boolean)  if we should display the branch name for git
+                                  stash entries (default: true)
 
 
 builtin.builtin({opts})                                    *builtin.builtin()*
@@ -1562,6 +1564,22 @@ themes.get_ivy()                                            *themes.get_ivy()*
 
 ================================================================================
                                                               *telescope.layout*
+
+The layout of telescope pickers can be adjusted using the
+|telescope.defaults.layout_strategy| and |telescope.defaults.layout_config|
+options. For example, the following configuration changes the default layout
+strategy and the default size of the picker:
+>
+  require('telescope').setup{
+    defaults = {
+      layout_strategy = 'vertical',
+      layout_config = { height = 0.95 },
+    },
+  }
+<
+
+
+────────────────────────────────────────────────────────────────────────────────
 
 Layout strategies are different functions to position telescope.
 
@@ -2147,8 +2165,7 @@ actions.which_key({prompt_bufnr})                        *actions.which_key()*
     Display the keymaps of registered actions similar to which-key.nvim.
 
     - Notes:
-      - The defaults can be overridden via
-        |action_generate.toggle_registered_actions|.
+      - The defaults can be overridden via |action_generate.which_key|.
 
 
     Parameters: ~
@@ -2397,7 +2414,7 @@ General usage:
     defaults = {
       mappings = {
         n = {
-          ["?"] = action_generate.toggle_registered_actions {
+          ["?"] = action_generate.which_key {
             name_width = 20, -- typically leads to smaller floats
             max_height = 0.5, -- increase potential maximum height
             seperator = " > ", -- change sep between mode, keybind, and name

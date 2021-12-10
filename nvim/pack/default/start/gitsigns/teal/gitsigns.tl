@@ -25,14 +25,14 @@ local current_buf = api.nvim_get_current_buf
 
 local record M
   setup      : function(cfg: Config)
-  detach     : function(bufnr: integer, keep_signs: boolean)
+  detach     : function(bufnr: integer, _keep_signs: boolean)
   detach_all : function()
   attach     : function(cbuf: integer, trigger: string)
 
   -- Internal, API unstable
   _update_highlights : function()
   _update_cwd_head   : function()
-  _run_func          : function(range: {integer, integer}, func: string, ...: any)
+  _run_func          : function(range: {integer, integer, integer}, func: string, ...: any)
   _complete          : function(arglead: string, line: string): {string}
   _attach_enable     : function()
   _attach_disable    : function()
@@ -54,7 +54,7 @@ local handle_moved = function(bufnr: integer, bcache: CacheEntry, old_relpath: s
     do_update = true
   elseif git_obj.orig_relpath then
     local orig_file = git_obj.repo.toplevel..util.path_sep..git_obj.orig_relpath
-    if git_obj:file_info(orig_file) then
+    if git_obj:file_info(orig_file).relpath then
       dprintf('Moved file reset')
       git_obj.relpath = git_obj.orig_relpath
       git_obj.orig_relpath = nil
@@ -67,7 +67,7 @@ local handle_moved = function(bufnr: integer, bcache: CacheEntry, old_relpath: s
   if do_update then
     git_obj.file = git_obj.repo.toplevel..util.path_sep..git_obj.relpath
     bcache.file = git_obj.file
-    bcache.git_obj:update_file_info()
+    git_obj:update_file_info()
     scheduler()
     api.nvim_buf_set_name(bufnr, bcache.file)
   end
@@ -122,13 +122,25 @@ local watch_gitdir = function(bufnr: integer, gitdir: string): uv.FSPollObj
   return w
 end
 
--- When this is called interactively (with no arguments) we want to remove all
--- the signs, however if called via a detach event (due to nvim_buf_attach) then
--- we don't want to clear the signs in case the buffer is just being updated due
--- to the file externally changing. When this happens a detach and attach event
--- happen in sequence and so we keep the old signs to stop the sign column width
--- moving about between updates.
-M.detach = function(bufnr: integer, keep_signs: boolean)
+--- Detach Gitsigns from all buffers it is attached to.
+M.detach_all = function()
+  for k, _ in pairs(cache as {integer:CacheEntry}) do
+    M.detach(k)
+  end
+end
+
+--- Detach Gitsigns from the buffer {bufnr}. If {bufnr} is not
+--- provided then the current buffer is used.
+---
+--- Parameters: ~
+---     {bufnr}  (number): Buffer number
+M.detach = function(bufnr: integer, _keep_signs: boolean)
+  -- When this is called interactively (with no arguments) we want to remove all
+  -- the signs, however if called via a detach event (due to nvim_buf_attach)
+  -- then we don't want to clear the signs in case the buffer is just being
+  -- updated due to the file externally changing. When this happens a detach and
+  -- attach event happen in sequence and so we keep the old signs to stop the
+  -- sign column width moving about between updates.
   bufnr = bufnr or current_buf()
   dprint('Detached')
   local bcache = cache[bufnr]
@@ -137,7 +149,7 @@ M.detach = function(bufnr: integer, keep_signs: boolean)
     return
   end
 
-  if not keep_signs then
+  if not _keep_signs then
     signs.remove(bufnr)  -- Remove all signs
   end
 
@@ -145,12 +157,6 @@ M.detach = function(bufnr: integer, keep_signs: boolean)
   Status:clear(bufnr)
 
   cache:destroy(bufnr)
-end
-
-M.detach_all = function()
-  for k, _ in pairs(cache as {integer:CacheEntry}) do
-    M.detach(k)
-  end
 end
 
 local function get_buf_path(bufnr: integer): string, string
@@ -343,6 +349,15 @@ local attach = function(cbuf: integer, trigger: string)
   attach_running[cbuf] = nil
 end
 
+--- Attach Gitsigns to the buffer.
+---
+--- Attributes: ~
+---     {async}
+---
+--- Parameters: ~
+---     {bufnr}  (number): Buffer number
+M.attach = void(attach) as function(bufnr: integer)
+
 local M0 = M as {string:function}
 
 M._complete = function(arglead: string, line: string): {string}
@@ -387,15 +402,15 @@ local function parse_args_to_lua(...: string): {any}
   return args
 end
 
-M._run_func = function(range: {integer, integer}, func: string, ...: string)
+M._run_func = function(range: {integer, integer, integer}, func: string, ...: string)
   local actions = require('gitsigns.actions')
   local actions0 = actions as {string:function}
 
   local args = parse_args_to_lua(...)
 
   if type(actions0[func]) == 'function' then
-    if range and range[1] ~= range[2] then
-      actions.user_range = range
+    if range and range[1] > 0 then
+      actions.user_range = {range[2], range[3]}
     else
       actions.user_range = nil
     end
@@ -439,10 +454,18 @@ local function setup_command()
     '-nargs=+',
     '-complete=customlist,v:lua.package.loaded.gitsigns._complete',
     'Gitsigns',
-    'lua require("gitsigns")._run_func({<line1>, <line2>}, <f-args>)'
+    'lua require("gitsigns")._run_func({<range>, <line1>, <line2>}, <f-args>)'
   }, ' '))
 end
 
+--- Setup and start Gitsigns.
+---
+--- Attributes: ~
+---     {async}
+---
+--- Parameters: ~
+---     {cfg} Table object containing configuration for
+---     Gitsigns. See |gitsigns-usage| for more details.
 M.setup = void(function(cfg: Config)
   gs_config.build(cfg)
 
@@ -537,8 +560,6 @@ M.setup = void(function(cfg: Config)
   M._update_cwd_head()
   vim.cmd[[autocmd gitsigns DirChanged * lua _G.package.loaded.gitsigns._update_cwd_head()]]
 end)
-
-M.attach = void(attach)
 
 -- Internal, API unstable
 M._update_highlights = function()

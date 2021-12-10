@@ -113,8 +113,7 @@ checkout `:help lua-heredoc`.
       },
       sections = {
         lualine_a = {'mode'},
-        lualine_b = {'branch', 'diff',
-                      {'diagnostics', sources={'nvim_lsp', 'coc'}}},
+        lualine_b = {'branch', 'diff', 'diagnostics'},
         lualine_c = {'filename'},
         lualine_x = {'encoding', 'fileformat', 'filetype'},
         lualine_y = {'progress'},
@@ -180,7 +179,7 @@ how to do it <./CONTRIBUTING.md>.
 
 
 Customizing themes                     Theme structure is available here
-                                       <./CONTRIBUTING.md#adding-a-theme>
+                                       <https://github.com/nvim-lualine/lualine.nvim/wiki/Writting-a-theme>
 
 
 ------------------------------------------------------------------------------
@@ -281,8 +280,13 @@ use.
 
 LUA EXPRESSIONS AS LUALINE COMPONENT
 
-You can use any valid lua expression as a component including * oneliners *
-global variables * require statements
+You can use any valid lua expression as a component including
+
+
+- oneliners
+- global variables
+- require statements
+
 
 >
     sections = {lualine_c = {"os.date('%a')", 'data', "require'lsp-status'.status()"}}
@@ -296,8 +300,12 @@ global variables * require statements
 COMPONENT OPTIONS ~
 
 Component options can change the way a component behave. There are two kinds of
-options: * global options affecting all components * local options affecting
-specific
+options:
+
+
+- global options affecting all components
+- local options affecting specific
+
 
 Global options can be used as local options (can be applied to specific
 components) but you cannot use local options as global. Global option used
@@ -416,7 +424,7 @@ Component specific options             These are options that are available on
         {
           'buffers',
           show_filename_only = true, -- shows shortened relative path when false
-          show_modified_status = true -- shows indicator then buffer is modified
+          show_modified_status = true, -- shows indicator then buffer is modified
           mode = 0, -- 0 shows buffer name
                     -- 1 buffer index (bufnr)
                     -- 2 shows buffer name + buffer index (bufnr)
@@ -448,18 +456,18 @@ Component specific options             These are options that are available on
         {
           'diagnostics',
           -- table of diagnostic sources, available sources:
-          -- 'nvim_lsp', 'nvim', 'coc', 'ale', 'vim_lsp'
+          -- 'nvim_lsp', 'nvim_diagnostic', 'coc', 'ale', 'vim_lsp'
           -- Or a function that returns a table like
           --   {error=error_cnt, warn=warn_cnt, info=info_cnt, hint=hint_cnt}
-          sources = {'nvim_lsp', 'coc'},
+          sources = {'nvim_diagnostic', 'coc'},
           -- displays diagnostics from defined severity
           sections = {'error', 'warn', 'info', 'hint'},
           diagnostics_color = {
             -- Same values like general color option can be used here.
             error = 'DiagnosticError', -- changes diagnostic's error color
             warn  = 'DiagnosticWarn',  -- changes diagnostic's warn color
-            info  = 'DiagnosticInfo',  -- Changes diagnostic's info color
-            hint  = 'DiagnosticHint',  -- Changes diagnostic's hint color
+            info  = 'DiagnosticInfo',  -- changes diagnostic's info color
+            hint  = 'DiagnosticHint',  -- changes diagnostic's hint color
           },
           symbols = {error = 'E', warn = 'W', info = 'I', hint = 'H'},
           colored = true, -- displays diagnostics status in color if set to true

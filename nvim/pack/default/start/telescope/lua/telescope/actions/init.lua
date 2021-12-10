@@ -832,7 +832,7 @@ end
 actions.delete_buffer = function(prompt_bufnr)
   local current_picker = action_state.get_current_picker(prompt_bufnr)
   current_picker:delete_selection(function(selection)
-    vim.api.nvim_buf_delete(selection.bufnr, { force = true })
+    vim.api.nvim_buf_delete(selection.bufnr, { force = false })
   end)
 end
 
@@ -867,7 +867,7 @@ end
 
 --- Display the keymaps of registered actions similar to which-key.nvim.<br>
 --- - Notes:
----   - The defaults can be overridden via |action_generate.toggle_registered_actions|.
+---   - The defaults can be overridden via |action_generate.which_key|.
 ---@param prompt_bufnr number: The prompt bufnr
 actions.which_key = function(prompt_bufnr, opts)
   opts = opts or {}

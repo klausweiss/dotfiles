@@ -75,9 +75,8 @@ function Snippet:init_nodes()
 			end
 		end
 
-		local _update_dependents = node.update_dependents
 		node.update_dependents = function(node)
-			_update_dependents(node)
+			node:_update_dependents()
 			node.parent:update_dependents()
 		end
 	end
@@ -316,7 +315,7 @@ local function insert_into_jumplist(snippet, start_node, current_node)
 	start_node.next = snippet
 end
 
-function Snippet:trigger_expand(current_node)
+function Snippet:trigger_expand(current_node, pos)
 	-- expand tabs before indenting to keep indentstring unmodified
 	if vim.o.expandtab then
 		self:expand_tabs(util.tab_width())
@@ -338,7 +337,7 @@ function Snippet:trigger_expand(current_node)
 		end
 	end
 
-	self.env = Environ:new()
+	self.env = Environ:new(pos)
 	self:subsnip_init()
 	-- at this point `stored` contains the snippetNodes that will actually
 	-- be used, indent them once here.
@@ -346,14 +345,9 @@ function Snippet:trigger_expand(current_node)
 		node:indent(self.indentstr)
 	end
 
-	-- remove snippet-trigger, Cursor at start of future snippet text.
-	util.remove_n_before_cur(#self.trigger)
-
 	local start_node = iNode.I(0)
 
-	local pos = util.get_cursor_0ind()
 	local old_pos = vim.deepcopy(pos)
-
 	self:put_initial(pos)
 
 	-- update() may insert text, set marks appropriately.
@@ -380,7 +374,6 @@ function Snippet:trigger_expand(current_node)
 			current_node:input_leave(1)
 		end
 	end
-	session.current_nodes[vim.api.nvim_get_current_buf()] = self:jump_into(1)
 end
 
 -- returns copy of snip if it matches, nil if not.
@@ -435,10 +428,7 @@ function Snippet:matches(line_to_cursor)
 		return nil
 	end
 
-	local cp = self:copy()
-	cp.trigger = match
-	cp.captures = captures
-	return cp
+	return { trigger = match, captures = captures }
 end
 
 function Snippet:enter_node(node_id)
@@ -877,7 +867,6 @@ function Snippet:get_pattern_expand_helper()
 			callbacks = {
 				[0] = {
 					[events.enter] = function(_)
-						-- try expanding after entering i(0).
 						vim.schedule(function()
 							-- Remove this helper snippet as soon as the i(0)
 							-- is reached.
@@ -888,7 +877,8 @@ function Snippet:get_pattern_expand_helper()
 			},
 		})
 	end
-	return self.expand_helper_snippet:copy()
+	-- will be copied in actual expand.
+	return self.expand_helper_snippet
 end
 
 function Snippet:find_node(predicate)

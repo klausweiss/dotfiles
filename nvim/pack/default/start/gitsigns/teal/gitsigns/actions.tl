@@ -52,6 +52,7 @@ local record M
   record QFListOpts
     use_location_list: boolean
     nr: integer
+    open: boolean
   end
 
   setqflist          : function(target:integer|string, opts: QFListOpts, callback: function)
@@ -69,6 +70,36 @@ local record M
   toggle_current_line_blame : function()
 end
 
+--- Toggle |gitsigns-config-signcolumn|
+M.toggle_signs = function()
+  config.signcolumn = not config.signcolumn
+  M.refresh()
+end
+
+--- Toggle |gitsigns-config-numhl|
+M.toggle_numhl = function()
+  config.numhl = not config.numhl
+  M.refresh()
+end
+
+--- Toggle |gitsigns-config-linehl|
+M.toggle_linehl = function()
+  config.linehl = not config.linehl
+  M.refresh()
+end
+
+--- Toggle |gitsigns-config-word_diff|
+M.toggle_word_diff = function()
+  config.word_diff = not config.word_diff
+  M.refresh()
+end
+
+--- Toggle |gitsigns-config-current_line_blame|
+M.toggle_current_line_blame = function()
+  config.current_line_blame = not config.current_line_blame
+  M.refresh()
+end
+
 local function get_cursor_hunk(bufnr: integer, hunks: {Hunk}): Hunk, integer
   bufnr = bufnr or current_buf()
   hunks = hunks or cache[bufnr].hunks
@@ -77,28 +108,20 @@ local function get_cursor_hunk(bufnr: integer, hunks: {Hunk}): Hunk, integer
   return gs_hunks.find_hunk(lnum, hunks)
 end
 
----Find all hunks in a given range for a given buffer.
----@param bufnr
----@param hunks
----@param range
-local function get_range_hunks(hunks: {Hunk}, range: {integer, integer}): {Hunk}
-  local ret: {Hunk} = {}
-  for _, hunk in ipairs(hunks) do
-    if range[1] == 1 and hunk.start == 0 and hunk.vend == 0 then
-      return {hunk}
-    end
-
-    if (range[2] >= hunk.start and range[1] <= hunk.vend) then
-      ret[#ret+1] = hunk
-    end
-  end
-
-  return ret
-end
-
+--- Stage the hunk at the cursor position, or all lines in the
+--- given range. If {range} is provided, all lines in the given
+--- range are staged. This supports partial-hunks, meaning if a
+--- range only includes a portion of a particular hunk, only the
+--- lines within the range will be staged.
+---
+--- Attributes: ~
+---     {async}
+---
+--- Parameters:~
+---     {range} table|nil List-like table of two integers making
+---     up the line range from which you want to stage the hunks.
 M.stage_hunk = mk_repeatable(void(function(range: {integer, integer})
   range = range or M.user_range
-  local valid_range = false
   local bufnr = current_buf()
   local bcache = cache[bufnr]
   if not bcache then
@@ -110,29 +133,33 @@ M.stage_hunk = mk_repeatable(void(function(range: {integer, integer})
     return
   end
 
-  local hunks = {}
+  local hunk: Hunk
 
-  if range and range[1] ~= range[2] then
-    valid_range = true
+  if range then
     table.sort(range)
-    hunks = get_range_hunks(bcache.hunks, range)
+    local top, bot = range[1], range[2]
+    hunk = gs_hunks.create_partial_hunk(bcache.hunks, top, bot)
+    hunk.added.lines = api.nvim_buf_get_lines(bufnr, top-1, bot, false)
+    hunk.removed.lines = vim.list_slice(
+      bcache.compare_text,
+      hunk.removed.start,
+      hunk.removed.start + hunk.removed.count - 1
+    )
   else
-    hunks[1] = get_cursor_hunk(bufnr, bcache.hunks)
+    hunk = get_cursor_hunk(bufnr, bcache.hunks)
   end
 
-  if #hunks == 0 then
+  if not hunk then
     return
   end
 
-  bcache.git_obj:stage_hunks(hunks)
+  bcache.git_obj:stage_hunks({hunk})
 
-  for _, hunk in ipairs(hunks) do
-    table.insert(bcache.staged_diffs, hunk)
-  end
+  table.insert(bcache.staged_diffs, hunk)
 
   bcache.compare_text = nil -- Invalidate
 
-  local hunk_signs = gs_hunks.process_hunks(hunks)
+  local hunk_signs = gs_hunks.process_hunks({hunk})
 
   scheduler()
 
@@ -149,39 +176,56 @@ M.stage_hunk = mk_repeatable(void(function(range: {integer, integer})
   void(manager.update)(bufnr)
 end))
 
+--- Reset the lines of the hunk at the cursor position, or all
+--- lines in the given range. If {range} is provided, all lines in
+--- the given range are reset. This supports partial-hunks,
+--- meaning if a range only includes a portion of a particular
+--- hunk, only the lines within the range will be reset.
+---
+--- Parameters:~
+---     {range} table|nil List-like table of two integers making
+---     up the line range from which you want to reset the hunks.
 M.reset_hunk = mk_repeatable(function(range: {integer, integer})
   range = range or M.user_range
   local bufnr = current_buf()
-  local hunks = {}
-
-  if range and range[1] ~= range[2] then
-    table.sort(range)
-    hunks = get_range_hunks(cache[bufnr].hunks, range)
-  else
-    hunks[1] = get_cursor_hunk(bufnr)
-  end
-
-  if #hunks == 0 then
+  local bcache = cache[bufnr]
+  if not bcache then
     return
   end
 
-  local offset = 0
+  local hunk: Hunk
 
-  for _, hunk in ipairs(hunks) do
-    local lstart, lend: integer, integer
-    if hunk.type == 'delete' then
-      lstart = hunk.start
-      lend = hunk.start
-    else
-      lstart = hunk.start - 1
-      lend = hunk.start - 1 + hunk.added.count
-    end
-    local lines = hunk.removed.lines
-    api.nvim_buf_set_lines(bufnr, lstart + offset, lend + offset, false, lines)
-    offset = offset + (#lines - (lend - lstart))
+  if range then
+    table.sort(range)
+    local top, bot = range[1], range[2]
+    hunk = gs_hunks.create_partial_hunk(bcache.hunks, top, bot)
+    hunk.added.lines = api.nvim_buf_get_lines(bufnr, top-1, bot, false)
+    hunk.removed.lines = vim.list_slice(
+      bcache.compare_text,
+      hunk.removed.start,
+      hunk.removed.start + hunk.removed.count - 1
+    )
+  else
+    hunk = get_cursor_hunk(bufnr)
   end
+
+  if not hunk then
+    return
+  end
+
+  local lstart, lend: integer, integer
+  if hunk.type == 'delete' then
+    lstart = hunk.start
+    lend = hunk.start
+  else
+    lstart = hunk.start - 1
+    lend = hunk.start - 1 + hunk.added.count
+  end
+  local lines = hunk.removed.lines
+  api.nvim_buf_set_lines(bufnr, lstart, lend, false, lines)
 end)
 
+--- Reset the lines of all hunks in the buffer.
 M.reset_buffer = function()
   local bufnr = current_buf()
   local bcache = cache[bufnr]
@@ -192,6 +236,13 @@ M.reset_buffer = function()
   api.nvim_buf_set_lines(bufnr, 0, -1, false, bcache:get_compare_text())
 end
 
+--- Undo the last call of stage_hunk().
+---
+--- Note: only the calls to stage_hunk() performed in the current
+--- session can be undone.
+---
+--- Attributes: ~
+---     {async}
 M.undo_stage_hunk = void(function()
   local bufnr = current_buf()
   local bcache = cache[bufnr]
@@ -214,6 +265,10 @@ M.undo_stage_hunk = void(function()
   manager.update(bufnr)
 end)
 
+--- Stage all hunks in current buffer.
+---
+--- Attributes: ~
+---     {async}
 M.stage_buffer = void(function()
   local bufnr = current_buf()
 
@@ -248,6 +303,12 @@ M.stage_buffer = void(function()
   Status:clear_diff(bufnr)
 end)
 
+--- Unstage all hunks for current buffer in the index. Note:
+--- Unlike |gitsigns.undo_stage_hunk()| this doesn't simply undo
+--- stages, this runs an `git reset` on current buffers file.
+---
+--- Attributes: ~
+---     {async}
 M.reset_buffer_index = void(function()
   local bufnr = current_buf()
   local bcache = cache[bufnr]
@@ -337,12 +398,30 @@ local function nav_hunk(opts: NavHunkOpts)
   end
 end
 
+--- Jump to the next hunk in the current buffer.
+---
+--- Parameters: ~
+---     {opts}  table|nil Configuration table. Keys:
+---             • {wrap}: (boolean)
+---               Whether to loop around file or not. Defaults
+---               to the value 'wrapscan'
+---             • {navigation_message}: (boolean)
+---               Whether to show navigation messages or not.
+---               Looks at 'shortmess' for default behaviour.
+---             • {foldopen}: (boolean)
+---               Expand folds when navigating to a hunk which is
+---               inside a fold. Defaults to `true` if 'foldopen'
+---               contains `search`.
 M.next_hunk = function(opts: NavHunkOpts)
   opts = opts or {}
   opts.forwards = true
   nav_hunk(opts)
 end
 
+--- Jump to the previous hunk in the current buffer.
+---
+--- Parameters: ~
+---     See |gitsigns.next_hunk()|.
 M.prev_hunk = function(opts: NavHunkOpts)
   opts = opts or {}
   opts.forwards = false
@@ -375,7 +454,7 @@ local function noautocmd(f: function()): function()
   end
 end
 
---- Strip '\r' from the EOL of each line only if all lines end with '\r'
+-- Strip '\r' from the EOL of each line only if all lines end with '\r'
 local function strip_cr(xs0: {string}): {string}
   for i = 1, #xs0 do
     if xs0[i]:sub(-1) ~= '\r' then
@@ -391,8 +470,10 @@ local function strip_cr(xs0: {string}): {string}
   return xs
 end
 
--- Wrap in noautocmd so vim-repeat continues to work
+--- Preview the hunk at the cursor position in a floating
+--- window.
 M.preview_hunk = noautocmd(function()
+  -- Wrap in noautocmd so vim-repeat continues to work
   local cbuf = current_buf()
   local bcache = cache[cbuf]
   local hunk, index = get_cursor_hunk(cbuf, bcache.hunks)
@@ -420,6 +501,7 @@ M.preview_hunk = noautocmd(function()
   highlight_hunk_lines(bufnr as integer, offset, hunk)
 end)
 
+--- Select the hunk under the cursor.
 M.select_hunk = function()
   local hunk = get_cursor_hunk()
   if not hunk then return end
@@ -427,6 +509,26 @@ M.select_hunk = function()
   vim.cmd('normal! '..hunk.start..'GV'..hunk.vend..'G')
 end
 
+--- Get hunk array for specified buffer.
+---
+--- Parameters: ~
+---     {bufnr} integer: Buffer number, if not provided (or 0)
+---             will use current buffer.
+---
+--- Return: ~
+---    Array of hunk objects. Each hunk object has keys:
+---      • `"type"`: String with possible values: "add", "change",
+---        "delete"
+---      • `"head"`: Header that appears in the unified diff
+---        output.
+---      • `"lines"`: Line contents of the hunks prefixed with
+---        either `"-"` or `"+"`.
+---      • `"removed"`: Sub-table with fields:
+---        • `"start"`: Line number (1-based)
+---        • `"count"`: Line count
+---      • `"added"`: Sub-table with fields:
+---        • `"start"`: Line number (1-based)
+---        • `"count"`: Line count
 M.get_hunks = function(bufnr: integer): {Hunk_Public}
   bufnr = current_buf()
   if not cache[bufnr] then return end
@@ -481,6 +583,19 @@ local record BlameOpts
   ignore_whitespace: boolean
 end
 
+--- Run git blame on the current line and show the results in a
+--- floating window.
+---
+--- Parameters: ~
+---     {opts}   (table|nil):
+---              Additional options:
+---              • {full}: (boolean)
+---                Display full commit message
+---              • {ignore_whitespace}: (boolean)
+---                Ignore whitespace when running blame.
+---
+--- Attributes: ~
+---     {async}
 M.blame_line = void(function(opts: boolean | BlameOpts)
   local bufnr = current_buf()
   local bcache = cache[bufnr]
@@ -591,6 +706,39 @@ local function update_buf_base(buf: integer, bcache: CacheEntry, base: string)
     manager.update(buf, bcache)
 end
 
+--- Change the base revision to diff against. If {base} is not
+--- given, then the original base is used. If {global} is given
+--- and true, then change the base revision of all buffers,
+--- including any new buffers.
+---
+--- Attributes: ~
+---     {async}
+---
+--- Parameters:~
+---     {base} string|nil The object/revision to diff against.
+---     {global} boolean|nil Change the base of all buffers.
+---
+--- Examples: >
+---   " Change base to 1 commit behind head
+---   :lua require('gitsigns').change_base('HEAD~1')
+---
+---   " Also works using the Gitsigns command
+---   :Gitsigns change_base HEAD~1
+---
+---   " Other variations
+---   :Gitsigns change_base ~1
+---   :Gitsigns change_base ~
+---   :Gitsigns change_base ^
+---
+---   " Commits work too
+---   :Gitsigns change_base 92eb3dd
+---
+---   " Revert to original base
+---   :Gitsigns change_base
+--- <
+---
+--- For a more complete list of ways to specify bases, see
+--- |gitsigns-revision|.
 M.change_base = void(function(base: string, global: boolean)
   base = calc_base(base)
 
@@ -609,10 +757,30 @@ M.change_base = void(function(base: string, global: boolean)
   end
 end)
 
+--- Reset the base revision to diff against back to the
+--- index.
+---
+--- Alias for `change_base(nil, {global})` .
 M.reset_base = function(global: boolean)
   M.change_base(nil, global)
 end
 
+--- Perform a |vimdiff| on the given file with {base} if it is
+--- given, or with the currently set base (index by default).
+---
+--- Examples: >
+---   " Diff against the index
+---   :Gitsigns diffthis
+---
+---   " Diff against the last commit
+---   :Gitsigns diffthis ~1
+--- <
+---
+--- For a more complete list of ways to specify bases, see
+--- |gitsigns-revision|.
+---
+--- Attributes: ~
+---     {async}
 M.diffthis = void(function(base: string)
   local bufnr = current_buf()
   local bcache = cache[bufnr]
@@ -624,9 +792,10 @@ M.diffthis = void(function(base: string)
 
   local text: {string}
   local err: string
-  local comp_obj = bcache:get_compare_obj(calc_base(base))
+  local comp_rev = bcache:get_compare_rev(calc_base(base))
+
   if base then
-    text, err = bcache.git_obj.repo:get_show_text(comp_obj)
+    text, err = bcache.git_obj:get_show_text(comp_rev)
     if ff == 'dos' then
       text = strip_cr(text)
     end
@@ -641,7 +810,11 @@ M.diffthis = void(function(base: string)
 
   local ft = api.nvim_buf_get_option(bufnr, 'filetype')
 
-  local bufname = string.format('gitsigns://%s/%s', bcache.git_obj.repo.gitdir, comp_obj)
+  local bufname = string.format(
+    'gitsigns://%s/%s',
+    bcache.git_obj.repo.gitdir,
+    comp_rev..':'..bcache.git_obj.relpath
+  )
 
   -- TDOD lewis6991 (27/05/21): Respect 'vertical' in diffopt
   vim.cmd("keepalt aboveleft vertical split "..bufname)
@@ -716,8 +889,39 @@ local function buildqflist(target: integer|string): {vim.fn.QFItem}
   return qflist
 end
 
+--- Populate the quickfix list with hunks. Automatically opens the
+--- quickfix window.
+---
+--- Attributes: ~
+---     {async}
+---
+--- Parameters: ~
+---     {target} (integer or string):
+---              Specifies which files hunks are collected from.
+---              Possible values.
+---              • [integer]: The buffer with the matching buffer
+---                number. `0` for current buffer (default).
+---              • `"attached"`: All attached buffers.
+---              • `"all"`: All modified files for each git
+---                directory of all attached buffers in addition
+---                to the current working directory.
+---     {opts}   (table|nil):
+---              Additional options:
+---              • {use_location_list}: (boolean)
+---                Populate the location list instead of the
+---                quickfix list. Default to `false`.
+---              • {nr}: (integer)
+---                Window number or ID when using location list.
+---                Expand folds when navigating to a hunk which is
+---                inside a fold. Defaults to `0`.
+---              • {open}: (boolean)
+---                Open the quickfix/location list viewer.
+---                Defaults to `true`.
 M.setqflist = void(function(target: integer|string, opts: M.QFListOpts)
   opts = opts or {}
+  if opts.open == nil then
+    opts.open = true
+  end
   local qfopts = {
     items = buildqflist(target),
     title = 'Hunks'
@@ -726,21 +930,37 @@ M.setqflist = void(function(target: integer|string, opts: M.QFListOpts)
   if opts.use_location_list then
     local nr = opts.nr or 0
     vim.fn.setloclist(nr, {}, ' ', qfopts)
-    if config.trouble then
-      require'trouble'.open("loclist")
-    else
-      vim.cmd[[lopen]]
+    if opts.open then
+      if config.trouble then
+        require'trouble'.open("loclist")
+      else
+        vim.cmd[[lopen]]
+      end
     end
   else
     vim.fn.setqflist({}, ' ', qfopts)
-    if config.trouble then
-      require'trouble'.open("quickfix")
-    else
-      vim.cmd[[copen]]
+    if opts.open then
+      if config.trouble then
+        require'trouble'.open("quickfix")
+      else
+        vim.cmd[[copen]]
+      end
     end
   end
 end)
 
+--- Populate the location list with hunks. Automatically opens the
+--- location list window.
+---
+--- Alias for: `setqflist({target}, { use_location_list = true, nr = {nr} }`
+---
+--- Attributes: ~
+---     {async}
+---
+--- Parameters: ~
+---     {nr}     (integer): Window number or the |window-ID|.
+---              `0` for the current window (default).
+---     {target} (integer or string): See |gitsigns.setqflist()|.
 M.setloclist = function(nr: integer, target: integer|string)
   M.setqflist(target, {
     nr = nr,
@@ -748,6 +968,12 @@ M.setloclist = function(nr: integer, target: integer|string)
   })
 end
 
+--- Get all the available line specific actions for the current
+--- buffer at the cursor position.
+---
+--- Return: ~
+---     Dictionary of action name to function which when called
+---     performs action.
 M.get_actions = function(): {string:function}
   local bufnr = current_buf()
   local bcache = cache[bufnr]
@@ -783,6 +1009,10 @@ M.get_actions = function(): {string:function}
   return actions
 end
 
+--- Refresh all buffers.
+---
+--- Attributes: ~
+---     {async}
 M.refresh = void(function()
   manager.setup_signs_and_highlights(true)
   require('gitsigns.current_line_blame').setup()
@@ -793,30 +1023,5 @@ M.refresh = void(function()
     manager.update(k, v)
   end
 end)
-
-M.toggle_signs = function()
-  config.signcolumn = not config.signcolumn
-  M.refresh()
-end
-
-M.toggle_numhl = function()
-  config.numhl = not config.numhl
-  M.refresh()
-end
-
-M.toggle_linehl = function()
-  config.linehl = not config.linehl
-  M.refresh()
-end
-
-M.toggle_word_diff = function()
-  config.word_diff = not config.word_diff
-  M.refresh()
-end
-
-M.toggle_current_line_blame = function()
-  config.current_line_blame = not config.current_line_blame
-  M.refresh()
-end
 
 return M
