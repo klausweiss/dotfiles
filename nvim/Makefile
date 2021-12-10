@@ -177,3 +177,6 @@ update-vim-polyglot:
 update-vim-rooter:
 	$(call download-from-repo, https://github.com/airblade/vim-rooter)
 
+update-vim-table-mode:
+	$(call download-from-repo, https://github.com/dhruvasagar/vim-table-mode)
+
