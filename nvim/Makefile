@@ -131,6 +131,9 @@ update-neogit: \
 
 	$(call download-from-repo, https://github.com/TimUntersberger/neogit)
 
+update-nvim-autopairs:
+	$(call download-from-repo, https://github.com/windwp/nvim-autopairs)
+
 update-nvim-lsp-config:
 	$(call download-from-repo, https://github.com/neovim/nvim-lspconfig)
 

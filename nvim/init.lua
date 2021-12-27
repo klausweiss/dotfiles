@@ -136,10 +136,17 @@ cmp.setup.cmdline(':', {
   })
 })
 
+-- cmp + autoopairs
+local cmp_autopairs = require('nvim-autopairs.completion.cmp')
+cmp.event:on( 'confirm_done', cmp_autopairs.on_confirm_done({  map_char = { tex = '' } }))
+
 -- Setup lspconfig.
 local cmp_lsp_capabilities = require('cmp_nvim_lsp').update_capabilities(vim.lsp.protocol.make_client_capabilities())
 
 cmd 'highlight link CompeDocumentation NormalFloat'
+
+-- autopairs
+require('nvim-autopairs').setup{}
 
 -- commenting
 require('Comment').setup()
