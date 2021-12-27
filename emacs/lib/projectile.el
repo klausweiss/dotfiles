@@ -860,9 +860,10 @@ specify a project explicitly via the optional PROJECT param."
   "Serialize DATA to FILENAME.
 
 The saved data can be restored with `projectile-unserialize'."
-  (when (file-writable-p filename)
+  (if (file-writable-p filename)
     (with-temp-file filename
-      (insert (let (print-length) (prin1-to-string data))))))
+      (insert (let (print-length) (prin1-to-string data))))
+    (message "Projectile cache '%s' not writeable" filename)))
 
 (defun projectile-unserialize (filename)
   "Read data serialized by `projectile-serialize' from FILENAME."
@@ -954,8 +955,10 @@ to invalidate."
 
 (defun projectile-time-seconds ()
   "Return the number of seconds since the unix epoch."
-  (cl-destructuring-bind (high low _usec _psec) (current-time)
-    (+ (lsh high 16) low)))
+  (if (fboundp 'time-convert)
+      (time-convert nil 'integer)
+    (cl-destructuring-bind (high low _usec _psec) (current-time)
+      (+ (lsh high 16) low))))
 
 (defun projectile-cache-project (project files)
   "Cache PROJECTs FILES.
@@ -1044,14 +1047,23 @@ The cache is created both in memory and on the hard drive."
 
 If DEPTH is non-nil recursively descend exactly DEPTH levels below DIRECTORY and
 discover projects there."
+  (interactive
+   (list (read-directory-name "Starting directory: ")))
+
   (if (file-directory-p directory)
       (if (and (numberp depth) (> depth 0))
-          (dolist (dir (directory-files directory t))
+          ;; Ignore errors when listing files in the directory, because
+          ;; sometimes that directory is an unreadable one at the root of a
+          ;; volume. This is the case, for example, on macOS with the
+          ;; .Spotlight-V100 directory.
+          (dolist (dir (ignore-errors (directory-files directory t)))
             (when (and (file-directory-p dir)
                        (not (member (file-name-nondirectory dir) '(".." "."))))
               (projectile-discover-projects-in-directory dir (1- depth))))
         (when (projectile-project-p directory)
-          (projectile-add-known-project (projectile-project-root directory))))
+          (let ((dir (abbreviate-file-name (projectile-project-root directory))))
+            (unless (member dir projectile-known-projects)
+              (projectile-add-known-project dir)))))
     (message "Project search path directory %s doesn't exist" directory)))
 
 ;;;###autoload
@@ -1547,13 +1559,16 @@ If PROJECT is not specified the command acts on the current project."
 (defun projectile-project-buffer-p (buffer project-root)
   "Check if BUFFER is under PROJECT-ROOT."
   (with-current-buffer buffer
-    (and (not (string-prefix-p " " (buffer-name buffer)))
-         (not (projectile-ignored-buffer-p buffer))
-         default-directory
-         (string-equal (file-remote-p default-directory)
-                       (file-remote-p project-root))
-         (not (string-match-p "^http\\(s\\)?://" default-directory))
-         (string-prefix-p project-root (file-truename default-directory) (eq system-type 'windows-nt)))))
+    (let ((directory (if buffer-file-name
+                         (file-name-directory buffer-file-name)
+                       default-directory)))
+      (and (not (string-prefix-p " " (buffer-name buffer)))
+           (not (projectile-ignored-buffer-p buffer))
+           directory
+           (string-equal (file-remote-p directory)
+                         (file-remote-p project-root))
+           (not (string-match-p "^http\\(s\\)?://" directory))
+           (string-prefix-p project-root (file-truename directory) (eq system-type 'windows-nt))))))
 
 (defun projectile-ignored-buffer-p (buffer)
   "Check if BUFFER should be ignored.
@@ -3006,6 +3021,11 @@ a manual COMMAND-TYPE command is created with
                                   :compile "make"
                                   :test "make test"
                                   :install "make install")
+(projectile-register-project-type 'gnumake '("GNUMakefile")
+                                  :project-file "GNUMakefile"
+                                  :compile "make"
+                                  :test "make test"
+                                  :install "make install")
 (projectile-register-project-type 'cmake '("CMakeLists.txt")
                                   :project-file "CMakeLists.txt"
                                   :configure #'projectile--cmake-configure-command
@@ -3115,6 +3135,8 @@ a manual COMMAND-TYPE command is created with
 ;; Scala
 (projectile-register-project-type 'sbt '("build.sbt")
                                   :project-file "build.sbt"
+                                  :src-dir "main"
+                                  :test-dir "test"
                                   :compile "sbt compile"
                                   :test "sbt test"
                                   :test-suffix "Spec")
@@ -3359,6 +3381,21 @@ TEST-FILE-PATH may be a absolute path, relative path or a file name."
       (concat (string-remove-suffix test-suffix test-file-name) "." test-file-ext))
      (t (error "Project type `%s' not supported!" project-type)))))
 
+(defun projectile--test-to-impl-dir (test-dir-path)
+  "Return the directory path of an impl file with test file in TEST-DIR-PATH.
+
+Occurrences of the current project type's test-dir property (which should be a
+string) are replaced with the current project type's src-dir property
+ (which should be a string) to obtain the new directory.
+
+Nil is returned if either the src-dir or test-dir properties are not strings."
+  (let ((test-dir (projectile-project-type-attribute
+                   (projectile-project-type) 'test-dir))
+        (impl-dir (projectile-project-type-attribute
+                   (projectile-project-type) 'src-dir)))
+    (when (and (stringp test-dir) (stringp impl-dir))
+      (projectile-complementary-dir test-dir-path test-dir impl-dir))))
+
 (defun projectile--impl-to-test-dir (impl-dir-path)
   "Return the directory path of a test whose impl file resides in IMPL-DIR-PATH.
 
@@ -3366,13 +3403,13 @@ Occurrences of the current project type's src-dir property (which should be a
 string) are replaced with the current project type's test-dir property
  (which should be a string) to obtain the new directory.
 
-An error is signalled if either the src-dir or test-dir properties are not
-strings."
-  (let ((test-dir (projectile-test-directory (projectile-project-type)))
-        (impl-dir (projectile-src-directory (projectile-project-type))))
-    (if (and (stringp test-dir) (stringp impl-dir))
-        (projectile-complementary-dir impl-dir-path impl-dir test-dir)
-      (error "Expected the current project's :test-dir and :impl-dir properties to be strings but found %s and %s" test-dir impl-dir))))
+Nil is returned if either the src-dir or test-dir properties are not strings."
+  (let ((test-dir (projectile-project-type-attribute
+                   (projectile-project-type) 'test-dir))
+        (impl-dir (projectile-project-type-attribute
+                   (projectile-project-type) 'src-dir)))
+    (when (and (stringp test-dir) (stringp impl-dir))
+      (projectile-complementary-dir impl-dir-path impl-dir test-dir))))
 
 (defun projectile-complementary-dir (dir-path string replacement)
   "Return the \"complementary\" directory of DIR-PATH by replacing STRING in DIR-PATH with REPLACEMENT."
@@ -3389,19 +3426,13 @@ strings."
                       (file-name-directory path))
                     :create-parents)))
 
-(defun projectile--test-file-fallback (file-name)
-  "Attempt to build a path for the test file of FILE-NAME using the src-dir and test-dir properties of the current project type which should be strings, an error is signalled if this is not the case."
-  (projectile--complementary-file
-   file-name
-   #'projectile--impl-to-test-dir
-   #'projectile--test-name-for-impl-name))
-
 (defun projectile-find-implementation-or-test (file-name)
   "Given a FILE-NAME return the matching implementation or test filename.
 
 If `projectile-create-missing-test-files' is non-nil, create the missing
 test file."
   (unless file-name (error "The current buffer is not visiting a file"))
+  (unless (projectile-project-type) (projectile-ensure-project nil))
   (if (projectile-test-file-p file-name)
       ;; find the matching impl file
       (let ((impl-file (projectile-find-matching-file file-name)))
@@ -3411,15 +3442,17 @@ test file."
            "No matching source file found for project type `%s'"
            (projectile-project-type))))
     ;; find the matching test file
-    (let* ((test-file (projectile-find-matching-test file-name))
-           (test-file-or-fallback (or test-file (projectile--test-file-fallback file-name)))
-           (expanded-test-file (projectile-expand-root test-file-or-fallback)))
+    (let* ((error-msg (format
+                       "No matching test file found for project type `%s'"
+                       (projectile-project-type)))
+           (test-file (or (projectile-find-matching-test file-name)
+                          (error error-msg)))
+           (expanded-test-file (projectile-expand-root test-file)))
       (cond ((file-exists-p expanded-test-file) expanded-test-file)
             (projectile-create-missing-test-files
              (projectile--create-directories-for expanded-test-file)
              expanded-test-file)
-            (t (error "No matching test file found for project type `%s'"
-                      (projectile-project-type)))))))
+            (t (progn (error error-msg)))))))
 
 ;;;###autoload
 (defun projectile-find-implementation-or-test-other-window ()
@@ -3518,11 +3551,29 @@ Fallback to DEFAULT-VALUE for missing attributes."
   "Apply DIR-FN and FILENAME-FN to the directory and name of FILE-PATH.
 
 More specifically, return DIR-FN applied to the directory of FILE-PATH
-concatenated with FILENAME-FN applied to the file name of FILE-PATH."
-  (let* ((filename (file-name-nondirectory file-path))
-         (complementary-filename (funcall filename-fn filename))
-         (dir (funcall dir-fn (file-name-directory file-path))))
-    (concat (file-name-as-directory dir) complementary-filename)))
+concatenated with FILENAME-FN applied to the file name of FILE-PATH.
+
+If either function returns nil, return nil."
+  (let ((filename (file-name-nondirectory file-path)))
+    (when-let ((complementary-filename (funcall filename-fn filename))
+               (dir (funcall dir-fn (file-name-directory file-path))))
+     (concat (file-name-as-directory dir) complementary-filename))))
+
+(defun projectile--impl-file-from-src-dir-str (file-name)
+  "Return a path relative to the project root for the impl file of FILE-NAME using the src-dir and test-dir properties of the current project type which should be strings, nil returned if this is not the case."
+  (when-let ((complementary-file (projectile--complementary-file
+                                  file-name
+                                  #'projectile--test-to-impl-dir
+                                  #'projectile--impl-name-for-test-name)))
+    (file-relative-name complementary-file (projectile-project-root))))
+
+(defun projectile--test-file-from-test-dir-str (file-name)
+  "Return a path relative to the project root for the test file of FILE-NAME using the src-dir and test-dir properties of the current project type which should be strings, nil returned if this is not the case."
+  (when-let (complementary-file (projectile--complementary-file
+                                 file-name
+                                 #'projectile--impl-to-test-dir
+                                 #'projectile--test-name-for-impl-name))
+    (file-relative-name complementary-file (projectile-project-root))))
 
 (defun projectile--impl-file-from-src-dir-fn (test-file)
   "Return the implementation file path for the absolute path TEST-FILE relative to the project root in the case the current project type's src-dir has been set to a custom function, return nil if this is not the case or the path points to a file that does not exist."
@@ -3547,15 +3598,25 @@ concatenated with FILENAME-FN applied to the file name of FILE-PATH."
        (projectile-project-root)))))
 
 (defun projectile--find-matching-test (impl-file)
-  "Return a list of test files for IMPL-FILE."
+  "Return a list of test files for IMPL-FILE.
+
+The precendence for determining test files to return is:
+
+1. Use the project type's test-dir property if it's set to a function
+2. Use the project type's related-files-fn property if set
+3. Use the project type's test-dir property if it's set to a string
+4. Default to a fallback which matches all project files against
+   `projectile--impl-to-test-predicate'"
   (if-let ((test-file-from-test-dir-fn
             (projectile--test-file-from-test-dir-fn impl-file)))
       (list test-file-from-test-dir-fn)
     (if-let ((plist (projectile--related-files-plist-by-kind impl-file :test)))
         (projectile--related-files-from-plist plist)
-      (when-let ((predicate (projectile--impl-to-test-predicate impl-file)))
-        (projectile--best-or-all-candidates-based-on-parents-dirs
-         impl-file (cl-remove-if-not predicate (projectile-current-project-files)))))))
+      (if-let ((test-file (projectile--test-file-from-test-dir-str impl-file)))
+          (list test-file)
+        (when-let ((predicate (projectile--impl-to-test-predicate impl-file)))
+          (projectile--best-or-all-candidates-based-on-parents-dirs
+           impl-file (cl-remove-if-not predicate (projectile-current-project-files))))))))
 
 (defun projectile--test-to-impl-predicate (test-file)
   "Return a predicate, which returns t for any impl files for TEST-FILE."
@@ -3568,15 +3629,25 @@ concatenated with FILENAME-FN applied to the file name of FILE-PATH."
             (when test-suffix (string-equal (concat name test-suffix) basename)))))))
 
 (defun projectile--find-matching-file (test-file)
-  "Return a list of impl files tested by TEST-FILE."
+  "Return a list of impl files tested by TEST-FILE.
+
+The precendence for determining implementation files to return is:
+
+1. Use the project type's src-dir property if it's set to a function
+2. Use the project type's related-files-fn property if set
+3. Use the project type's src-dir property if it's set to a string
+4. Default to a fallback which matches all project files against
+   `projectile--test-to-impl-predicate'"
   (if-let ((impl-file-from-src-dir-fn
             (projectile--impl-file-from-src-dir-fn test-file)))
       (list impl-file-from-src-dir-fn)
     (if-let ((plist (projectile--related-files-plist-by-kind test-file :impl)))
         (projectile--related-files-from-plist plist)
-      (if-let ((predicate (projectile--test-to-impl-predicate test-file)))
+      (if-let ((impl-file (projectile--impl-file-from-src-dir-str test-file)))
+          (list impl-file)
+        (when-let ((predicate (projectile--test-to-impl-predicate test-file)))
           (projectile--best-or-all-candidates-based-on-parents-dirs
-           test-file (cl-remove-if-not predicate (projectile-current-project-files)))))))
+           test-file (cl-remove-if-not predicate (projectile-current-project-files))))))))
 
 (defun projectile--choose-from-candidates (candidates)
   "Choose one item from CANDIDATES."
@@ -3967,14 +4038,14 @@ installed to work."
 ;;;###autoload
 (defun projectile-run-shell-command-in-root (command &optional output-buffer error-buffer)
   "Invoke `shell-command' in the project's root."
-  (interactive "sShell command: ")
+  (interactive (list (read-shell-command "Shell command: ")))
   (projectile-with-default-dir (projectile-acquire-root)
     (shell-command command output-buffer error-buffer)))
 
 ;;;###autoload
 (defun projectile-run-async-shell-command-in-root (command &optional output-buffer error-buffer)
   "Invoke `async-shell-command' in the project's root."
-  (interactive "sAsync shell command: ")
+  (interactive (list (read-shell-command "Async shell command: ")))
   (projectile-with-default-dir (projectile-acquire-root)
     (async-shell-command command output-buffer error-buffer)))
 
@@ -4509,7 +4580,7 @@ project of that type"
       (projectile-default-install-command (projectile-project-type))))
 
 (defun projectile-package-command (compile-dir)
-  "Retrieve the pacakge command for COMPILE-DIR.
+  "Retrieve the package command for COMPILE-DIR.
 
 The command is determined like this:
 
@@ -5010,10 +5081,8 @@ See `projectile--cleanup-known-projects'."
   "Add PROJECT-ROOT to the list of known projects."
   (interactive (list (read-directory-name "Add to known projects: ")))
   (unless (projectile-ignored-project-p project-root)
-    (setq projectile-known-projects
-          (delete-dups
-           (cons (file-name-as-directory (abbreviate-file-name project-root))
-                 projectile-known-projects)))
+    (push (file-name-as-directory (abbreviate-file-name project-root)) projectile-known-projects)
+    (delete-dups projectile-known-projects)
     (projectile-merge-known-projects)))
 
 (defun projectile-load-known-projects ()
@@ -5344,6 +5413,12 @@ thing shown in the mode line otherwise."
   :type 'string
   :package-version '(projectile . "0.12.0"))
 
+(defcustom projectile-show-menu t
+  "Controls whether to display Projectile's menu."
+  :group 'projectile
+  :type 'boolean
+  :package-version '(projectile . "2.6.0"))
+
 (defvar-local projectile--mode-line projectile-mode-line-prefix)
 
 (defun projectile-default-mode-line ()
@@ -5439,57 +5514,64 @@ thing shown in the mode line otherwise."
       (define-key map projectile-keymap-prefix 'projectile-command-map))
     (easy-menu-define projectile-mode-menu map
       "Menu for Projectile"
-      '("Projectile"
-        ["Find file" projectile-find-file]
-        ["Find file in known projects" projectile-find-file-in-known-projects]
-        ["Find test file" projectile-find-test-file]
-        ["Find directory" projectile-find-dir]
-        ["Find file in directory" projectile-find-file-in-directory]
-        ["Find other file" projectile-find-other-file]
-        ["Switch to buffer" projectile-switch-to-buffer]
-        ["Jump between implementation file and test file" projectile-toggle-between-implementation-and-test]
-        ["Kill project buffers" projectile-kill-buffers]
-        ["Save project buffers" projectile-save-project-buffers]
-        ["Recent files" projectile-recentf]
-        ["Previous buffer" projectile-previous-project-buffer]
-        ["Next buffer" projectile-next-project-buffer]
+      '("Projectile" :visible projectile-show-menu
+        ("Find..."
+         ["Find file" projectile-find-file]
+         ["Find file in known projects" projectile-find-file-in-known-projects]
+         ["Find test file" projectile-find-test-file]
+         ["Find directory" projectile-find-dir]
+         ["Find file in directory" projectile-find-file-in-directory]
+         ["Find other file" projectile-find-other-file]
+         ["Jump between implementation file and test file" projectile-toggle-between-implementation-and-test])
+        ("Buffers"
+         ["Switch to buffer" projectile-switch-to-buffer]
+         ["Kill project buffers" projectile-kill-buffers]
+         ["Save project buffers" projectile-save-project-buffers]
+         ["Recent files" projectile-recentf]
+         ["Previous buffer" projectile-previous-project-buffer]
+         ["Next buffer" projectile-next-project-buffer])
+        ("Projects"
+         ["Switch to project" projectile-switch-project]
+         ["Switch to open project" projectile-switch-open-project]
+         "--"
+         ["Discover projects in directory" projectile-discover-projects-in-directory]
+         ["Clear known projects" projectile-clear-known-projects]
+         ["Reset known projects" projectile-reset-known-projects]
+         "--"
+         ["Open project in dired" projectile-dired]
+         "--"
+         ["Browse dirty projects" projectile-browse-dirty-projects]
+         "--"
+         ["Cache current file" projectile-cache-current-file]
+         ["Invalidate cache" projectile-invalidate-cache]
+         ["Regenerate [e|g]tags" projectile-regenerate-tags]
+         "--"
+         ["Toggle project wide read-only" projectile-toggle-project-read-only]
+         ["Edit .dir-locals.el" projectile-edit-dir-locals]
+         ["Project info" projectile-project-info])
+        ("Search"
+         ["Search with grep" projectile-grep]
+         ["Search with ag" projectile-ag]
+         ["Search with ripgrep" projectile-ripgrep]
+         ["Replace in project" projectile-replace]
+         ["Multi-occur in project" projectile-multi-occur])
+        ("Run..."
+         ["Run shell" projectile-run-shell]
+         ["Run eshell" projectile-run-eshell]
+         ["Run ielm" projectile-run-ielm]
+         ["Run term" projectile-run-term]
+         "--"
+         ["Run GDB" projectile-run-gdb])
+        ("Build"
+         ["Configure project" projectile-configure-project]
+         ["Compile project" projectile-compile-project]
+         ["Test project" projectile-test-project]
+         ["Install project" projectile-install-project]
+         ["Package project" projectile-package-project]
+         ["Run project" projectile-run-project]
+         "--"
+         ["Repeat last build command" projectile-repeat-last-command])
         "--"
-        ["Toggle project wide read-only" projectile-toggle-project-read-only]
-        ["Edit .dir-locals.el" projectile-edit-dir-locals]
-        "--"
-        ["Switch to project" projectile-switch-project]
-        ["Switch to open project" projectile-switch-open-project]
-        ["Discover projects in directory" projectile-discover-projects-in-directory]
-        ["Clear known projects" projectile-clear-known-projects]
-        ["Reset known projects" projectile-reset-known-projects]
-        ["Browse dirty projects" projectile-browse-dirty-projects]
-        ["Open project in dired" projectile-dired]
-        "--"
-        ["Search in project (grep)" projectile-grep]
-        ["Search in project (ag)" projectile-ag]
-        ["Replace in project" projectile-replace]
-        ["Multi-occur in project" projectile-multi-occur]
-        "--"
-        ["Run GDB" projectile-run-gdb]
-        "--"
-        ["Run shell" projectile-run-shell]
-        ["Run eshell" projectile-run-eshell]
-        ["Run ielm" projectile-run-ielm]
-        ["Run term" projectile-run-term]
-        "--"
-        ["Cache current file" projectile-cache-current-file]
-        ["Invalidate cache" projectile-invalidate-cache]
-        ["Regenerate [e|g]tags" projectile-regenerate-tags]
-        "--"
-        ["Configure project" projectile-configure-project]
-        ["Compile project" projectile-compile-project]
-        ["Test project" projectile-test-project]
-        ["Install project" projectile-install-project]
-        ["Package project" projectile-package-project]
-        ["Run project" projectile-run-project]
-        ["Repeat last external command" projectile-repeat-last-command]
-        "--"
-        ["Project info" projectile-project-info]
         ["About" projectile-version]))
     map)
   "Keymap for Projectile mode.")

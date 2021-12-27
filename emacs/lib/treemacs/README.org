@@ -26,6 +26,7 @@
    - [[#fringe-indicator-mode][Fringe-indicator-mode]]
    - [[#git-mode][Git-mode]]
    - [[#filewatch-mode][Filewatch-mode]]
+   - [[#indent-guide-mode][Indent-guide-mode]]
    - [[#session-persistence][Session Persistence]]
    - [[#terminal-compatibility][Terminal Compatibility]]
    - [[#tag-view][Tag View]]
@@ -293,9 +294,23 @@ other hand, instantaneous - it will immediately turn off all existing file watch
 actions.
 
 _Known limitations_:
-Staging and committing changes does not produce any file change events of its own, if you use ~treemacs-git-mode~ you
-still need to do a manual refresh to see your files' faces go from 'changed' and 'untracked' to 'unchanged' after a
-commit.
+- Staging and committing changes does not produce any file change events of its own, if you use ~treemacs-git-mode~ you
+  still need to do a manual refresh to see your files' faces go from 'changed' and 'untracked' to 'unchanged' after a
+  commit.
+- Filewatch-mode may not be able to track file modifications on MacOS, making git-mode miss potential changes, see also
+  [[https://github.com/Alexander-Miller/treemacs/issues/152#issuecomment-941093929][this comment]].
+
+** Indent-guide-mode
+
+~treemacs-indent-guide-mode~ is a simple visual helper based on the the options provided by the ~treemacs-indentation~
+and ~treemacs-indentation-string~ settings. Its appearance is dictated by ~treemacs-indent-guide-style~, the options are
+either ~line~:
+
+[[file:screenshots/indent-guide-line.png]]
+
+or ~block~:
+
+[[file:screenshots/indent-guide-block.png]]
 
 ** Session Persistence
 Treemacs' sessions - your workspace and the projects it contains - are saved when Emacs shuts down and restored when
@@ -402,7 +417,7 @@ discoverability.
             treemacs-deferred-git-apply-delay        0.5
             treemacs-directory-name-transformer      #'identity
             treemacs-display-in-side-window          t
-            treemacs-eldoc-display                   t
+            treemacs-eldoc-display                   'simple
             treemacs-file-event-delay                5000
             treemacs-file-extension-regex            treemacs-last-period-regex-value
             treemacs-file-follow-delay               0.2
@@ -441,7 +456,9 @@ discoverability.
             treemacs-text-scale                      nil
             treemacs-user-mode-line-format           nil
             treemacs-user-header-line-format         nil
+            treemacs-wide-toggle-width               70
             treemacs-width                           35
+            treemacs-width-increment                 1
             treemacs-width-is-initially-locked       t
             treemacs-workspace-switch-cleanup        nil)
 
@@ -479,9 +496,8 @@ discoverability.
     :ensure t)
 
   (use-package treemacs-icons-dired
-    :after (treemacs dired)
-    :ensure t
-    :config (treemacs-icons-dired-mode))
+    :hook (dired-mode . treemacs-icons-dired-enable-once)
+    :ensure t)
 
   (use-package treemacs-magit
     :after (treemacs magit)
@@ -502,6 +518,8 @@ Treemacs offers the following configuration options (~describe-variable~ will us
 | treemacs-indentation                     | 2                                                | The number of times each level is indented in the file tree. If specified as '(INTEGER px), indentation will be a single INTEGER pixels wide space.                                                                                  |
 | treemacs-indentation-string              | " "                                              | The string that is used to create indentation when ~treemacs-indentation~ is not specified as pixels.                                                                                                                                |
 | treemacs-width                           | 35                                               | Width of the treemacs window.                                                                                                                                                                                                        |
+| treemacs-wide-toggle-width               | 70                                               | Width of the treemacs window when using ~treemacs-extra-wide-toggle~.                                                                                                                                                                |
+| treemacs-width-increment                 | 1                                                | When resizing, this value is added or substracted from the window width.                                                                                                                                                             |
 | treemacs-show-hidden-files               | t                                                | Dotfiles will be shown if this is set to t and be hidden otherwise.                                                                                                                                                                  |
 | treemacs-follow-after-init               | t                                                | When non-nil follow the currently selected file after initializing the treemacs buffer, regardless of ~treemacs-follow-mode~ setting.                                                                                                |
 | treemacs-expand-after-init               | t                                                | When non-nil expand the first project after treemacs is first initialsed.                                                                                                                                                            |
@@ -545,7 +563,7 @@ Treemacs offers the following configuration options (~describe-variable~ will us
 | treemacs-show-cursor                     | nil                                              | When non-nil the cursor will stay visible in the treemacs buffer.                                                                                                                                                                    |
 | treemacs-git-command-pipe                | ""                                               | Text to be appended to treemacs' git command. Useful for filtering with something like grep.                                                                                                                                         |
 | treemacs-no-delete-other-windows         | t                                                | Prevents the treemacs window from being deleted by commands like ~delete-other-windows~ and ~magit-status~.                                                                                                                          |
-| treemacs-eldoc-display                   | t                                                | Enables eldoc display of the file path at point. Requires ~eldoc-mode~.                                                                                                                                                              |
+| treemacs-eldoc-display                   | 'simple                                          | Enables eldoc display of the file path at point. Requires ~eldoc-mode~.                                                                                                                                                              |
 | treemacs-bookmark-title-template         | "Treemacs - ${project}: ${label}"                | When using ~bookmark-set~ in Treemacs, the default template for a bookmark label. The following patterns are available: "${project}", "${label}", "${label:N}", ${label-path}", "${label-path:N}", "${file-path}", "${file-path:N}". |
 | treemacs-file-extension-regex            | Text after last period                           | Determines how treemacs detects a file extension. Can be set to use text after first or last period.                                                                                                                                 |
 | treemacs-directory-name-transformer      | identity                                         | Transformer function that is applied to directory names before rendering for any sort of cosmetic effect.                                                                                                                            |
@@ -562,6 +580,7 @@ Treemacs offers the following configuration options (~describe-variable~ will us
 | treemacs-width-is-initially-locked       | t                                                | Indicates whether the treemacs windows starts with a locked width or not.                                                                                                                                                            |
 | treemacs-select-when-already-in-treemacs | 'move-back                                       | Indicates how ~treemacs-select-window~ behaves when treemacs is already selected.                                                                                                                                                    |
 | treemacs-text-scale                      | nil                                              | Scaling for text in treemacs, used via ~text-scale-increase~.                                                                                                                                                                        |
+| treemacs-indent-guide-style              | line                                             | Appearance option for ~treemacs-indent-guide~, either a thin line or a thick block.                                                                                                                                                  |
 
 ** Faces
 Treemacs defines and uses the following faces:
@@ -716,15 +735,6 @@ theme. The given font argument will be used as the font for the alignment tabs u
 the indentation problem. In addition ~treemacs-indentation~ and ~treemacs-indentation-string~ will be set to 1 and a
 (font-changed) TAB character respectively, so customizing them is (probably) not possible.
 
-*** Indent guide
-Not really part of the icons, but a useful visual feature nonetheless: An indent guide like effect can be created by
-selecting appropriate values for ~treemacs-indentation~ and ~treemacs-indentation-string~:
-
-#+BEGIN_SRC emacs-lisp
-  (setq treemacs-indentation-string (propertize " ⫶ " 'face 'font-lock-comment-face)
-        treemacs-indentation 1)
-#+END_SRC
-
 * Keymap
 ** Unbound functions
 These functions are not bound to any keys by default. It's left up to users to find the most convenient key binds.
@@ -772,6 +782,7 @@ Treemacs' keybindings are distributed to several keymaps, based on common keybin
 | C-c C-w d | treemacs-remove-workspace       | Delete a workspace.                    |
 | C-c C-w s | treemacs-switch-workspace       | Switch the current workspace.          |
 | C-c C-w e | treemacs-edit-workspaces        | Edit workspace layout via org-mode.    |
+| C-c C-w n | treemacs-next-workspace         | Switch to the next workspace.          |
 | C-c C-w f | treemacs-set-fallback-workspace | Select the default fallback workspace. |
 
 *** Node Visit Keybinds (Prefix ~o~)
@@ -781,6 +792,7 @@ Treemacs' keybindings are distributed to several keymaps, based on common keybin
 | ov     | treemacs-visit-node-vertical-split               | Open current file or tag by vertically splitting ~next-window~.                                                |
 | oh     | treemacs-visit-node-horizontal-split             | Open current file or tag by horizontally splitting ~next-window~.                                              |
 | oo/RET | treemacs-visit-node-no-split                     | Open current file or tag, performing no split and using ~next-window~ directly.                                |
+| oc     | treemacs-visit-node-close-treemacs               | Open current file or tag, performing no split and using ~next-window~ directly, and close treemacs.            |
 | oaa    | treemacs-visit-node-ace                          | Open current file or tag, using ace-window to decide which window to open the file in.                         |
 | oah    | treemacs-visit-node-ace-horizontal-split         | Open current file or tag by horizontally splitting a window selected by ace-window.                            |
 | oav    | treemacs-visit-node-ace-vertical-split           | Open current file or tag by vertically splitting a window selected by ace-window.                              |
@@ -825,16 +837,18 @@ Treemacs' keybindings are distributed to several keymaps, based on common keybin
 | <M-Up>   | treemacs-move-project-up                    | Switch positions of project at point and the one above it.                                             |
 | <M-Down> | treemacs-move-project-down                  | Switch positions of project at point and the one below it.                                             |
 | w        | treemacs-set-width                          | Set a new value for the width of the treemacs window.                                                  |
+| <        | treemacs-decrement-width                    | Decrease the width of the treemacs window.                                                             |
+| >        | treemacs-increment-width                    | Increase the width of the treemacs window.                                                             |
 | RET      | treemacs-RET-action                         | Run the action defined in ~treemacs-RET-actions-config~ for the current node.                          |
 | TAB      | treemacs-TAB-action                         | Run the action defined in ~treemacs-TAB-actions-config~ for the current node.                          |
 | g/r/gr   | treemacs-refresh                            | Refresh the project at point.                                                                          |
-| d        | treemacs-delete                             | Delete node at point.                                                                                  |
-| R        | treemacs-rename                             | Rename node at point.                                                                                  |
+| d        | treemacs-delete-file                        | Delete node at point.                                                                                  |
+| R        | treemacs-rename-file                        | Rename node at point.                                                                                  |
 | cf       | treemacs-create-file                        | Create a file.                                                                                         |
 | cd       | treemacs-create-dir                         | Create a directory.                                                                                    |
 | q        | treemacs-quit                               | Hide the treemacs window.                                                                              |
 | Q        | treemacs-kill-buffer                        | Delete the treemacs buffer.                                                                            |
-| P        | treemacs-peek                               | Peek at the file (or tag) at point without fully opening it.                                           |
+| P        | treemacs-peek-mode                          | Peek at the files at point without fully opening them.                                                 |
 | ya       | treemacs-copy-absolute-path-at-point        | Copy the absolute path of the node at point.                                                           |
 | yr       | treemacs-copy-relative-path-at-point        | Copy the path of the node at point relative to the project root.                                       |
 | yp       | treemacs-copy-project-path-at-point         | Copy the absolute path of the project root for the node at point.                                      |
@@ -850,6 +864,8 @@ Treemacs' keybindings are distributed to several keymaps, based on common keybin
 | \!       | treemacs-run-shell-command-for-current-node | Run an asynchronous shell command on the current node, replacing "$path" with its path.                |
 | M-!      | treemacs-run-shell-command-in-project-root  | Run an asynchronous shell command in the root of the current project, replacing "$path" with its path. |
 | C        | treemacs-cleanup-litter                     | Close all directories matching any of ~treemacs-litter-directories~.                                   |
+| =        | treemacs-fit-window-width                   | Adjust the width of the treemacs window to that of the longsest line.                                  |
+| W        | treemacs-extra-wide-toggle                  | Toggle between normal and extra wide display for the treemacs window.                                  |
 
 * Compatibility
 The correctness of treemacs' display behaviour is, to a large degree, ensured through window properties and reacting to
@@ -870,7 +886,7 @@ Aside from this there are the following known incompatibilities:
 * FAQ
 - I don't need multiple projects, can treemacs just always show me the current project I'm in?
 
-  Yes, see the section about [[*Navigation without Projects and Workspaces]].
+  Yes, see the section about [[#navigation-without-projects-and-workspaces][Navigation without Projects and Workspace]].
 
 - How do I hide files I don't want to see?
 
@@ -936,6 +952,15 @@ Aside from this there are the following known incompatibilities:
 
    Yes, you just need to expand it with a [[https://www.emacswiki.org/emacs/PrefixArgument][prefix argument]]. Closing nodes with a prefix argument works as well. In this
    case treemacs will forget about the nodes opened below the one that was closed and not reopen them automatically.
+
+- Broken display of CJK characters
+
+  If you are seeing raw bytes like ~\316~ instead of proper CJK characters like [[https://github.com/Alexander-Miller/treemacs/issues/863][in this issue]] you have to set the proper
+  language environment, e.g.:
+
+   #+BEGIN_SRC emacs-lisp
+     (set-language-environment 'Chinese-GB18030)
+   #+END_SRC
 
 * Contributing
 Contributions are very much welcome, but should fit the general scope and style of treemacs. The following is a list of

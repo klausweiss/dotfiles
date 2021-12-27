@@ -1,8 +1,10 @@
-[[https://circleci.com/gh/emacs-dashboard][https://github.com/emacs-dashboard/emacs-dashboard/workflows/CI/badge.svg]]
+[[https://www.gnu.org/licenses/gpl-3.0][https://img.shields.io/badge/License-GPL%20v3-blue.svg]]
 [[https://melpa.org/#/dashboard][https://melpa.org/packages/dashboard-badge.svg]]
 [[https://stable.melpa.org/#/dashboard][https://stable.melpa.org/packages/dashboard-badge.svg]]
 
 * Emacs Dashboard
+
+[[https://github.com/emacs-dashboard/emacs-dashboard/actions/workflows/ci.yml][https://github.com/emacs-dashboard/emacs-dashboard/workflows/CI/badge.svg]]
 
 An extensible emacs startup screen showing you what's most important.
 
@@ -72,7 +74,7 @@ To update the banner or banner title
 ;; 'official which displays the official emacs logo
 ;; 'logo which displays an alternative emacs logo
 ;; 1, 2 or 3 which displays one of the text banners
-;; "path/to/your/image.png" or "path/to/your/text.txt" which displays whatever image/text you would prefer
+;; "path/to/your/image.gif", "path/to/your/image.png" or "path/to/your/text.txt" which displays whatever gif/image/text you would prefer
 
 ;; Content is not centered by default. To center, set
 (setq dashboard-center-content t)
@@ -209,11 +211,17 @@ To have an extra filter, ~MATCH~ parameter is exposed as
 headlines. Org iterates over all headlines when MATCH is nil or t.
 #+end_quote
 
-See [[https://www.gnu.org/software/emacs/manual/html_node/org/Using-the-mapping-API.html][Org Manual]] for more information.
+See [[https://orgmode.org/manual/Using-the-Mapping-API.html][Org Manual]] for more information.
 
 Once the agenda appears in the dashboard, ~org-agenda-files~ stay
 open. With ~(setq dashboard-agenda-release-buffers t)~ the org files
 are close. Note that this could slow down the dashboard buffer refreshment.
+
+*** Agenda sort
+
+Agenda is now sorted with ~dashboard-agenda-sort-strategy~ following
+the idea of [[https://orgmode.org/worg/doc.html#org-agenda-sorting-strategy][org-agenda-sorting-strategy]]. Suported strategies are
+~time-up~, ~time-down~, ~todo-state-up~ and ~todo-state-down~
 
 ** Faces
 

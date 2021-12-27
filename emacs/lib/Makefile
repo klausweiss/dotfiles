@@ -18,7 +18,7 @@ LUA_MODE_URL := https://raw.githubusercontent.com/immerrr/lua-mode/master/lua-mo
 	DASH_FUNCTIONAL_URL := https://raw.githubusercontent.com/magnars/dash.el/master/dash-functional.el
 MAGIT_REPO := https://github.com/magit/magit.git
 	TRANSIENT_URL := https://raw.githubusercontent.com/magit/transient/master/lisp/transient.el
-	WITH_EDITOR_URL := https://raw.githubusercontent.com/magit/with-editor/master/with-editor.el
+	WITH_EDITOR_URL := https://raw.githubusercontent.com/magit/with-editor/master/lisp/with-editor.el
 	DASH_URL := https://raw.githubusercontent.com/magnars/dash.el/master/dash.el
 MINI_MODELINE_URL := https://raw.githubusercontent.com/kiennq/emacs-mini-modeline/master/mini-modeline.el
 PERSPECTIVE_URL := https://raw.githubusercontent.com/nex3/perspective-el/master/perspective.el
@@ -38,7 +38,7 @@ VISUAL_REGEXP_URL := https://raw.githubusercontent.com/benma/visual-regexp.el/ma
 WHICH_KEY_URL := https://raw.githubusercontent.com/justbur/emacs-which-key/master/which-key.el
 WINUM_URL := https://raw.githubusercontent.com/deb0ch/emacs-winum/master/winum.el
 YAFOLDING_URL := https://raw.githubusercontent.com/zenozeng/yafolding.el/master/yafolding.el
-YAML_URL := https://raw.githubusercontent.com/yaml/yaml-mode/master/yaml-mode.el
+YAML_URL := https://raw.githubusercontent.com/yoshiki/yaml-mode/master/yaml-mode.el
 YASNIPPET_REPO := https://github.com/joaotavora/yasnippet.git
 YASNIPPET_SNIPPETS_REPO := https://github.com/AndreaCrotti/yasnippet-snippets.git
 

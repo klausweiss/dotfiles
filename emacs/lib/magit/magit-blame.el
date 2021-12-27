@@ -197,19 +197,19 @@ Also see option `magit-blame-styles'."
 Also see option `magit-blame-styles'."
   :group 'magit-faces)
 
-(defface magit-blame-summary nil
+(defface magit-blame-summary '((t nil))
   "Face used for commit summaries when blaming."
   :group 'magit-faces)
 
-(defface magit-blame-hash nil
+(defface magit-blame-hash '((t nil))
   "Face used for commit hashes when blaming."
   :group 'magit-faces)
 
-(defface magit-blame-name nil
+(defface magit-blame-name '((t nil))
   "Face used for author and committer names when blaming."
   :group 'magit-faces)
 
-(defface magit-blame-date nil
+(defface magit-blame-date '((t nil))
   "Face used for dates when blaming."
   :group 'magit-faces)
 
@@ -232,7 +232,9 @@ Also see option `magit-blame-styles'."
            (magit-blame-chunk-at (point)))
       (and type
            (let ((rev  (or magit-buffer-refname magit-buffer-revision))
-                 (file (magit-file-relative-name nil (not magit-buffer-file-name)))
+                 (file (and (not (derived-mode-p 'dired-mode))
+                            (magit-file-relative-name
+                             nil (not magit-buffer-file-name))))
                  (line (format "%i,+1" (line-number-at-pos))))
              (cond (file (with-temp-buffer
                            (magit-with-toplevel

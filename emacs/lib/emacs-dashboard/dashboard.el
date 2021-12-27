@@ -1,11 +1,11 @@
 ;;; dashboard.el --- A startup screen extracted from Spacemacs  -*- lexical-binding: t -*-
 
-;; Copyright (c) 2016-2020 Rakan Al-Hneiti <rakan.alhneiti@gmail.com>
-;; Copyright (c) 2019-2021 Jesús Martínez <jesusmartinez93@gmail.com>
-;; Copyright (c) 2020-2021 Shen, Jen-Chieh <jcs090218@gmail.com>
+;; Copyright (c) 2016-2021 emacs-dashboard maintainers
 ;;
-;; Author: Rakan Al-Hneiti
-;; URL: https://github.com/emacs-dashboard/emacs-dashboard
+;; Author     : Rakan Al-Hneiti <rakan.alhneiti@gmail.com>
+;; Maintainer : Jesús Martínez <jesusmartinez93@gmail.com>
+;;              Shen, Jen-Chieh <jcs090218@gmail.com>
+;; URL        : https://github.com/emacs-dashboard/emacs-dashboard
 ;;
 ;; This file is not part of GNU Emacs.
 ;;
@@ -14,7 +14,7 @@
 ;; Created: October 05, 2016
 ;; Package-Version: 1.8.0-SNAPSHOT
 ;; Keywords: startup, screen, tools, dashboard
-;; Package-Requires: ((emacs "25.3"))
+;; Package-Requires: ((emacs "26.1"))
 ;;; Commentary:
 
 ;; An extensible Emacs dashboard, with sections for
@@ -22,9 +22,14 @@
 
 ;;; Code:
 
-(require 'seq)
 (require 'recentf)
 (require 'dashboard-widgets)
+
+(declare-function page-break-lines-mode "ext:page-break-lines.el")
+
+(defgroup dashboard nil
+  "Extensible startup screen."
+  :group 'applications)
 
 ;; Custom splash screen
 (defvar dashboard-mode-map
@@ -67,10 +72,6 @@
         buffer-read-only t
         truncate-lines t))
 
-(defgroup dashboard nil
-  "Extensible startup screen."
-  :group 'applications)
-
 (defcustom dashboard-center-content nil
   "Whether to center content within the window."
   :type 'boolean
@@ -88,15 +89,11 @@
 (defun dashboard-previous-section ()
   "Navigate back to previous section."
   (interactive)
-  (let ((current-section-start nil)
-        (current-position (point))
-        (previous-section-start nil))
+  (let ((current-position (point)) current-section-start previous-section-start)
     (dolist (elt dashboard--section-starts)
-      (when (and current-section-start
-                 (not previous-section-start))
+      (when (and current-section-start (not previous-section-start))
         (setq previous-section-start elt))
-      (when (and (not current-section-start)
-                 (< elt current-position))
+      (when (and (not current-section-start) (< elt current-position))
         (setq current-section-start elt)))
     (goto-char (if (eq current-position current-section-start)
                    previous-section-start
@@ -105,8 +102,7 @@
 (defun dashboard-next-section ()
   "Navigate forward to next section."
   (interactive)
-  (let ((current-position (point))
-        (next-section-start nil)
+  (let ((current-position (point)) next-section-start
         (section-starts (reverse dashboard--section-starts)))
     (dolist (elt section-starts)
       (when (and (not next-section-start)
@@ -126,8 +122,7 @@ Optional prefix ARG says how many lines to move; default is one line."
 Optional prefix ARG says how many lines to move; default is one line."
   ;; code heavily inspired by `dired-next-line'
   (interactive "^p")
-  (let ((line-move-visual nil)
-        (goal-column nil))
+  (let (line-move-visual goal-column)
     (line-move arg t))
   ;; We never want to move point into an invisible line.  Dashboard doesn’t
   ;; use invisible text currently but when it does we’re ready!
@@ -139,10 +134,7 @@ Optional prefix ARG says how many lines to move; default is one line."
 (defun dashboard-return ()
   "Hit return key in dashboard buffer."
   (interactive)
-  (let ((start-ln (line-number-at-pos))
-        (fd-cnt 0)
-        (diff-line nil)
-        (entry-pt nil))
+  (let ((start-ln (line-number-at-pos)) (fd-cnt 0) diff-line entry-pt)
     (save-excursion
       (while (and (not diff-line)
                   (not (= (point) (point-min)))
@@ -195,14 +187,14 @@ Optional prefix ARG says how many lines to move; default is one line."
     ;; (this avoids many saves/loads that would result from
     ;; disabling/enabling recentf-mode)
     (when recentf-is-on
-      (setq recentf-list (seq-take recentf-list dashboard-num-recents)))
+      (setq recentf-list (dashboard-subseq recentf-list dashboard-num-recents)))
     (when (or dashboard-force-refresh
               (not (eq dashboard-buffer-last-width (window-width)))
               (not buffer-exists))
       (setq dashboard-banner-length (window-width)
             dashboard-buffer-last-width dashboard-banner-length)
       (with-current-buffer (get-buffer-create dashboard-buffer-name)
-        (let ((buffer-read-only nil))
+        (let (buffer-read-only)
           (erase-buffer)
           (dashboard-insert-banner)
           (dashboard-insert-page-break)

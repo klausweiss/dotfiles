@@ -195,6 +195,7 @@
     (treemacs-create-icon :icon (format "  %s%s" (all-the-icons-fileicon "nginx" :v-adjust 0 :face 'all-the-icons-green) treemacs-all-the-icons-tab) :extensions ("nginx.conf" "nginx") :fallback 'same-as-icon)
     (treemacs-create-icon :icon (format "  %s%s" (all-the-icons-fileicon "nix" :v-adjust 0 :face 'all-the-icons-lblue) treemacs-all-the-icons-tab) :extensions ("nix") :fallback 'same-as-icon)
     (treemacs-create-icon :icon (format "  %s%s" (all-the-icons-fileicon "npm" :v-adjust 0 :face 'all-the-icons-red) treemacs-all-the-icons-tab) :extensions ("npmignore" "npmrc" "package.json" "package-lock.json" "npm-shrinwrap.json") :fallback 'same-as-icon)
+    (treemacs-create-icon :icon (format "  %s%s" (all-the-icons-fileicon "org" :face 'all-the-icons-lgreen) treemacs-all-the-icons-tab) :extensions ("org") :fallback 'same-as-icon)
     (treemacs-create-icon :icon (format "  %s%s" (all-the-icons-fileicon "delphi" :v-adjust 0 :face 'all-the-icons-red) treemacs-all-the-icons-tab) :extensions ("pascal" "objectpascal") :fallback 'same-as-icon)
     (treemacs-create-icon :icon (format "  %s%s" (all-the-icons-fileicon "patch" :v-adjust 0 :face 'all-the-icons-orange) treemacs-all-the-icons-tab) :extensions ("patch") :fallback 'same-as-icon)
     (treemacs-create-icon :icon (format "  %s%s" (all-the-icons-alltheicon "perl" :v-adjust 0 :face 'all-the-icons-dblue) treemacs-all-the-icons-tab) :extensions ("perl" "pl") :fallback 'same-as-icon)
@@ -219,7 +220,10 @@
     (treemacs-create-icon :icon (format "  %s%s" (all-the-icons-alltheicon "svg" :v-adjust 0 :face 'all-the-icons-orange) treemacs-all-the-icons-tab) :extensions ("svg") :fallback 'same-as-icon)
     (treemacs-create-icon :icon (format "  %s%s" (all-the-icons-fileicon "swagger" :v-adjust 0 :face 'all-the-icons-green) treemacs-all-the-icons-tab) :extensions ("swagger") :fallback 'same-as-icon)
     (treemacs-create-icon :icon (format "  %s%s" (all-the-icons-alltheicon "swift" :v-adjust 0 :face 'all-the-icons-orange) treemacs-all-the-icons-tab) :extensions ("swift") :fallback 'same-as-icon)
-    (treemacs-create-icon :icon (format "  %s%s" (all-the-icons-alltheicon "terminal" :v-adjust 0 :face 'all-the-icons-dgreen) treemacs-all-the-icons-tab) :extensions ("sh" "bash" "zsh" "fish" "zshrc" "bashrc") :fallback 'same-as-icon)
+    (treemacs-create-icon :icon (format "  %s%s" (all-the-icons-alltheicon "terminal" :v-adjust 0 :face 'all-the-icons-dgreen) treemacs-all-the-icons-tab)
+                          :extensions ("sh" "zsh" "zshrc" "zshenv" "fish" "zprofile" "zlogin" "zlogout" "bash"
+                                       "bash_profile" "bashrc" "bash_login" "profile" "bash_aliases")
+                          :fallback 'same-as-icon)
     (treemacs-create-icon :icon (format "  %s%s" (all-the-icons-fileicon "verilog" :v-adjust 0 :face 'all-the-icons-dblue) treemacs-all-the-icons-tab) :extensions ("sv" "v") :fallback 'same-as-icon)
     (treemacs-create-icon :icon (format "  %s%s" (all-the-icons-fileicon "tex" :v-adjust 0 :face 'all-the-icons-dsilver) treemacs-all-the-icons-tab) :extensions ("tex") :fallback 'same-as-icon)
     (treemacs-create-icon :icon (format "  %s%s" (all-the-icons-fileicon "typescript-alt" :v-adjust 0 :face 'all-the-icons-blue) treemacs-all-the-icons-tab) :extensions ("ts") :fallback 'same-as-icon)
@@ -248,7 +252,7 @@
                                        "tr3" "oxps" "xps")
                           :fallback 'same-as-icon)
     (treemacs-create-icon :icon (format "  %s%s" (all-the-icons-octicon "file-text" :v-adjust 0 :face 'treemacs-all-the-icons-file-face) treemacs-all-the-icons-tab)
-                          :extensions ("md" "markdown" "rst" "log" "org" "txt"
+                          :extensions ("md" "markdown" "rst" "log" "txt"
                                        "CONTRIBUTE" "LICENSE" "README" "CHANGELOG")
                           :fallback 'same-as-icon)
     (treemacs-create-icon :icon (format "  %s%s" (all-the-icons-octicon "file-binary" :v-adjust 0 :face 'treemacs-all-the-icons-file-face) treemacs-all-the-icons-tab)

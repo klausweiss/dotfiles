@@ -1,11 +1,11 @@
 ;;; dashboard-widgets.el --- A startup screen extracted from Spacemacs  -*- lexical-binding: t -*-
 
-;; Copyright (c) 2016-2020 Rakan Al-Hneiti <rakan.alhneiti@gmail.com>
-;; Copyright (c) 2019-2021 Jesús Martínez <jesusmartinez93@gmail.com>
-;; Copyright (c) 2020-2021 Shen, Jen-Chieh <jcs090218@gmail.com>
+;; Copyright (c) 2016-2021 emacs-dashboard maintainers
 ;;
-;; Author: Rakan Al-Hneiti
-;; URL: https://github.com/emacs-dashboard/emacs-dashboard
+;; Author     : Rakan Al-Hneiti <rakan.alhneiti@gmail.com>
+;; Maintainer : Jesús Martínez <jesusmartinez93@gmail.com>
+;;              Shen, Jen-Chieh <jcs090218@gmail.com>
+;; URL        : https://github.com/emacs-dashboard/emacs-dashboard
 ;;
 ;; This file is not part of GNU Emacs.
 ;;
@@ -14,7 +14,7 @@
 ;; Created: October 05, 2016
 ;; Package-Version: 1.8.0-SNAPSHOT
 ;; Keywords: startup, screen, tools, dashboard
-;; Package-Requires: ((emacs "25.3"))
+;; Package-Requires: ((emacs "26.1"))
 ;;; Commentary:
 
 ;; An extensible Emacs dashboard, with sections for
@@ -24,6 +24,7 @@
 
 (require 'cl-lib)
 (require 'subr-x)
+(require 'image)
 
 ;; Compiler pacifier
 (declare-function all-the-icons-icon-for-dir "ext:all-the-icons.el")
@@ -42,6 +43,7 @@
 (declare-function org-agenda-format-item "ext:org-agenda.el")
 (declare-function org-compile-prefix-format "ext:org-agenda.el")
 (declare-function org-entry-is-done-p "ext:org.el")
+(declare-function org-in-archived-heading-p "ext:org.el")
 (declare-function org-get-category "ext:org.el")
 (declare-function org-get-deadline-time "ext:org.el")
 (declare-function org-get-heading "ext:org.el")
@@ -54,9 +56,11 @@
 (declare-function org-get-todo-state "ext:org.el")
 (declare-function org-entry-is-todo-p "ext:org.el")
 (declare-function org-release-buffers "ext:org.el")
+(declare-function recentf-cleanup "ext:recentf.el")
 (defalias 'org-time-less-p 'time-less-p)
 (defvar org-level-faces)
 (defvar org-agenda-new-buffers)
+(defvar org-todo-keywords-1)
 (defvar all-the-icons-dir-icon-alist)
 (defvar package-activated-list)
 
@@ -158,16 +162,17 @@ Example:
   :group 'dashboard)
 
 (defcustom dashboard-init-info
-  (let ((package-count 0) (time (emacs-init-time)))
-    (when (bound-and-true-p package-alist)
-      (setq package-count (length package-activated-list)))
-    (when (boundp 'straight--profile-cache)
-      (setq package-count (+ (hash-table-size straight--profile-cache) package-count)))
-    (if (zerop package-count)
-        (format "Emacs started in %s" time)
-      (format "%d packages loaded in %s" package-count time)))
+  (lambda ()
+    (let ((package-count 0) (time (emacs-init-time)))
+      (when (bound-and-true-p package-alist)
+        (setq package-count (length package-activated-list)))
+      (when (boundp 'straight--profile-cache)
+        (setq package-count (+ (hash-table-size straight--profile-cache) package-count)))
+      (if (zerop package-count)
+          (format "Emacs started in %s" time)
+        (format "%d packages loaded in %s" package-count time))))
   "Init info with packages loaded and init time."
-  :type 'boolean
+  :type '(function string)
   :group 'dashboard)
 
 (defcustom dashboard-footer
@@ -356,13 +361,10 @@ If nil it is disabled.  Possible values for list-type are:
 ;;
 ;; Generic widget helpers
 ;;
-(defun dashboard-subseq (seq start end)
-  "Return the subsequence of SEQ from START to END..
-Uses `cl-subseq`, but accounts for end points greater than the size of the list.
-Return entire list if `END' is omitted."
+(defun dashboard-subseq (seq end)
+  "Return the subsequence of SEQ from 0 to END."
   (let ((len (length seq)))
-    (cl-subseq seq start (and (number-or-marker-p end)
-                              (min len end)))))
+    (butlast seq (- len (min len end)))))
 
 (defun dashboard-get-shortcut (item)
   "Get the shortcut to be used for ITEM."
@@ -402,7 +404,7 @@ Optionally, provide NO-NEXT-LINE to move the cursor forward a line."
 If MESSAGEBUF is not nil then MSG is also written in message buffer."
   (with-current-buffer (get-buffer-create dashboard-buffer-name)
     (goto-char (point-max))
-    (let ((buffer-read-only nil)) (insert msg))))
+    (let (buffer-read-only) (insert msg))))
 
 (defun dashboard-modify-heading-icons (alist)
   "Append ALIST items to `dashboard-heading-icons' to modify icons."
@@ -415,8 +417,7 @@ If MESSAGEBUF is not nil then MSG is also written in message buffer."
 
 (defun dashboard-insert-heading (heading &optional shortcut)
   "Insert a widget HEADING in dashboard buffer, adding SHORTCUT if provided."
-  (when (and (display-graphic-p)
-             dashboard-set-heading-icons)
+  (when (and (display-graphic-p) dashboard-set-heading-icons)
     ;; Try loading `all-the-icons'
     (unless (or (fboundp 'all-the-icons-octicon)
                 (require 'all-the-icons nil 'noerror))
@@ -484,6 +485,12 @@ If MESSAGEBUF is not nil then MSG is also written in message buffer."
     (put-text-property 0 (length ascii-banner) 'face 'dashboard-text-banner ascii-banner)
     (insert ascii-banner)))
 
+(defun dashboard--type-is-gif-p (image-path)
+  "Return if image is a gif.
+String -> bool.
+Argument IMAGE-PATH path to the image."
+  (eq 'gif (image-type image-path)))
+
 (defun dashboard-insert-image-banner (banner)
   "Display an image BANNER."
   (when (file-exists-p banner)
@@ -494,12 +501,15 @@ If MESSAGEBUF is not nil then MSG is also written in message buffer."
                     (when (> dashboard-image-banner-max-height 0)
                       (list :max-height dashboard-image-banner-max-height))))
            (spec
-            (if (image-type-available-p 'imagemagick)
-                (apply 'create-image banner 'imagemagick nil size-props)
-              (apply 'create-image banner nil nil
-                     (when (and (fboundp 'image-transforms-p)
-                                (memq 'scale (funcall 'image-transforms-p)))
-                       size-props))))
+            (cond ((dashboard--type-is-gif-p banner)
+                   (create-image banner))
+                  ((image-type-available-p 'imagemagick)
+                   (apply 'create-image banner 'imagemagick nil size-props))
+                  (t
+                   (apply 'create-image banner nil nil
+                          (when (and (fboundp 'image-transforms-p)
+                                     (memq 'scale (funcall 'image-transforms-p)))
+                            size-props)))))
            ;; TODO: For some reason, `elisp-lint' is reporting error void
            ;; function `image-size'.
            (size (when (fboundp 'image-size) (image-size spec)))
@@ -509,6 +519,7 @@ If MESSAGEBUF is not nil then MSG is also written in message buffer."
       (insert "\n")
       (insert (make-string left-margin ?\ ))
       (insert-image spec)
+      (when (dashboard--type-is-gif-p banner) (image-animate spec 0 t))
       (insert "\n\n")
       (when title
         (dashboard-center-line title)
@@ -520,8 +531,11 @@ If MESSAGEBUF is not nil then MSG is also written in message buffer."
 (defun dashboard-insert-init-info ()
   "Insert init info when `dashboard-set-init-info' is t."
   (when dashboard-set-init-info
-    (dashboard-center-line dashboard-init-info)
-    (insert (propertize dashboard-init-info 'face 'font-lock-comment-face))))
+    (let ((init-info (if (functionp dashboard-init-info)
+                         (funcall dashboard-init-info)
+                       dashboard-init-info)))
+      (dashboard-center-line init-info)
+      (insert (propertize init-info 'face 'font-lock-comment-face)))))
 
 (defun dashboard-get-banner-path (index)
   "Return the full path to banner with index INDEX."
@@ -554,8 +568,7 @@ If MESSAGEBUF is not nil then MSG is also written in message buffer."
 (defun dashboard-insert-banner ()
   "Insert Banner at the top of the dashboard."
   (goto-char (point-max))
-  (let ((banner (dashboard-choose-banner))
-        (buffer-read-only nil))
+  (let ((banner (dashboard-choose-banner)) buffer-read-only)
     (when banner
       (if (image-type-available-p (intern (file-name-extension banner)))
           (dashboard-insert-image-banner banner)
@@ -614,7 +627,7 @@ WIDGET-PARAMS are passed to the \"widget-create\" function."
      (if ,list
          (when (and (dashboard-insert-section-list
                      ,section-name
-                     (dashboard-subseq ,list 0 ,list-size)
+                     (dashboard-subseq ,list ,list-size)
                      ,action
                      ,@widget-params)
                     ,shortcut)
@@ -739,10 +752,10 @@ WIDGET-PARAMS are passed to the \"widget-create\" function."
                    (projects 'dashboard-projects-show-base)))
          (option-val (symbol-value option))
          base-len)
-    (cond ((eq option-val 'align)
-           (setq base-len (dashboard--align-length-by-type type)))
-          ((null option-val) (setq base-len 0))
-          (t (setq base-len (length base))))
+    (cl-case option-val
+      (`align (setq base-len (dashboard--align-length-by-type type)))
+      (`nil (setq base-len 0))
+      (t (setq base-len (length base))))
     base-len))
 
 (defun dashboard-shorten-path (path type)
@@ -845,7 +858,7 @@ WIDGET-PARAMS are passed to the \"widget-create\" function."
   "Add the list of LIST-SIZE items from recently edited files."
   (setq dashboard--recentf-cache-item-format nil)
   (recentf-mode)
-  (let ((inhibit-message t) (message-log-max nil)) (recentf-cleanup))
+  (let ((inhibit-message t) message-log-max) (recentf-cleanup))
   (dashboard-insert-section
    "Recent Files:"
    (dashboard-shorten-paths recentf-list 'dashboard-recentf-alist 'recents)
@@ -856,16 +869,16 @@ WIDGET-PARAMS are passed to the \"widget-create\" function."
    (let* ((file (dashboard-expand-path-alist el dashboard-recentf-alist))
           (filename (dashboard-f-filename file))
           (path (dashboard-extract-key-path-alist el dashboard-recentf-alist)))
-     (cond
-      ((eq dashboard-recentf-show-base 'align)
-       (unless dashboard--recentf-cache-item-format
-         (let* ((len-align (dashboard--align-length-by-type 'recents))
-                (new-fmt (dashboard--generate-align-format
-                          dashboard-recentf-item-format len-align)))
-           (setq dashboard--recentf-cache-item-format new-fmt)))
-       (format dashboard--recentf-cache-item-format filename path))
-      ((null dashboard-recentf-show-base) path)
-      (t (format dashboard-recentf-item-format filename path))))))
+     (cl-case dashboard-recentf-show-base
+       (`align
+        (unless dashboard--recentf-cache-item-format
+          (let* ((len-align (dashboard--align-length-by-type 'recents))
+                 (new-fmt (dashboard--generate-align-format
+                           dashboard-recentf-item-format len-align)))
+            (setq dashboard--recentf-cache-item-format new-fmt)))
+        (format dashboard--recentf-cache-item-format filename path))
+       (`nil path)
+       (t (format dashboard-recentf-item-format filename path))))))
 
 ;;
 ;; Bookmarks
@@ -891,23 +904,23 @@ WIDGET-PARAMS are passed to the \"widget-create\" function."
   (require 'bookmark)
   (dashboard-insert-section
    "Bookmarks:"
-   (dashboard-subseq (bookmark-all-names) 0 list-size)
+   (dashboard-subseq (bookmark-all-names) list-size)
    list-size
    (dashboard-get-shortcut 'bookmarks)
    `(lambda (&rest ignore) (bookmark-jump ,el))
    (if-let* ((filename el)
              (path (bookmark-get-filename el))
              (path-shorten (dashboard-shorten-path path 'bookmarks)))
-       (cond
-        ((eq dashboard-bookmarks-show-base 'align)
-         (unless dashboard--bookmarks-cache-item-format
-           (let* ((len-align (dashboard--align-length-by-type 'bookmarks))
-                  (new-fmt (dashboard--generate-align-format
-                            dashboard-bookmarks-item-format len-align)))
-             (setq dashboard--bookmarks-cache-item-format new-fmt)))
-         (format dashboard--bookmarks-cache-item-format filename path-shorten))
-        ((null dashboard-bookmarks-show-base) path-shorten)
-        (t (format dashboard-bookmarks-item-format filename path-shorten)))
+       (cl-case dashboard-bookmarks-show-base
+         (`align
+          (unless dashboard--bookmarks-cache-item-format
+            (let* ((len-align (dashboard--align-length-by-type 'bookmarks))
+                   (new-fmt (dashboard--generate-align-format
+                             dashboard-bookmarks-item-format len-align)))
+              (setq dashboard--bookmarks-cache-item-format new-fmt)))
+          (format dashboard--bookmarks-cache-item-format filename path-shorten))
+         (`nil path-shorten)
+         (t (format dashboard-bookmarks-item-format filename path-shorten)))
      el)))
 
 ;;
@@ -947,7 +960,7 @@ switch to."
   (dashboard-insert-section
    "Projects:"
    (dashboard-shorten-paths
-    (dashboard-subseq (dashboard-projects-backend-load-projects) 0 list-size)
+    (dashboard-subseq (dashboard-projects-backend-load-projects) list-size)
     'dashboard-projects-alist 'projects)
    list-size
    (dashboard-get-shortcut 'projects)
@@ -957,51 +970,51 @@ switch to."
    (let* ((file (dashboard-expand-path-alist el dashboard-projects-alist))
           (filename (dashboard-f-base file))
           (path (dashboard-extract-key-path-alist el dashboard-projects-alist)))
-     (cond
-      ((eq dashboard-projects-show-base 'align)
-       (unless dashboard--projects-cache-item-format
-         (let* ((len-align (dashboard--align-length-by-type 'projects))
-                (new-fmt (dashboard--generate-align-format
-                          dashboard-projects-item-format len-align)))
-           (setq dashboard--projects-cache-item-format new-fmt)))
-       (format dashboard--projects-cache-item-format filename path))
-      ((null dashboard-projects-show-base) path)
-      (t (format dashboard-projects-item-format filename path))))))
+     (cl-case dashboard-projects-show-base
+       (`align
+        (unless dashboard--projects-cache-item-format
+          (let* ((len-align (dashboard--align-length-by-type 'projects))
+                 (new-fmt (dashboard--generate-align-format
+                           dashboard-projects-item-format len-align)))
+            (setq dashboard--projects-cache-item-format new-fmt)))
+        (format dashboard--projects-cache-item-format filename path))
+       (`nil path)
+       (t (format dashboard-projects-item-format filename path))))))
 
 (defun dashboard-projects-backend-load-projects ()
   "Depending on `dashboard-projects-backend' load corresponding backend.
 Return function that returns a list of projects."
-  (cond
-   ((eq dashboard-projects-backend 'projectile)
-    (require 'projectile)
-    (let ((inhibit-message t) (message-log-max nil))
-      (projectile-cleanup-known-projects))
-    (projectile-load-known-projects))
-   ((eq dashboard-projects-backend 'project-el)
-    (require 'project)
-    (project-known-project-roots))
-   (t
-    (display-warning '(dashboard)
-                     "Invalid value for `dashboard-projects-backend'"
-                     :error))))
+  (cl-case dashboard-projects-backend
+    (`projectile
+     (require 'projectile)
+     (let ((inhibit-message t) message-log-max)
+       (projectile-cleanup-known-projects))
+     (projectile-load-known-projects))
+    (`project-el
+     (require 'project)
+     (project-known-project-roots))
+    (t
+     (display-warning '(dashboard)
+                      "Invalid value for `dashboard-projects-backend'"
+                      :error))))
 
 (defun dashboard-projects-backend-switch-function ()
   "Return the function to switch to a project.
 Custom variable `dashboard-projects-switch-function' variable takes preference
 over custom backends."
   (or dashboard-projects-switch-function
-      (cond
-       ((eq dashboard-projects-backend 'projectile)
-        'projectile-switch-project-by-name)
-       ((eq dashboard-projects-backend 'project-el)
-        (lambda (project)
-          "This function is used to switch to `PROJECT'."
-          (let ((default-directory project))
-            (project-find-file))))
-       (t
-        (display-warning '(dashboard)
-                         "Invalid value for `dashboard-projects-backend'"
-                         :error)))))
+      (cl-case dashboard-projects-backend
+        (`projectile 'projectile-switch-project-by-name)
+        (`project-el
+         (lambda (project)
+           "This function is used to switch to `PROJECT'."
+           (let ((default-directory project))
+             (project-find-file))))
+        (t
+         (display-warning '(dashboard)
+                          "Invalid value for `dashboard-projects-backend'"
+                          :error)))))
+
 ;;
 ;; Org Agenda
 ;;
@@ -1026,32 +1039,53 @@ It is the MATCH attribute for `org-map-entries'"
   :type 'boolean
   :group 'dashboard)
 
-(defun dashboard-agenda-entry-time (schedule-time)
-  "Format SCHEDULE-TIME with custom format.
-If SCHEDULE-TIME is nil returns a blank string which length
+(defcustom dashboard-filter-agenda-entry 'dashboard-filter-agenda-by-time
+  "Function to filter `org-agenda' entries."
+  :type '(choice
+          (const :tag "No filter" dashboard-no-filter-agenda)
+          (const :tag "Filter by time" dashboard-filter-agenda-by-time)
+          (const :tag "Filter by todo" dashboard-filter-agenda-by-todo)
+          (function :tag "Custom function"))
+  :group 'dashboard)
+
+(defcustom dashboard-agenda-sort-strategy nil
+  "A list of strategies to sort the agenda.  If nil agenda is not sorted."
+  :type '(repeat (choice (const time-up) (const time-down)
+                         (const todo-state-up) (const todo-state-down)))
+  :group 'dashboard)
+
+(defun dashboard-agenda-entry-time (entry-time)
+  "Format ENTRY-TIME with custom format.
+If ENTRY-TIME is nil returns a blank string which length
 is todays date format."
-  (let* ((time (or schedule-time (org-today)))
+  (let* ((time (or entry-time (org-today)))
          (formated-time (format-time-string
                          dashboard-agenda-time-string-format time)))
-    (if schedule-time
+    (if entry-time
         formated-time
       (replace-regexp-in-string "." " " formated-time))))
 
 (defun dashboard-agenda-entry-format ()
   "Format agenda entry to show it on dashboard."
-  (let* ((schedule-time (org-get-scheduled-time (point)))
+  (let* ((scheduled-time (org-get-scheduled-time (point)))
          (deadline-time (org-get-deadline-time (point)))
+         (entry-time (or scheduled-time deadline-time))
          (item (org-agenda-format-item
-                (dashboard-agenda-entry-time (or schedule-time deadline-time))
+                (dashboard-agenda-entry-time entry-time)
                 (org-get-heading)
                 (org-outline-level)
                 (org-get-category)
                 (org-get-tags)
                 t))
          (loc (point))
-         (file (buffer-file-name)))
+         (file (buffer-file-name))
+         (todo-state (org-get-todo-state))
+         (todo-index (and todo-state
+                          (length (member todo-state org-todo-keywords-1))))
+         (entry-data (list (cons 'time entry-time)
+                           (cons 'todo-index todo-index))))
     (dashboard-agenda--set-agenda-headline-face item)
-    (list item loc file)))
+    (list item loc file entry-data)))
 
 (defun dashboard-agenda--set-agenda-headline-face (headline)
   "Set agenda faces to `HEADLINE' when face text property is nil."
@@ -1079,15 +1113,16 @@ Do nothing if `TEXT' has already a face property or is nil."
     (time-add (current-time) 86400)))
 
 (defun dashboard-filter-agenda-by-time ()
-  "Include entry if it has a schedule-time or deadline-time in the future.
+  "Include entry if it has a scheduled-time or deadline-time in the future.
 An entry is included if this function returns nil and excluded
 if returns a point."
-  (let ((schedule-time (org-get-scheduled-time (point)))
+  (let ((scheduled-time (org-get-scheduled-time (point)))
         (deadline-time (org-get-deadline-time (point)))
         (due-date (dashboard-due-date-for-agenda)))
     (unless (and (not (org-entry-is-done-p))
-                 (or (and schedule-time
-                          (org-time-less-p schedule-time due-date))
+                 (not (org-in-archived-heading-p))
+                 (or (and scheduled-time
+                          (org-time-less-p scheduled-time due-date))
                      (and deadline-time
                           (org-time-less-p deadline-time due-date))))
       (point))))
@@ -1097,21 +1132,13 @@ if returns a point."
 An entry is included if this function returns nil and excluded
 if returns a point."
   (unless (and (org-entry-is-todo-p)
-               (not (org-entry-is-done-p)))
+               (not (org-entry-is-done-p))
+               (not (org-in-archived-heading-p)))
     (point)))
 
 (defun dashboard-no-filter-agenda ()
   "No filter agenda entries."
   (when (org-entry-is-done-p) (point)))
-
-(defcustom dashboard-filter-agenda-entry 'dashboard-filter-agenda-by-time
-  "Function to filter `org-agenda' entries."
-  :type '(choice
-          (const :tag "No filter" dashboard-no-filter-agenda)
-          (const :tag "Filter by time" dashboard-filter-agenda-by-time)
-          (const :tag "Filter by todo" dashboard-filter-agenda-by-todo)
-          (function :tag "Custom function"))
-  :group 'dashboard)
 
 (defun dashboard-get-agenda ()
   "Get agenda items for today or for a week from now."
@@ -1129,23 +1156,79 @@ This is what `org-agenda-exit' do."
     (org-release-buffers org-agenda-new-buffers)
     (setq org-agenda-new-buffers nil)))
 
+(defun dashboard-agenda--sorted-agenda ()
+  "Return agenda sorted by time.
+For now, it only works when dashboard-agenda has been filter by time
+and dashboard-agenda-sort is not nil."
+  (let ((agenda (dashboard-get-agenda))
+        (sort-function (dashboard-agenda--sort-function)))
+    (sort agenda sort-function)))
+
+(defun dashboard-agenda--sort-function ()
+  "Get the function use to sorted the agenda.
+Depending on the list `dashboard-agenda-sorting-strategy' use this strategies to
+build a predicate to compare each enty.
+This is similar as `org-entries-lessp' but with a different aproach."
+  (dashboard-agenda--build-sort-function dashboard-agenda-sort-strategy))
+
+(defun dashboard-agenda--build-sort-function (strategies)
+  "Build a predicate to sort the dashboard agenda.
+If `STRATEGIES' is nil then sort using the nil predicate.  Look for the strategy
+predicate, the attributes of the entry and compare entries.  If no predicate is
+found for the strategy it uses nil predicate."
+  (if (null strategies) (lambda (_dont _care) nil)
+    (let ((predicate (dashboard-agenda--build-sort-function-predicate
+                      (car strategies)))
+          (attribute (dashboard-agenda--build-sort-function-attribute
+                      (car strategies))))
+      (if (null predicate) (lambda (_dont _care) nil)
+        (lambda (entry1 entry2)
+          (dashboard-agenda--compare-entries entry1 entry2 (cdr strategies)
+                                             predicate attribute))))))
+
+(defun dashboard-agenda--build-sort-function-predicate (strategy)
+  "Return the predicate to compare two entryes depending on the `STRATEGY'."
+  (cl-case strategy
+    (`time-up 'org-time-less-p)
+    (`time-down (lambda (a b) (org-time-less-p b a)))
+    (`todo-state-up '>)
+    (`todo-state-down '<)))
+
+(defun dashboard-agenda--build-sort-function-attribute (strategy)
+  "Return the argument to compare two entries depending to the `STRATEGY'."
+  (cond
+   ((memq strategy '(time-up time-down)) 'time)
+   ((memq strategy '(todo-state-up todo-state-down)) 'todo-index)
+   (t nil)))
+
+(defun dashboard-agenda--compare-entries (entry1 entry2 strategies predicate attribute)
+  "Compare `ENTRY1' and `ENTRY2' by `ATTRIBUTE' using `PREDICATE'.
+If both attributes are nil or equals the next strategy in `STRATEGIES' is used to compare."
+  (let ((arg1 (alist-get attribute (nth 3 entry1)))
+        (arg2 (alist-get attribute (nth 3 entry2))))
+    (cond
+     ((or (and (null arg1) (null arg2)) (equal arg1 arg2))
+      (apply (dashboard-agenda--build-sort-function strategies) (list entry1 entry2)))
+     ((null arg1) nil)
+     ((null arg2) t)
+     (t (apply predicate (list arg1 arg2))))))
+
 (defun dashboard-insert-agenda (list-size)
   "Add the list of LIST-SIZE items of agenda."
   (require 'org-agenda)
-  (let ((agenda (dashboard-get-agenda)))
-    (dashboard-insert-section
-     (if dashboard-week-agenda
-         "Agenda for the coming week:"
-       "Agenda for today:")
-     agenda
-     list-size
-     (dashboard-get-shortcut 'agenda)
-     `(lambda (&rest ignore)
-        (let ((buffer (find-file-other-window (nth 2 ',el))))
-          (with-current-buffer buffer
-            (goto-char (nth 1 ',el))
-            (switch-to-buffer buffer))))
-     (format "%s" (nth 0 el)))))
+  (dashboard-insert-section
+   (if dashboard-week-agenda
+       "Agenda for the coming week:"
+     "Agenda for today:")
+   (dashboard-agenda--sorted-agenda)
+   list-size
+   (dashboard-get-shortcut 'agenda)
+   `(lambda (&rest ignore)
+      (let ((buffer (find-file-other-window (nth 2 ',el))))
+        (with-current-buffer buffer
+          (goto-char (nth 1 ',el))
+          (switch-to-buffer buffer))))
+   (format "%s" (nth 0 el))))
 
 ;;
 ;; Registers

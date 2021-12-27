@@ -37,7 +37,7 @@
 ;; - CSS/Less/SCSS (prettier)
 ;; - Cuda (clang-format)
 ;; - D (dfmt)
-;; - Dart (dartfmt)
+;; - Dart (dartfmt, dart-format)
 ;; - Dhall (dhall format)
 ;; - Dockerfile (dockfmt)
 ;; - Elixir (mix format)
@@ -60,6 +60,7 @@
 ;; - Ledger (ledger-mode)
 ;; - Lua (lua-fmt, prettier plugin)
 ;; - Markdown (prettier)
+;; - Nginx (nginxfmt)
 ;; - Nix (nixpkgs-fmt, nixfmt)
 ;; - OCaml (ocp-indent)
 ;; - Perl (perltidy)
@@ -68,6 +69,7 @@
 ;; - PureScript (purty, purs-tidy)
 ;; - Python (black, yapf)
 ;; - R (styler)
+;; - Racket (raco-fmt)
 ;; - Reason (bsrefmt)
 ;; - ReScript (rescript)
 ;; - Ruby (rubocop, rufo, standardrb)
@@ -129,7 +131,7 @@
     ("CSS" prettier)
     ("Cuda" clang-format)
     ("D" dfmt)
-    ("Dart" dartfmt)
+    ("Dart" dart-format)
     ("Dhall" dhall)
     ("Dockerfile" dockfmt)
     ("Elixir" mix-format)
@@ -188,6 +190,7 @@
     ("_Flow" prettier)
     ("_Gleam" gleam)
     ("_Ledger" ledger-mode)
+    ("_Nginx" nginxfmt)
     ("_Snakemake" snakefmt))
   "Default formatter to use for each language."
   :type '(repeat (list string symbol))
@@ -255,7 +258,7 @@ association list. Using \".dir-locals.el\" is convenient since
 the rules for an entire source tree can be given in one file.")
 
 (define-error 'format-all-executable-not-found
-  "Formatter executable not found")
+  "Formatter command not found")
 
 (defun format-all--proper-list-p (object)
   "Return t if OBJECT is a proper list, nil otherwise."
@@ -725,6 +728,14 @@ Consult the existing formatters for examples of BODY."
   (:features)
   (:format (format-all--buffer-easy executable "tool" "format" "-")))
 
+(define-format-all-formatter dart-format
+  (:executable "dart")
+  (:install (macos "brew tap dart-lang/dart && brew install dart"))
+  (:languages "Dart")
+  (:features)
+  (:format
+   (format-all--buffer-easy executable "format" "--output" "show")))
+
 (define-format-all-formatter dartfmt
   (:executable "dartfmt")
   (:install (macos "brew tap dart-lang/dart && brew install dart"))
@@ -934,6 +945,13 @@ Consult the existing formatters for examples of BODY."
       (when config-file (list "--dot-formatter" config-file)))
     "-")))
 
+(define-format-all-formatter nginxfmt
+  (:executable "nginxfmt")
+  (:install  "pip install nginxfmt")
+  (:languages "_Nginx")
+  (:features)
+  (:format (format-all--buffer-easy executable "-")))
+
 (define-format-all-formatter nixfmt
   (:executable "nixfmt")
   (:install
@@ -1016,6 +1034,13 @@ Consult the existing formatters for examples of BODY."
   (:languages "PureScript")
   (:features)
   (:format (format-all--buffer-easy executable "-")))
+
+(define-format-all-formatter raco-fmt
+  (:executable "raco")
+  (:install "raco pkg install fmt")
+  (:languages "Racket")
+  (:features)
+  (:format (format-all--buffer-easy executable "fmt")))
 
 (define-format-all-formatter rescript
   (:executable "rescript")
@@ -1149,7 +1174,7 @@ Consult the existing formatters for examples of BODY."
   (:features)
   (:format
    (format-all--buffer-easy
-    executable "--vanilla"
+    executable
     "-e" (concat
           "options(styler.colored_print.vertical=FALSE);"
           " con <- file('stdin');"
@@ -1220,14 +1245,15 @@ unofficial languages IDs are prefixed with \"_\"."
            "_Flow")
       (and (equal major-mode 'gleam-mode) "_Gleam")
       (and (equal major-mode 'ledger-mode) "_Ledger")
+      (and (equal major-mode 'nginx-mode) "_Nginx")
       (and (equal major-mode 'snakemake-mode) "_Snakemake")
       (language-id-buffer)))
 
 (defun format-all--please-install (executable installer)
   "Internal helper function for error about missing EXECUTABLE and INSTALLER."
-  (concat (format "You need the %S command." executable)
+  (concat (format "You need the %s command." executable)
           (if (not installer) ""
-            (format " You may be able to install it via %S." installer))))
+            (format " You may be able to install it via: %s" installer))))
 
 (defun format-all--formatter-executable (formatter)
   "Internal helper function to get the external program for FORMATTER."
@@ -1235,9 +1261,9 @@ unofficial languages IDs are prefixed with \"_\"."
     (when executable
       (or (executable-find executable)
           (signal 'format-all-executable-not-found
-                  (format-all--please-install
-                   executable
-                   (gethash formatter format-all--install-table)))))))
+                  (list (format-all--please-install
+                         executable
+                         (gethash formatter format-all--install-table))))))))
 
 (defun format-all--show-errors-buffer (error-output show-errors-p)
   "Internal shorthand function to update and show error output.

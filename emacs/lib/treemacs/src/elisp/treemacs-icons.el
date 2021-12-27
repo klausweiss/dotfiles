@@ -53,21 +53,17 @@
 (eval-and-compile
   (defvar treemacs--not-selected-icon-background
     (pcase (face-attribute 'default :background nil t)
-      ('unspecified
-       (prog1 "#2d2d31"
-         (unless (or noninteractive (boundp 'treemacs-no-load-time-warnings))
-           (message "[Treemacs] Warning: coudn't find default background colour for icons, falling back on #2d2d31."))))
-      ('unspecified-bg
-       (prog1 "#2d2d31"
-         (unless (or  noninteractive (boundp 'treemacs-no-load-time-warnings))
-           (message "[Treemacs] Warning: background colour is unspecified, icons will likely look wrong. Falling back on #2d2d31."))))
+      ((or 'unspecified 'unspecified-bg "unspecified" "unspecified-bg")
+       (unless (or noninteractive (boundp 'treemacs-no-load-time-warnings))
+         (message "[Treemacs] Warning: coudn't find default background colour for icons, falling back on #2d2d31."))
+       "#2d2d31" )
       (other other)))
   "Background for non-selected icons.")
 
 (eval-and-compile
   (defvar treemacs--selected-icon-background
     (-let [bg (face-attribute 'hl-line :background nil t)]
-      (if (memq bg '(unspecified unspecified-b))
+      (if (member bg '(unspecified unspecified-b "unspecified" "unspecified-bg"))
           (prog1 treemacs--not-selected-icon-background
             (unless (or noninteractive (boundp 'treemacs-no-load-time-warnings))
               (message "[Treemacs] Warning: couldn't find hl-line-mode's background color for icons, falling back on %s."
@@ -243,32 +239,33 @@ Necessary since root icons are not rectangular."
   accessible."
   (treemacs-static-assert (or (null icon) (null file))
     "FILE and ICON arguments are mutually exclusive")
-  `(let* ((fallback   ,(if (equal fallback (quote 'same-as-icon))
-                           icon
-                         fallback))
-          (icons-dir  ,(if icons-dir icons-dir `(treemacs-theme->path treemacs--current-theme)))
-          (icon-path  ,(if file `(treemacs-join-path icons-dir ,file) nil))
-          (icon-pair  ,(if file `(treemacs--create-icon-strings icon-path fallback)
-                         `(cons ,(treemacs--splice-icon icon) fallback)))
-          (gui-icons  (treemacs-theme->gui-icons treemacs--current-theme))
-          (tui-icons  (treemacs-theme->tui-icons treemacs--current-theme))
-          (gui-icon   (car icon-pair))
-          (tui-icon   (cdr icon-pair))
-          (extensions (quote ,(--map (if (stringp it) (downcase it) it) extensions))))
-     ,(unless file
-        `(progn
-           (ignore icon-path)
-           (ignore icons-dir)))
-     ;; prefer to have icons as empty strings with a display property for compatibility
-     ;; in e.g. dired, where an actual text icon would break `dired-goto-file-1'
-     (unless (get-text-property 0 'display gui-icon)
-       (setf gui-icon (propertize " " 'display gui-icon)))
-     ,@(->> (-filter #'symbolp extensions)
-            (--map `(progn (add-to-list 'treemacs--icon-symbols ',it)
-                           (defvar ,(intern (format "treemacs-icon-%s" it)) nil))))
-     (--each extensions
-       (ht-set! gui-icons it gui-icon)
-       (ht-set! tui-icons it tui-icon))))
+  (-let [ext-list (--map (if (stringp it) (downcase it) it)
+                         (if (symbolp extensions) (symbol-value extensions) extensions))]
+    `(let* ((fallback   ,(if (equal fallback (quote 'same-as-icon))
+                             icon
+                           fallback))
+            (icons-dir  ,(if icons-dir icons-dir `(treemacs-theme->path treemacs--current-theme)))
+            (icon-path  ,(if file `(treemacs-join-path icons-dir ,file) nil))
+            (icon-pair  ,(if file `(treemacs--create-icon-strings icon-path fallback)
+                           `(cons ,(treemacs--splice-icon icon) fallback)))
+            (gui-icons  (treemacs-theme->gui-icons treemacs--current-theme))
+            (tui-icons  (treemacs-theme->tui-icons treemacs--current-theme))
+            (gui-icon   (car icon-pair))
+            (tui-icon   (cdr icon-pair)))
+       ,(unless file
+          `(progn
+             (ignore icon-path)
+             (ignore icons-dir)))
+       ;; prefer to have icons as empty strings with a display property for compatibility
+       ;; in e.g. dired, where an actual text icon would break `dired-goto-file-1'
+       (unless (get-text-property 0 'display gui-icon)
+         (setf gui-icon (propertize " " 'display gui-icon)))
+       ,@(->> (-filter #'symbolp ext-list)
+              (--map `(progn (add-to-list 'treemacs--icon-symbols ',it)
+                             (defvar ,(intern (format "treemacs-icon-%s" it)) nil))))
+       (--each (quote ,ext-list)
+         (ht-set! gui-icons it gui-icon)
+         (ht-set! tui-icons it tui-icon)))))
 
 (treemacs-create-theme "Default"
   :icon-directory (treemacs-join-path treemacs-dir "icons/default")
@@ -301,7 +298,10 @@ Necessary since root icons are not rectangular."
     (treemacs-create-icon :file "emacs.png"         :extensions ("el" "elc"))
     (treemacs-create-icon :file "ledger.png"        :extensions ("ledger"))
     (treemacs-create-icon :file "yaml.png"          :extensions ("yml" "yaml" "travis.yml"))
-    (treemacs-create-icon :file "shell.png"         :extensions ("sh" "zsh" "zshrc" "zshenv" "fish"))
+    (treemacs-create-icon
+     :file "shell.png"
+     :extensions ("sh" "zsh" "zshrc" "zshenv" "fish" "zprofile" "zlogin" "zlogout" "bash"
+                  "bash_profile" "bashrc" "bash_login" "profile" "bash_aliases"))
     (treemacs-create-icon :file "pdf.png"           :extensions ("pdf"))
     (treemacs-create-icon :file "c.png"             :extensions ("c" "h"))
     (treemacs-create-icon :file "haskell.png"       :extensions ("hs" "lhs"))

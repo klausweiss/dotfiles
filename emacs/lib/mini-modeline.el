@@ -158,9 +158,9 @@ Set this to the minimal value that doesn't cause truncation."
         (goto-char (point-max))
         (insert (apply #'format args))))))
 
-(defmacro mini-modeline--overduep (since duration)
+(defsubst mini-modeline--overduep (since duration)
   "Check if time already pass DURATION from SINCE."
-  `(>= (float-time (time-since ,since)) ,duration))
+  (>= (float-time (time-since since)) duration))
 
 (defvar mini-modeline--minibuffer nil)
 (defun mini-modeline-display (&optional arg)
@@ -429,7 +429,7 @@ BODY will be supplied with orig-func and args."
   (redisplay)
   ;; (remove-hook 'post-command-hook #'mini-modeline-display)
   ;; (remove-hook 'pre-redisplay-functions #'mini-modeline-display)
-  (when (timerp (cancel-timer mini-modeline--timer)))
+  (when (timerp mini-modeline--timer) (cancel-timer mini-modeline--timer))
   (mini-modeline-display 'clear)
   (advice-remove #'message #'mini-modeline--reroute-msg)
 
