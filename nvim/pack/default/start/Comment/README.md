@@ -10,7 +10,7 @@
 - Prefers single-line/linewise comments
 - Supports line (`//`) and block (`/* */`) comments
 - Dot (`.`) repeat support for `gcc`, `gbc` and friends
-- Count support (`[count]gcc` only)
+- Count support for `[count]gcc` and `[count]gbc`
 - Left-right (`gcw` `gc$`) and Up-Down (`gc2j` `gc4k`) motions
 - Use with text-objects (`gci{` `gbat`)
 - Supports pre and post hooks
@@ -58,6 +58,8 @@ require('Comment').setup()
 EOF
 ```
 
+<a id="config"></a>
+
 #### Configuration (optional)
 
 Following are the **default** config for the [`setup()`](#setup). If you want to override, just modify the option that you want then it will be merged with the default config.
@@ -76,38 +78,49 @@ Following are the **default** config for the [`setup()`](#setup). If you want to
     ---Lines to be ignored while comment/uncomment.
     ---Could be a regex string or a function that returns a regex string.
     ---Example: Use '^$' to ignore empty lines
-    ---@type string|function
+    ---@type string|fun():string
     ignore = nil,
 
     ---LHS of toggle mappings in NORMAL + VISUAL mode
     ---@type table
     toggler = {
-        ---line-comment keymap
+        ---Line-comment toggle keymap
         line = 'gcc',
-        ---block-comment keymap
+        ---Block-comment toggle keymap
         block = 'gbc',
     },
 
     ---LHS of operator-pending mappings in NORMAL + VISUAL mode
     ---@type table
     opleader = {
-        ---line-comment keymap
+        ---Line-comment keymap
         line = 'gc',
-        ---block-comment keymap
+        ---Block-comment keymap
         block = 'gb',
+    },
+
+    ---LHS of extra mappings
+    ---@type table
+    extra = {
+        ---Add comment on the line above
+        above = 'gcO',
+        ---Add comment on the line below
+        below = 'gco',
+        ---Add comment at the end of line
+        eol = 'gcA',
     },
 
     ---Create basic (operator-pending) and extended mappings for NORMAL + VISUAL mode
     ---@type table
     mappings = {
-        ---operator-pending mapping
+        ---Operator-pending mapping
         ---Includes `gcc`, `gbc`, `gc[count]{motion}` and `gb[count]{motion}`
         ---NOTE: These mappings can be changed individually by `opleader` and `toggler` config
         basic = true,
-        ---extra mapping
+        ---Extra mapping
         ---Includes `gco`, `gcO`, `gcA`
         extra = true,
-        ---extended mapping
+        ---Extended mapping
         ---Includes `g>`, `g<`, `g>[count]{motion}` and `g<[count]{motion}`
         extended = false,
     },
@@ -122,22 +135,11 @@ Following are the **default** config for the [`setup()`](#setup). If you want to
 }
 ```
 
-The configuration is also exported by the following method. But make sure to call [setup](#setup) first.
-
-```lua
--- NOTE: This directly returns the config without copying it. So modifying it directly could have some side effects.
-require('Comment.api').get_config()
-
--- You can do this instead to safely modify it, if you want.
-local api = require('Comment.api')
-local config = vim.deepcopy(api.get_config())
-```
-
 ### 🔥 Usage
 
 When you call [`setup()`](#setup) method, `Comment.nvim` sets up some basic mapping which can used in NORMAL and VISUAL mode to get you started with the pleasure of commenting stuff out.
 
-<a id="mappings"></a>
+<a id="basic-mappings"></a>
 
 #### Basic mappings
 
@@ -148,14 +150,15 @@ These mappings are enabled by default. (config: `mappings.basic`)
 ```help
 `gcc` - Toggles the current line using linewise comment
 `gbc` - Toggles the current line using blockwise comment
-`[count]gcc` - Toggles the number of line given as a prefix-count
+`[count]gcc` - Toggles the number of line given as a prefix-count using linewise
+`[count]gbc` - Toggles the number of line given as a prefix-count using blockwise
 `gc[count]{motion}` - (Op-pending) Toggles the region using linewise comment
 `gb[count]{motion}` - (Op-pending) Toggles the region using linewise comment
 ```
 
 <a id="count-prefix">
 
-> NOTE: Dot repeat is not supported with `[count]gcc`
+> NOTE: Dot repeat is not supported with `[count]gcc` and `[count]gbc`
 
 - VISUAL mode
 
@@ -163,6 +166,8 @@ These mappings are enabled by default. (config: `mappings.basic`)
 `gc` - Toggles the region using linewise comment
 `gb` - Toggles the region using blockwise comment
 ```
+
+<a id="extra-mappings"></a>
 
 #### Extra mappings
 
@@ -175,6 +180,8 @@ These mappings are enabled by default. (config: `mappings.extra`)
 `gcO` - Insert comment to the previous line and enters INSERT mode
 `gcA` - Insert comment to end of the current line and enters INSERT mode
 ```
+
+<a id="extended-mappings"></a>
 
 #### Extended mappings
 
@@ -427,6 +434,10 @@ require('Comment.utils').cmotion.{line,char,v,V}
 ### 🤝 Contributing
 
 There are multiple ways to contribute reporting/fixing bugs, feature requests. You can also submit commentstring to this plugin by updating [ft.lua](./lua/Comment/ft.lua) and sending PR.
+
+### 📺 Videos
+
+- [TakeTuesday E02: Comment.nvim](https://www.youtube.com/watch?v=-InmtHhk2qM) by [TJ DeVries](https://github.com/tjdevries)
 
 ### 💐 Credits
 

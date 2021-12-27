@@ -55,11 +55,14 @@ internal.builtin = function(opts)
     title = "Telescope Pickers"
     for ext, funcs in pairs(require("telescope").extensions) do
       for func_name, func_obj in pairs(funcs) do
-        local debug_info = debug.getinfo(func_obj)
-        table.insert(objs, {
-          filename = string.sub(debug_info.source, 2),
-          text = string.format("%s : %s", ext, func_name),
-        })
+        -- Only include exported functions whose name doesn't begin with an underscore
+        if type(func_obj) == "function" and string.sub(func_name, 0, 1) ~= "_" then
+          local debug_info = debug.getinfo(func_obj)
+          table.insert(objs, {
+            filename = string.sub(debug_info.source, 2),
+            text = string.format("%s : %s", ext, func_name),
+          })
+        end
       end
     end
   end
@@ -245,7 +248,7 @@ internal.symbols = function(opts)
 
   local results = {}
   for _, source in ipairs(sources) do
-    local data = vim.fn.json_decode(Path:new(source):read())
+    local data = vim.json.decode(Path:new(source):read())
     for _, entry in ipairs(data) do
       table.insert(results, entry)
     end

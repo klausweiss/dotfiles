@@ -8,6 +8,7 @@ local settings = require "nvim-lsp-installer.settings"
 local log = require "nvim-lsp-installer.log"
 local platform = require "nvim-lsp-installer.platform"
 local language_autocomplete_map = require "nvim-lsp-installer._generated.language_autocomplete_map"
+local filetype_server_map = require "nvim-lsp-installer._generated.filetype_map"
 
 local M = {}
 
@@ -62,6 +63,10 @@ function M.install_sync(server_identifiers)
     local failed_servers = {}
     local server_tuples = {}
 
+    if vim.tbl_count(server_identifiers) == 0 then
+        raise_error "No servers provided."
+    end
+
     -- Collect all servers and exit early if unable to find one.
     for _, server_identifier in pairs(server_identifiers) do
         local server_name, version = servers.parse_server_identifier(server_identifier)
@@ -88,19 +93,21 @@ function M.install_sync(server_identifiers)
     end
 
     -- Poll for completion.
-    if vim.wait(60000 * 15, function()
+    if not vim.wait(60000 * 15, function()
         return #completed_servers >= #server_identifiers
     end, 100) then
-        if #failed_servers > 0 then
-            for _, server in pairs(failed_servers) do
-                log.fmt_error("Server %s failed to install.", server.name)
-            end
-            raise_error(("%d/%d servers failed to install."):format(#failed_servers, #completed_servers))
-        end
+        raise_error "Timed out waiting for server(s) to complete installing."
+    end
 
-        for _, server in pairs(completed_servers) do
-            log.fmt_info("Server %s was successfully installed.", server.name)
+    if #failed_servers > 0 then
+        for _, server in pairs(failed_servers) do
+            log.fmt_error("Server %s failed to install.", server.name)
         end
+        raise_error(("%d/%d servers failed to install."):format(#failed_servers, #completed_servers))
+    end
+
+    for _, server in pairs(completed_servers) do
+        log.fmt_info("Server %s was successfully installed.", server.name)
     end
 end
 
@@ -138,6 +145,24 @@ local function resolve_language_alias(server_name, callback)
         end)
     else
         callback(server_name)
+    end
+end
+
+---Will prompt the user via vim.ui.select() to select which server associated with the provided filetype to install.
+---If the provided filetype is not associated with a server, an error message will be displayed.
+---@param filetype string
+function M.install_by_filetype(filetype)
+    local servers_by_filetype = filetype_server_map[filetype]
+    if servers_by_filetype then
+        vim.ui.select(servers_by_filetype, {
+            prompt = ("Please select which server you want to install for filetype %q:"):format(filetype),
+        }, function(choice)
+            if choice then
+                M.install(choice)
+            end
+        end)
+    else
+        notify(("No LSP servers found for filetype %q"):format(filetype), vim.log.levels.WARN)
     end
 end
 

@@ -19,6 +19,7 @@ On top of just providing commands for installing & uninstalling LSP servers, it:
 -   supports installing custom versions of LSP servers (for example `:LspInstall rust_analyzer@nightly`)
 -   common install tasks are abstracted behind composable Lua APIs (has direct integration with libuv via vim.loop)
 -   minimum requirements are relaxed by attempting multiple different utilities (for example, only one of `wget`, `curl`, or `Invoke-WebRequest` is required for HTTP requests)
+-   hosts [a suite of system tests](https://github.com/williamboman/nvim-lspconfig-test) for all supported servers
 -   <img src="https://user-images.githubusercontent.com/6705160/131256603-cacf7f66-dfa9-4515-8ae4-0e42d08cfc6a.png" height="20"> full support for Windows
 
 ## Installation
@@ -60,7 +61,7 @@ Plug 'williamboman/nvim-lsp-installer'
 ### Commands
 
 -   `:LspInstallInfo` - opens a graphical overview of your language servers
--   `:LspInstall [--sync] <server> ...` - installs/reinstalls language servers. Runs in a blocking fashion if the `--sync` argument is passed (only recommended for scripting purposes).
+-   `:LspInstall [--sync] [server] ...` - installs/reinstalls language servers. Runs in a blocking fashion if the `--sync` argument is passed (only recommended for scripting purposes).
 -   `:LspUninstall [--sync] <server> ...` - uninstalls language servers. Runs in a blocking fashion if the `--sync` argument is passed (only recommended for scripting purposes).
 -   `:LspUninstallAll [--no-confirm]` - uninstalls all language servers
 -   `:LspInstallLog` - opens the log file in a new tab window
@@ -147,7 +148,7 @@ lsp_installer.settings({
 | ----------------------------------- | ------------------------- |
 | Angular                             | `angularls`               |
 | Ansible                             | `ansiblels`               |
-| Arduino                             | `arduino_language_server` |
+| Arduino [(docs!!!)][arduino]        | `arduino_language_server` |
 | AsyncAPI                            | `spectral`                |
 | Bash                                | `bashls`                  |
 | Bicep                               | `bicep`                   |
@@ -159,6 +160,7 @@ lsp_installer.settings({
 | C++                                 | `clangd`                  |
 | CMake                               | `cmake`                   |
 | CSS                                 | `cssls`                   |
+| CSS                                 | `cssmodules_ls`           |
 | Clojure                             | `clojure_lsp`             |
 | CodeQL                              | `codeqlls`                |
 | Dart                                | `dartls`                  |
@@ -177,6 +179,7 @@ lsp_installer.settings({
 | F#                                  | `fsautocomplete`          |
 | Fortran                             | `fortls`                  |
 | Go                                  | `gopls`                   |
+| Grammarly                           | `grammarly`               |
 | GraphQL                             | `graphql`                 |
 | Groovy                              | `groovyls`                |
 | HTML                                | `html`                    |
@@ -200,8 +203,8 @@ lsp_installer.settings({
 | Puppet                              | `puppet`                  |
 | PureScript                          | `purescriptls`            |
 | Python                              | `jedi_language_server`    |
-| Python [(docs)][pylsp]              | `pylsp`                   |
 | Python                              | `pyright`                 |
+| Python [(docs)][pylsp]              | `pylsp`                   |
 | ReScript                            | `rescriptls`              |
 | Rome                                | `rome`                    |
 | Ruby                                | `solargraph`              |
@@ -209,10 +212,12 @@ lsp_installer.settings({
 | SQL                                 | `sqlls`                   |
 | SQL                                 | `sqls`                    |
 | Solang Solidity                     | `solang`                  |
+| Solidity (vscode)                   | `solidity_ls`             |
 | Sorbet                              | `sorbet`                  |
 | Sphinx                              | `esbonio`                 |
 | Stylelint                           | `stylelint_lsp`           |
 | Svelte                              | `svelte`                  |
+| Swift                               | `sourcekit`               |
 | Tailwind CSS                        | `tailwindcss`             |
 | Terraform                           | `terraformls`             |
 | Terraform [(docs)][tflint]          | `tflint`                  |
@@ -225,6 +230,7 @@ lsp_installer.settings({
 | YAML                                | `yamlls`                  |
 | Zig                                 | `zls`                     |
 
+[arduino]: ./lua/nvim-lsp-installer/servers/arduino_language_server/README.md
 [eslint]: ./lua/nvim-lsp-installer/servers/eslint/README.md
 [tflint]: ./lua/nvim-lsp-installer/servers/tflint/README.md
 [tsserver]: ./lua/nvim-lsp-installer/servers/tsserver/README.md
@@ -242,9 +248,7 @@ Illustrations in the logo are derived from [@Kaligule](https://schauderbasis.de/
 
 ## Roadmap
 
--   Command (and corresponding Lua API) to update outdated servers (e.g., `:LspUpdate {server}`)
--   More helpful metadata displayed in the UI window
--   Cross-platform CI for all server installers
+-   Command (and corresponding Lua API) to update outdated servers (e.g., `:LspUpdateAll`)
 
 ## Default configuration
 
@@ -266,6 +270,8 @@ local DEFAULT_SETTINGS = {
             install_server = "i",
             -- Keymap to reinstall/update a server
             update_server = "u",
+            -- Keymap to update all installed servers
+            update_all_servers = "U",
             -- Keymap to uninstall a server
             uninstall_server = "X",
         },

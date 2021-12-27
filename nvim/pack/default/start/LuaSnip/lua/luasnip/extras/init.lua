@@ -9,7 +9,8 @@ local function _concat(lines)
 	return table.concat(lines, "\n")
 end
 
-local function make_lambda_args(node_args, snip)
+local function make_lambda_args(node_args, imm_parent)
+	local snip = imm_parent.snippet
 	local args = vim.tbl_map(_concat, node_args)
 
 	setmetatable(args, {
@@ -137,9 +138,11 @@ return {
 	end,
 	dynamic_lambda = function(pos, lambd, args_indcs)
 		local insert_preset_text_func = lambda.instantiate(lambd)
-		return D(pos, function(args)
+		return D(pos, function(args, imm_parent)
 			-- to be sure, lambda may end with a `match` returning nil.
-			local out = insert_preset_text_func(make_lambda_args(args)) or ""
+			local out = insert_preset_text_func(
+				make_lambda_args(args, imm_parent)
+			) or ""
 			return SN(pos, {
 				I(1, vim.split(out, "\n")),
 			})

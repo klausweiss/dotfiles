@@ -18,6 +18,9 @@ All notable changes to this project will be documented in this file.
 - Optimize `rcarriga/nvim-notify`.
 - Support `nvim-lualine/lualine.nvim`.
 - Optimize performance in vim by disabling hi groups of neovim-only plugins.
+- Optimize `lewis6991/gitsigns.nvim`.
+- Optimize `airblade/vim-gitgutter`.
+- Optimize `mhinz/vim-signify`.
 
 ## [1.2.2] - 2021-08-06
 

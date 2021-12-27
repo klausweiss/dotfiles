@@ -21,6 +21,7 @@ vim.cmd [[
     autocmd CompleteDone * lua require'cmp.utils.autocmd'.emit('CompleteDone')
     autocmd ColorScheme * call v:lua.cmp.plugin.colorscheme()
     autocmd CmdlineEnter * call v:lua.cmp.plugin.cmdline.enter()
+    autocmd CmdwinEnter * call v:lua.cmp.plugin.cmdline.leave() " for entering cmdwin with `<C-f>`
   augroup END
 ]]
 
@@ -125,7 +126,7 @@ end
 
 vim.cmd [[command! CmpStatus lua require('cmp').status()]]
 
-vim.cmd [[doautocmd <nomodeline> User cmp#ready]]
+vim.cmd [[doautocmd <nomodeline> User CmpReady]]
 
 if vim.on_key then
   vim.on_key(function(keys)

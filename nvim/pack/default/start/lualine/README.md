@@ -331,7 +331,7 @@ options = {
   theme = 'auto',          -- lualine theme
   component_separators = {left = '', right = ''},
   section_separators = {left = '', right = ''},
-  disabled_filetypes = {},  -- filetypes to diable lualine on
+  disabled_filetypes = {},  -- filetypes to disable lualine on
   always_divide_middle = true, -- When true left_sections (a,b,c) can't
                                -- take over entiee statusline even
                                -- when none of section x, y, z is present.
@@ -416,7 +416,7 @@ sections = {
       }, -- shows specific buffer name for that filetype ( { `filetype` = `buffer_name`, ... } )
       buffers_color = {
         -- Same values like general color option can be used here.
-        active = 'lualine_{section}_normal', color for active buffer
+        active = 'lualine_{section}_normal', -- color for active buffer
         inactive = 'lualine_{section}_inactive', -- color for inactive buffer
       },
     }
@@ -503,10 +503,15 @@ sections = {
   lualine_a = {
     {
       'filename',
-      file_status = true,  -- displays file status (readonly status, modified status)
-      path = 0,            -- 0 = just filename, 1 = relative path, 2 = absolute path
-      shorting_target = 40 -- Shortens path to leave 40 space in the window
-                           -- for other components. Terrible name any suggestions?
+      file_status = true,   -- displays file status (readonly status, modified status)
+      path = 0,             -- 0 = just filename, 1 = relative path, 2 = absolute path
+      shorting_target = 40, -- Shortens path to leave 40 space in the window
+                            -- for other components. Terrible name any suggestions?
+      symbols = {
+        modified = '[+]',      -- when the file was modified
+        readonly = '[-]',      -- if the file is not modifiable or readonly
+        unnamed = '[No Name]', -- default display name for unnamed buffers
+      }
     }
   }
 }

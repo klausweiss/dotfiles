@@ -98,9 +98,11 @@ but only `callbacks` is used there.
 
 Snippets contain some interesting tables, eg. `snippet.env` contains variables
 used in the LSP-protocol like `TM_CURRENT_LINE` or `TM_FILENAME` or
-`snippet.captures`, where capture-groups of regex-triggers are stored. These
-tables are primarily useful in dynamic/functionNodes, where the snippet is
-passed to the generating function.
+`snippet.captures`, where capture-groups of regex-triggers are stored.
+Additionally, the string that was used to trigger the snippet is stored in
+`snippet.trigger`. These variables/tables are primarily useful in
+dynamic/functionNodes, where the snippet can be accessed through the immediate
+parent, which is passed to the function.
 
 Snippets that should be loaded for all files must be put into the
 `ls.snippets.all`-table, those only for a specific filetype `ft` belong in
@@ -191,10 +193,13 @@ The first parameter of `f` is the function. Its parameters are
       (eg. `{{line1}, {line1, line2}}`). The snippet-indent will be removed from
       all lines following the first.
 
-2. The surrounding snippet. It is included here as it allows access to
-      anything that could be useful in functionNodes (ie. `snippet.env` or
-      `snippet.captures`, which contains capture groups of regex-triggered
-      snippets).
+2. The immediate parent of the `functionNode`. It is included here as it allows
+      easy access to anything that could be useful in functionNodes (ie.
+      `parent.snippet.env` or `parent.snippet.captures`, which contains capture
+      groups of regex-triggered snippets). In most cases `parent.env` works,
+      but if a `functionNode` is nested within a `snippetNode`, the immediate
+      parent (a `snippetNode`) will contain neither `captures` nor `env`. Those
+      are only stored in the `snippet`, which can be accessed as `parent.snippet`.
 
 3. Any parameters passed to `f` behind the second (included to more easily
       reuse functions, ie. ternary if based on text in an insertNode).
@@ -206,7 +211,7 @@ can be passed directly without wrapping it in a table.
 
 The function shall return a string, which will be inserted as-is, or a table
 of strings for multiline-string, here all lines following the first will be
-prepended with the snippets' indentation.
+prefixed with the snippets' indentation.
 
 Examples:
 Use captures from the regex-trigger using a functionNode:
@@ -348,7 +353,7 @@ Parameters:
 1. position (just like all jumpable nodes)
 2. function: Similar to functionNodes' function, first and second parameters
    are the `table of text` from nodes the dynamicNode depends on (also without
-   snippet-indent) and the `snippet`.
+   snippet-indent) and the `snippet` (immediate parent of the `dynamicNode`).
    The third, unlike functionNode, is a user-defined table, `old_state`. This
    table can contain anything, its main usage is to preserve information from
    the previously generated snippetNode: If the dynamicNode depends on another
@@ -583,7 +588,7 @@ snippet and then clear them.
 As luasnip is capable of loading the same format of plugins as vscode, it also
 includes an easy way for loading those automatically. You just have to call:
 ```lua
- 	require("luasnip/loaders/from_vscode").load(opts) -- opts can be ommited
+ 	require("luasnip.loaders.from_vscode").load(opts) -- opts can be ommited
 ```
 
 Where `opts` is a table containing the keys:
@@ -623,6 +628,49 @@ triggered.
 Note load vscode-style packages using `require("luasnip.loaders.from_vscode").load()`, if 
 you've configured luasnip to detect the filetype based on the cursor position. Else the
 snippets won't be available to the `from_cursor_pos` function.
+
+# SNIPMATE SNIPPETS LOADER
+
+As the snipmate snippet format is fundamentally the same as vscode, it can also
+be loaded.
+
+```lua
+ 	require("luasnip.loaders.from_snipmate").load(opts) -- opts can be ommited
+```
+
+See `from_vscode` for an explanation of opts.
+If `opts.paths` is ommited, snippets are loaded from any directory named
+`snippets` located in the `runtimepath`.
+
+Luasnip is compatible with
+[honza/vim-snippets](https://github.com/honza/vim-snippets).
+Please use it as a reference for your directory structure.
+
+When using `honza/vim-snippets`, the file with the global snippets is
+`_.snippets`, So we need to tell luasnip that `_` also contains global snippets:
+```lua
+ls.filetype_extend("all", { "_" })
+```
+
+Something similar may have to be done for other snippet-repos as well.
+
+
+Lazy loading is also available with the snipmate-loader.
+
+```lua
+ 	require("luasnip.loaders.from_snipmate").lazy_load(opts) -- opts can be ommited
+```
+
+
+Here is a summary of the differences from the original snipmate format.
+
+- Only `./{ft}.snippets` and `./{ft}/*.snippets` will be loaded.
+- The file name or folder name will be used as file type.
+- You can use the comment and extends syntax.
+- `${VISUAL}` will be replaced by `$TM_SELECTED_TEXT` to make the snippets
+compatible with luasnip
+- We do not implement eval using \` (backtick). This may be implemented in the future.
+
 
 # EXT\_OPTS
 
@@ -881,6 +929,10 @@ the lazy_load.
 
 - `cleanup()`: clears all snippets. Not useful for regular usage, only when
   authoring and testing snippets.
+
+- `refresh_notify(ft)`: Triggers an autocmd that other plugins can hook into to
+  perform various cleanup for the refreshed filetype.
+  Useful for signaling that new snippets were added for the filetype `ft`.
 
 Not covered in this section are the various node-constructors exposed by
 the module, their usage is shown either previously in this file or in

@@ -120,10 +120,16 @@ function U.ignore(ln, pat)
     return pat and ln:find(pat) ~= nil
 end
 
----Get region for vim mode
----@param vmode VMode
+---Get region for line movement or visual selection
+---NOTE: Returns the current line, if `vmode` is not given.
+---@param vmode? VMode
 ---@return CRange
 function U.get_region(vmode)
+    if not vmode then
+        local row, col = unpack(A.nvim_win_get_cursor(0))
+        return { srow = row, scol = col, erow = row, ecol = col }
+    end
+
     local m = A.nvim_buf_get_mark
     local buf = 0
     local sln, eln
@@ -134,12 +140,7 @@ function U.get_region(vmode)
         sln, eln = m(buf, '['), m(buf, ']')
     end
 
-    return {
-        srow = sln[1],
-        scol = sln[2],
-        erow = eln[1],
-        ecol = eln[2],
-    }
+    return { srow = sln[1], scol = sln[2], erow = eln[1], ecol = eln[2] }
 end
 
 ---Get lines from the current position to the given count
@@ -152,12 +153,7 @@ function U.get_count_lines(count)
     local erow = (srow + count) - 1
     local lines = A.nvim_buf_get_lines(0, srow - 1, erow, false)
 
-    return lines, {
-        srow = srow,
-        scol = 0,
-        erow = erow,
-        ecol = 0,
-    }
+    return lines, { srow = srow, scol = 0, erow = erow, ecol = 0 }
 end
 
 ---Get lines from a NORMAL/VISUAL mode
@@ -177,13 +173,9 @@ end
 ---@return string|boolean
 ---@return string|boolean
 function U.unwrap_cstr(cstr)
-    if U.is_empty(cstr) then
-        return U.eprint("Empty commentstring. Run ':h commentstring' for help.")
-    end
-
     local lcs, rcs = cstr:match('(.*)%%s(.*)')
     if not (lcs or rcs) then
-        return U.eprint('Invalid commentstring ' .. cstr .. ". Run ':h commentstring' for help.")
+        return U.eprint(("Invalid commentstring: %q. Run ':h commentstring' for help."):format(cstr))
     end
 
     -- Return false if a part is empty, otherwise trim it

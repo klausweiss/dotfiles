@@ -34,7 +34,6 @@ end
 
 local function snip_init(self, snip)
 	snip.parent = self.parent
-	snip.env = self.parent.env
 
 	snip.ext_opts = util.increase_ext_prio(
 		vim.deepcopy(self.parent.ext_opts),
@@ -138,7 +137,6 @@ function DynamicNode:update()
 	tmp.next = self
 	tmp.prev = self
 
-	tmp.env = self.parent.env
 	tmp.ext_opts = tmp.ext_opts
 		or util.increase_ext_prio(
 			vim.deepcopy(self.parent.ext_opts),
@@ -182,8 +180,11 @@ end
 
 function DynamicNode:exit()
 	self.mark:clear()
-	-- snip should exist if exit is called.
-	self.snip:exit()
+	-- check if snip actually exists, may not be the case if
+	-- the surrounding snippet was deleted just before.
+	if self.snip then
+		self.snip:exit()
+	end
 	self.stored_snip = self.snip
 	self.snip = nil
 	self.active = false

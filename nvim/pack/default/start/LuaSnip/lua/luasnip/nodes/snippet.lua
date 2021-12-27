@@ -436,35 +436,36 @@ function Snippet:enter_node(node_id)
 		self.parent:enter_node(self.indx)
 	end
 
-	local node = self.nodes[node_id]
-	local node_to = node.mark:pos_end()
 	for i = 1, node_id - 1 do
-		-- print(string.format("%d: %s, %s", i, "<", "<"))
 		self.nodes[i]:set_mark_rgrav(false, false)
 	end
-	-- print(vim.inspect(node_from), vim.inspect(node_to))
-	-- print(string.format("[crt] %d: %s, %s", node_id,
-	-- 	node.ext_gravities_active[1] and ">" or "<",
-	-- 	node.ext_gravities_active[2] and ">" or "<"))
+
+	local node = self.nodes[node_id]
 	node:set_mark_rgrav(
 		node.ext_gravities_active[1],
 		node.ext_gravities_active[2]
 	)
-	for i = node_id + 1, #self.nodes do
+
+	local _, node_to = node.mark:pos_begin_end_raw()
+	local i = node_id + 1
+	while i <= #self.nodes do
 		local other = self.nodes[i]
-		local other_from, other_to = other.mark:pos_begin_end()
+		local other_from, other_to = other.mark:pos_begin_end_raw()
 
-		-- print(vim.inspect(other_from), vim.inspect(other_to))
-		-- print(string.format("%d: %s, %s", i,
-		-- 	util.pos_equal(other_from, node_to) and ">" or "<",
-		-- 	util.pos_equal(other_to, node_to) and ">" or "<"))
+		local end_equal = util.pos_equal(other_to, node_to)
+		other:set_mark_rgrav(util.pos_equal(other_from, node_to), end_equal)
+		i = i + 1
 
-		other:set_mark_rgrav(
-			util.pos_equal(other_from, node_to),
-			util.pos_equal(other_to, node_to)
-		)
+		-- As soon as one end-mark wasn't equal, we no longer have to check as the
+		-- marks don't overlap.
+		if not end_equal then
+			break
+		end
 	end
-	-- print("\n ")
+	while i <= #self.nodes do
+		self.nodes[i]:set_mark_rgrav(false, false)
+		i = i + 1
+	end
 end
 
 -- https://gist.github.com/tylerneylon/81333721109155b2d244
@@ -584,7 +585,7 @@ function Snippet:fake_expand()
 	self.env = {}
 	setmetatable(self.env, {
 		__index = function(_, key)
-			return { "$" .. key }
+			return Environ.is_table(key) and { "$" .. key } or "$" .. key
 		end,
 	})
 
@@ -614,7 +615,8 @@ end
 function Snippet:get_static_text()
 	if self.static_text then
 		return self.static_text
-	elseif not self.env then
+		-- copy+fake_expand the snippet here instead of in whatever code needs to know the docstring.
+	elseif not self.ext_opts then
 		-- not a snippetNode and not yet initialized
 		local snipcop = self:copy()
 		-- sets env, captures, etc.
@@ -641,7 +643,8 @@ end
 function Snippet:get_docstring()
 	if self.docstring then
 		return self.docstring
-	elseif not self.env then
+		-- copy+fake_expand the snippet here instead of in whatever code needs to know the docstring.
+	elseif not self.ext_opts then
 		-- not a snippetNode and not yet initialized
 		local snipcop = self:copy()
 		-- sets env, captures, etc.
@@ -701,7 +704,6 @@ end
 function Snippet:subsnip_init()
 	for _, node in ipairs(self.nodes) do
 		if node.type == types.snippetNode then
-			node.env = self.env
 			node.ext_opts = util.increase_ext_prio(
 				vim.deepcopy(self.ext_opts),
 				conf.config.ext_prio_increase
@@ -774,8 +776,87 @@ function Snippet:set_mark_rgrav(val_begin, val_end)
 	-- set own markers.
 	node_mod.Node.set_mark_rgrav(self, val_begin, val_end)
 
-	for _, node in ipairs(self.nodes) do
-		node:set_mark_rgrav(val_begin, val_end)
+	local snip_pos_begin, snip_pos_end = self.mark:pos_begin_end_raw()
+
+	if
+		snip_pos_begin[1] == snip_pos_end[1]
+		and snip_pos_begin[2] == snip_pos_end[2]
+	then
+		for _, node in ipairs(self.nodes) do
+			node:set_mark_rgrav(val_begin, val_end)
+		end
+		return
+	end
+
+	local node_indx = 1
+	-- the first node starts at begin-mark.
+	local node_on_begin_mark = true
+
+	-- only change gravities on nodes that absolutely have to.
+	while node_on_begin_mark do
+		-- will be set later if the next node has to be updated as well.
+		node_on_begin_mark = false
+		local node = self.nodes[node_indx]
+		if not node then
+			break
+		end
+		local node_pos_begin, node_pos_end = node.mark:pos_begin_end_raw()
+		-- use false, false as default, this is what most nodes will be set to.
+		local new_rgrav_begin, new_rgrav_end =
+			node.mark.opts.right_gravity, node.mark.opts.end_right_gravity
+		if
+			node_pos_begin[1] == snip_pos_begin[1]
+			and node_pos_begin[2] == snip_pos_begin[2]
+		then
+			new_rgrav_begin = val_begin
+
+			if
+				node_pos_end[1] == snip_pos_begin[1]
+				and node_pos_end[2] == snip_pos_begin[2]
+			then
+				new_rgrav_end = val_begin
+				-- both marks of this node were on the beginning of the snippet
+				-- so this has to be checked again for the next node.
+				node_on_begin_mark = true
+				node_indx = node_indx + 1
+			end
+		end
+		node:set_mark_rgrav(new_rgrav_begin, new_rgrav_end)
+	end
+
+	-- the first node starts at begin-mark.
+	local node_on_end_mark = true
+
+	node_indx = #self.nodes
+	while node_on_end_mark do
+		local node = self.nodes[node_indx]
+		if not node then
+			break
+		end
+		local node_pos_begin, node_pos_end = node.mark:pos_begin_end_raw()
+		-- will be set later if the next node has to be updated as well.
+		node_on_end_mark = false
+		-- use false, false as default, this is what most nodes will be set to.
+		local new_rgrav_begin, new_rgrav_end =
+			node.mark.opts.right_gravity, node.mark.opts.end_right_gravity
+		if
+			node_pos_end[1] == snip_pos_end[1]
+			and node_pos_end[2] == snip_pos_end[2]
+		then
+			new_rgrav_end = val_end
+
+			if
+				node_pos_begin[1] == snip_pos_end[1]
+				and node_pos_begin[2] == snip_pos_end[2]
+			then
+				new_rgrav_begin = val_end
+				-- both marks of this node were on the end-mark of the snippet
+				-- so this has to be checked again for the next node.
+				node_on_end_mark = true
+				node_indx = node_indx - 1
+			end
+		end
+		node:set_mark_rgrav(new_rgrav_begin, new_rgrav_end)
 	end
 end
 

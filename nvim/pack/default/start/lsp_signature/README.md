@@ -127,7 +127,8 @@ Or:
 
  cfg = {
   debug = false, -- set to true to enable debug logging
-  log_path = "debug_log_file_path", -- debug log path
+  log_path = vim.fn.stdpath("cache") .. "/lsp_signature.log", -- log dir when debug is on
+  -- default is  ~/.cache/nvim/lsp_signature.log
   verbose = false, -- show debug line number
 
   bind = true, -- This is mandatory, otherwise border config won't get registered.
@@ -177,6 +178,38 @@ require'lsp_signature'.setup(cfg) -- no need to specify bufnr if you don't use t
 -- note: on_attach deprecated
 require'lsp_signature'.on_attach(cfg, bufnr) -- no need to specify bufnr if you don't use toggle_key
 ```
+
+### Signature in status line
+
+Sample config
+
+API
+
+```lua
+require("lsp_signature").status_line(max_width)
+```
+
+return a table
+
+```lua
+{
+  label = 'func fun_name(arg1, arg2...)'
+  hint = 'arg2'
+}
+
+```
+
+```lua
+local current_signature = function(width)
+  if not packer_plugins["lsp_signature.nvim"] or packer_plugins["lsp_signature.nvim"].loaded == false then
+    return ""
+  end
+  local sig = require("lsp_signature").status_line(width)
+  return sig.label .. "🐼" .. sig.hint
+end
+```
+
+![signature in status line](https://i.redd.it/b842vy1dm6681.png)
 
 ### Should signature floating windows fixed
 

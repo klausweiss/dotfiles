@@ -1,4 +1,3 @@
-local events = require("luasnip.util.events")
 local session = require("luasnip.session")
 
 local function get_cursor_0ind()
@@ -208,7 +207,7 @@ end
 local function wrap_nodes(nodes)
 	-- safe to assume, if nodes has a metatable, it is a single node, not a
 	-- table.
-	if getmetatable(nodes) then
+	if getmetatable(nodes) and nodes.type then
 		return { nodes }
 	else
 		return nodes
@@ -480,15 +479,28 @@ end
 local function get_snippet_filetypes()
 	local config = require("luasnip.config").config
 	local fts = config.ft_func()
+	-- add all last.
+	table.insert(fts, "all")
 
 	local snippet_fts = {}
 	for _, ft in ipairs(fts) do
 		vim.list_extend(snippet_fts, session.ft_redirect[ft])
 	end
 
-	-- add all last.
-	table.insert(snippet_fts, "all")
 	return snippet_fts
+end
+
+local function deduplicate(list)
+	vim.validate({ list = { list, "table" } })
+	local ret = {}
+	local contains = {}
+	for _, v in ipairs(list) do
+		if not contains[v] then
+			table.insert(ret, v)
+			contains[v] = true
+		end
+	end
+	return ret
 end
 
 local json_decode
@@ -543,4 +555,5 @@ return {
 	bytecol_to_utfcol = bytecol_to_utfcol,
 	pos_sub = pos_sub,
 	pos_add = pos_add,
+	deduplicate = deduplicate,
 }

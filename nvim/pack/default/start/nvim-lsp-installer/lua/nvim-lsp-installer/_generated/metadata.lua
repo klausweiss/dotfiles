@@ -37,6 +37,9 @@ return {
   cssls = {
     filetypes = { "css", "scss", "less" }
   },
+  cssmodules_ls = {
+    filetypes = { "javascript", "javascriptreact", "typescript", "typescriptreact" }
+  },
   dartls = {
     filetypes = { "dart" }
   },
@@ -83,7 +86,10 @@ return {
     filetypes = { "fsharp" }
   },
   gopls = {
-    filetypes = { "go", "gomod" }
+    filetypes = { "go", "gomod", "gotmpl" }
+  },
+  grammarly = {
+    filetypes = { "markdown" }
   },
   graphql = {
     filetypes = { "graphql", "typescriptreact", "javascriptreact" }
@@ -169,8 +175,14 @@ return {
   solargraph = {
     filetypes = { "ruby" }
   },
+  solidity_ls = {
+    filetypes = { "solidity" }
+  },
   sorbet = {
     filetypes = { "ruby" }
+  },
+  sourcekit = {
+    filetypes = { "swift", "c", "cpp", "objective-c", "objective-cpp" }
   },
   spectral = {
     filetypes = { "yaml", "json", "yml" }

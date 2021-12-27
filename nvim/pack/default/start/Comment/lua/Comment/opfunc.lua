@@ -64,33 +64,22 @@ function O.opfunc(vmode, cfg, cmode, ctype, cmotion)
     local lcs, rcs = U.parse_cstr(cfg, ctx)
     local lines = U.get_lines(range)
 
+    ---@type OpFnParams
+    local params = {
+        cfg = cfg,
+        cmode = cmode,
+        lines = lines,
+        lcs = lcs,
+        rcs = rcs,
+        range = range,
+    }
+
     if block_x then
-        ctx.cmode = O.blockwise_x({
-            cfg = cfg,
-            cmode = cmode,
-            lines = lines,
-            lcs = lcs,
-            rcs = rcs,
-            range = range,
-        })
+        ctx.cmode = O.blockwise_x(params)
     elseif ctype == U.ctype.block and not same_line then
-        ctx.cmode = O.blockwise({
-            cfg = cfg,
-            cmode = cmode,
-            lines = lines,
-            lcs = lcs,
-            rcs = rcs,
-            range = range,
-        }, partial_block)
+        ctx.cmode = O.blockwise(params, partial_block)
     else
-        ctx.cmode = O.linewise({
-            cfg = cfg,
-            cmode = cmode,
-            lines = lines,
-            lcs = lcs,
-            rcs = rcs,
-            range = range,
-        })
+        ctx.cmode = O.linewise(params)
     end
 
     -- We only need to restore cursor if both sticky and position are available
@@ -98,9 +87,9 @@ function O.opfunc(vmode, cfg, cmode, ctype, cmotion)
     --
     -- And I found out that if someone presses `gc` but doesn't provide operators and
     -- does visual comments then cursor jumps to previous stored position. Thus the check for visual modes
-    if cfg.sticky and cfg.___pos and cmotion ~= U.cmotion.v and cmotion ~= U.cmotion.V then
-        A.nvim_win_set_cursor(0, cfg.___pos)
-        cfg.___pos = nil
+    if cfg.sticky and cfg.__pos and cmotion ~= U.cmotion.v and cmotion ~= U.cmotion.V then
+        A.nvim_win_set_cursor(0, cfg.__pos)
+        cfg.__pos = nil
     end
 
     U.is_fn(cfg.post_hook, ctx)
@@ -115,8 +104,8 @@ function O.linewise(p)
     local padding, pp = U.get_padding(p.cfg.padding)
     local is_commented = U.is_commented(lcs_esc, rcs_esc, pp)
 
-    -- While commenting a block of text, there is a possiblity of lines being both commented and non-commented
-    -- In that case, we need to figure out that if any line is uncommented then we should comment the whole block or vise-versa
+    -- While commenting a region, there could be lines being both commented and non-commented
+    -- So, if any line is uncommented then we should comment the whole block or vise-versa
     local cmode = U.cmode.uncomment
 
     -- When commenting multiple line, it is to be expected that indentation should be preserved
@@ -136,7 +125,7 @@ function O.linewise(p)
                     end
                 end
 
-                -- If the internal cmode changes to comment or the given cmode is not uncomment, then only calculate min_indent
+                -- If local `cmode` == comment or the given cmode ~= uncomment, then only calculate min_indent
                 -- As calculating min_indent only makes sense when we actually want to comment the lines
                 if not U.is_empty(line) and (cmode == U.cmode.comment or p.cmode == U.cmode.comment) then
                     local indent = U.grab_indent(line)
@@ -253,26 +242,34 @@ end
 ---Example: `10gl` will comment 10 lines
 ---@param count integer Number of lines
 ---@param cfg Config
-function O.count(count, cfg)
+---@param ctype CType
+function O.count(count, cfg, ctype)
     local lines, range = U.get_count_lines(count)
 
     ---@type Ctx
     local ctx = {
         cmode = U.cmode.toggle,
         cmotion = U.cmotion.line,
-        ctype = U.ctype.line,
+        ctype = ctype,
         range = range,
     }
     local lcs, rcs = U.parse_cstr(cfg, ctx)
 
-    ctx.cmode = O.linewise({
+    ---@type OpFnParams
+    local params = {
         cfg = cfg,
         cmode = ctx.cmode,
         lines = lines,
         lcs = lcs,
         rcs = rcs,
         range = range,
-    })
+    }
+
+    if ctype == U.ctype.block then
+        ctx.cmode = O.blockwise(params)
+    else
+        ctx.cmode = O.linewise(params)
+    end
 
     U.is_fn(cfg.post_hook, ctx)
 end

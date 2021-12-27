@@ -1517,11 +1517,6 @@ filetypes:
   - '.zsh*'
   - '*/etc/zprofile'
 ---
-name: zinit
-remote: zinit-zsh/zplugin-vim-syntax
-# just adds to zsh filetype
-filetypes: []
----
 name: slim
 remote: slim-template/vim-slim
 filetypes:
@@ -5546,3 +5541,8 @@ filetypes:
   patterns:
   - pattern: '*.org'
     description: GNU Emacs' Org mode
+---
+name: zinit
+remote: zdharma-continuum/zinit-vim-syntax@main
+# just adds to zsh filetype
+filetypes: []
