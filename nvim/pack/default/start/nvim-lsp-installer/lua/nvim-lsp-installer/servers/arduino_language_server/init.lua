@@ -56,6 +56,9 @@ return function(name, root_dir)
                 stdio_sink = ctx.stdio_sink,
             }, callback)
         end,
+        context.receipt(function(receipt, ctx)
+            receipt:with_secondary_source(receipt.github_release_file(ctx))
+        end),
     }
 
     local arduino_language_server_installer = installers.branch_context {
@@ -82,6 +85,9 @@ return function(name, root_dir)
                 std.rename(("clangd_%s"):format(ctx.requested_server_version), "clangd"),
             }
         end),
+        context.receipt(function(receipt, ctx)
+            receipt:with_secondary_source(receipt.github_release_file(ctx))
+        end),
     }
 
     return server.Server:new {
@@ -97,7 +103,7 @@ return function(name, root_dir)
         default_options = {
             cmd = {
                 -- This cmd is incomplete. Users need to manually append their FQBN (e.g., -fqbn arduino:avr:nano)
-                go.executable(path.concat { root_dir, "arduino-language-server" }, "arduino-language-server"),
+                "arduino-language-server",
                 "-cli",
                 path.concat { root_dir, "arduino-cli", platform.is_win and "arduino-cli.exe" or "arduino-cli" },
                 "-cli-config",
@@ -105,6 +111,7 @@ return function(name, root_dir)
                 "-clangd",
                 path.concat { root_dir, "clangd", "bin", platform.is_win and "clangd.bat" or "clangd" },
             },
+            cmd_env = go.env(path.concat { root_dir, "arduino-language-server" }),
         },
     }
 end

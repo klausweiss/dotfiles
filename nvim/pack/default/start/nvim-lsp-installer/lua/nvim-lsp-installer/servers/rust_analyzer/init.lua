@@ -1,5 +1,5 @@
 local server = require "nvim-lsp-installer.server"
-local path = require "nvim-lsp-installer.path"
+local process = require "nvim-lsp-installer.process"
 local platform = require "nvim-lsp-installer.platform"
 local std = require "nvim-lsp-installer.installers.std"
 local context = require "nvim-lsp-installer.installers.context"
@@ -46,9 +46,14 @@ return function(name, root_dir)
                 )
             end),
             std.chmod("+x", { "rust-analyzer" }),
+            context.receipt(function(receipt, ctx)
+                receipt:with_primary_source(receipt.github_release_file(ctx))
+            end),
         },
         default_options = {
-            cmd = { path.concat { root_dir, "rust-analyzer" } },
+            cmd_env = {
+                PATH = process.extend_path { root_dir },
+            },
         },
     }
 end

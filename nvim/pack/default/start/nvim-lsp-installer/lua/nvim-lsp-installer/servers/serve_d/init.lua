@@ -1,9 +1,9 @@
 local server = require "nvim-lsp-installer.server"
 local platform = require "nvim-lsp-installer.platform"
-local path = require "nvim-lsp-installer.path"
 local std = require "nvim-lsp-installer.installers.std"
 local context = require "nvim-lsp-installer.installers.context"
 local Data = require "nvim-lsp-installer.data"
+local process = require "nvim-lsp-installer.process"
 
 return function(name, root_dir)
     return server.Server:new {
@@ -26,9 +26,14 @@ return function(name, root_dir)
                     return std.untarxz_remote(ctx.github_release_file)
                 end
             end),
+            context.receipt(function(receipt, ctx)
+                receipt:with_primary_source(receipt.github_release_file(ctx))
+            end),
         },
         default_options = {
-            cmd = { path.concat { root_dir, "serve-d" } },
+            cmd_env = {
+                PATH = process.extend_path { root_dir },
+            },
         },
     }
 end

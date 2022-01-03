@@ -100,6 +100,7 @@ that config. This file is accessible in neovim via `:help lspconfig-server-confi
 - [sixtyfps](#sixtyfps)
 - [solang](#solang)
 - [solargraph](#solargraph)
+- [solc](#solc)
 - [solidity_ls](#solidity_ls)
 - [sorbet](#sorbet)
 - [sourcekit](#sourcekit)
@@ -4296,87 +4297,6 @@ https://github.com/PMunch/nimlsp
 nimble install nimlsp
 ```
     
-This server accepts configuration via the `settings` key.
-<details><summary>Available settings:</summary>
-
-- **`nim.buildCommand`**: `string`
-
-  Default: `"c"`
-  
-  Nim build command \(c\, cpp\, doc\, etc\)
-
-- **`nim.buildOnSave`**: `boolean`
-
-  Execute build task from tasks\.json file on save\.
-
-- **`nim.enableNimsuggest`**: `boolean`
-
-  Default: `true`
-  
-  Enable calling nimsuggest process to provide completion suggestions\, hover suggestions\, etc\.
-  This option requires restart to take effect\.
-
-- **`nim.licenseString`**: `string`
-
-  Default: `""`
-  
-  Optional license text that will be inserted on nim file creation\.
-
-- **`nim.lintOnSave`**: `boolean`
-
-  Default: `true`
-  
-  Check code by using \'nim check\' on save\.
-
-- **`nim.logNimsuggest`**: `boolean`
-
-  Enable verbose logging of nimsuggest to use profile directory\.
-
-- **`nim.nimprettyIndent`**: `integer`
-
-  Default: `0`
-  
-  Nimpretty\: set the number of spaces that is used for indentation
-  \-\-indent\:0 means autodetection \(default behaviour\)\.
-
-- **`nim.nimprettyMaxLineLen`**: `integer`
-
-  Default: `80`
-  
-  Nimpretty\: set the desired maximum line length \(default\: 80\)\.
-
-- **`nim.nimsuggestRestartTimeout`**: `integer`
-
-  Default: `60`
-  
-  Nimsuggest will be restarted after this timeout in minutes\, if 0 then restart disabled\.
-  This option requires restart to take effect\.
-
-- **`nim.project`**: `array`
-
-  Default: `{}`
-  
-  Nim project file\, if empty use current selected\.
-
-- **`nim.projectMapping`**: `object`
-
-  Default: `vim.empty_dict()`
-  
-  For non project mode list of per file project mapping using regex\, for example \`\`\`\{\"\(\.\*\)\.inim\"\: \"\$1\.nim\"\}\`\`\`
-
-- **`nim.runOutputDirectory`**: `string`
-
-  Default: `""`
-  
-  Output directory for run selected file command\. The directory is relative to the workspace root\.
-
-- **`nim.test-project`**: `string`
-
-  Default: `""`
-  
-  Optional test project\.
-
-</details>
 
 
 **Snippet to enable the language server:**
@@ -6754,6 +6674,30 @@ require'lspconfig'.solargraph.setup{}
         diagnostics = true
       }
     }
+```
+
+
+## solc
+
+https://docs.soliditylang.org/en/latest/installing-solidity.html
+
+solc is the native language server for the Solidity language.
+
+
+
+**Snippet to enable the language server:**
+```lua
+require'lspconfig'.solc.setup{}
+```
+
+**Commands and default values:**
+```lua
+  Commands:
+  
+  Default Values:
+    cmd = { "solc", "--lsp" }
+    filetypes = { "solidity" }
+    root_dir = root_pattern(".git")
 ```
 
 

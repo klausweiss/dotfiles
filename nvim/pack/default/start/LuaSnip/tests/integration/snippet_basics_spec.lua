@@ -16,6 +16,7 @@ describe("snippets_basic", function()
 			[0] = { bold = true, foreground = Screen.colors.Blue },
 			[1] = { bold = true, foreground = Screen.colors.Brown },
 			[2] = { bold = true },
+			[3] = { background = Screen.colors.LightGray },
 		})
 	end)
 
@@ -24,12 +25,16 @@ describe("snippets_basic", function()
 	end)
 
 	it("Can expand Snippets via snip_expand", function()
-		exec_lua([[
-			ls.snip_expand(
-				s("trig", {
-					t"the snippet expands"
-				}) )
-		]])
+		local snip = [[
+			s("trig", {
+				t"the snippet expands"
+			})
+		]]
+		assert.are.same(
+			exec_lua("return " .. snip .. ":get_static_text()"),
+			{ "the snippet expands" }
+		)
+		exec_lua("ls.snip_expand(" .. snip .. ")")
 
 		-- screen already is in correct state, set `unchanged`.
 		screen:expect({
@@ -61,12 +66,17 @@ describe("snippets_basic", function()
 	end)
 
 	it("Can jump around in simple snippets.", function()
-		exec_lua([[
-			ls.snip_expand(
-				s("trig", {
-					t"text", i(1), t"text again", i(2), t"and again"
-				}) )
-		]])
+		local snip = [[
+			s("trig", {
+				t"text", i(1), t"text again", i(2), t"and again"
+			})
+		]]
+		assert.are.same(
+			exec_lua("return " .. snip .. ":get_static_text()"),
+			{ "texttext againand again" }
+		)
+		exec_lua("ls.snip_expand(" .. snip .. ")")
+
 		screen:expect({
 			grid = [[
 			text^text againand again                           |
@@ -136,6 +146,281 @@ describe("snippets_basic", function()
 		  texttext againand again^                           |
 		  {0:~                                                 }|
 		  {2:-- INSERT --}                                      |]],
+		})
+	end)
+
+	it("Can expand and jump out of nested snippets.", function()
+		local snip = [[
+			s("trig", {
+				t"a[", i(1), t"]a", i(2), t"b"
+			})
+		]]
+		assert.are.same(
+			exec_lua("return " .. snip .. ":get_static_text()"),
+			{ "a[]ab" }
+		)
+		exec_lua("ls.snip_expand(" .. snip .. ")")
+		exec_lua("ls.snip_expand(" .. snip .. ")")
+		screen:expect({
+			grid = [[
+			a[a[^]ab]ab                                        |
+			{0:~                                                 }|
+			{2:-- INSERT --}                                      |]],
+			unchanged = true,
+		})
+
+		-- jump into second of inner.
+		exec_lua("ls.jump(1)")
+		screen:expect({
+			grid = [[
+			a[a[]a^b]ab                                        |
+			{0:~                                                 }|
+			{2:-- INSERT --}                                      |]],
+			unchanged = true,
+		})
+
+		-- jump to i(0) of inner.
+		exec_lua("ls.jump(1)")
+		screen:expect({
+			grid = [[
+			a[a[]ab^]ab                                        |
+			{0:~                                                 }|
+			{2:-- INSERT --}                                      |]],
+			unchanged = true,
+		})
+
+		-- jump to second of outer.
+		exec_lua("ls.jump(1)")
+		screen:expect({
+			grid = [[
+			a[a[]ab]a^b                                        |
+			{0:~                                                 }|
+			{2:-- INSERT --}                                      |]],
+			unchanged = true,
+		})
+
+		-- jump back into first of outer.
+		exec_lua("ls.jump(-1)")
+		screen:expect({
+			grid = [[
+			a[^a{3:[]ab}]ab                                        |
+			{0:~                                                 }|
+			{2:-- SELECT --}                                      |]],
+			unchanged = true,
+		})
+
+		-- jump back before outer.
+		exec_lua("ls.jump(-1)")
+		screen:expect({
+			grid = [[
+			^a[a[]ab]ab                                        |
+			{0:~                                                 }|
+			{2:-- INSERT --}                                      |]],
+			unchanged = true,
+		})
+		-- the snippet is not active anymore (cursor position doesn't change from last expansion).
+		exec_lua("ls.jump(1)")
+		screen:expect({
+			grid = [[
+			^a[a[]ab]ab                                        |
+			{0:~                                                 }|
+			{2:-- INSERT --}                                      |]],
+			unchanged = true,
+		})
+	end)
+
+	it("history=true allows jumping back into exited snippet.", function()
+		-- mainly the same as the previous test, only diverges after jumping
+		-- back into the inner snippet since history is enabled here.
+		local expand_snip = [[
+			ls.config.setup({
+				history=true
+			})
+
+			ls.snip_expand(s("trig", {
+				t"a[", i(1), t"]a", i(2), t"b"
+			}) )
+		]]
+		exec_lua(expand_snip)
+		-- jump behind snippet.
+		exec_lua("ls.jump(1)")
+		exec_lua("ls.jump(1)")
+		exec_lua(expand_snip)
+
+		screen:expect({
+			grid = [[
+			a[]aba[^]ab                                        |
+			{0:~                                                 }|
+			{2:-- INSERT --}                                      |]],
+			unchanged = true,
+		})
+
+		-- jump to
+		-- 1. -1 of second
+		-- 2. 0 of first
+		-- 2. 2 of first
+		exec_lua("ls.jump(-1)")
+		exec_lua("ls.jump(-1)")
+		exec_lua("ls.jump(-1)")
+
+		screen:expect({
+			grid = [[
+			a[]a^ba[]ab                                        |
+			{0:~                                                 }|
+			{2:-- INSERT --}                                      |]],
+			unchanged = true,
+		})
+
+		-- jump through second:
+		exec_lua("ls.jump(1)")
+		exec_lua("ls.jump(1)")
+		exec_lua("ls.jump(1)")
+		exec_lua("ls.jump(1)")
+		exec_lua("ls.jump(1)")
+
+		screen:expect({
+			grid = [[
+			a[]aba[]ab^                                        |
+			{0:~                                                 }|
+			{2:-- INSERT --}                                      |]],
+		})
+	end)
+
+	it(
+		"Can jump back from nested into outer snippet with history=true.",
+		function()
+			-- mainly the same as the previous test, only diverges after jumping
+			-- back into the inner snippet since history is enabled here.
+			local expand_snip = [[
+			ls.config.setup({
+				history=true
+			})
+
+			ls.snip_expand(s("trig", {
+				t"a[", i(1), t"]a", i(2), t"b"
+			}) )
+		]]
+			exec_lua(expand_snip)
+			exec_lua(expand_snip)
+			screen:expect({
+				grid = [[
+			a[a[^]ab]ab                                        |
+			{0:~                                                 }|
+			{2:-- INSERT --}                                      |]],
+				unchanged = true,
+			})
+
+			-- jump into second of inner.
+			exec_lua("ls.jump(1)")
+			screen:expect({
+				grid = [[
+			a[a[]a^b]ab                                        |
+			{0:~                                                 }|
+			{2:-- INSERT --}                                      |]],
+				unchanged = true,
+			})
+
+			-- jump to i(0) of inner.
+			exec_lua("ls.jump(1)")
+			screen:expect({
+				grid = [[
+			a[a[]ab^]ab                                        |
+			{0:~                                                 }|
+			{2:-- INSERT --}                                      |]],
+				unchanged = true,
+			})
+
+			-- jump to second of outer.
+			exec_lua("ls.jump(1)")
+			screen:expect({
+				grid = [[
+			a[a[]ab]a^b                                        |
+			{0:~                                                 }|
+			{2:-- INSERT --}                                      |]],
+				unchanged = true,
+			})
+
+			-- jump back into first of outer (it's now just text since history is false.).
+			exec_lua("ls.jump(-1)")
+			screen:expect({
+				grid = [[
+			a[^a{3:[]ab}]ab                                        |
+			{0:~                                                 }|
+			{2:-- SELECT --}                                      |]],
+				unchanged = true,
+			})
+
+			-- jump back into inner snippet (since history is true).
+			exec_lua("ls.jump(-1)")
+			screen:expect({
+				grid = [[
+			a[a[]ab^]ab                                        |
+			{0:~                                                 }|
+			{2:-- INSERT --}                                      |]],
+				unchanged = true,
+			})
+
+			exec_lua("ls.jump(-1)")
+			screen:expect({
+				grid = [[
+			a[a[]a^b]ab                                        |
+			{0:~                                                 }|
+			{2:-- INSERT --}                                      |]],
+				unchanged = true,
+			})
+
+			exec_lua("ls.jump(-1)")
+			screen:expect({
+				grid = [[
+			a[a[^]ab]ab                                        |
+			{0:~                                                 }|
+			{2:-- INSERT --}                                      |]],
+				unchanged = true,
+			})
+
+			exec_lua("ls.jump(-1)")
+			screen:expect({
+				grid = [[
+			a[^a[]ab]ab                                        |
+			{0:~                                                 }|
+			{2:-- INSERT --}                                      |]],
+				unchanged = true,
+			})
+
+			exec_lua("ls.jump(-1)")
+			screen:expect({
+				grid = [[
+			^a[a[]ab]ab                                        |
+			{0:~                                                 }|
+			{2:-- INSERT --}                                      |]],
+				unchanged = true,
+			})
+
+			-- and we can jump back into the outer snippet, one last time.
+			exec_lua("ls.jump(1)")
+			screen:expect({
+				grid = [[
+			a[^a{3:[]ab}]ab                                        |
+			{0:~                                                 }|
+			{2:-- SELECT --}                                      |]],
+				unchanged = true,
+			})
+		end
+	)
+
+	it("Snippets are indented.", function()
+		local snip = [[
+			s("trig", {
+				t{"the snippet expands", "and is indeted properly."}
+			})
+		]]
+		feed("i<Tab>")
+		exec_lua("ls.snip_expand(" .. snip .. ")")
+		screen:expect({
+			grid = [[
+			        the snippet expands                       |
+			        and is indeted properly.^                  |
+			{2:-- INSERT --}                                      |]],
 		})
 	end)
 end)

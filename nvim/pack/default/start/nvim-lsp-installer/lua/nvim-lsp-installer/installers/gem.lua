@@ -17,11 +17,16 @@ function M.packages(packages)
             { "gem", "gem was not found in path, refer to https://wiki.openstack.org/wiki/RubyGems." },
         },
         ---@type ServerInstallerFunction
-        function(_, callback, context)
+        function(_, callback, ctx)
             local pkgs = Data.list_copy(packages or {})
-            if context.requested_server_version then
+            if ctx.requested_server_version then
                 -- The "head" package is the recipient for the requested version. It's.. by design... don't ask.
-                pkgs[1] = ("%s:%s"):format(pkgs[1], context.requested_server_version)
+                pkgs[1] = ("%s:%s"):format(pkgs[1], ctx.requested_server_version)
+            end
+
+            ctx.receipt:with_primary_source(ctx.receipt.gem(pkgs[1]))
+            for i = 2, #pkgs do
+                ctx.receipt:with_secondary_source(ctx.receipt.gem(pkgs[i]))
             end
 
             process.spawn(M.gem_cmd, {
@@ -33,17 +38,11 @@ function M.packages(packages)
                     "--no-document",
                     table.concat(pkgs, " "),
                 },
-                cwd = context.install_dir,
-                stdio_sink = context.stdio_sink,
+                cwd = ctx.install_dir,
+                stdio_sink = ctx.stdio_sink,
             }, callback)
         end,
     }
-end
-
----@param root_dir string @The directory to resolve the executable from.
----@param executable string
-function M.executable(root_dir, executable)
-    return path.concat { root_dir, "bin", executable }
 end
 
 ---@param root_dir string
@@ -51,6 +50,7 @@ function M.env(root_dir)
     return {
         GEM_HOME = root_dir,
         GEM_PATH = root_dir,
+        PATH = process.extend_path { path.concat { root_dir, "bin" } },
     }
 end
 

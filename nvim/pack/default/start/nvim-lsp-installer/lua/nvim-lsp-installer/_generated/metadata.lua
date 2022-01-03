@@ -175,6 +175,9 @@ return {
   solargraph = {
     filetypes = { "ruby" }
   },
+  solc = {
+    filetypes = { "solidity" }
+  },
   solidity_ls = {
     filetypes = { "solidity" }
   },
@@ -205,6 +208,9 @@ return {
   tailwindcss = {
     filetypes = { "aspnetcorerazor", "astro", "astro-markdown", "blade", "django-html", "edge", "eelixir", "ejs", "erb", "eruby", "gohtml", "haml", "handlebars", "hbs", "html", "html-eex", "jade", "leaf", "liquid", "markdown", "mdx", "mustache", "njk", "nunjucks", "php", "razor", "slim", "twig", "css", "less", "postcss", "sass", "scss", "stylus", "sugarss", "javascript", "javascriptreact", "reason", "rescript", "typescript", "typescriptreact", "vue", "svelte" }
   },
+  taplo = {
+    filetypes = { "toml" }
+  },
   terraformls = {
     filetypes = { "terraform" }
   },
@@ -231,6 +237,9 @@ return {
   },
   yamlls = {
     filetypes = { "yaml", "yaml.docker-compose" }
+  },
+  zk = {
+    filetypes = { "markdown" }
   },
   zls = {
     filetypes = { "zig", "zir" }

@@ -184,12 +184,37 @@ local function snip_expand(snippet, opts)
 		)
 	end
 
+	local current_buf = vim.api.nvim_get_current_buf()
+
+	if session.current_nodes[current_buf] then
+		local current_node = session.current_nodes[current_buf]
+		if current_node.pos > 0 then
+			-- snippet is nested, notify current insertNode about expansion.
+			current_node.inner_active = true
+		else
+			-- snippet was expanded behind a previously active one, leave the i(0)
+			-- properly (and remove the snippet on error).
+			if not pcall(current_node.input_leave, current_node) then
+				current_node.parent.snippet:remove_from_jumplist()
+			end
+		end
+	end
+
 	session.current_nodes[vim.api.nvim_get_current_buf()] =
 		no_region_check_wrap(
 			snip.jump_into,
 			snip,
 			1
 		)
+
+	-- stores original snippet, it doesn't contain any data from expansion.
+	session.last_expand_snip = snippet
+	session.last_expand_opts = opts
+
+	-- set last action for vim-repeat.
+	-- will silently fail if vim-repeat isn't available.
+	-- -1 to disable count.
+	vim.cmd([[silent! call repeat#set("\<Plug>luasnip-expand-repeat", -1)]])
 
 	return snip
 end
@@ -249,6 +274,14 @@ local function expand_auto()
 	end
 end
 
+local function expand_repeat()
+	-- prevent clearing text with repeated expand.
+	session.last_expand_opts.clear_region = nil
+	session.last_expand_opts.pos = nil
+
+	snip_expand(session.last_expand_snip, session.last_expand_opts)
+end
+
 -- return true and expand snippet if expandable, return false if not.
 local function expand_or_jump()
 	if expand() then
@@ -301,7 +334,8 @@ local function active_update_dependents()
 	local active = session.current_nodes[vim.api.nvim_get_current_buf()]
 	-- special case for startNode, cannot enter_node on those (and they can't
 	-- have dependents)
-	if active and active.pos ~= -1 then
+	-- don't update if a jump/change_choice is in progress.
+	if not jump_active and active and active.pos > 0 then
 		-- Save cursor-pos to restore later.
 		local cur = util.get_cursor_0ind()
 		local cur_mark = vim.api.nvim_buf_set_extmark(
@@ -505,6 +539,7 @@ ls = {
 	expandable = expandable,
 	expand = expand,
 	snip_expand = snip_expand,
+	expand_repeat = expand_repeat,
 	expand_auto = expand_auto,
 	expand_or_jump = expand_or_jump,
 	jump = jump,

@@ -28,6 +28,7 @@ local function create_installer(python_executable, packages)
             local c = process.chain {
                 cwd = ctx.install_dir,
                 stdio_sink = ctx.stdio_sink,
+                env = process.graft_env(M.env(ctx.install_dir)),
             }
 
             c.run(python_executable, { "-m", "venv", REL_INSTALL_DIR })
@@ -36,9 +37,14 @@ local function create_installer(python_executable, packages)
                 pkgs[1] = ("%s==%s"):format(pkgs[1], ctx.requested_server_version)
             end
 
+            ctx.receipt:with_primary_source(ctx.receipt.pip3(pkgs[1]))
+            for i = 2, #pkgs do
+                ctx.receipt:with_secondary_source(ctx.receipt.pip3(pkgs[i]))
+            end
+
             local install_command = { "-m", "pip", "install", "-U" }
             vim.list_extend(install_command, settings.current.pip.install_args)
-            c.run(M.executable(ctx.install_dir, "python"), vim.list_extend(install_command, pkgs))
+            c.run("python", vim.list_extend(install_command, pkgs))
 
             c.spawn(callback)
         end,
@@ -65,9 +71,12 @@ function M.packages(packages)
 end
 
 ---@param root_dir string @The directory to resolve the executable from.
----@param executable string
-function M.executable(root_dir, executable)
-    return path.concat { root_dir, REL_INSTALL_DIR, platform.is_win and "Scripts" or "bin", executable }
+function M.env(root_dir)
+    return {
+        PATH = process.extend_path {
+            path.concat { root_dir, REL_INSTALL_DIR, platform.is_win and "Scripts" or "bin" },
+        },
+    }
 end
 
 return M

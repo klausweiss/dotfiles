@@ -89,6 +89,7 @@ local CORE_SERVERS = Data.set_of {
     "serve_d",
     "solang",
     "solargraph",
+    "solc",
     "solidity_ls",
     "sorbet",
     "sourcekit",
@@ -99,6 +100,7 @@ local CORE_SERVERS = Data.set_of {
     "sumneko_lua",
     "svelte",
     "tailwindcss",
+    "taplo",
     "terraformls",
     "texlab",
     "tflint",
@@ -108,6 +110,7 @@ local CORE_SERVERS = Data.set_of {
     "volar",
     "vuels",
     "yamlls",
+    "zk",
     "zls",
 }
 

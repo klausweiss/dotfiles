@@ -24,7 +24,7 @@ On top of just providing commands for installing & uninstalling LSP servers, it:
 
 ## Installation
 
-Requires neovim `>= 0.5.0` and [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig). The full requirements to
+Requires neovim `>= 0.6.0` and [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig). The full requirements to
 install all servers are:
 
 -   For Unix systems: bash(1), git(1), curl(1) or wget(1), unzip(1), tar(1), gzip(1)
@@ -193,6 +193,7 @@ lsp_installer.settings({
 | LaTeX                               | `ltex`                    |
 | LaTeX                               | `texlab`                  |
 | Lua                                 | `sumneko_lua`             |
+| Markdown                            | `zk`                      |
 | OCaml                               | `ocamlls`                 |
 | Objective C                         | `ccls`                    |
 | OpenAPI                             | `spectral`                |
@@ -211,13 +212,15 @@ lsp_installer.settings({
 | Rust [(wiki)][rust_analyzer]        | `rust_analyzer`           |
 | SQL                                 | `sqlls`                   |
 | SQL                                 | `sqls`                    |
-| Solang Solidity                     | `solang`                  |
-| Solidity (vscode)                   | `solidity_ls`             |
+| Solidity                            | `solang`                  |
+| Solidity                            | `solc`                    |
+| Solidity (VSCode)                   | `solidity_ls`             |
 | Sorbet                              | `sorbet`                  |
 | Sphinx                              | `esbonio`                 |
 | Stylelint                           | `stylelint_lsp`           |
 | Svelte                              | `svelte`                  |
 | Swift                               | `sourcekit`               |
+| TOML                                | `taplo`                   |
 | Tailwind CSS                        | `tailwindcss`             |
 | Terraform                           | `terraformls`             |
 | Terraform [(docs)][tflint]          | `tflint`                  |

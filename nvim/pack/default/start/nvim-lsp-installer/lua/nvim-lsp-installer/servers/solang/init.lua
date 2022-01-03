@@ -5,6 +5,7 @@ local context = require "nvim-lsp-installer.installers.context"
 local Data = require "nvim-lsp-installer.data"
 local platform = require "nvim-lsp-installer.platform"
 local installers = require "nvim-lsp-installer.installers"
+local process = require "nvim-lsp-installer.process"
 
 local coalesce, when = Data.coalesce, Data.when
 
@@ -23,6 +24,9 @@ return function(name, root_dir)
             return std.download_file(ctx.github_release_file, platform.is_win and "solang.exe" or "solang")
         end),
         std.chmod("+x", { "solang" }),
+        context.receipt(function(receipt, ctx)
+            receipt:with_primary_source(receipt.github_release_file(ctx))
+        end),
     }
 
     local llvm_installer = installers.pipe {
@@ -54,9 +58,11 @@ return function(name, root_dir)
             llvm_installer,
         },
         default_options = {
-            cmd = { path.concat { root_dir, "solang" }, "--language-server", "--target", "ewasm" },
             cmd_env = {
-                PATH = table.concat({ path.concat { root_dir, "llvm12.0", "bin" }, vim.env.PATH }, platform.path_sep),
+                PATH = process.extend_path {
+                    path.concat { root_dir },
+                    path.concat { root_dir, "llvm12.0", "bin" },
+                },
             },
         },
     }

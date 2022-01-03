@@ -49,6 +49,11 @@ local function create_installer(standalone)
                     --  is a bit unreliable across npm versions (especially <7), so we take extra measures to avoid
                     --  inadvertently polluting global npm config.
                     fs.append_file(path.concat { ctx.install_dir, ".npmrc" }, "global-style=true")
+
+                    ctx.receipt:with_primary_source(ctx.receipt.npm(pkgs[1]))
+                    for i = 2, #pkgs do
+                        ctx.receipt:with_secondary_source(ctx.receipt.npm(pkgs[i]))
+                    end
                 end
 
                 -- stylua: ignore start
@@ -79,16 +84,17 @@ M.packages = create_installer(false)
 ---This is useful in situation where there's a need to install an auxiliary npm package.
 M.install = create_installer(true)
 
----Creates a server installer that executes the given executable.
+---Creates a server installer that executes the given locally installed npm executable.
 ---@param executable string
 ---@param args string[]
 function M.exec(executable, args)
     ---@type ServerInstallerFunction
     return function(_, callback, ctx)
-        process.spawn(M.executable(ctx.install_dir, executable), {
+        process.spawn(executable, {
             args = args,
             cwd = ctx.install_dir,
             stdio_sink = ctx.stdio_sink,
+            env = process.graft_env(M.env(ctx.install_dir)),
         }, callback)
     end
 end
@@ -109,13 +115,9 @@ function M.run(script)
 end
 
 ---@param root_dir string @The directory to resolve the executable from.
----@param executable string
-function M.executable(root_dir, executable)
-    return path.concat {
-        root_dir,
-        "node_modules",
-        ".bin",
-        platform.is_win and ("%s.cmd"):format(executable) or executable,
+function M.env(root_dir)
+    return {
+        PATH = process.extend_path { path.concat { root_dir, "node_modules", ".bin" } },
     }
 end
 

@@ -112,6 +112,12 @@ end
 
 function M.check()
     health.report_start "nvim-lsp-installer report"
+    if vim.fn.has "nvim-0.6.0" == 1 then
+        health.report_ok "neovim version >= 0.6.0"
+    else
+        health.report_error "neovim version < 0.6.0"
+    end
+
     local completed = 0
 
     local check = mk_healthcheck(vim.schedule_wrap(
@@ -176,7 +182,8 @@ function M.check()
         ),
         check { cmd = "python3", args = { "--version" }, name = "python3", relaxed = true },
         check { cmd = "python3", args = { "-m", "pip", "--version" }, name = "pip3", relaxed = true },
-        check { cmd = "javac", args = { "-version" }, name = "java", relaxed = true },
+        check { cmd = "javac", args = { "-version" }, name = "javac", relaxed = true },
+        check { cmd = "java", args = { "-version" }, name = "java", relaxed = true },
         check { cmd = "wget", args = { "--version" }, name = "wget" },
         -- wget is used interchangeably with curl, but with higher priority, so we mark curl as relaxed
         check { cmd = "curl", args = { "--version" }, name = "curl", relaxed = true },
