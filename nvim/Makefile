@@ -174,6 +174,11 @@ update-telescope: \
 update-undotree:
 	$(call download-from-repo, https://github.com/mbbill/undotree)
 
+update-trouble: \
+	update-nvim-web-devicons \
+
+	$(call download-from-repo, https://github.com/folke/trouble.nvim)
+
 update-vim-polyglot:
 	$(call download-from-repo, https://github.com/sheerun/vim-polyglot)
 

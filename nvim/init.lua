@@ -230,6 +230,10 @@ require('gitsigns').setup{
   }
 }
 
+-- trouble
+
+require("trouble").setup {}
+
 -- lsp
 local nvim_lsp = require('lspconfig')
 
@@ -382,6 +386,7 @@ local tab_key =  mk_prefix('b')
 local window_key =  mk_prefix('w')
 
 keycmd('<F1>', 'NvimTreeToggle')
+keycmd('<F4>', 'TroubleToggle')
 nkeycmd('U', 'UndotreeToggle')
 
 command_key('a', 'Telescope commands')
