@@ -39,6 +39,9 @@
   (require 'treemacs-macros)
   (require 'inline))
 
+(treemacs-import-functions-from "treemacs"
+  treemacs-select-window)
+
 (treemacs-import-functions-from "treemacs-filewatch-mode"
   treemacs--start-watching
   treemacs--stop-watching)
@@ -47,6 +50,7 @@
   treemacs--get-indentation)
 
 (treemacs-import-functions-from "treemacs-interface"
+  treemacs-add-project-to-workspace
   treemacs-TAB-action)
 
 (treemacs-import-functions-from "treemacs-extensions"
@@ -236,9 +240,9 @@ DEPTH indicates how deep in the filetree the current button is."
 (cl-defmacro treemacs--button-open (&key button new-state new-icon open-action post-open-action immediate-insert)
   "Building block macro to open a BUTTON.
 Gives the button a NEW-STATE, and, optionally, a NEW-ICON.  Performs OPEN-ACTION
-and, optionally, POST-OPEN-ACTION.  If IMMEDIATE-INSERT is non-nil it will concat
-and apply `insert' on the items returned from OPEN-ACTION.  If it is nil either
-OPEN-ACTION or POST-OPEN-ACTION are expected to take over insertion."
+and, optionally, POST-OPEN-ACTION.  If IMMEDIATE-INSERT is non-nil it will
+concat and apply `insert' on the items returned from OPEN-ACTION.  If it is nil
+either OPEN-ACTION or POST-OPEN-ACTION are expected to take over insertion."
   `(prog1
      (save-excursion
        (let ((p (point))
@@ -1119,6 +1123,29 @@ GIT-INFO is passed through from the previous branch build."
     ('tag-node-closed  (treemacs--expand-tag-node btn))
     ('root-node-closed (treemacs--expand-root-node btn))
     (other             (funcall (alist-get other treemacs-TAB-actions-config) btn))))
+
+(defun treemacs--show-single-project (path name)
+  "Show only a project for the given PATH and NAME in the current workspace."
+  (-let [ws (treemacs-current-workspace)]
+    (if (treemacs-workspace->is-empty?)
+        (progn
+          (treemacs-do-add-project-to-workspace path name)
+          (treemacs-select-window)
+          (treemacs-pulse-on-success))
+      (setf (treemacs-workspace->projects ws)
+            (--filter (string= path (treemacs-project->path it))
+                      (treemacs-workspace->projects ws)))
+      (unless (treemacs-workspace->projects ws)
+        (let ((treemacs--no-messages t)
+              (treemacs-pulse-on-success nil))
+          (treemacs-add-project-to-workspace path name)))
+      (treemacs-select-window)
+      (treemacs--consolidate-projects)
+      (goto-char 2)
+      (-let [btn (treemacs-current-button)]
+        (unless (treemacs-is-node-expanded? btn)
+          (treemacs--expand-root-node btn)))
+      (treemacs-pulse-on-success))))
 
 (provide 'treemacs-rendering)
 

@@ -1898,9 +1898,10 @@ prefix match (same case) will be prioritized."
        (eq win (selected-window))
        (eq tick (buffer-chars-modified-tick))
        (eq pos (point))
-       (when (company-auto-begin)
-         (let ((this-command 'company-idle-begin))
-           (company-post-command)))))
+       (let ((non-essential t))
+         (when (company-auto-begin)
+           (let ((this-command 'company-idle-begin))
+             (company-post-command))))))
 
 (defun company-auto-begin ()
   (and company-mode
@@ -3523,7 +3524,9 @@ Returns a negative number if the tooltip should be displayed above point."
       ;; And Flymake (53). And Flycheck (110).
       (overlay-put ov 'priority 111)
       ;; visual-line-mode
-      (when (memq (char-before (overlay-start ov)) '(?\s ?\t))
+      (when (and (memq (char-before (overlay-start ov)) '(?\s ?\t))
+                 ;; not eob
+                 (not (nth 2 (overlay-get ov 'company-replacement-args))))
         (setq disp (concat "\n" disp)))
       ;; No (extra) prefix for the first line.
       (overlay-put ov 'line-prefix "")
