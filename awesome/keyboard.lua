@@ -140,7 +140,7 @@ setkey { ALT, SHIFT, "l",
 setkey { ALT, SHIFT, "x",
 	 fun = run("emacs") }
 setkey { ALT, SHIFT, "g",
-	 fun = run("gnvim") }
+	 fun = run(programs.terminal .. " nvim") }
 setkey { ALT, SHIFT, "d",
 	 fun = run("codium") }
 setkey { ALT, SHIFT, "k",
