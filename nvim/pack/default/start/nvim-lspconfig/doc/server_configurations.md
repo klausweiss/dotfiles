@@ -38,6 +38,7 @@ that config. This file is accessible in neovim via `:help lspconfig-server-confi
 - [eslint](#eslint)
 - [flow](#flow)
 - [flux_lsp](#flux_lsp)
+- [foam_ls](#foam_ls)
 - [fortls](#fortls)
 - [fsautocomplete](#fsautocomplete)
 - [fstar](#fstar)
@@ -520,7 +521,7 @@ require'lspconfig'.clangd.setup{}
   
   Default Values:
     capabilities = default capabilities, with offsetEncoding utf-8
-    cmd = { "clangd", "--background-index" }
+    cmd = { "clangd" }
     filetypes = { "c", "cpp", "objc", "objcpp" }
     root_dir = root_pattern("compile_commands.json", "compile_flags.txt", ".git") or dirname
     single_file_support = true
@@ -927,7 +928,7 @@ This server accepts configuration via the `settings` key.
 
 - **`deno.suggest.imports.hosts`**: `object`
 
-  Default: `{["https://cdn.nest.land"] = true,["https://crux.land"] = true,["https://deno.land"] = true}`
+  Default: `{["https://crux.land"] = true,["https://deno.land"] = true,["https://x.nest.land"] = true}`
   
   null
 
@@ -959,8 +960,6 @@ require'lspconfig'.denols.setup{}
 ```lua
   Commands:
   - DenolsCache: Cache a module and all of its dependencies.
-  - DenolsDefinition: Jump to definition. This handle deno:/ schema in deno:// buffer.
-  - DenolsReferences: List references. This handle deno:/ schema in deno:// buffer.
   
   Default Values:
     cmd = { "deno", "lsp" }
@@ -1725,6 +1724,39 @@ require'lspconfig'.flux_lsp.setup{}
     filetypes = { "flux" }
     root_dir = util.find_git_ancestor
     single_file_support = true
+```
+
+
+## foam_ls
+
+https://github.com/FoamScience/foam-language-server
+
+`foam-language-server` can be installed via `npm`
+```sh
+npm install -g foam-language-server
+```
+
+
+
+
+**Snippet to enable the language server:**
+```lua
+require'lspconfig'.foam_ls.setup{}
+```
+
+**Commands and default values:**
+```lua
+  Commands:
+  
+  Default Values:
+    cmd = { "foam-ls", "--stdio" }
+    filetypes = { "foam", "OpenFOAM" }
+    root_dir = function(path)
+            if util.path.exists(util.path.join(path, 'system', 'controlDict')) then
+              return path
+            end
+          end)
+        end,
 ```
 
 
@@ -3844,6 +3876,10 @@ require'lspconfig'.leanls.setup{}
   Default Values:
     cmd = { "lean", "--server" }
     filetypes = { "lean" }
+    on_new_config = function(config, root_dir)
+          -- add root dir as command-line argument for `ps aux`
+          table.insert(config.cmd, root_dir)
+        end,
     root_dir = root_pattern("lakefile.lean", "lean-toolchain", "leanpkg.toml", ".git")
     single_file_support = true
 ```
@@ -4141,7 +4177,7 @@ require'lspconfig'.ltex.setup{}
   
   Default Values:
     cmd = { "ltex-ls" }
-    filetypes = { "bib", "markdown", "org", "plaintex", "rst", "rnoweb", "tex" }
+    filetypes = { "bib", "gitcommit", "markdown", "org", "plaintex", "rst", "rnoweb", "tex" }
     get_language_id = function(_, filetype)
           local language_id = language_id_mapping[filetype]
           if language_id then
@@ -5832,6 +5868,12 @@ This server accepts configuration via the `settings` key.
   
   null
 
+- **`rust-analyzer.assist.exprFillDefault`**: `enum { "todo", "default" }`
+
+  Default: `"todo"`
+  
+  null
+
 - **`rust-analyzer.assist.importEnforceGranularity`**: `boolean`
 
   null
@@ -6309,6 +6351,12 @@ This server accepts configuration via the `settings` key.
 - **`rust-analyzer.procMacro.enable`**: `boolean`
 
   Default: `true`
+  
+  null
+
+- **`rust-analyzer.procMacro.ignored`**: `object`
+
+  Default: `vim.empty_dict()`
   
   null
 
@@ -7233,6 +7281,12 @@ This server accepts configuration via the `settings` key.
   
   null
 
+- **`Lua.hint.arrayIndex`**: `enum { "Enable", "Auto", "Disable" }`
+
+  Default: `"Auto"`
+  
+  null
+
 - **`Lua.hint.enable`**: `boolean`
 
   null
@@ -7569,7 +7623,7 @@ Language server for Taplo, a TOML toolkit.
 
 `taplo-lsp` can be installed via `cargo`:
 ```sh
-cargo install taplo-lsp
+cargo install --locked taplo-lsp
 ```
     
 
@@ -7713,8 +7767,6 @@ This server accepts configuration via the `settings` key.
 
 - **`terraform.codelens.referenceCount`**: `boolean`
 
-  Default: `true`
-  
   Display reference counts above top level blocks and attributes\.
 
 - **`terraform.languageServer`**: `object`

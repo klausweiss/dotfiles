@@ -177,6 +177,7 @@ lsp_installer.settings({
 | Emmet                               | `emmet_ls`                |
 | Erlang                              | `erlangls`                |
 | F#                                  | `fsautocomplete`          |
+| Foam (OpenFOAM)                     | `foam_ls`                 |
 | Fortran                             | `fortls`                  |
 | Go                                  | `gopls`                   |
 | Grammarly                           | `grammarly`               |
@@ -193,7 +194,9 @@ lsp_installer.settings({
 | LaTeX                               | `ltex`                    |
 | LaTeX                               | `texlab`                  |
 | Lua                                 | `sumneko_lua`             |
+| Markdown                            | `remark_ls`               |
 | Markdown                            | `zk`                      |
+| Nim                                 | `nimls`                   |
 | OCaml                               | `ocamlls`                 |
 | Objective C                         | `ccls`                    |
 | OpenAPI                             | `spectral`                |

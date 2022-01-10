@@ -21,7 +21,10 @@ function M.get_node_text(node, bufnr)
   if start_row ~= end_row then
     local lines = api.nvim_buf_get_lines(bufnr, start_row, end_row + 1, false)
     lines[1] = string.sub(lines[1], start_col + 1)
-    lines[#lines] = string.sub(lines[#lines], 1, end_col)
+    -- end_row might be just after the last line. In this case the last line is not truncated.
+    if #lines == end_row - start_row then
+      lines[#lines] = string.sub(lines[#lines], 1, end_col)
+    end
     return lines
   else
     local line = api.nvim_buf_get_lines(bufnr, start_row, start_row + 1, false)[1]
@@ -122,7 +125,8 @@ function M.get_named_children(node)
 end
 
 function M.get_node_at_cursor(winnr)
-  local cursor = api.nvim_win_get_cursor(winnr or 0)
+  winnr = winnr or 0
+  local cursor = api.nvim_win_get_cursor(winnr)
   local cursor_range = { cursor[1] - 1, cursor[2] }
 
   local buf = vim.api.nvim_win_get_buf(winnr)

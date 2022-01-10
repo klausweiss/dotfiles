@@ -209,6 +209,7 @@ NOTE: You can call these functions in mapping via `<Cmd>lua require('cmp').compl
 *cmp.event:on* ('%EVENT_NAME%, callback)
   Subscribe nvim-cmp's events below.
 
+  - `complete_done`: emit after current completion is done.
   - `confirm_done`: emit after confirmation is done.
 
 
@@ -365,7 +366,7 @@ snippet.expand~
                                           *cmp-config.completion.keyword_length*
 completion.keyword_length~
   `number`
-  The default number value to trigger auto-completion.
+  The number of characters needed to trigger auto-completion.
 
                                          *cmp-config.completion.keyword_pattern*
 completion.keyword_pattern~
@@ -383,6 +384,8 @@ completion.autocomplete~
 formatting.format~
   `fun(entry: cmp.Entry, vim_item: vim.CompletedItem): vim.CompletedItem`
   The function to customize the completion menu appearance. See |complete-items|.
+  NOTE: The `vim.CompletedItem` can have special properties `abbr_hl_group`,
+  `kind_hl_group` and `menu_hl_group`.
 
                                                   *cmp-config.formatting.fields*
 formatting.fields~

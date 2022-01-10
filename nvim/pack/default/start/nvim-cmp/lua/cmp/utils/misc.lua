@@ -77,7 +77,7 @@ misc.id = setmetatable({
   group = {},
 }, {
   __call = function(_, group)
-    misc.id.group[group] = misc.id.group[group] or vim.loop.now()
+    misc.id.group[group] = misc.id.group[group] or 0
     misc.id.group[group] = misc.id.group[group] + 1
     return misc.id.group[group]
   end,
@@ -179,5 +179,34 @@ misc.deprecated = function(fn, msg)
     return fn(...)
   end
 end
+
+--Redraw
+misc.redraw = setmetatable({
+  doing = false,
+  force = false,
+}, {
+  __call = function(self, force)
+    if vim.tbl_contains({ '/', '?' }, vim.fn.getcmdtype()) then
+      if vim.o.incsearch then
+        return vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes('<C-r>=""<CR>', true, true, true), 'n', true)
+      end
+    end
+
+    if self.doing then
+      return
+    end
+    self.doing = true
+    self.force = not not force
+    vim.schedule(function()
+      if self.force then
+        vim.cmd([[redraw!]])
+      else
+        vim.cmd([[redraw]])
+      end
+      self.doing = false
+      self.force = false
+    end)
+  end,
+})
 
 return misc

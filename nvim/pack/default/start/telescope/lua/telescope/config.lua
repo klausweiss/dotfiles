@@ -154,6 +154,25 @@ append(
 )
 
 append(
+  "tiebreak",
+  function(current_entry, existing_entry, _)
+    return #current_entry.ordinal < #existing_entry.ordinal
+  end,
+  [[
+  A function that determines how to break a tie when two entries have
+  the same score.
+  Having a function that always returns false would keep the entries in
+  the order they are found, so existing_entry before current_entry.
+  Vice versa always returning true would place the current_entry
+  before the existing_entry.
+
+  Signature: function(current_entry, existing_entry, prompt) -> boolean
+
+  Default: function that breaks the tie based on the length of the
+           entry's ordinal]]
+)
+
+append(
   "selection_strategy",
   "reset",
   [[
@@ -243,6 +262,18 @@ append(
   Prefix in front of each result entry. Current selection not included.
 
   Default: '  ']]
+)
+
+append(
+  "multi_icon",
+  "+",
+  [[
+  Symbol to add in front of a multi-selected result entry.
+  Replaces final character of |telescope.defaults.selection_caret| and
+  |telescope.defaults.entry_prefix| as appropriate.
+  To have no icon, set to the empty string.
+
+  Default: '+']]
 )
 
 append(

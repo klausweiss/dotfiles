@@ -1,6 +1,7 @@
 -- THIS FILE IS GENERATED. DO NOT EDIT MANUALLY.
 -- stylua: ignore start
 return {
+  OpenFOAM = { "foam_ls" },
   arduino = { "arduino_language_server" },
   aspnetcorerazor = { "tailwindcss" },
   astro = { "tailwindcss" },
@@ -28,9 +29,11 @@ return {
   erb = { "tailwindcss" },
   erlang = { "erlangls" },
   eruby = { "tailwindcss" },
+  foam = { "foam_ls" },
   fortran = { "fortls" },
   fsharp = { "fsautocomplete" },
   genie = { "vala_ls" },
+  gitcommit = { "ltex" },
   go = { "gopls" },
   gohtml = { "tailwindcss" },
   gomod = { "gopls" },
@@ -57,10 +60,12 @@ return {
   libsonnet = { "jsonnet_ls" },
   liquid = { "tailwindcss" },
   lua = { "sumneko_lua" },
-  markdown = { "grammarly", "ltex", "tailwindcss", "zk" },
+  markdown = { "grammarly", "ltex", "remark_ls", "tailwindcss", "zk" },
   mdx = { "tailwindcss" },
   mustache = { "tailwindcss" },
   mysql = { "sqlls", "sqls" },
+  nim = { "nimls" },
+  nix = { "rnix" },
   njk = { "tailwindcss" },
   nunjucks = { "tailwindcss" },
   objc = { "ccls", "clangd" },

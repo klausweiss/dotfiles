@@ -12,6 +12,8 @@
 (afx_attribute
   (afx_property_identifier) @tag.attribute)
 
+(afx_text) @text
+
 ; identifiers eel
 
 (eel_object_path
@@ -95,6 +97,10 @@
 (boolean) @boolean
 (null) @constant.builtin
 
+(value_expression
+  start: _ @punctuation.special
+  end: _ @punctuation.special
+)
 [
  "("
  ")"

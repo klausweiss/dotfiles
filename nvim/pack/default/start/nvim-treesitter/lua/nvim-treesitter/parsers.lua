@@ -139,7 +139,6 @@ list.fusion = {
     branch = "main",
   },
   maintainers = { "@jirgn" },
-  experimental = true,
 }
 
 list.ledger = {
@@ -255,10 +254,11 @@ list.java = {
 
 list.kotlin = {
   install_info = {
-    url = "https://github.com/Joakker/tree-sitter-kotlin",
-    files = { "src/parser.c" },
+    url = "https://github.com/fwcd/tree-sitter-kotlin",
+    branch = "main",
+    files = { "src/parser.c", "src/scanner.c" },
   },
-  maintainers = { "@Joakker" },
+  maintainers = { "@SalBakraa" },
 }
 
 list.html = {
@@ -428,7 +428,7 @@ list.supercollider = {
 list.haskell = {
   install_info = {
     url = "https://github.com/tree-sitter/tree-sitter-haskell",
-    files = { "src/parser.c", "src/scanner.cc" },
+    files = { "src/parser.c", "src/scanner.c" },
   },
 }
 
@@ -531,6 +531,15 @@ list.yang = {
   },
   maintainers = { "@Hubro" },
   filetype = "yang",
+}
+
+list.ninja = {
+  install_info = {
+    url = "https://github.com/alemuller/tree-sitter-ninja",
+    files = { "src/parser.c" },
+    branch = "main",
+  },
+  maintainers = { "@alemuller" },
 }
 
 list.nix = {
@@ -827,6 +836,29 @@ list.make = {
     files = { "src/parser.c" },
   },
   maintainers = { "@lewis6991" },
+}
+
+list.rasi = {
+  install_info = {
+    url = "https://github.com/Fymyte/tree-sitter-rasi",
+    branch = "main",
+    files = { "src/parser.c" },
+  },
+  maintainers = { "@Fymyte" },
+}
+
+list.foam = {
+  install_info = {
+    url = "https://github.com/FoamScience/tree-sitter-foam",
+    branch = "master",
+    files = { "src/parser.c", "src/scanner.c" },
+  },
+  maintainers = { "@FoamScience" },
+  filetype = "foam",
+  used_by = { "OpenFOAM" },
+  -- Queries might change over time on the grammar's side
+  -- Otherwise everything runs fine
+  experimental = true,
 }
 
 local M = {

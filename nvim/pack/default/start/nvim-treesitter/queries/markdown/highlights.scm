@@ -13,14 +13,16 @@
   (setext_h2_underline)
 ] @punctuation.special
 
-(code_fence_content) @none
+[
+  (code_span)
+  (link_title)
+] @text.literal
 
 [
   (indented_code_block)
   (fenced_code_block)
-  (code_span)
-] @text.literal
-
+] @punctuation.delimiter
+(code_fence_content) @none
 
 (emphasis) @text.emphasis
 
@@ -28,8 +30,11 @@
 
 (link_destination) @text.uri
 
-(link_label) @text.reference
-(link_text) @text.reference
+[
+  (link_label)
+  (link_text)
+  (image_description)
+] @text.reference
 
 [
   (list_marker_plus)
@@ -40,7 +45,23 @@
   (thematic_break)
 ] @punctuation.special
 
+(block_quote_marker) @punctuation.special
+
 [
   (backslash_escape)
   (hard_line_break)
 ] @string.escape
+
+(image "!" @punctuation.delimiter)
+(image "[" @punctuation.delimiter)
+(image "]" @punctuation.delimiter)
+(image "(" @punctuation.delimiter)
+; (image ")" @punctuation.delimiter)
+
+(inline_link "[" @punctuation.delimiter)
+(inline_link "]" @punctuation.delimiter)
+(inline_link "(" @punctuation.delimiter)
+; (inline_link ")" @punctuation.delimiter)
+
+(shortcut_link "[" @punctuation.delimiter)
+(shortcut_link "]" @punctuation.delimiter)

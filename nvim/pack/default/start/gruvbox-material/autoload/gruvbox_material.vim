@@ -6,12 +6,6 @@
 " License: MIT License
 " =============================================================================
 
-" g:gruvbox_material#tmux: is in tmux < 2.9 or not {{{
-let g:gruvbox_material#tmux = executable('tmux') && $TMUX !=# '' ?
-                  \ (str2float(system("tmux -V | grep -oE '[0-9]+\.[0-9]*'")) < 2.9 ?
-                    \ 1 :
-                    \ 0) :
-                  \ 0 "}}}
 function! gruvbox_material#get_configuration() "{{{
   return {
         \ 'background': get(g:, 'gruvbox_material_background', 'medium'),
@@ -287,11 +281,7 @@ function! gruvbox_material#highlight(group, fg, bg, ...) "{{{
         \ 'ctermfg=' . a:fg[1]
         \ 'ctermbg=' . a:bg[1]
         \ 'gui=' . (a:0 >= 1 ?
-          \ (a:1 ==# 'undercurl' ?
-            \ (g:gruvbox_material#tmux ?
-              \ 'underline' :
-              \ 'undercurl') :
-            \ a:1) :
+          \ a:1 :
           \ 'NONE')
         \ 'cterm=' . (a:0 >= 1 ?
           \ (a:1 ==# 'undercurl' ?
@@ -351,6 +341,8 @@ function! gruvbox_material#ft_write(rootpath, ft, content) "{{{
   endif
   " Append the content.
   call writefile(split(a:content, "\n"), ft_path, 'a')
+  " Add modeline.
+  call writefile(['" vim: set sw=2 ts=2 sts=2 et tw=80 ft=vim fdm=marker fmr={{{,}}}:'], ft_path, 'a')
 endfunction "}}}
 function! gruvbox_material#ft_rootpath(path) "{{{
   " Get the directory where `after/ftplugin` is generated.

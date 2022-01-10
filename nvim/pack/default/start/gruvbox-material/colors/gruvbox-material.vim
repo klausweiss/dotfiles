@@ -10,7 +10,7 @@
 let s:configuration = gruvbox_material#get_configuration()
 let s:palette = gruvbox_material#get_palette(s:configuration.background, s:configuration.palette)
 let s:path = expand('<sfile>:p') " the path of this script
-let s:last_modified = 'Fri Dec 17 01:52:48 UTC 2021'
+let s:last_modified = 'Sun Jan  9 12:29:32 UTC 2022'
 let g:gruvbox_material_loaded_file_types = []
 
 if !(exists('g:colors_name') && g:colors_name ==# 'gruvbox-material' && s:configuration.better_performance)
@@ -456,7 +456,7 @@ endif
 " Plugins: {{{
 " nvim-treesitter/nvim-treesitter {{{
 call gruvbox_material#highlight('TSStrong', s:palette.none, s:palette.none, 'bold')
-call gruvbox_material#highlight('TSEmphasis', s:palette.none, s:palette.none, 'bold')
+call gruvbox_material#highlight('TSEmphasis', s:palette.none, s:palette.none, 'italic')
 call gruvbox_material#highlight('TSUnderline', s:palette.none, s:palette.none, 'underline')
 call gruvbox_material#highlight('TSNote', s:palette.bg0, s:palette.blue, 'bold')
 call gruvbox_material#highlight('TSWarning', s:palette.bg0, s:palette.yellow, 'bold')
@@ -1075,6 +1075,34 @@ highlight! link NotifyINFOTitle Green
 highlight! link NotifyDEBUGTitle Grey
 highlight! link NotifyTRACETitle Purple
 " }}}
+" glepnir/lspsaga.nvim {{{
+call gruvbox_material#highlight('LspFloatWinBorder', s:palette.bg0, s:palette.bg0)
+call gruvbox_material#highlight('LspSagaDiagnosticHeader', s:palette.orange, s:palette.none, 'bold')
+call gruvbox_material#highlight('LspSagaCodeActionTitle', s:palette.purple, s:palette.none, 'bold')
+call gruvbox_material#highlight('DefinitionPreviewTitle', s:palette.blue, s:palette.none, 'bold')
+highlight! link LspSagaDiagnosticBorder Orange
+highlight! link LspSagaDiagnosticTruncateLine Orange
+highlight! link LspSagaRenameBorder Purple
+highlight! link LspSagaRenamePromptPrefix Blue
+highlight! link LspSagaCodeActionBorder Purple
+highlight! link LspSagaCodeActionTruncateLine Purple
+highlight! link LspSagaCodeActionContent Green
+highlight! link LspSagaHoverBorder Green
+highlight! link LspSagaDocTruncateLine Green
+highlight! link LspSagaSignatureHelpBorder Green
+highlight! link LspSagaShTruncateLine Green
+highlight! link LspSagaDefPreviewBorder Blue
+highlight! link DefinitionIcon Blue
+highlight! link LspLinesDiagBorder Yellow
+highlight! link LineDiagTuncateLine Yellow
+highlight! link LspSagaAutoPreview Green
+highlight! link LspSagaFinderSelection Fg
+highlight! link DiagnosticWarning DiagnosticWarn
+highlight! link DiagnosticInformation DiagnosticInfo
+highlight! link ReferencesCount Grey
+highlight! link DefinitionCount Grey
+highlight! link TargetFileName Grey
+" }}}
 endif
 " }}}
 " Extended File Types: {{{
@@ -1275,6 +1303,13 @@ highlight! link NeogitCommandCodeNormal Green
 highlight! link NeogitCommandCodeError Red
 highlight! link NeogitCommitViewHeader diffIndexLine
 highlight! link NeogitFilePath diffFile
+" ft_end }}}
+" ft_begin: dashboard {{{
+" https://github.com/glepnir/dashboard-nvim
+highlight! link DashboardHeader Yellow
+highlight! link DashboardCenter Green
+highlight! link DashboardShortcut Red
+highlight! link DashboardFooter Orange
 " ft_end }}}
 " ft_begin: markdown {{{
 " builtin: {{{
