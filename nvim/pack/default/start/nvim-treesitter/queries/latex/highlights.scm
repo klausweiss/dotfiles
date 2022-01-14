@@ -43,6 +43,7 @@
 
 [
     "\\ref"
+    "\\eqref"
     "\\vref"
     "\\Vref"
     "\\autoref"
@@ -289,6 +290,10 @@
   "\\paragraph"
   "\\subparagraph"
 
+  "\\addpart"
+  "\\addchap"
+  "\\addsec"
+
   "\\part*"
   "\\chapter*"
   "\\section*"
@@ -296,6 +301,10 @@
   "\\subsubsection*"
   "\\paragraph*"
   "\\subparagraph*"
+
+  "\\addpart*"
+  "\\addchap*"
+  "\\addsec*"
 ] @type
 
 "\\item" @punctuation.special

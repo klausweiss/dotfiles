@@ -13,12 +13,14 @@ https://user-images.githubusercontent.com/41961280/122515860-5179fa00-d00e-11eb-
 - Regex-Trigger
 - Autotriggered Snippets
 - Fast
-- Parse [LSP-Style](https://microsoft.github.io/language-server-protocol/specification#snippet_syntax) Snippets (Does not, however, support Regex-Transformations)
+- Parse [LSP-Style](https://microsoft.github.io/language-server-protocol/specification#snippet_syntax) Snippets either directly in lua, as a vscode package or a snipmate snippet collection.
 - Expand LSP-Snippets with [nvim-compe](https://github.com/hrsh7th/nvim-compe) (or its' successor, [nvim-cmp](https://github.com/hrsh7th/nvim-cmp) (requires [cmp_luasnip](https://github.com/saadparwaiz1/cmp_luasnip)))
 - Snippet history (jump back into older snippets)
+- Resolve filetype at the cursor using Treesitter
 
 # Drawbacks
 - Snippets that make use of the entire functionality of this plugin have to be defined in Lua (but 95% of snippets can be written in lsp-syntax).
+- The LSP-parser does not support Regex-Transformations.
 
 # Requirements
 Neovim >= 0.5 (extmarks)
@@ -31,12 +33,16 @@ Ie. With [vim-plug](https://github.com/junegunn/vim-plug)
    <summary>in vimscript</summary>
   
 ```vim
+" press <Tab> to expand or jump in a snippet. These can also be mapped separately
+" via <Plug>luasnip-expand-snippet and <Plug>luasnip-jump-next.
 imap <silent><expr> <Tab> luasnip#expand_or_jumpable() ? '<Plug>luasnip-expand-or-jump' : '<Tab>' 
+" -1 for jumping backwards.
 inoremap <silent> <S-Tab> <cmd>lua require'luasnip'.jump(-1)<Cr>
 
 snoremap <silent> <Tab> <cmd>lua require('luasnip').jump(1)<Cr>
 snoremap <silent> <S-Tab> <cmd>lua require('luasnip').jump(-1)<Cr>
 
+" For changing choices in choiceNodes (not strictly necessary for a basic setup).
 imap <silent><expr> <C-E> luasnip#choice_active() ? '<Plug>luasnip-next-choice' : '<C-E>'
 smap <silent><expr> <C-E> luasnip#choice_active() ? '<Plug>luasnip-next-choice' : '<C-E>'
 ```
@@ -155,21 +161,44 @@ vim.api.nvim_set_keymap("s", "<C-E>", "<Plug>luasnip-next-choice", {})
 ```
   </details>
 
-For nvim-cmp, it is also possible to follow the
-[example recommendation](https://github.com/hrsh7th/nvim-cmp/wiki/Example-mappings#luasnip):
-from the nvim-cmp wiki.
+For nvim-cmp, it is also possible to follow the [example recommendation](https://github.com/hrsh7th/nvim-cmp/wiki/Example-mappings#luasnip) from the nvim-cmp wiki.
 
 
 ## Add Snippets
-To test if LuaSnip works correctly and see some of the capabilities lua-native snippets have, `:luafile` `Examples/snippets.lua`.  
-To add snippets in lua, add them to the [`require'luasnip'.snippets`-table](https://github.com/L3MON4D3/LuaSnip/blob/master/Examples/snippets.lua#L167).  
-To load snippets from a package that provides snipmate-like (eg. [honza/vim-snippets](https://github.com/honza/vim-snippets)) or vscode-like ([rafamadriz/friendly-snippets](https://github.com/rafamadriz/friendly-snippets)) snippets, check [this](https://github.com/L3MON4D3/LuaSnip/blob/5eb67644205386bd02b93a7b570293f827f58e4b/Examples/snippets.lua#L495) section of the examples.
 
-## Docs
-The previously mentioned `Examples/snippets.lua` contains brief descriptions, check `DOC.md` (or `:help luasnip`) for more in-depth explainations.
+- **Vscode-like**: For using snippets from a plugin (eg. [rafamadriz/friendly-snippets](https://github.com/rafamadriz/friendly-snippets)) install it and add
+    ```lua
+    require("luasnip.loaders.from_vscode").load()
+    ```
+	somewhere in your config.  
+	For more info on the vscode-loader, check the [examples](https://github.com/L3MON4D3/LuaSnip/blob/b5a72f1fbde545be101fcd10b70bcd51ea4367de/Examples/snippets.lua#L501) or [documentation](https://github.com/L3MON4D3/LuaSnip/blob/master/DOC.md#vscode-snippets-loader).
+
+- **Snipmate-like**: Very similar to Vscode-packages: install a plugin that provides snippets and call the `load`-function:
+    ```lua
+    require("luasnip.loaders.from_snipmate").load()
+    ```
+    The snipmate format is very simple, so adding **custom snippets** only requires a few steps:
+    - add a directory beside your `init.vim` (or any other place that is in your `runtimepath`) named `snippets`.
+    - inside that directory, create files named `<filetype>.snippet` and add snippets for the given filetype in it (for inspiration, check [honza/vim-snippets](https://github.com/honza/vim-snippets/tree/master/snippets)).  
+        ``` snipmate
+        # comment
+        snippet <trigger> <description>
+        <snippet-body>
+        snippet if C-style if
+        if ($1)
+        	$0
+        ```
+    Again, there are some [examples](https://github.com/L3MON4D3/LuaSnip/blob/b5a72f1fbde545be101fcd10b70bcd51ea4367de/Examples/snippets.lua#L517) and an entry in the [docs](https://github.com/L3MON4D3/LuaSnip/blob/master/DOC.md#snipmate-snippets-loader)
+- **Lua**: Add the snippets directly to `require("luasnip").snippets.<filetype>`. An example for this can be found [here](https://github.com/L3MON4D3/LuaSnip/blob/b5a72f1fbde545be101fcd10b70bcd51ea4367de/Examples/snippets.lua#L167).  
+This can also be done much better (one snippet-file per filetype+command for editing the current filetype) than in the example, see [this entry in the wiki](https://github.com/L3MON4D3/LuaSnip/wiki/Nice-Configs#split-up-snippets-by-filetype-load-on-demand-and-reload-after-change-first-iteration)
+
+## Docs and Examples
+I highly recommend looking into (or better yet, `:luafile`ing) [`Examples/snippets.lua`](https://github.com/L3MON4D3/LuaSnip/blob/master/Examples/snippets.lua) before writing snippets in lua.  
+Check [`DOC.md`](https://github.com/L3MON4D3/LuaSnip/blob/master/DOC.md) (or `:help luasnip`) for in-depth explanations of the different nodes.
+The [Wiki](https://github.com/L3MON4D3/LuaSnip/wiki) contains some pretty useful extensions to Luasnip.
 
 # Config
-- `history`: If true, Snippets that were exited can still be jumped back into. As Snippets are not removed when their text is deleted, they have to be removed manually via `LuasnipUnlinkCurrent`.
+- `history`: If true, Snippets that were exited can still be jumped back into. As Snippets are not removed when their text is deleted, they have to be removed manually via `LuasnipUnlinkCurrent` if `delete_check_events` is not enabled (set to eg. `'TextChanged'`).
 - `updateevents`: Choose which events trigger an update of the active nodes' dependents. Default is just `'InsertLeave'`, `'TextChanged,TextChangedI'` would update on every change.
 - `region_check_events`: Events on which to leave the current snippet if the cursor is outside its' 'region'. Disabled by default, `'CursorMoved'`, `'CursorHold'` or `'InsertEnter'` seem reasonable.
 - `delete_check_events`: When to check if the current snippet was deleted, and if so, remove it from the history. Off by default, `'TextChanged'` (perhaps `'InsertLeave'`, to react to changes done in Insert mode) should work just fine (alternatively, this can also be mapped using `<Plug>luasnip-delete-check`). 

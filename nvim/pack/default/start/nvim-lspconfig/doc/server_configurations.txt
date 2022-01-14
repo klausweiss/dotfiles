@@ -8,6 +8,7 @@ that config. This file is accessible in neovim via `:help lspconfig-server-confi
 - [angularls](#angularls)
 - [ansiblels](#ansiblels)
 - [arduino_language_server](#arduino_language_server)
+- [asm_lsp](#asm_lsp)
 - [bashls](#bashls)
 - [beancount](#beancount)
 - [bicep](#bicep)
@@ -74,6 +75,7 @@ that config. This file is accessible in neovim via `:help lspconfig-server-confi
 - [ocamlls](#ocamlls)
 - [ocamllsp](#ocamllsp)
 - [omnisharp](#omnisharp)
+- [opencl_ls](#opencl_ls)
 - [pasls](#pasls)
 - [perlls](#perlls)
 - [perlpls](#perlpls)
@@ -318,6 +320,39 @@ require'lspconfig'.arduino_language_server.setup{}
 ```
 
 
+## asm_lsp
+
+https://github.com/bergercookie/asm-lsp
+
+Language Server for GAS/GO Assembly
+
+`asm-lsp` can be installed via cargo:
+cargo install asm-lsp
+
+
+
+**Snippet to enable the language server:**
+```lua
+require'lspconfig'.asm_lsp.setup{}
+```
+
+**Commands and default values:**
+```lua
+  Commands:
+  
+  Default Values:
+    cmd = { "asm-lsp" }
+    filetypes = { "asm", "vmasm" }
+    root_dir = function(path)
+        -- Support git directories and git files (worktrees)
+        if M.path.is_dir(M.path.join(path, '.git')) or M.path.is_file(M.path.join(path, '.git')) then
+          return path
+        end
+      end)
+    end
+```
+
+
 ## bashls
 
 https://github.com/mads-hartmann/bash-language-server
@@ -492,6 +527,7 @@ require'lspconfig'.ccls.setup{}
   Default Values:
     cmd = { "ccls" }
     filetypes = { "c", "cpp", "objc", "objcpp" }
+    offset_encoding = "utf-32"
     root_dir = root_pattern("compile_commands.json", ".ccls", ".git")
     single_file_support = false
 ```
@@ -2500,6 +2536,7 @@ require'lspconfig'.hls.setup{}
         formattingProvider = "ormolu"
       }
     }
+    single_file_support = true
 ```
 
 
@@ -4464,6 +4501,32 @@ require'lspconfig'.omnisharp.setup{}
           end
         end,
     root_dir = root_pattern(".sln") or root_pattern(".csproj")
+```
+
+
+## opencl_ls
+
+https://github.com/Galarius/opencl-language-server
+
+Build instructions can be found [here](https://github.com/Galarius/opencl-language-server/blob/main/_dev/build.md).
+
+Prebuilt binaries are available for Linux, macOS and Windows [here](https://github.com/Galarius/opencl-language-server/releases).
+
+
+
+**Snippet to enable the language server:**
+```lua
+require'lspconfig'.opencl_ls.setup{}
+```
+
+**Commands and default values:**
+```lua
+  Commands:
+  
+  Default Values:
+    cmd = { "opencl-language-server" }
+    filetypes = { "opencl" }
+    root_dir = util.root_pattern(".git")
 ```
 
 
@@ -6810,40 +6873,6 @@ https://github.com/apple/sourcekit-lsp
 
 Language server for Swift and C/C++/Objective-C.
     
-This server accepts configuration via the `settings` key.
-<details><summary>Available settings:</summary>
-
-- **`sourcekit-lsp.inlayHints.enabled`**: `boolean`
-
-  \(experimental\) Render inlay type annotations in the editor\.
-
-- **`sourcekit-lsp.serverArguments`**: `array`
-
-  Default: `{}`
-  
-  Array items: `{type = "string"}`
-  
-  Arguments to pass to sourcekit\-lsp\. Argument keys and values should be provided as separate entries in the array e\.g\. \[\'\-\-log\-level\'\, \'debug\'\]
-
-- **`sourcekit-lsp.serverPath`**: `string`
-
-  Default: `"sourcekit-lsp"`
-  
-  The path of the sourcekit\-lsp executable
-
-- **`sourcekit-lsp.toolchainPath`**: `string`
-
-  Default: `""`
-  
-  \(optional\) The path of the swift toolchain\. By default\, sourcekit\-lsp uses the toolchain it is installed in\.
-
-- **`sourcekit-lsp.trace.server`**: `enum { "off", "messages", "verbose" }`
-
-  Default: `"off"`
-  
-  Traces the communication between VS Code and the SourceKit\-LSP language server\.
-
-</details>
 
 
 **Snippet to enable the language server:**

@@ -57,11 +57,16 @@ use {
 }
 ```
 
-# Attach the plugin
+# Setup / Attach the plugin
 
-In your init.lua
+In your init.lua, call setup()
 
-Call on_attach() when the LSP client attaches to a buffer
+```lua
+cfg = {...}  -- add you config here
+require "lsp_signature".setup(cfg)
+```
+
+Alternatively, call on_attach() when the LSP client attaches to a buffer
 
 e.g. gopls:
 
@@ -77,12 +82,6 @@ local golang_setup = {
 
 require'lspconfig'.gopls.setup(golang_setup)
 
-```
-
-Alternatively, use setup function
-
-```vim
-require "lsp_signature".setup()
 ```
 
 ## Configure
@@ -143,15 +142,19 @@ Or:
   floating_window_above_cur_line = true, -- try to place the floating above the current line when possible Note:
   -- will set to true when fully tested, set to false will use whichever side has more space
   -- this setting will be helpful if you do not want the PUM and floating win overlap
+
+  floating_window_off_x = 1, -- adjust float windows x position.
+  floating_window_off_y = 1, -- adjust float windows y position.
+
+
   fix_pos = false,  -- set to true, the floating window will not auto-close until finish all parameters
   hint_enable = true, -- virtual hint enable
   hint_prefix = "🐼 ",  -- Panda for parameter
   hint_scheme = "String",
-  use_lspsaga = false,  -- set to true if you want to use lspsaga popup
   hi_parameter = "LspSignatureActiveParameter", -- how your parameter will be highlight
   max_height = 12, -- max height of signature floating_window, if content is more than max_height, you can scroll down
                    -- to view the hiding contents
-  max_width = 120, -- max_width of signature floating_window, line will be wrapped if exceed max_width
+  max_width = 80, -- max_width of signature floating_window, line will be wrapped if exceed max_width
   handler_opts = {
     border = "rounded"   -- double, rounded, single, shadow, none
   },
@@ -264,3 +267,7 @@ define, e.g. use `IncSearch` setup({ hi_parameter = "IncSearch"})
 Q: I can not see 🐼 in virtual text
 
 A: It is emoji, not nerdfont. Please check how to enable emoji for your terminal.
+
+Q: Working with cmp/coq. The floating windows block cmp/coq
+
+A: A few options here, z-index, floating_window_above_cur_line, floating_window_off_x/y, toggle_key. You can find the best setup for your workflow.

@@ -27,6 +27,11 @@ ls.config.set_config({
 	history = true,
 	-- Update more often, :h events for more info.
 	updateevents = "TextChanged,TextChangedI",
+	-- Snippets aren't automatically removed if their text is deleted.
+	-- `delete_check_events` determines on which events (:h events) a check for
+	-- deleted snippets is performed.
+	-- This can be especially useful when `history` is enabled.
+	delete_check_events = "TextChanged",
 	ext_opts = {
 		[types.choiceNode] = {
 			active = {
@@ -39,6 +44,18 @@ ls.config.set_config({
 	-- minimal increase in priority.
 	ext_prio_increase = 1,
 	enable_autosnippets = true,
+	-- mapping for cutting selected text so it's usable as SELECT_DEDENT,
+	-- SELECT_RAW or TM_SELECTED_TEXT (mapped via xmap).
+	store_selection_keys = "<Tab>",
+	-- luasnip uses this function to get the currently active filetype. This
+	-- is the (rather uninteresting) default, but it's possible to use
+	-- eg. treesitter for getting the current filetype by setting ft_func to
+	-- require("luasnip.extras.filetype_functions").from_cursor (requires
+	-- `nvim-treesitter/nvim-treesitter`). This allows correctly resolving
+	-- the current filetype in eg. a markdown-code block or `vim.cmd()`.
+	ft_func = function()
+		return vim.split(vim.bo.filetype, ".", true)
+	end,
 })
 
 -- args is a table, where 1 is the text in Placeholder 1, 2 the text in
@@ -491,19 +508,18 @@ ls.filetype_extend("lua", { "c" })
 -- in a cpp file: search c-snippets, then all-snippets only (no cpp-snippets!!).
 ls.filetype_set("cpp", { "c" })
 
---[[
 -- Beside defining your own snippets you can also load snippets from "vscode-like" packages
 -- that expose snippets in json files, for example <https://github.com/rafamadriz/friendly-snippets>.
 -- Mind that this will extend  `ls.snippets` so you need to do it after your own snippets or you
 -- will need to extend the table yourself instead of setting a new one.
-]]
 
 require("luasnip.loaders.from_vscode").load({ include = { "python" } }) -- Load only python snippets
+
 -- The directories will have to be structured like eg. <https://github.com/rafamadriz/friendly-snippets> (include
 -- a similar `package.json`)
 require("luasnip.loaders.from_vscode").load({ paths = { "./my-snippets" } }) -- Load snippets from my-snippets folder
 
--- You can also use lazy loading so you only get in memory snippets of languages you use
+-- You can also use lazy loading so snippets are loaded on-demand, not all at once (may interfere with lazy-loading luasnip itself).
 require("luasnip.loaders.from_vscode").lazy_load() -- You can pass { paths = "./my-snippets/"} as well
 
 -- You can also use snippets in snipmate format, for example <https://github.com/honza/vim-snippets>.

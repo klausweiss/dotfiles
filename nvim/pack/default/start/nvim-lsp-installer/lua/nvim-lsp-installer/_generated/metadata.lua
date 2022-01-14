@@ -10,6 +10,9 @@ return {
   arduino_language_server = {
     filetypes = { "arduino" }
   },
+  asm_lsp = {
+    filetypes = { "asm", "vmasm" }
+  },
   bashls = {
     filetypes = { "sh" }
   },
@@ -138,6 +141,9 @@ return {
   },
   omnisharp = {
     filetypes = { "cs", "vb" }
+  },
+  opencl_ls = {
+    filetypes = { "opencl" }
   },
   phpactor = {
     filetypes = { "php" }

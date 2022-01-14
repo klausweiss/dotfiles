@@ -89,3 +89,11 @@ function my_comp:init(options)
 end
 ```
 
+### Type option(luae & vimf) rename
+These were hard to understand before. Now the name should convey more info.
+
+- luae -> lua_expr
+- vimf -> vim_fun
+
+### 'nvim' diagnostic soirce has been renamed to 'nvim_diagnostic'
+What the title says ☝️

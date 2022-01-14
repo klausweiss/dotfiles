@@ -7,7 +7,7 @@ local keymap = {}
 ---@param keys string
 ---@return string
 keymap.t = function(keys)
-  return (string.gsub(keys, '(<[A-Za-z0-9_%-%[%]%^@]->)', function(match)
+  return (string.gsub(keys, '(<[A-Za-z0-9\\%-%[%]%^@]->)', function(match)
     return vim.api.nvim_eval(string.format([["\%s"]], match))
   end))
 end
@@ -174,7 +174,7 @@ keymap.feed_map = function(map)
   elseif map.callback and map.expr then
     rhs = map.callback()
   elseif map.expr then
-    rhs = keymap.t(vim.api.nvim_eval(map.rhs))
+    rhs = vim.api.nvim_eval(keymap.t(map.rhs))
   else
     rhs = keymap.t(map.rhs)
   end
