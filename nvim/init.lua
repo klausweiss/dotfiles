@@ -391,8 +391,15 @@ nkeycmd('U', 'UndotreeToggle')
 
 command_key('a', 'Telescope commands')
 
-file_key('f', 'Telescope file_browser disable_devicons=false hidden=true')
-file_key('o', 'Telescope find_files disable_devicons=false')
+local telescope_find_file =  'Telescope find_files disable_devicons=false'
+local window_select_top = 'wincmd k'
+local window_select_right = 'wincmd l'
+local window_select_down = 'wincmd j'
+local window_select_left = 'wincmd h'
+file_key('o', telescope_find_file)
+file_key('h', ' split <bar> '  .. window_select_down  .. ' <bar> ' .. telescope_find_file)
+file_key('v', 'vsplit <bar> '  .. window_select_right .. ' <bar> ' .. telescope_find_file)
+file_key('w', 'write')
 
 -- see gitsigns for more shortcuts
 git_key('g', 'Neogit')
@@ -413,15 +420,18 @@ else
 end
 
 window_key('v', 'vsplit')
+window_key('V', 'vsplit <bar> ' .. window_select_right)
 window_key('h', 'split')
+window_key('H', 'split <bar> ' .. window_select_down)
 window_key('d', 'hide')
-window_key('i', 'wincmd k')
-window_key('j', 'wincmd h')
-window_key('k', 'wincmd j')
-window_key('l', 'wincmd l')
-window_key('p', 'wincmd k')
-window_key('t', 'wincmd h')
-window_key('n', 'wincmd j')
-window_key('s', 'wincmd l')
+window_key('i', window_select_top)
+window_key('j', window_select_left)
+window_key('k', window_select_down)
+window_key('l', window_select_right)
+window_key('p', window_select_top)
+window_key('t', window_select_left)
+window_key('n', window_select_down)
+window_key('s', window_select_right)
 
 leader_shortcut('h', 'HopChar1')
+leader_shortcut('sh', 'nohlsearch')
