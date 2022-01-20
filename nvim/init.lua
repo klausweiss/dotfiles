@@ -399,7 +399,7 @@ local window_select_left = 'wincmd h'
 file_key('o', telescope_find_file)
 file_key('h', ' split <bar> '  .. window_select_down  .. ' <bar> ' .. telescope_find_file)
 file_key('v', 'vsplit <bar> '  .. window_select_right .. ' <bar> ' .. telescope_find_file)
-file_key('w', 'write')
+file_key('s', 'write')
 
 -- see gitsigns for more shortcuts
 git_key('g', 'Neogit')
@@ -419,6 +419,7 @@ else
   tab_key('p', 'BufferPrevious')
 end
 
+window_key('o', 'only')
 window_key('v', 'vsplit')
 window_key('V', 'vsplit <bar> ' .. window_select_right)
 window_key('h', 'split')
