@@ -314,6 +314,8 @@ builtin.registers = require_on_exported_call("telescope.builtin.internal").regis
 
 --- Lists normal mode keymappings, runs the selected keymap on `<cr>`
 ---@param opts table: options to pass to the picker
+---@field modes table: a list of short-named keymap modes to search (default: { "n", "i", "c", "x" })
+---@field show_plug boolean: if true, the keymaps for which the lhs contains "<Plug>" are also shown (default: true)
 builtin.keymaps = require_on_exported_call("telescope.builtin.internal").keymaps
 
 --- Lists all available filetypes, sets currently open buffer's filetype to selected filetype in Telescope on `<cr>`
@@ -419,23 +421,6 @@ builtin.lsp_workspace_symbols = require_on_exported_call("telescope.builtin.lsp"
 ---@field symbols string|table: filter results by symbol kind(s)
 ---@field symbol_highlights table: string -> string. Matches symbol with hl_group
 builtin.lsp_dynamic_workspace_symbols = require_on_exported_call("telescope.builtin.lsp").dynamic_workspace_symbols
-
-builtin.lsp_document_diagnostics = function(...)
-  vim.api.nvim_err_write(
-    "`lsp_document_diagnostics` is deprecated and will be removed. Please use `Telescope diagnostics bufnr=0`.\n"
-      .. "For more information see `:help telescope.changelog-1553`\n"
-  )
-  local new = ...
-  new.bufnr = 0
-  require("telescope.builtin.diagnostics").get(new)
-end
-builtin.lsp_workspace_diagnostics = function(...)
-  vim.api.nvim_err_write(
-    "`lsp_workspace_diagnostics` is deprecated and will be removed. Please use `Telescope diagnostics`.\n"
-      .. "For more information see `:help telescope.changelog-1553`\n"
-  )
-  require("telescope.builtin.diagnostics").get(...)
-end
 
 --
 --

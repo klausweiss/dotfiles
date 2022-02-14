@@ -10,13 +10,14 @@ local M = {
     dash_bracket = '--[[%s]]',
     haskell_b = '{-%s-}',
     fsharp_b = '(*%s*)',
-    html_b = '<!--%s-->',
+    html = '<!--%s-->',
     latex = '%%s',
 }
 
 ---Lang table that contains commentstring (linewise/blockwise) for mutliple filetypes
 ---@type table { filetype = { linewise, blockwise } }
 local L = {
+    bash = { M.hash },
     bib = { M.latex },
     c = { M.cxx_l, M.cxx_b },
     cmake = { M.hash, '#[[%s]]' },
@@ -35,8 +36,8 @@ local L = {
     graphql = { M.hash },
     groovy = { M.cxx_l, M.cxx_b },
     haskell = { M.dash, M.haskell_b },
-    html = { M.html_b, M.html_b },
-    htmldjango = { M.html_b, M.html_b },
+    html = { M.html, M.html },
+    htmldjango = { M.html, M.html },
     idris = { M.dash, M.haskell_b },
     ini = { M.hash },
     java = { M.cxx_l, M.cxx_b },
@@ -46,7 +47,7 @@ local L = {
     julia = { M.hash, '#=%s=#' },
     lidris = { M.dash, M.haskell_b },
     lua = { M.dash, M.dash_bracket },
-    markdown = { M.html_b, M.html_b },
+    markdown = { M.html, M.html },
     make = { M.hash },
     mbsyncrc = { M.double_hash },
     meson = { M.hash },
@@ -57,10 +58,12 @@ local L = {
     python = { M.hash }, -- Python doesn't have block comments
     php = { M.cxx_l, M.cxx_b },
     readline = { M.hash },
+    ruby = { M.hash },
     rust = { M.cxx_l, M.cxx_b },
     scala = { M.cxx_l, M.cxx_b },
     sh = { M.hash },
     sql = { M.dash, M.cxx_b },
+    svelte = { M.html, M.html },
     swift = { M.cxx_l, M.cxx_b },
     sxhkdrc = { M.hash },
     teal = { M.dash, M.dash_bracket },
@@ -72,8 +75,8 @@ local L = {
     typescript = { M.cxx_l, M.cxx_b },
     typescriptreact = { M.cxx_l, M.cxx_b },
     vim = { '"%s' },
-    vue = { M.html_b, M.html_b },
-    xml = { M.html_b, M.html_b },
+    vue = { M.html, M.html },
+    xml = { M.html, M.html },
     xdefaults = { '!%s' },
     yaml = { M.hash },
     zig = { M.cxx_l }, -- Zig doesn't have block comments. waaaattttt!
@@ -91,13 +94,20 @@ function ft.set(lang, val)
     return ft
 end
 
----Get a commentstring from the filtype List
+---Get a commentstring from the filtype list
 ---@param lang Lang
 ---@param ctype CType
 ---@return string
 function ft.get(lang, ctype)
-    local l = L[lang]
+    local l = ft.lang(lang)
     return l and l[ctype]
+end
+
+---Get the commentstring(s) from the filtype list
+---@param lang Lang
+---@return string
+function ft.lang(lang)
+    return L[lang]
 end
 
 ---Calculate commentstring w/ the power of treesitter

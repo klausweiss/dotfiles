@@ -16,7 +16,7 @@ lsp.references = function(opts)
   local params = vim.lsp.util.make_position_params()
   params.context = { includeDeclaration = true }
 
-  vim.lsp.buf_request(0, "textDocument/references", params, function(err, result, _ctx, _config)
+  vim.lsp.buf_request(0, "textDocument/references", params, function(err, result, ctx, _config)
     if err then
       vim.api.nvim_err_writeln("Error when finding references: " .. err.message)
       return
@@ -24,7 +24,10 @@ lsp.references = function(opts)
 
     local locations = {}
     if result then
-      vim.list_extend(locations, vim.lsp.util.locations_to_items(result) or {})
+      vim.list_extend(
+        locations,
+        vim.lsp.util.locations_to_items(result, vim.lsp.get_client_by_id(ctx.client_id).offset_encoding) or {}
+      )
     end
 
     if vim.tbl_isempty(locations) then
@@ -62,6 +65,8 @@ local function list_or_jump(action, title, opts)
       vim.list_extend(flattened_results, result)
     end
 
+    local offset_encoding = vim.lsp.get_client_by_id(ctx.client_id).offset_encoding
+
     if #flattened_results == 0 then
       return
     elseif #flattened_results == 1 and opts.jump_type ~= "never" then
@@ -72,9 +77,9 @@ local function list_or_jump(action, title, opts)
       elseif opts.jump_type == "vsplit" then
         vim.cmd "vnew"
       end
-      vim.lsp.util.jump_to_location(flattened_results[1], vim.lsp.get_client_by_id(ctx.client_id).offset_encoding)
+      vim.lsp.util.jump_to_location(flattened_results[1], offset_encoding)
     else
-      local locations = vim.lsp.util.locations_to_items(flattened_results)
+      local locations = vim.lsp.util.locations_to_items(flattened_results, offset_encoding)
       pickers.new(opts, {
         prompt_title = title,
         finder = finders.new_table {
@@ -266,10 +271,10 @@ lsp.code_actions = function(opts)
     end
 
   local execute_action = opts.execute_action
-    or function(action)
+    or function(action, offset_encoding)
       if action.edit or type(action.command) == "table" then
         if action.edit then
-          vim.lsp.util.apply_workspace_edit(action.edit)
+          vim.lsp.util.apply_workspace_edit(action.edit, offset_encoding)
         end
         if type(action.command) == "table" then
           vim.lsp.buf.execute_command(action.command)
@@ -297,6 +302,9 @@ lsp.code_actions = function(opts)
         actions.close(prompt_bufnr)
         local action = selection.value.command
         local client = selection.value.client
+        local eff_execute = function(transformed)
+          execute_action(transformed, client.offset_encoding)
+        end
         if
           not action.edit
           and client
@@ -309,13 +317,13 @@ lsp.code_actions = function(opts)
               return
             end
             if resolved_action then
-              execute_action(transform_action(resolved_action))
+              eff_execute(transform_action(resolved_action))
             else
-              execute_action(transform_action(action))
+              eff_execute(transform_action(action))
             end
           end)
         else
-          execute_action(transform_action(action))
+          eff_execute(transform_action(action))
         end
       end)
 

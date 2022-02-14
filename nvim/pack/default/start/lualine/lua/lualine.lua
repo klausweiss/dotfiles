@@ -1,14 +1,14 @@
 -- Copyright (c) 2020-2021 hoob3rt
 -- MIT license, see LICENSE for more details.
 local lualine_require = require('lualine_require')
-local modules = lualine_require.lazy_require({
+local modules = lualine_require.lazy_require {
   highlight = 'lualine.highlight',
   loader = 'lualine.utils.loader',
   utils_section = 'lualine.utils.section',
   utils = 'lualine.utils.utils',
   utils_notices = 'lualine.utils.notices',
   config_module = 'lualine.config',
-})
+}
 local config -- Stores currently applied config
 local new_config = true -- Stores config that will be applied
 
@@ -141,7 +141,7 @@ end
 ---      component objects
 ---@param is_focused boolean : whether being evsluated for focused window or not
 ---@return string statusline string
-local function statusline(sections, is_focused)
+local statusline = modules.utils.retry_call_wrap(function(sections, is_focused)
   -- The sequence sections should maintain [SECTION_SEQUENCE]
   local section_sequence = { 'a', 'b', 'c', 'x', 'y', 'z' }
   local status = {}
@@ -173,7 +173,7 @@ local function statusline(sections, is_focused)
     table.insert(status, modules.highlight.format_highlight('lualine_c') .. '%=')
   end
   return apply_transitional_separators(table.concat(status))
-end
+end)
 
 --- check if any extension matches the filetype and return proper sections
 ---@param current_ft string : filetype name of current file

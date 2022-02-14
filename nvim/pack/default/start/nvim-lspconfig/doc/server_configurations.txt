@@ -9,6 +9,7 @@ that config. This file is accessible in neovim via `:help lspconfig-server-confi
 - [ansiblels](#ansiblels)
 - [arduino_language_server](#arduino_language_server)
 - [asm_lsp](#asm_lsp)
+- [awk_ls](#awk_ls)
 - [bashls](#bashls)
 - [beancount](#beancount)
 - [bicep](#bicep)
@@ -98,6 +99,7 @@ that config. This file is accessible in neovim via `:help lspconfig-server-confi
 - [robotframework_ls](#robotframework_ls)
 - [rome](#rome)
 - [rust_analyzer](#rust_analyzer)
+- [salt_ls](#salt_ls)
 - [scry](#scry)
 - [serve_d](#serve_d)
 - [sixtyfps](#sixtyfps)
@@ -217,9 +219,10 @@ https://github.com/ansible/ansible-language-server
 
 Language server for the ansible configuration management tool.
 
-`ansible-language-server` can be installed via `yarn`:
+`ansible-language-server` can be installed via `npm`:
+
 ```sh
-yarn global add ansible-language-server
+npm install -g @ansible/ansible-language-server
 ```
 
 
@@ -350,6 +353,33 @@ require'lspconfig'.asm_lsp.setup{}
         end
       end)
     end
+```
+
+
+## awk_ls
+
+https://github.com/Beaglefoot/awk-language-server/
+
+`awk-language-server` can be installed via `npm`:
+```sh
+npm install -g awk-language-server
+```
+
+
+
+**Snippet to enable the language server:**
+```lua
+require'lspconfig'.awk_ls.setup{}
+```
+
+**Commands and default values:**
+```lua
+  Commands:
+  
+  Default Values:
+    cmd = { "awk-language-server" }
+    filetypes = { "awk" }
+    single_file_support = true
 ```
 
 
@@ -890,6 +920,14 @@ This server accepts configuration via the `settings` key.
   
   null
 
+- **`deno.certificateStores`**: `array`
+
+  Default: `vim.NIL`
+  
+  Array items: `{type = "string"}`
+  
+  null
+
 - **`deno.codeLens.implementations`**: `boolean`
 
   null
@@ -977,6 +1015,20 @@ This server accepts configuration via the `settings` key.
 - **`deno.suggest.paths`**: `boolean`
 
   Default: `true`
+  
+  null
+
+- **`deno.tlsCertificate`**: `string`
+
+  Default: `vim.NIL`
+  
+  null
+
+- **`deno.unsafelyIgnoreCertificateErrors`**: `array`
+
+  Default: `vim.NIL`
+  
+  Array items: `{type = "string"}`
   
   null
 
@@ -1254,7 +1306,7 @@ This server accepts configuration via the `settings` key.
 
 - **`elixirLS.mixTarget`**: `string`
 
-  Mix target to use for compilation \(requires Elixir \>\= 1\.8\)
+  Mix target to use for compilation
 
 - **`elixirLS.projectDir`**: `string`
 
@@ -1378,10 +1430,7 @@ require'lspconfig'.elmls.setup{}
     cmd = { "elm-language-server" }
     filetypes = { "elm" }
     init_options = {
-      elmAnalyseTrigger = "change",
-      elmFormatPath = "elm-format",
-      elmPath = "elm",
-      elmTestPath = "elm-test"
+      elmAnalyseTrigger = "change"
     }
     root_dir = root_pattern("elm.json")
 ```
@@ -1676,12 +1725,6 @@ This server accepts configuration via the `settings` key.
   Default: `"flow"`
   
   Absolute path to flow binary\. Special var \$\{workspaceFolder\} or \$\{flowconfigDir\} can be used in path \(NOTE\: in windows you can use \'\/\' and can omit \'\.cmd\' in path\)
-
-- **`flow.runOnEdit`**: `boolean`
-
-  Default: `true`
-  
-  If true will run flow on every edit\, otherwise will run only when changes are saved \(Note\: \'useLSP\: true\' only supports syntax errors\)
 
 - **`flow.showUncovered`**: `boolean`
 
@@ -2043,9 +2086,9 @@ require'lspconfig'.golangci_lint_ls.setup{}
     cmd = { "golangci-lint-langserver" }
     filetypes = { "go", "gomod" }
     init_options = {
-      command = { "golangci-lint", "run", "--enable-all", "--disable", "lll", "--out-format", "json" }
+      command = { "golangci-lint", "run", "--out-format", "json" }
     }
-    root_dir = root_pattern('go.mod', '.git')
+    root_dir = root_pattern('go.work') or root_pattern('go.mod', '.golangci.yaml', '.git')
 ```
 
 
@@ -2552,6 +2595,8 @@ npm i -g vscode-langservers-extracted
 Neovim does not currently include built-in snippets. `vscode-html-language-server` only provides completions when snippet support is enabled.
 To enable completion, install a snippet plugin and add the following override to your language client capabilities during setup.
 
+The code-formatting feature of the lsp can be controlled with the `provideFormatter` option.
+
 ```lua
 --Enable (broadcasting) snippet capability for completion
 local capabilities = vim.lsp.protocol.make_client_capabilities()
@@ -2581,7 +2626,8 @@ require'lspconfig'.html.setup{}
       embeddedLanguages = {
         css = true,
         javascript = true
-      }
+      },
+      provideFormatter = true
     }
     root_dir = function(startpath)
         return M.search_ancestors(startpath, matcher)
@@ -3068,6 +3114,15 @@ This server accepts configuration via the `settings` key.
   
   Defines allowed\/disallowed SHA\-256 checksums of Gradle Wrappers
 
+- **`java.jdt.ls.java.home`**: `string|null`
+
+  Default: `vim.NIL`
+  
+  Specifies the folder path to the JDK \(11 or more recent\) used to launch the Java Language Server\. This setting will replace the Java extension\'s embedded JRE to start the Java Language Server\. 
+  
+  On Windows\, backslashes must be escaped\, i\.e\.
+  \"java\.jdt\.ls\.java\.home\"\:\"C\:\\\\Program Files\\\\Java\\\\jdk11\.0\_8\"
+
 - **`java.jdt.ls.vmargs`**: `string|null`
 
   Default: `"-XX:+UseParallelGC -XX:GCTimeRatio=4 -XX:AdaptiveSizePolicyWeight=90 -Dsun.zip.disableMemoryMapping=true -Xmx1G -Xms100m"`
@@ -3243,7 +3298,7 @@ require'lspconfig'.jdtls.setup{}
   Commands:
   
   Default Values:
-    cmd = { "/usr/lib/jvm/adoptopenjdk-11-hotspot-amd64/bin/java", "-Declipse.application=org.eclipse.jdt.ls.core.id1", "-Dosgi.bundles.defaultStartLevel=4", "-Declipse.product=org.eclipse.jdt.ls.core.product", "-Dlog.protocol=true", "-Dlog.level=ALL", "-Xms1g", "-Xmx2G", "--add-modules=ALL-SYSTEM", "--add-opens", "java.base/java.util=ALL-UNNAMED", "--add-opens", "java.base/java.lang=ALL-UNNAMED", "-jar", "/plugins/org.eclipse.equinox.launcher_*.jar", "-configuration", "config_linux", "-data", "/home/runner/workspace" }
+    cmd = { "/usr/lib/jvm/temurin-11-jdk-amd64/bin/java", "-Declipse.application=org.eclipse.jdt.ls.core.id1", "-Dosgi.bundles.defaultStartLevel=4", "-Declipse.product=org.eclipse.jdt.ls.core.product", "-Dlog.protocol=true", "-Dlog.level=ALL", "-Xms1g", "-Xmx2G", "--add-modules=ALL-SYSTEM", "--add-opens", "java.base/java.util=ALL-UNNAMED", "--add-opens", "java.base/java.lang=ALL-UNNAMED", "-jar", "/plugins/org.eclipse.equinox.launcher_*.jar", "-configuration", "config_linux", "-data", "/home/runner/workspace" }
     filetypes = { "java" }
     handlers = {
       ["language/status"] = <function 1>,
@@ -3371,7 +3426,7 @@ require'lspconfig'.jsonls.setup{}
   
   Default Values:
     cmd = { "vscode-json-language-server", "--stdio" }
-    filetypes = { "json" }
+    filetypes = { "json", "jsonc" }
     init_options = {
       provideFormatter = true
     }
@@ -3911,9 +3966,19 @@ require'lspconfig'.leanls.setup{}
   Commands:
   
   Default Values:
-    cmd = { "lean", "--server" }
+    cmd = { "lake", "serve", "--" }
     filetypes = { "lean" }
-    on_new_config = function(config, root_dir)
+    on_new_config = function(_, d, _)
+              lake_version = table.concat(d, '\n')
+            end,
+            stdout_buffered = true,
+          })
+          if lake_job > 0 and vim.fn.jobwait({ lake_job })[1] == 0 then
+            local major = lake_version:match 'Lake version (%d).'
+            if major and tonumber(major) < 3 then
+              config.cmd = legacy_cmd
+            end
+          end
           -- add root dir as command-line argument for `ps aux`
           table.insert(config.cmd, root_dir)
         end,
@@ -3979,7 +4044,7 @@ require'lspconfig'.lemminx.setup{}
   
   Default Values:
     cmd = { "lemminx" }
-    filetypes = { "xml", "xsd", "svg" }
+    filetypes = { "xml", "xsd", "xsl", "xslt", "svg" }
     root_dir = util.find_git_ancestor
     single_file_support = true
 ```
@@ -4899,9 +4964,12 @@ require'lspconfig'.powershell_es.setup{}
 
 ## prismals
 
-npm install -g @prisma/language-server
+Language Server for the Prisma JavaScript and TypeScript ORM
 
-'prismals, a language server for the prisma javascript and typescript orm'
+`@prisma/language-server` can be installed via npm
+```sh
+npm install -g @prisma/language-server
+```
 
 
 
@@ -6411,6 +6479,12 @@ This server accepts configuration via the `settings` key.
   
   null
 
+- **`rust-analyzer.primeCaches.numThreads`**: `number`
+
+  Default: `0`
+  
+  null
+
 - **`rust-analyzer.procMacro.enable`**: `boolean`
 
   Default: `true`
@@ -6529,6 +6603,35 @@ require'lspconfig'.rust_analyzer.setup{}
     settings = {
       ["rust-analyzer"] = {}
     }
+```
+
+
+## salt_ls
+
+Language server for Salt configuration files.
+https://github.com/dcermak/salt-lsp
+
+The language server can be installed with `pip`:
+```sh
+pip install salt-lsp
+```
+    
+
+
+**Snippet to enable the language server:**
+```lua
+require'lspconfig'.salt_ls.setup{}
+```
+
+**Commands and default values:**
+```lua
+  Commands:
+  
+  Default Values:
+    cmd = { "salt_lsp_server" }
+    filetypes = { "sls" }
+    root_dir = root_pattern('.git')
+    single_file_support = true
 ```
 
 
@@ -7194,12 +7297,6 @@ This server accepts configuration via the `settings` key.
 
   null
 
-- **`Lua.color.mode`**: `enum { "Grammar", "Semantic", "SemanticEnhanced" }`
-
-  Default: `"Semantic"`
-  
-  null
-
 - **`Lua.completion.autoRequire`**: `boolean`
 
   Default: `true`
@@ -7300,7 +7397,7 @@ This server accepts configuration via the `settings` key.
 
 - **`Lua.diagnostics.workspaceDelay`**: `integer`
 
-  Default: `0`
+  Default: `3000`
   
   null
 
@@ -7426,6 +7523,28 @@ This server accepts configuration via the `settings` key.
   
   null
 
+- **`Lua.semantic.annotation`**: `boolean`
+
+  Default: `true`
+  
+  null
+
+- **`Lua.semantic.enable`**: `boolean`
+
+  Default: `true`
+  
+  null
+
+- **`Lua.semantic.keyword`**: `boolean`
+
+  null
+
+- **`Lua.semantic.variable`**: `boolean`
+
+  Default: `true`
+  
+  null
+
 - **`Lua.signatureHelp.enable`**: `boolean`
 
   Default: `true`
@@ -7478,13 +7597,13 @@ This server accepts configuration via the `settings` key.
 
 - **`Lua.workspace.maxPreload`**: `integer`
 
-  Default: `1000`
+  Default: `5000`
   
   null
 
 - **`Lua.workspace.preloadFileSize`**: `integer`
 
-  Default: `100`
+  Default: `500`
   
   null
 
@@ -7606,7 +7725,7 @@ require'lspconfig'.tailwindcss.setup{}
   
   Default Values:
     cmd = { "tailwindcss-language-server", "--stdio" }
-    filetypes = { "aspnetcorerazor", "astro", "astro-markdown", "blade", "django-html", "edge", "eelixir", "ejs", "erb", "eruby", "gohtml", "haml", "handlebars", "hbs", "html", "html-eex", "jade", "leaf", "liquid", "markdown", "mdx", "mustache", "njk", "nunjucks", "php", "razor", "slim", "twig", "css", "less", "postcss", "sass", "scss", "stylus", "sugarss", "javascript", "javascriptreact", "reason", "rescript", "typescript", "typescriptreact", "vue", "svelte" }
+    filetypes = { "aspnetcorerazor", "astro", "astro-markdown", "blade", "django-html", "edge", "eelixir", "ejs", "erb", "eruby", "gohtml", "haml", "handlebars", "hbs", "html", "html-eex", "heex", "jade", "leaf", "liquid", "markdown", "mdx", "mustache", "njk", "nunjucks", "php", "razor", "slim", "twig", "css", "less", "postcss", "sass", "scss", "stylus", "sugarss", "javascript", "javascriptreact", "reason", "rescript", "typescript", "typescriptreact", "vue", "svelte" }
     init_options = {
       userLanguages = {
         eelixir = "html-eex",

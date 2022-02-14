@@ -21,7 +21,6 @@ end
 
 _LSP_SIG_CFG = {
   bind = true, -- This is mandatory, otherwise border config won't get registered.
-  -- if you want to use lspsaga, please set it to false
   doc_lines = 10, -- how many lines to show in doc, set to 0 if you only want the signature
   max_height = 12, -- max height of signature floating_window
   max_width = 80, -- max_width of signature floating_window
@@ -242,6 +241,10 @@ local signature_handler = helper.mk_handler(function(err, result, ctx, config)
 
   if _LSP_SIG_CFG.hint_enable == true then
     virtual_hint(hint, 0)
+  else
+    _LSP_SIG_VT_NS = _LSP_SIG_VT_NS or vim.api.nvim_create_namespace("lsp_signature_vt")
+
+    helper.cleanup(false) -- cleanup extmark
   end
   -- I do not need a floating win
   if _LSP_SIG_CFG.floating_window == false and config.toggle ~= true and config.trigger_from_lsp_sig then
@@ -251,6 +254,8 @@ local signature_handler = helper.mk_handler(function(err, result, ctx, config)
   local lines = {}
   local off_y = 0
   local ft = vim.api.nvim_buf_get_option(bufnr, "ft")
+  ft = helper.ft2md(ft)
+
   lines = vim.lsp.util.convert_signature_help_to_markdown_lines(result, ft)
 
   if lines == nil or type(lines) ~= "table" then
@@ -628,7 +633,6 @@ M.on_attach = function(cfg, bufnr)
     log(_LSP_SIG_CFG)
   end
 
-  vim.cmd([[hi default FloatBorder guifg = #777777]])
   if _LSP_SIG_CFG.bind then
     vim.lsp.handlers["textDocument/signatureHelp"] = vim.lsp.with(signature_handler, _LSP_SIG_CFG.handler_opts)
   end

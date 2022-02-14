@@ -110,29 +110,9 @@ do
     ordinal = 1,
   }
 
-  local find = (function()
-    if Path.path.sep == "\\" then
-      return function(t)
-        local start, _, filename, lnum, col, text = string.find(t, [[([^:]+):(%d+):(%d+):(.*)]])
-
-        -- Handle Windows drive letter (e.g. "C:") at the beginning (if present)
-        if start == 3 then
-          filename = string.sub(t.value, 1, 3) .. filename
-        end
-
-        return filename, lnum, col, text
-      end
-    else
-      return function(t)
-        local _, _, filename, lnum, col, text = string.find(t, [[([^:]+):(%d+):(%d+):(.*)]])
-        return filename, lnum, col, text
-      end
-    end
-  end)()
-
   -- Gets called only once to parse everything out for the vimgrep, after that looks up directly.
   local parse = function(t)
-    local filename, lnum, col, text = find(t.value)
+    local _, _, filename, lnum, col, text = string.find(t.value, [[(.+):(%d+):(%d+):(.*)]])
 
     local ok
     ok, lnum = pcall(tonumber, lnum)
@@ -688,6 +668,44 @@ function make_entry.gen_from_registers(_)
       value = entry,
       ordinal = entry,
       content = vim.fn.getreg(entry),
+      display = make_display,
+    }
+  end
+end
+
+function make_entry.gen_from_keymaps(opts)
+  local function get_desc(entry)
+    return entry.desc or entry.rhs or "Lua function"
+  end
+  local function get_lhs(entry)
+    return utils.display_termcodes(entry.lhs)
+  end
+
+  local displayer = require("telescope.pickers.entry_display").create {
+    separator = "▏",
+    items = {
+      { width = 2 },
+      { width = opts.width_lhs },
+      { remaining = true },
+    },
+  }
+  local make_display = function(entry)
+    return displayer {
+      entry.mode,
+      get_lhs(entry),
+      get_desc(entry),
+    }
+  end
+
+  return function(entry)
+    return {
+      mode = entry.mode,
+      lhs = get_lhs(entry),
+      desc = get_desc(entry),
+      --
+      valid = entry ~= "",
+      value = entry,
+      ordinal = entry.mode .. " " .. get_lhs(entry) .. " " .. get_desc(entry),
       display = make_display,
     }
   end

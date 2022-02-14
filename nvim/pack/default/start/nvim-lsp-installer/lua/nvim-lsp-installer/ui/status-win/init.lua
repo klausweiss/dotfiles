@@ -35,9 +35,10 @@ local create_vader = Data.memoize(
     function(saber_ticks)
     -- stylua: ignore start
     return {
-        { { [[ _______________________________________________________________________ ]], "LspInstallerMuted" } },
-        { { [[ < Help sponsor Neovim development! ]], "LspInstallerMuted" }, { "https://github.com/sponsors/neovim", "LspInstallerHighlighted"}, {[[ > ]], "LspInstallerMuted" } },
-        { { [[ ----------------------------------------------------------------------- ]], "LspInstallerMuted" } },
+        { { [[ _________________________________________________________________________________________ ]], "LspInstallerMuted" } },
+        { { [[ < Help sponsor nvim-lsp-installer development! ]], "LspInstallerMuted" }, { "https://github.com/sponsors/williamboman", "LspInstallerHighlighted"}, {[[ > ]], "LspInstallerMuted" } },
+        { { [[ < Help sponsor neovim development! ]], "LspInstallerMuted" }, { "https://github.com/sponsors/neovim", "LspInstallerHighlighted"}, {[[                   > ]], "LspInstallerMuted" } },
+        { { [[ ----------------------------------------------------------------------------------------- ]], "LspInstallerMuted" } },
         { { [[        ]], ""}, {[[\]], saber_ticks >= 3 and "LspInstallerVaderSaber" or "LspInstallerMuted"}, {[[    ,-^-.                                                       ]], "LspInstallerMuted" } },
         { { [[         ]], ""}, {[[\]], saber_ticks >= 2 and "LspInstallerVaderSaber" or "LspInstallerMuted"}, {[[   !oYo!                                                       ]], "LspInstallerMuted" } },
         { { [[          ]], ""}, {[[\]], saber_ticks >= 1 and "LspInstallerVaderSaber" or "LspInstallerMuted"}, {[[ /./=\.\______                                                ]], "LspInstallerMuted" } },
@@ -163,30 +164,9 @@ local function Header(props)
     })
 end
 
-local Seconds = {
-    DAY = 86400, -- 60 * 60 * 24
-    WEEK = 604800, -- 60 * 60 * 24 * 7
-    MONTH = 2419200, -- 60 * 60 * 24 * 7 * 4
-    YEAR = 29030400, -- 60 * 60 * 24 * 7 * 4 * 12
-}
-
 ---@param time number
-local function get_relative_install_time(time)
-    local now = os.time()
-    local delta = math.max(now - time, 0)
-    if delta < Seconds.DAY then
-        return "today"
-    elseif delta < Seconds.WEEK then
-        return "this week"
-    elseif delta < Seconds.MONTH then
-        return "this month"
-    elseif delta < (Seconds.MONTH * 2) then
-        return "last month"
-    elseif delta < Seconds.YEAR then
-        return ("%d months ago"):format(math.floor((delta / Seconds.MONTH) + 0.5))
-    else
-        return "more than a year ago"
-    end
+local function format_time(time)
+    return os.date("%d %b %Y %H:%M", time)
 end
 
 ---@param outdated_packages OutdatedPackage[]
@@ -236,7 +216,7 @@ local function ServerMetadata(server)
             Data.lazy(server.metadata.install_timestamp_seconds, function()
                 return {
                     { "installed", "LspInstallerMuted" },
-                    { get_relative_install_time(server.metadata.install_timestamp_seconds), "" },
+                    { format_time(server.metadata.install_timestamp_seconds), "" },
                 }
             end),
             {

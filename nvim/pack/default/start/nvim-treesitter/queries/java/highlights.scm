@@ -90,6 +90,12 @@
 (constructor_declaration
   name: (identifier) @type)
 (type_identifier) @type
+((method_invocation
+  object: (identifier) @type)
+ (#lua-match? @type "^[A-Z]"))
+((method_reference
+  . (identifier) @type)
+ (#lua-match? @type "^[A-Z]"))
 
 
 
@@ -140,7 +146,10 @@
 (string_literal) @string
 (null_literal) @constant.builtin
 
-(comment) @comment
+[
+  (line_comment)
+  (block_comment)
+] @comment
 
 [
 (true)

@@ -190,7 +190,7 @@ ls.snippets = {
 	--     - luasnip.all
 	-- are searched in that order.
 	all = {
-		-- trigger is fn.
+		-- trigger is `fn`, second argument to snippet-constructor are the nodes to insert into the buffer on expansion.
 		s("fn", {
 			-- Simple static text.
 			t("//Parameters: "),
@@ -205,7 +205,7 @@ ls.snippets = {
 			i(2, "int foo"),
 			-- Linebreak
 			t({ ") {", "\t" }),
-			-- Last Placeholder, exit Point of the snippet. EVERY 'outer' SNIPPET NEEDS Placeholder 0.
+			-- Last Placeholder, exit Point of the snippet.
 			i(0),
 			t({ "", "}" }),
 		}),
@@ -375,11 +375,14 @@ ls.snippets = {
 			l(l.CAPTURE1:gsub("1", l.TM_FILENAME), {}),
 		}),
 		-- Set store_selection_keys = "<Tab>" (for example) in your
-		-- luasnip.config.setup() call to access TM_SELECTED_TEXT. In
-		-- this case, select a URL, hit Tab, then expand this snippet.
+		-- luasnip.config.setup() call to populate
+		-- TM_SELECTED_TEXT/SELECT_RAW/SELECT_DEDENT.
+		-- In this case: select a URL, hit Tab, then expand this snippet.
 		s("link_url", {
 			t('<a href="'),
 			f(function(_, snip)
+				-- TM_SELECTED_TEXT is a table to account for multiline-selections.
+				-- In this case only the first line is inserted.
 				return snip.env.TM_SELECTED_TEXT[1] or {}
 			end, {}),
 			t('">'),
@@ -391,14 +394,16 @@ ls.snippets = {
 		s("repeat", { i(1, "text"), t({ "", "" }), rep(1) }),
 		-- Directly insert the ouput from a function evaluated at runtime.
 		s("part", p(os.date, "%Y")),
-		-- use matchNodes to insert text based on a pattern/function/lambda-evaluation.
+		-- use matchNodes (`m(argnode, condition, then, else)`) to insert text
+		-- based on a pattern/function/lambda-evaluation.
+		-- It's basically a shortcut for simple functionNodes:
 		s("mat", {
 			i(1, { "sample_text" }),
 			t(": "),
 			m(1, "%d", "contains a number", "no number :("),
 		}),
-		-- The inserted text defaults to the first capture group/the entire
-		-- match if there are none
+		-- The `then`-text defaults to the first capture group/the entire
+		-- match if there are none.
 		s("mat2", {
 			i(1, { "sample_text" }),
 			t(": "),
@@ -415,14 +420,17 @@ ls.snippets = {
 				"contains a number that isn't 1, 2 or 3!"
 			),
 		}),
-		-- `match` also accepts a function, which in turn accepts a string
-		-- (text in node, \n-concatted) and returns any non-nil value to match.
-		-- If that value is a string, it is used for the default-inserted text.
+		-- `match` also accepts a function in place of the condition, which in
+		-- turn accepts the usual functionNode-args.
+		-- The condition is considered true if the function returns any
+		-- non-nil/false-value.
+		-- If that value is a string, it is used as the `if`-text if no if is explicitly given.
 		s("mat4", {
 			i(1, { "sample_text" }),
 			t(": "),
-			m(1, function(text)
-				return (#text % 2 == 0 and text) or nil
+			m(1, function(args)
+				-- args is a table of multiline-strings (as usual).
+				return (#args[1][1] % 2 == 0 and args[1]) or nil
 			end),
 		}),
 		-- The nonempty-node inserts text depending on whether the arg-node is

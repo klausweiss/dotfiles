@@ -952,33 +952,40 @@ end
 
 -- TODO: make filtering include the mapping and the action
 internal.keymaps = function(opts)
-  local modes = { "n", "i", "c" }
-  local keymaps_table = {}
+  opts.modes = vim.F.if_nil(opts.modes, { "n", "i", "c", "x" })
+  opts.show_plug = vim.F.if_nil(opts.show_plug, true)
 
-  for _, mode in pairs(modes) do
-    local global = vim.api.nvim_get_keymap(mode)
-    for _, keymap in pairs(global) do
-      table.insert(keymaps_table, keymap)
-    end
-    local buf_local = vim.api.nvim_buf_get_keymap(0, mode)
-    for _, keymap in pairs(buf_local) do
-      table.insert(keymaps_table, keymap)
+  local keymap_encountered = {} -- used to make sure no duplicates are inserted into keymaps_table
+  local keymaps_table = {}
+  local max_len_lhs = 0
+
+  -- helper function to populate keymaps_table and determine max_len_lhs
+  local function extract_keymaps(keymaps)
+    for _, keymap in pairs(keymaps) do
+      local keymap_key = keymap.buffer .. keymap.mode .. keymap.lhs -- should be distinct for every keymap
+      if not keymap_encountered[keymap_key] then
+        keymap_encountered[keymap_key] = true
+        if opts.show_plug or not string.find(keymap.lhs, "<Plug>") then
+          table.insert(keymaps_table, keymap)
+          max_len_lhs = math.max(max_len_lhs, #utils.display_termcodes(keymap.lhs))
+        end
+      end
     end
   end
+
+  for _, mode in pairs(opts.modes) do
+    local global = vim.api.nvim_get_keymap(mode)
+    local buf_local = vim.api.nvim_buf_get_keymap(0, mode)
+    extract_keymaps(global)
+    extract_keymaps(buf_local)
+  end
+  opts.width_lhs = max_len_lhs + 1
 
   pickers.new(opts, {
     prompt_title = "Key Maps",
     finder = finders.new_table {
       results = keymaps_table,
-      entry_maker = function(line)
-        local desc = line.desc or line.rhs or "Lua function"
-        return {
-          valid = line ~= "",
-          value = line,
-          ordinal = utils.display_termcodes(line.lhs) .. desc,
-          display = line.mode .. " " .. utils.display_termcodes(line.lhs) .. " " .. desc,
-        }
-      end,
+      entry_maker = opts.entry_maker or make_entry.gen_from_keymaps(opts),
     },
     sorter = conf.generic_sorter(opts),
     attach_mappings = function(prompt_bufnr)
@@ -1099,7 +1106,8 @@ internal.autocommands = function(opts)
     end
 
     if current_ft and cmd then
-      source_file, source_lnum = line:match "Last set from (.*) line (.*)"
+      source_file = line:match "Last set from (.*) line %d*$" or line:match "Last set from (.*)$"
+      source_lnum = line:match "line (%d*)$" or "1"
       if source_file then
         local autocmd = {}
         autocmd.event = current_event
@@ -1146,10 +1154,6 @@ internal.autocommands = function(opts)
 end
 
 internal.spell_suggest = function(opts)
-  if not vim.wo.spell then
-    return false
-  end
-
   local cursor_word = vim.fn.expand "<cword>"
   local suggestions = vim.fn.spellsuggest(cursor_word)
 

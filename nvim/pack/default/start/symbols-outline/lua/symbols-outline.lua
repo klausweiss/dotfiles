@@ -36,11 +36,11 @@ M.state = {
     flattened_outline_items = {},
     outline_win = nil,
     outline_buf = nil,
-    code_win = 0
+    code_win = nil
 }
 
 local function wipe_state()
-    M.state = {outline_items = {}, flattened_outline_items = {}, code_win = 0}
+    M.state = {outline_items = {}, flattened_outline_items = {}}
 end
 
 local function __refresh()

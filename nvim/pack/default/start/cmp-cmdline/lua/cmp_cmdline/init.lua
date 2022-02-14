@@ -1,5 +1,29 @@
 local cmp = require('cmp')
 
+local MODIFIER_REGEX = {
+  vim.regex([=[abo\%[veleft]]=]),
+  vim.regex([=[bel\%[owright]]=]),
+  vim.regex([=[bo\%[tright]]=]),
+  vim.regex([=[bro\%[wse]]=]),
+  vim.regex([=[conf\%[irm]]=]),
+  vim.regex([=[hid\%[e]]=]),
+  vim.regex([=[keepalt]=]),
+  vim.regex([=[keeppa\%[tterns]]=]),
+  vim.regex([=[lefta\%[bove]]=]),
+  vim.regex([=[loc\%[kmarks]]=]),
+  vim.regex([=[nos\%[wapfile]]=]),
+  vim.regex([=[rightb\%[elow]]=]),
+  vim.regex([=[sil\%[ent]]=]),
+  vim.regex([=[tab]=]),
+  vim.regex([=[to\%[pleft]]=]),
+  vim.regex([=[verb\%[ose]]=]),
+  vim.regex([=[vert\%[ical]]=]),
+}
+local COUNT_RANGE_REGEX = {
+  vim.regex([=[\%(\d\+\|\$\),\%(\d\+\|\$\)]=]),
+  vim.regex([=[\%(\d\+\|\$\)]=]),
+}
+
 local definitions = {
   {
     ctype = 'cmdline',
@@ -7,26 +31,43 @@ local definitions = {
     kind = cmp.lsp.CompletionItemKind.Variable,
     isIncomplete = true,
     exec = function(arglead, cmdline, _)
-      local s = vim.regex([[\k*$]]):match_str(arglead)
-      local input = string.sub(arglead, 1, s or #arglead)
+      local suffix_pos = vim.regex([[\k*$]]):match_str(arglead)
+      local fixed_input = string.sub(arglead, 1, suffix_pos or #arglead)
 
-      local items = vim.fn.getcompletion(cmdline, 'cmdline')
-      items = vim.tbl_map(function(item)
-        return type(item) == 'string' and { word = item } or item
-      end, items)
-
-      local filtered = vim.tbl_filter(function(item)
-        return string.find(item.word, input, 1, true) == 1
-      end, items)
-
-      if #filtered == 0 then
-        filtered = vim.tbl_map(function(item)
-          item.word = input .. item.word
-          return item
-        end, items)
+      -- Cleanup modifiers.
+      if arglead ~= cmdline then
+        for _, re in ipairs(MODIFIER_REGEX) do
+          local s, e = re:match_str(cmdline)
+          if s and e then
+            cmdline = string.sub(cmdline, e + 1)
+            break
+          end
+        end
       end
 
-      return filtered
+      -- Cleanup range or count.
+      local prefix = ''
+      for _, re in ipairs(COUNT_RANGE_REGEX) do
+        local s, e = re:match_str(cmdline)
+        if s and e then
+          if arglead == cmdline then
+            prefix = string.sub(cmdline, 1, e)
+          end
+          cmdline = string.sub(cmdline, e + 1)
+          break
+        end
+      end
+
+      local items = {}
+      for _, item in ipairs(vim.fn.getcompletion(cmdline, 'cmdline')) do
+        item = type(item) == 'string' and { word = item } or item
+        item.word = prefix .. item.word
+        if not string.find(item.word, fixed_input, 1, true) then
+          item.word = fixed_input .. item.word
+        end
+        table.insert(items, item)
+      end
+      return items
     end
   },
 }
@@ -89,7 +130,7 @@ source.complete = function(self, params, callback)
     return item
   end, items)
 
-  -- Check the previous completion can merge (support both backspace and new any char).
+  -- `vim.fn.getcompletion` does not handle fuzzy matches. So, we must return all items, including items that were matched in the previous input.
   local should_merge_previous_items = false
   if #params.context.cursor_before_line > #self.before_line then
     should_merge_previous_items = string.find(params.context.cursor_before_line, self.before_line, 1, true) == 1

@@ -153,7 +153,7 @@ These mappings are enabled by default. (config: `mappings.basic`)
 `[count]gcc` - Toggles the number of line given as a prefix-count using linewise
 `[count]gbc` - Toggles the number of line given as a prefix-count using blockwise
 `gc[count]{motion}` - (Op-pending) Toggles the region using linewise comment
-`gb[count]{motion}` - (Op-pending) Toggles the region using linewise comment
+`gb[count]{motion}` - (Op-pending) Toggles the region using blockwise comment
 ```
 
 <a id="count-prefix">
@@ -213,7 +213,7 @@ These mappings are disabled by default. (config: `mappings.extended`)
 `gcw` - Toggle from the current cursor position to the next word
 `gc$` - Toggle from the current cursor position to the end of line
 `gc}` - Toggle until the next blank line
-`gc5l` - Toggle 5 lines after the current cursor position
+`gc5j` - Toggle 5 lines after the current cursor position
 `gc8k` - Toggle 8 lines before the current cursor position
 `gcip` - Toggle inside of paragraph
 `gca}` - Toggle around curly brackets
@@ -377,6 +377,10 @@ ft.yaml = '#%s'
 -- Multiple filetypes
 ft({'go', 'rust'}, {'//%s', '/*%s*/'})
 ft({'toml', 'graphql'}, '#%s')
+
+-- 3. Get the whole set of commentstring
+ft.lang('lua') -- { '--%s', '--[[%s]]' }
+ft.lang('javascript') -- { '//%s', '/*%s*/' }
 ```
 
 > PR(s) are welcome to add more commentstring inside the plugin

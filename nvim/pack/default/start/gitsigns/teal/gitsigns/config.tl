@@ -8,12 +8,13 @@ do
 end
 
 local record SchemaElem
-  type: string
+  type: string|{string}
   deep_extend: boolean
   default: any
 
   record Deprecated
     new_field: string
+    message: string
     hard: boolean
   end
 
@@ -31,6 +32,7 @@ local record M
       algorithm: string
       internal: boolean
       indent_heuristic: boolean
+      vertical: boolean
     end
 
     diff_opts: DiffOpts
@@ -68,7 +70,7 @@ local record M
       relative_time: boolean
     end
 
-    current_line_blame_formatter: function(string, {string:any}, current_line_blame_formatter_opts): string
+    current_line_blame_formatter: string|function(string, {string:any}, current_line_blame_formatter_opts): {{string,string}}
 
     record current_line_blame_opts
       virt_text: boolean
@@ -130,44 +132,25 @@ M.schema = {
         • `show_count` to enable showing count of hunk, e.g. number of deleted
           lines.
 
-      Note if `hl`, `numhl` or `linehl` use a `GitSigns*` highlight and it is
-      not defined, it will be automatically derived by searching for other
-      defined highlights in the following order:
+      Note if a highlight is not defined, it will be automatically derived by
+      searching for other defined highlights in the following order:
         • `GitGutter*`
         • `Signify*`
         • `Diff*Gutter`
         • `diff*`
         • `Diff*`
 
-      For example if `signs.add.hl = GitSignsAdd` and `GitSignsAdd` is not
-      defined but `GitGutterAdd` is defined, then `GitSignsAdd` will be linked
-      to `GitGutterAdd`.
+      For example if `GitSignsAdd` is not defined but `GitGutterAdd` is defined,
+      then `GitSignsAdd` will be linked to `GitGutterAdd`.
     ]]
   },
 
   keymaps = {
-    type = 'table',
-    default = {
-      -- Default keymap options
-      noremap = true,
-
-      ['n ]c'] = { expr = true, "&diff ? ']c' : '<cmd>Gitsigns next_hunk<CR>'"},
-      ['n [c'] = { expr = true, "&diff ? '[c' : '<cmd>Gitsigns prev_hunk<CR>'"},
-
-      ['n <leader>hs'] = '<cmd>Gitsigns stage_hunk<CR>',
-      ['v <leader>hs'] = ':Gitsigns stage_hunk<CR>',
-      ['n <leader>hu'] = '<cmd>Gitsigns undo_stage_hunk<CR>',
-      ['n <leader>hr'] = '<cmd>Gitsigns reset_hunk<CR>',
-      ['v <leader>hr'] = ':Gitsigns reset_hunk<CR>',
-      ['n <leader>hR'] = '<cmd>Gitsigns reset_buffer<CR>',
-      ['n <leader>hp'] = '<cmd>Gitsigns preview_hunk<CR>',
-      ['n <leader>hb'] = '<cmd>lua require"gitsigns".blame_line{full=true}<CR>',
-      ['n <leader>hS'] = '<cmd>Gitsigns stage_buffer<CR>',
-      ['n <leader>hU'] = '<cmd>Gitsigns reset_buffer_index<CR>',
-
-      ['o ih'] = ':<C-U>Gitsigns select_hunk<CR>',
-      ['x ih'] = ':<C-U>Gitsigns select_hunk<CR>'
+    deprecated = {
+      message = "config.keymaps is now deprecated. Please define mappings in config.on_attach() instead."
     },
+    type = 'table',
+    default = {},
     description = [[
       Keymaps to set up when attaching to a buffer.
 
@@ -290,7 +273,8 @@ M.schema = {
       local r = {
         algorithm = 'myers',
         internal = false,
-        indent_heuristic = false
+        indent_heuristic = false,
+        vertical = true
       }
       for _, o in ipairs(vim.opt.diffopt:get()) do
         if o == 'indent-heuristic' then
@@ -302,6 +286,8 @@ M.schema = {
             -- Use FFI
             r.internal = true
           end
+        elseif o == 'horizontal' then
+          r.vertical = false
         elseif vim.startswith(o, 'algorithm:') then
           r.algorithm = string.sub(o, 11)
         end
@@ -328,6 +314,8 @@ M.schema = {
         • indent_heuristic: string
             Use the indent heuristic for the internal
             diff library.
+        • vertical: boolean
+            Start diff mode with vertical splits.
     ]]
   },
 
@@ -471,6 +459,7 @@ M.schema = {
   current_line_blame_formatter_opts = {
     type = 'table',
     deep_extend = true,
+    deprecated = true,
     default = {
         relative_time = false
     },
@@ -483,82 +472,82 @@ M.schema = {
   },
 
   current_line_blame_formatter = {
-    type = 'function',
-    default = function(name: string, blame_info: {string:string}, opts: M.Config.current_line_blame_formatter_opts): {{string}}
-      if blame_info.author == name then
-        blame_info.author = 'You'
-      end
-
-      local text: string
-      if blame_info.author == 'Not Committed Yet' then
-        text = blame_info.author
-      else
-        local date_time: string
-
-        if opts.relative_time then
-          date_time = require('gitsigns.util').get_relative_time(tonumber(blame_info['author_time']))
-        else
-          date_time = os.date('%Y-%m-%d', tonumber(blame_info['author_time']))
-        end
-
-        text = string.format('%s, %s - %s', blame_info.author, date_time, blame_info.summary)
-      end
-
-      return {{' '..text, 'GitSignsCurrentLineBlame'}}
-    end,
-    default_help = [[function(name, blame_info, opts)
-      if blame_info.author == name then
-        blame_info.author = 'You'
-      end
-
-      local text
-      if blame_info.author == 'Not Committed Yet' then
-        text = blame_info.author
-      else
-        local date_time
-
-        if opts.relative_time then
-          date_time = require('gitsigns.util').get_relative_time(tonumber(blame_info['author_time']))
-        else
-          date_time = os.date('%Y-%m-%d', tonumber(blame_info['author_time']))
-        end
-
-        text = string.format('%s, %s - %s', blame_info.author, date_time, blame_info.summary)
-      end
-
-      return {{' '..text, 'GitSignsCurrentLineBlame'}}
-    end]],
+    type = {'string', 'function'},
+    default = ' <author>, <author_time> - <summary>',
     description = [[
-      Function used to format the virtual text of
+      String or function used to format the virtual text of
       |gitsigns-config-current_line_blame|.
 
-      Parameters: ~
-        {name}       Git user name returned from `git config user.name` .
-        {blame_info} Table with the following keys:
-                       • `abbrev_sha`: string
-                       • `orig_lnum`: integer
-                       • `final_lnum`: integer
-                       • `author`: string
-                       • `author_mail`: string
-                       • `author_time`: integer
-                       • `author_tz`: string
-                       • `committer`: string
-                       • `committer_mail`: string
-                       • `committer_time`: integer
-                       • `committer_tz`: string
-                       • `summary`: string
-                       • `previous`: string
-                       • `filename`: string
+      When a string, accepts the following format specifiers:
 
-                     Note that the keys map onto the output of:
-                       `git blame --line-porcelain`
+          • `<abbrev_sha>`
+          • `<orig_lnum>`
+          • `<final_lnum>`
+          • `<author>`
+          • `<author_mail>`
+          • `<author_time>` or `<author_time:FORMAT>`
+          • `<author_tz>`
+          • `<committer>`
+          • `<committer_mail>`
+          • `<committer_time>` or `<committer_time:FORMAT>`
+          • `<committer_tz>`
+          • `<summary>`
+          • `<previous>`
+          • `<filename>`
 
-        {opts}       Passed directly from
-                     |gitsigns-config-current_line_blame_formatter_opts|.
+        For `<author_time:FORMAT>` and `<committer_time:FORMAT>`, `FORMAT` can
+        be any valid date format that is accepted by `os.date()` with the
+        addition of `%R` (defaults to `%Y-%m-%d`):
 
-      Return: ~
-        The result of this function is passed directly to the `opts.virt_text`
-        field of |nvim_buf_set_extmark|.
+          • `%a`  abbreviated weekday name (e.g., Wed)
+          • `%A`  full weekday name (e.g., Wednesday)
+          • `%b`  abbreviated month name (e.g., Sep)
+          • `%B`  full month name (e.g., September)
+          • `%c`  date and time (e.g., 09/16/98 23:48:10)
+          • `%d`  day of the month (16) [01-31]
+          • `%H`  hour, using a 24-hour clock (23) [00-23]
+          • `%I`  hour, using a 12-hour clock (11) [01-12]
+          • `%M`  minute (48) [00-59]
+          • `%m`  month (09) [01-12]
+          • `%p`  either "am" or "pm" (pm)
+          • `%S`  second (10) [00-61]
+          • `%w`  weekday (3) [0-6 = Sunday-Saturday]
+          • `%x`  date (e.g., 09/16/98)
+          • `%X`  time (e.g., 23:48:10)
+          • `%Y`  full year (1998)
+          • `%y`  two-digit year (98) [00-99]
+          • `%%`  the character `%´
+          • `%R`  relative (e.g., 4 months ago)
+
+      When a function:
+        Parameters: ~
+          {name}       Git user name returned from `git config user.name` .
+          {blame_info} Table with the following keys:
+                         • `abbrev_sha`: string
+                         • `orig_lnum`: integer
+                         • `final_lnum`: integer
+                         • `author`: string
+                         • `author_mail`: string
+                         • `author_time`: integer
+                         • `author_tz`: string
+                         • `committer`: string
+                         • `committer_mail`: string
+                         • `committer_time`: integer
+                         • `committer_tz`: string
+                         • `summary`: string
+                         • `previous`: string
+                         • `filename`: string
+
+                       Note that the keys map onto the output of:
+                         `git blame --line-porcelain`
+
+          {opts}       Passed directly from
+                       |gitsigns-config-current_line_blame_formatter_opts|.
+
+        Return: ~
+          The result of this function is passed directly to the `opts.virt_text`
+          field of |nvim_buf_set_extmark| and thus must be a list of
+          [text, highlight] tuples.
     ]]
   },
 
@@ -607,9 +596,18 @@ M.schema = {
       Requires `config.diff_opts.internal = true` .
 
       Uses the highlights:
-        • GitSignsAddLn
-        • GitSignsChangeLn
-        • GitSignsDeleteLn
+        • For word diff in previews:
+          • `GitSignsAddInline`
+          • `GitSignsChangeInline`
+          • `GitSignsDeleteInline`
+        • For word diff in buffer:
+          • `GitSignsAddLnInline`
+          • `GitSignsChangeLnInline`
+          • `GitSignsDeleteLnInline`
+        • For word diff in virtual lines (e.g. show_deleted):
+          • `GitSignsAddVirtLnInline`
+          • `GitSignsChangeVirtLnInline`
+          • `GitSignsDeleteVirtLnInline`
     ]]
   },
 
@@ -625,7 +623,7 @@ M.schema = {
 
   _blame_cache = {
     type = 'boolean',
-    default = false,
+    default = true,
     description = [[
       Cache blame results for current_line_blame
     ]]
@@ -640,12 +638,12 @@ M.schema = {
     ]]
   },
 
-  watch_index                 = { deprecated = {new_field = 'watch_gitdir' } },
-  current_line_blame_delay    = { deprecated = {new_field = 'current_line_blame_opts.delay'} },
-  current_line_blame_position = { deprecated = {new_field = 'current_line_blame_opts.virt_text_pos'} },
-  diff_algorithm              = { deprecated = {new_field = 'diff_opts.algorithm'} },
-  use_decoration_api          = { deprecated = true },
-  use_internal_diff           = { deprecated = {new_field = 'diff_opts.internal'} },
+  watch_index                 = { deprecated = {hard = true, new_field = 'watch_gitdir' } },
+  current_line_blame_delay    = { deprecated = {hard = true, new_field = 'current_line_blame_opts.delay'} },
+  current_line_blame_position = { deprecated = {hard = true, new_field = 'current_line_blame_opts.virt_text_pos'} },
+  diff_algorithm              = { deprecated = {hard = true, new_field = 'diff_opts.algorithm'} },
+  use_decoration_api          = { deprecated = {hard = true}},
+  use_internal_diff           = { deprecated = {hard = true, new_field = 'diff_opts.internal'} },
 }
 
 warn = function(s: string, ...: any)
@@ -654,12 +652,15 @@ end
 
 local function validate_config(config: {string:any})
   for k, v in pairs(config) do
-    if M.schema[k] == nil then
+    local kschema = M.schema[k]
+    if kschema == nil then
       warn("gitsigns: Ignoring invalid configuration field '%s'", k)
-    else
-      vim.validate {
-        [k] = { v, M.schema[k].type } as {any};
-      }
+    elseif kschema.type then
+      if type(kschema.type) == 'string' then
+        vim.validate {
+          [k] = { v, kschema.type } as {any};
+        }
+      end
     end
   end
 end
@@ -691,15 +692,15 @@ local function handle_deprecated(cfg: {string:any})
         end
 
         if dep.hard then
-          if dep.new_field then
+          if dep.message then
+            warn(dep.message)
+          elseif dep.new_field then
             warn('%s is now deprecated, please use %s', k, dep.new_field)
           else
             warn('%s is now deprecated; ignoring', k)
           end
         end
       end
-
-      cfg[k] = nil
     end
   end
 end

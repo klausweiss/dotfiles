@@ -87,7 +87,7 @@ local function get_default(field)
     local l = cfg[i]
     if l:match('^    default =') then
       ds = i
-      if l:match('},') or l:match('nil,') then
+      if l:match('},') or l:match('nil,') or l:match("default = '.*'") then
         de = i
         break
       end
@@ -119,13 +119,18 @@ local function gen_config_doc_deprecated(dep_info, out)
   else
     out('   DEPRECATED')
   end
-  if type(dep_info) == 'table' and dep_info.new_field then
-    out('')
-    local opts_key, field = dep_info.new_field:match('(.*)%.(.*)')
-    if opts_key and field then
-      out(('   Please instead use the field `%s` in |gitsigns-config-%s|.'):format(field, opts_key))
-    else
-      out(('   Please instead use |gitsigns-config-%s|.'):format(dep_info.new_field))
+  if type(dep_info) == 'table' then
+    if dep_info.message then
+      out('      '..dep_info.message)
+    end
+    if dep_info.new_field then
+      out('')
+      local opts_key, field = dep_info.new_field:match('(.*)%.(.*)')
+      if opts_key and field then
+        out(('   Please instead use the field `%s` in |gitsigns-config-%s|.'):format(field, opts_key))
+      else
+        out(('   Please instead use |gitsigns-config-%s|.'):format(dep_info.new_field))
+      end
     end
   end
   out('')
@@ -145,7 +150,9 @@ local function gen_config_doc_field(field, out)
 
   if v.deprecated then
     gen_config_doc_deprecated(v.deprecated, out)
-  else
+  end
+
+  if v.description then
     local d
     if v.default_help ~= nil then
       d = v.default_help
@@ -164,6 +171,9 @@ local function gen_config_doc_field(field, out)
     local vtype = (function()
       if v.type == 'table' and v.deep_extend then
         return 'table[extended]'
+      end
+      if type(v.type) == 'table' then
+        v.type = table.concat(v.type, '|')
       end
       return v.type
     end)()

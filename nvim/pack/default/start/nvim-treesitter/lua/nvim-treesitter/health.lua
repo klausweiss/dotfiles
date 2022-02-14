@@ -5,6 +5,7 @@ local queries = require "nvim-treesitter.query"
 local info = require "nvim-treesitter.info"
 local shell = require "nvim-treesitter.shell_command_selectors"
 local install = require "nvim-treesitter.install"
+local utils = require "nvim-treesitter.utils"
 
 local health_start = vim.fn["health#report_start"]
 local health_ok = vim.fn["health#report_ok"]
@@ -24,13 +25,9 @@ local function install_health()
         .. " not required for :TSInstall)"
     )
   else
-    local handle = io.popen "tree-sitter  -V"
-    local result = handle:read "*a"
-    handle:close()
-    local version = vim.split(result, "\n")[1]:match "[^tree%psitter].*"
     health_ok(
       "`tree-sitter` found "
-        .. (version or "(unknown version)")
+        .. (utils.ts_cli_version() or "(unknown version)")
         .. " (parser generator, only needed for :TSInstallFromGrammar)"
     )
   end
@@ -145,7 +142,25 @@ function M.check()
     health_start "The following errors have been detected:"
     for _, p in ipairs(error_collection) do
       local lang, type, err = unpack(p)
-      health_error(lang .. "(" .. type .. "): " .. err)
+      local lines = {}
+      table.insert(lines, lang .. "(" .. type .. "): " .. err)
+      local files = vim.treesitter.query.get_query_files(lang, type)
+      if #files > 0 then
+        table.insert(lines, lang .. "(" .. type .. ") is concatenated from the following files:")
+        for _, file in ipairs(files) do
+          local fd = io.open(file, "r")
+          if fd then
+            local ok, file_err = pcall(vim.treesitter.query.parse_query, lang, fd:read "*a")
+            if ok then
+              table.insert(lines, '|    [OK]:"' .. file .. '"')
+            else
+              table.insert(lines, '| [ERROR]:"' .. file .. '", failed to load: ' .. file_err)
+            end
+            fd:close()
+          end
+        end
+      end
+      health_error(table.concat(lines, "\n"))
     end
   end
 end

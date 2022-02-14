@@ -22,7 +22,7 @@ function M.get_node_text(node, bufnr)
     local lines = api.nvim_buf_get_lines(bufnr, start_row, end_row + 1, false)
     lines[1] = string.sub(lines[1], start_col + 1)
     -- end_row might be just after the last line. In this case the last line is not truncated.
-    if #lines == end_row - start_row then
+    if #lines == end_row - start_row + 1 then
       lines[#lines] = string.sub(lines[#lines], 1, end_col)
     end
     return lines
@@ -331,7 +331,7 @@ function M.swap_nodes(node_or_range1, node_or_range2, bufnr, cursor_to_second)
 
   local edit1 = { range = range1, newText = table.concat(text2, "\n") }
   local edit2 = { range = range2, newText = table.concat(text1, "\n") }
-  vim.lsp.util.apply_text_edits({ edit1, edit2 }, bufnr)
+  vim.lsp.util.apply_text_edits({ edit1, edit2 }, bufnr, "utf-8")
 
   if cursor_to_second then
     utils.set_jump()

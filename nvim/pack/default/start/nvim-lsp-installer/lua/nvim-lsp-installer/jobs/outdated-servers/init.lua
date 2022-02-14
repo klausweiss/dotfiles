@@ -10,6 +10,7 @@ local git_check = require "nvim-lsp-installer.jobs.outdated-servers.git"
 local github_release_file_check = require "nvim-lsp-installer.jobs.outdated-servers.github_release_file"
 local github_tag_check = require "nvim-lsp-installer.jobs.outdated-servers.github_tag"
 local jdtls = require "nvim-lsp-installer.jobs.outdated-servers.jdtls"
+local composer_check = require "nvim-lsp-installer.jobs.outdated-servers.composer"
 
 local M = {}
 
@@ -21,13 +22,16 @@ local function noop(server, _, on_result)
     on_result(VersionCheckResult.empty(server))
 end
 
+---@type Record<InstallReceiptSourceType, function>
 local checkers = {
     ["npm"] = npm_check,
     ["pip3"] = pip3_check,
     ["cargo"] = cargo_check,
     ["gem"] = gem_check,
+    ["composer"] = composer_check,
     ["go"] = noop, -- TODO
     ["dotnet"] = noop, -- TODO
+    ["r_package"] = noop, -- TODO
     ["unmanaged"] = noop,
     ["system"] = noop,
     ["jdtls"] = jdtls,

@@ -22,8 +22,7 @@ local util = require('gitsigns.util')
 local gs_hunks = require("gitsigns.hunks")
 local Hunk = gs_hunks.Hunk
 
-local setup_highlight = require('gitsigns.highlight').setup_highlight
-
+local setup_highlights = require('gitsigns.highlight').setup_highlights
 local config = require('gitsigns.config').config
 
 local api = vim.api
@@ -176,38 +175,56 @@ end
 local ns = api.nvim_create_namespace('gitsigns')
 
 M.apply_word_diff = function(bufnr, row)
-   if not cache[bufnr] or not cache[bufnr].hunks then return end
+   if not cache[bufnr] or not cache[bufnr].hunks then
+      return
+   end
+
+   local line = api.nvim_buf_get_lines(bufnr, row, row + 1, false)[1]
+   if not line then
+
+      return
+   end
 
    local lnum = row + 1
-   local cols = #api.nvim_buf_get_lines(bufnr, lnum - 1, lnum, false)[1]
 
-   for _, hunk in ipairs(cache[bufnr].hunks) do
-      if lnum >= hunk.start and lnum <= hunk.vend then
-         local size = (#hunk.added.lines + #hunk.removed.lines) / 2
-         local regions = require('gitsigns.diff_int').run_word_diff(hunk.removed.lines, hunk.added.lines)
-         for _, region in ipairs(regions) do
-            local line = region[1]
-            if lnum == hunk.start + line - size - 1 then
+   local hunk = gs_hunks.find_hunk(lnum, cache[bufnr].hunks)
+   if not hunk then
 
-               local rtype, scol, ecol = region[2], region[3], region[4]
-               if scol <= cols then
-                  if ecol > cols then
-                     ecol = cols
-                  elseif ecol == scol then
+      return
+   end
 
-                     ecol = scol + 1
-                  end
-                  api.nvim_buf_set_extmark(bufnr, ns, row, scol - 1, {
-                     end_col = ecol - 1,
-                     hl_group = rtype == 'add' and 'GitSignsAddLn' or
-                     rtype == 'change' and 'GitSignsChangeLn' or
-                     'GitSignsDeleteLn',
-                     ephemeral = true,
-                  })
-               end
-            end
+   if hunk.added.count ~= hunk.removed.count then
+
+      return
+   end
+
+   local pos = lnum - hunk.start + 1
+
+   local added_line = hunk.added.lines[pos]
+   local removed_line = hunk.removed.lines[pos]
+
+   local _, added_regions = require('gitsigns.diff_int').run_word_diff({ removed_line }, { added_line })
+
+   local cols = #line
+
+   for _, region in ipairs(added_regions) do
+      local rtype, scol, ecol = region[2], region[3], region[4]
+      if scol <= cols then
+         if ecol > cols then
+            ecol = cols
+         elseif ecol == scol then
+
+            ecol = scol + 1
          end
-         break
+         api.nvim_buf_set_extmark(bufnr, ns, row, scol - 1, {
+            end_col = ecol - 1,
+            hl_group = rtype == 'add' and 'GitSignsAddLnInline' or
+            rtype == 'change' and 'GitSignsChangeLnInline' or
+            'GitSignsDeleteLnInline',
+            ephemeral = true,
+            priority = 1000,
+         })
+         api.nvim__buf_redraw_range(bufnr, row, row + 1)
       end
    end
 end
@@ -249,19 +266,19 @@ local function show_deleted(bufnr)
                if rline > 1 then
                   break
                end
-               vline[#vline + 1] = { line:sub(last_ecol, scol - 1), config.signs.delete.linehl }
-               vline[#vline + 1] = { line:sub(scol, ecol - 1), 'TermCursor' }
+               vline[#vline + 1] = { line:sub(last_ecol, scol - 1), 'GitsignsDeleteVirtLn' }
+               vline[#vline + 1] = { line:sub(scol, ecol - 1), 'GitsignsDeleteVirtLnInline' }
                last_ecol = ecol
             end
          end
 
          if #line > 0 then
-            vline[#vline + 1] = { line:sub(last_ecol, -1), config.signs.delete.linehl }
+            vline[#vline + 1] = { line:sub(last_ecol, -1), 'GitsignsDeleteVirtLn' }
          end
 
 
          local padding = string.rep(' ', VIRT_LINE_LEN - #line)
-         vline[#vline + 1] = { padding, config.signs.delete.linehl }
+         vline[#vline + 1] = { padding, 'GitsignsDeleteVirtLn' }
 
          virt_lines[i] = vline
       end
@@ -340,16 +357,6 @@ M.setup_signs_and_highlights = function(redefine)
    for t, sign_name in pairs(signs.sign_map) do
       local cs = config.signs[t]
 
-      setup_highlight(cs.hl)
-
-      if config.numhl then
-         setup_highlight(cs.numhl)
-      end
-
-      if config.linehl or config.word_diff then
-         setup_highlight(cs.linehl)
-      end
-
       signs.define(sign_name, {
          texthl = cs.hl,
          text = config.signcolumn and cs.text or nil,
@@ -358,9 +365,8 @@ M.setup_signs_and_highlights = function(redefine)
       }, redefine)
 
    end
-   if config.current_line_blame then
-      setup_highlight('GitSignsCurrentLineBlame')
-   end
+
+   setup_highlights()
 end
 
 return M

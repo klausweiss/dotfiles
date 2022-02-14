@@ -1,5 +1,7 @@
 global _: any
 
+global _TEST: boolean
+
 global loadstring: function(string): (function(): any)
 
 global unpack: function<T>({T}, number, number): T...
@@ -132,6 +134,7 @@ local record api
   nvim_set_current_tabpage: function(any)
   nvim_set_current_win: function(number)
   nvim_set_decoration_provider: function(number, {string:function})
+  nvim_set_hl: function(integer, string, {string:any})
   nvim_set_keymap: function(string, string, string, {string:any})
   nvim_set_option: function(string, any)
   nvim_set_var: function(string, any)
@@ -292,6 +295,7 @@ global record vim
   end
 
   record loop
+    cwd: function(): string
     record Timer
       start: function(Timer, number, number, function): number
       stop: function(Timer): number
@@ -384,8 +388,17 @@ global record vim
 
   in_fast_event: function(): boolean
 
-  list_extend: function({any}, {any}, integer, integer)
+  list_extend: function<T>({T}, {T}, integer, integer): {T}
   list_slice: function<T>({T}, integer, integer): {T}
+
+  record keymap
+    record Options
+      buffer: boolean|integer
+      expr: boolean
+    end
+    set: function(string|{string}, string, string|function, Options)
+  end
+
   record log
     record levels
       WARN: integer
@@ -401,6 +414,7 @@ global record vim
   gsplit: function(string, string, boolean): function(): string
 
   startswith: function(string, string): boolean
+  endswith: function(string, string): boolean
 
   schedule_wrap: function(function(...:any): any...): function(...:any): any...
   schedule: function(function)
@@ -445,5 +459,16 @@ global record vim
   end
 
   wait: function(number, function, number, boolean)
+
+  record VersionDetails
+    api_compatible: integer
+    api_level: integer
+    api_prerelease: boolean
+    major: integer
+    minor: integer
+    patch: integer
+  end
+
+  version: function(): VersionDetails
 
 end

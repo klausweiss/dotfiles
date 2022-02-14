@@ -113,10 +113,15 @@ function actions.select_all(prompt_bufnr)
     if not current_picker._multi:is_selected(entry) then
       current_picker._multi:add(entry)
       if current_picker:can_select_row(row) then
+        local caret = current_picker:update_prefix(entry, row)
+        if current_picker._selection_entry == entry and current_picker._selection_row == row then
+          current_picker.highlighter:hi_selection(row, caret:match "(.*%S)")
+        end
         current_picker.highlighter:hi_multiselect(row, current_picker._multi:is_selected(entry))
       end
     end
   end)
+  current_picker:get_status_updater(current_picker.prompt_win, current_picker.prompt_bufnr)()
 end
 
 --- Drop all entries from the current multi selection.
@@ -126,9 +131,14 @@ function actions.drop_all(prompt_bufnr)
   action_utils.map_entries(prompt_bufnr, function(entry, _, row)
     current_picker._multi:drop(entry)
     if current_picker:can_select_row(row) then
+      local caret = current_picker:update_prefix(entry, row)
+      if current_picker._selection_entry == entry and current_picker._selection_row == row then
+        current_picker.highlighter:hi_selection(row, caret:match "(.*%S)")
+      end
       current_picker.highlighter:hi_multiselect(row, current_picker._multi:is_selected(entry))
     end
   end)
+  current_picker:get_status_updater(current_picker.prompt_win, current_picker.prompt_bufnr)()
 end
 
 --- Toggle multi selection for all entries.
@@ -139,9 +149,14 @@ function actions.toggle_all(prompt_bufnr)
   action_utils.map_entries(prompt_bufnr, function(entry, _, row)
     current_picker._multi:toggle(entry)
     if current_picker:can_select_row(row) then
+      local caret = current_picker:update_prefix(entry, row)
+      if current_picker._selection_entry == entry and current_picker._selection_row == row then
+        current_picker.highlighter:hi_selection(row, caret:match "(.*%S)")
+      end
       current_picker.highlighter:hi_multiselect(row, current_picker._multi:is_selected(entry))
     end
   end)
+  current_picker:get_status_updater(current_picker.prompt_win, current_picker.prompt_bufnr)()
 end
 
 function actions.preview_scrolling_up(prompt_bufnr)
@@ -345,11 +360,9 @@ end
 actions.insert_symbol_i = function(prompt_bufnr)
   local symbol = action_state.get_selected_entry().value[1]
   actions._close(prompt_bufnr, true)
-  local cursor = vim.api.nvim_win_get_cursor(0)
-  vim.api.nvim_buf_set_text(0, cursor[1] - 1, cursor[2], cursor[1] - 1, cursor[2], { symbol })
   vim.schedule(function()
-    vim.api.nvim_win_set_cursor(0, { cursor[1], cursor[2] + #symbol })
-    vim.cmd [[startinsert!]]
+    vim.cmd [[startinsert]]
+    vim.api.nvim_put({ symbol }, "", true, true)
   end)
 end
 
@@ -654,7 +667,7 @@ end
 
 --- Sends the selected entries to the quickfix list, replacing the previous entries.
 actions.send_selected_to_qflist = function(prompt_bufnr)
-  send_selected_to_qf(prompt_bufnr, "r")
+  send_selected_to_qf(prompt_bufnr, " ")
 end
 
 --- Adds the selected entries to the quickfix list, keeping the previous entries.
@@ -664,7 +677,7 @@ end
 
 --- Sends all entries to the quickfix list, replacing the previous entries.
 actions.send_to_qflist = function(prompt_bufnr)
-  send_all_to_qf(prompt_bufnr, "r")
+  send_all_to_qf(prompt_bufnr, " ")
 end
 
 --- Adds all entries to the quickfix list, keeping the previous entries.
@@ -674,7 +687,7 @@ end
 
 --- Sends the selected entries to the location list, replacing the previous entries.
 actions.send_selected_to_loclist = function(prompt_bufnr)
-  send_selected_to_qf(prompt_bufnr, "r", "loclist")
+  send_selected_to_qf(prompt_bufnr, " ", "loclist")
 end
 
 --- Adds the selected entries to the location list, keeping the previous entries.
@@ -684,7 +697,7 @@ end
 
 --- Sends all entries to the location list, replacing the previous entries.
 actions.send_to_loclist = function(prompt_bufnr)
-  send_all_to_qf(prompt_bufnr, "r", "loclist")
+  send_all_to_qf(prompt_bufnr, " ", "loclist")
 end
 
 --- Adds all entries to the location list, keeping the previous entries.
@@ -704,7 +717,7 @@ end
 --- Sends the selected entries to the quickfix list, replacing the previous entries.
 --- If no entry was selected, sends all entries.
 actions.smart_send_to_qflist = function(prompt_bufnr)
-  smart_send(prompt_bufnr, "r")
+  smart_send(prompt_bufnr, " ")
 end
 
 --- Adds the selected entries to the quickfix list, keeping the previous entries.
@@ -716,7 +729,7 @@ end
 --- Sends the selected entries to the location list, replacing the previous entries.
 --- If no entry was selected, sends all entries.
 actions.smart_send_to_loclist = function(prompt_bufnr)
-  smart_send(prompt_bufnr, "r", "loclist")
+  smart_send(prompt_bufnr, " ", "loclist")
 end
 
 --- Adds the selected entries to the location list, keeping the previous entries.

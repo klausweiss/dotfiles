@@ -4,9 +4,26 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add `g:gruvbox_material_spell_foreground`.
+- Optimize `junegunn/limelight.vim`.
+- Add FAQ for configuration options.
+
 ### Changed
 
 - Redesign coc symbols.
+- Redesign `liuchengxu/vim-clap`.
+- Redesign semantic hi groups in coc.nvim [neoclide/coc.nvim#3355](https://github.com/neoclide/coc.nvim/pull/3355).
+- Generate `/after/syntax`.
+
+### Fixed
+
+- Update &runtimepath after generating syntax files.
+
+### Removed
+
+- Remove examples of configuration options in help doc.
 
 ## [1.2.3] - 2022-01-09
 

@@ -1,22 +1,6 @@
 ; highlights.scm
 
-(call function: (identifier) @function)
-(call arguments:
- (arguments
-  name: (identifier) @parameter ))
-
-(lambda_function "\\" @operator)
-
-(namespace_get function: (identifier) @method)
-(namespace_get_internal function: (identifier) @method)
-
-(namespace_get namespace: (identifier) @namespace
- "::" @operator)
-(namespace_get_internal namespace: (identifier) @namespace
- ":::" @operator)
-
 ; Literals
-
 (integer) @number
 
 (float) @float
@@ -27,9 +11,9 @@
 
 (comment) @comment
 
-(formal_parameters (identifier) @parameter)
-
 (identifier) @variable
+
+(formal_parameters (identifier) @parameter)
 
 ; Operators
 [
@@ -64,10 +48,12 @@
   "&"
   ":"
   "~"
-  "|>"
 ] @operator)
 
-(special) @operator
+[
+  "|>"
+  (special)
+] @operator
 
 [
  "("
@@ -115,6 +101,25 @@
 ] @boolean
 
 "function" @keyword.function
+
+(call function: (identifier) @function)
+
+(call arguments:
+ (arguments
+  name: (identifier) @parameter))
+
+(lambda_function "\\" @operator)
+
+(namespace_get function: (identifier) @method)
+(namespace_get_internal function: (identifier) @method)
+
+(namespace_get namespace: (identifier) @namespace
+ "::" @operator)
+
+(namespace_get_internal namespace: (identifier) @namespace
+ ":::" @operator)
+
+(string (escape_sequence) @string.escape)
 
 ; Error
 (ERROR) @error

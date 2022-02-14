@@ -2,11 +2,8 @@ local a = vim.api
 
 local M = {}
 
-function M.nvim_tree_callback(callback_name)
-  return string.format(":lua require'nvim-tree'.on_keypress('%s')<CR>", callback_name)
-end
-
 M.View = {
+  last_focused_winnr = nil,
   bufnr = nil,
   tabpages = {},
   hide_root_folder = false,
@@ -22,6 +19,7 @@ M.View = {
     foldmethod = 'manual',
     foldcolumn = '0',
     cursorcolumn = false,
+    cursorlineopt = "line",
     colorcolumn = '0',
     wrap = false,
     winhl = table.concat({
@@ -42,40 +40,6 @@ M.View = {
     { name = 'filetype', val = 'NvimTree' },
     { name = 'bufhidden', val = 'hide' }
   },
-  mappings = {
-    { key = {"<CR>", "o", "<2-LeftMouse>"}, cb = M.nvim_tree_callback("edit") },
-    { key = {"<2-RightMouse>", "<C-]>"},    cb = M.nvim_tree_callback("cd") },
-    { key = "<C-v>",                        cb = M.nvim_tree_callback("vsplit") },
-    { key = "<C-x>",                        cb = M.nvim_tree_callback("split") },
-    { key = "<C-t>",                        cb = M.nvim_tree_callback("tabnew") },
-    { key = "<",                            cb = M.nvim_tree_callback("prev_sibling") },
-    { key = ">",                            cb = M.nvim_tree_callback("next_sibling") },
-    { key = "P",                            cb = M.nvim_tree_callback("parent_node") },
-    { key = "<BS>",                         cb = M.nvim_tree_callback("close_node") },
-    { key = "<Tab>",                        cb = M.nvim_tree_callback("preview") },
-    { key = "K",                            cb = M.nvim_tree_callback("first_sibling") },
-    { key = "J",                            cb = M.nvim_tree_callback("last_sibling") },
-    { key = "I",                            cb = M.nvim_tree_callback("toggle_ignored") },
-    { key = "H",                            cb = M.nvim_tree_callback("toggle_dotfiles") },
-    { key = "R",                            cb = M.nvim_tree_callback("refresh") },
-    { key = "a",                            cb = M.nvim_tree_callback("create") },
-    { key = "d",                            cb = M.nvim_tree_callback("remove") },
-    { key = "D",                            cb = M.nvim_tree_callback("trash") },
-    { key = "r",                            cb = M.nvim_tree_callback("rename") },
-    { key = "<C-r>",                        cb = M.nvim_tree_callback("full_rename") },
-    { key = "x",                            cb = M.nvim_tree_callback("cut") },
-    { key = "c",                            cb = M.nvim_tree_callback("copy") },
-    { key = "p",                            cb = M.nvim_tree_callback("paste") },
-    { key = "y",                            cb = M.nvim_tree_callback("copy_name") },
-    { key = "Y",                            cb = M.nvim_tree_callback("copy_path") },
-    { key = "gy",                           cb = M.nvim_tree_callback("copy_absolute_path") },
-    { key = "[c",                           cb = M.nvim_tree_callback("prev_git_item") },
-    { key = "]c",                           cb = M.nvim_tree_callback("next_git_item") },
-    { key = "-",                            cb = M.nvim_tree_callback("dir_up") },
-    { key = "s",                            cb = M.nvim_tree_callback("system_open") },
-    { key = "q",                            cb = M.nvim_tree_callback("close") },
-    { key = "g?",                           cb = M.nvim_tree_callback("toggle_help") }
-  }
 }
 
 local function wipe_rogue_buffer()
@@ -86,7 +50,8 @@ local function wipe_rogue_buffer()
   end
 end
 
-local function create_buffer()
+-- FIXME: setting options to buffer clears the startup screen
+function M.create_buffer()
   wipe_rogue_buffer()
   M.View.bufnr = a.nvim_create_buf(false, false)
   a.nvim_buf_set_name(M.View.bufnr, 'NvimTree')
@@ -95,15 +60,7 @@ local function create_buffer()
     vim.bo[M.View.bufnr][opt.name] = opt.val
   end
 
-  for _, b in pairs(M.View.mappings) do
-    if type(b.key) == "table" then
-      for _, key in pairs(b.key) do
-        a.nvim_buf_set_keymap(M.View.bufnr, b.mode or 'n', key, b.cb, { noremap = true, silent = true, nowait = true })
-      end
-    elseif b.cb then
-      a.nvim_buf_set_keymap(M.View.bufnr, b.mode or 'n', b.key, b.cb, { noremap = true, silent = true, nowait = true })
-    end
-  end
+  require'nvim-tree.actions'.apply_mappings(M.View.bufnr)
 end
 
 local DEFAULT_CONFIG = {
@@ -111,103 +68,21 @@ local DEFAULT_CONFIG = {
   height = 30,
   side = 'left',
   auto_resize = false,
-  mappings = {
-    custom_only = false,
-    list = {}
-  },
   number = false,
   relativenumber = false,
   signcolumn = 'yes'
 }
 
-local function merge_mappings(user_mappings)
-  if #user_mappings == 0 then
-    return M.View.mappings
-  end
-
-  local user_keys = {}
-  for _, map in pairs(user_mappings) do
-    if type(map.key) == "table" then
-      for _, key in pairs(map.key) do
-        table.insert(user_keys, key)
-      end
-    else
-       table.insert(user_keys, map.key)
-    end
-  end
-
-  local view_mappings = vim.tbl_filter(function(map)
-    return not vim.tbl_contains(user_keys, map.key)
-  end, M.View.mappings)
-
-  return vim.fn.extend(view_mappings, user_mappings)
-end
-
 function M.setup(opts)
-  local options = vim.tbl_deep_extend('force', DEFAULT_CONFIG, opts)
+  local options = vim.tbl_deep_extend('force', DEFAULT_CONFIG, opts.view or {})
   M.View.side = options.side
   M.View.width = options.width
   M.View.height = options.height
   M.View.hide_root_folder = options.hide_root_folder
-  M.View.auto_resize = opts.auto_resize
+  M.View.auto_resize = options.auto_resize
   M.View.winopts.number = options.number
   M.View.winopts.relativenumber = options.relativenumber
   M.View.winopts.signcolumn = options.signcolumn
-  if options.mappings.custom_only then
-    M.View.mappings = options.mappings.list
-  else
-    M.View.mappings = merge_mappings(options.mappings.list)
-  end
-
-  vim.cmd "augroup NvimTreeView"
-  vim.cmd "au!"
-  vim.cmd "au BufWinEnter,BufWinLeave * lua require'nvim-tree.view'._prevent_buffer_override()"
-  vim.cmd "au BufEnter,BufNewFile * lua require'nvim-tree'.open_on_directory()"
-  vim.cmd "augroup END"
-
-  create_buffer()
-end
-
-local move_cmd = {
-  right = 'h',
-  left = 'l',
-  top = 'j',
-  bottom = 'k',
-}
-
-function M._prevent_buffer_override()
-  vim.schedule(function()
-    local curwin = a.nvim_get_current_win()
-    local curbuf = a.nvim_win_get_buf(curwin)
-
-    if curwin ~= M.get_winnr() or curbuf == M.View.bufnr then
-      return
-    end
-
-    if a.nvim_buf_is_loaded(M.View.bufnr) and a.nvim_buf_is_valid(M.View.bufnr) then
-      -- pcall necessary to avoid erroring with `mark not set` although no mark are set
-      -- this avoid other issues
-      pcall(vim.api.nvim_win_set_buf, M.get_winnr(), M.View.bufnr)
-    end
-
-    local bufname = a.nvim_buf_get_name(curbuf)
-    local isdir = vim.fn.isdirectory(bufname) == 1
-    if isdir or not bufname or bufname == "" then
-      return
-    end
-
-    if #vim.api.nvim_list_wins() < 2 then
-      local cmd = M.is_vertical() and "vsplit" or "split"
-      vim.cmd(cmd)
-    else
-      vim.cmd("wincmd "..move_cmd[M.View.side])
-    end
-    vim.cmd("buffer "..curbuf)
-    M.resize()
-    if vim.g.nvim_tree_quit_on_open == 1 then
-      M.close()
-    end
-  end)
 end
 
 function M.win_open(opts)
@@ -307,15 +182,16 @@ local function open_window()
   M.View.tabpages[tabpage] = vim.tbl_extend("force", M.View.tabpages[tabpage] or {help = false}, {winnr = winnr})
 end
 
-local function is_buf_valid(bufnr)
-  return a.nvim_buf_is_valid(bufnr) and a.nvim_buf_is_loaded(bufnr)
+function M.is_buf_valid(bufnr)
+  return bufnr and a.nvim_buf_is_valid(bufnr) and a.nvim_buf_is_loaded(bufnr)
 end
 
 function M.open(options)
+  M.View.last_focused_winnr = a.nvim_get_current_win()
   local should_redraw = false
-  if not is_buf_valid(M.View.bufnr) then
+  if not M.is_buf_valid(M.View.bufnr) then
     should_redraw = true
-    create_buffer()
+    M.create_buffer()
   end
 
   if not M.win_open() then
@@ -355,9 +231,13 @@ function M.close()
     end
   end
   local tree_win = M.get_winnr()
+  local current_win = a.nvim_get_current_win()
   for _, win in pairs(a.nvim_list_wins()) do
     if tree_win ~= win and a.nvim_win_get_config(win).relative == "" then
       a.nvim_win_hide(tree_win)
+      if tree_win == current_win and M.View.last_focused_winnr then
+        a.nvim_set_current_win(M.View.last_focused_winnr)
+      end
       return
     end
   end

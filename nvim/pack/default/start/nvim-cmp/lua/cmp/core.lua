@@ -1,4 +1,5 @@
 local debug = require('cmp.utils.debug')
+local str = require('cmp.utils.str')
 local char = require('cmp.utils.char')
 local pattern = require('cmp.utils.pattern')
 local feedkeys = require('cmp.utils.feedkeys')
@@ -14,7 +15,7 @@ local api = require('cmp.utils.api')
 local event = require('cmp.utils.event')
 
 local SOURCE_TIMEOUT = 500
-local THROTTLE_TIME = 120
+local THROTTLE_TIME = 80
 
 ---@class cmp.Core
 ---@field public suspending boolean
@@ -119,6 +120,7 @@ core.on_keymap = function(self, keys, fallback)
     local is_printable = char.is_printable(string.byte(chars, 1))
     self:confirm(e, {
       behavior = is_printable and 'insert' or 'replace',
+      commit_character = chars,
     }, function()
       local ctx = self:get_context()
       local word = e:get_word()
@@ -165,7 +167,7 @@ core.on_change = function(self, trigger_event)
       if vim.tbl_contains(config.get().completion.autocomplete or {}, trigger_event) then
         self:complete(ctx)
       else
-        self.filter.timeout = THROTTLE_TIME
+        self.filter.timeout = self.view:visible() and THROTTLE_TIME or 0
         self:filter()
       end
     else
@@ -216,6 +218,44 @@ core.autoindent = function(self, trigger_event, callback)
   callback()
 end
 
+---Complete common string for current completed entries.
+core.complete_common_string = function(self)
+  if not self.view:visible() or self.view:get_active_entry() then
+    return false
+  end
+
+  config.set_onetime({
+    sources = config.get().sources,
+    matching = {
+      disallow_prefix_unmatching = true,
+      disallow_partial_matching = true,
+      disallow_fuzzy_matching = true,
+    },
+  })
+
+  self:filter()
+  self.filter:sync(1000)
+
+  config.set_onetime({})
+
+  local cursor = api.get_cursor()
+  local offset = self.view:get_offset()
+  local common_string
+  for _, e in ipairs(self.view:get_entries()) do
+    local vim_item = e:get_vim_item(offset)
+    if not common_string then
+      common_string = vim_item.word
+    else
+      common_string = str.get_common_string(common_string, vim_item.word)
+    end
+  end
+  if common_string and #common_string > (1 + cursor[2] - offset) then
+    feedkeys.call(keymap.backspace(string.sub(api.get_current_line(), offset, cursor[2])) .. common_string, 'n')
+    return true
+  end
+  return false
+end
+
 ---Invoke completion
 ---@param ctx cmp.Context
 core.complete = function(self, ctx)
@@ -254,52 +294,51 @@ core.complete = function(self, ctx)
   end
 
   if not self.view:get_active_entry() then
-    self.filter.timeout = THROTTLE_TIME
+    self.filter.timeout = self.view:visible() and THROTTLE_TIME or 0
     self:filter()
   end
 end
 
 ---Update completion menu
-core.filter = async.throttle(
-  vim.schedule_wrap(function(self)
-    self.filter.timeout = THROTTLE_TIME
+core.filter = async.throttle(function(self)
+  self.filter.timeout = self.view:visible() and THROTTLE_TIME or 0
 
-    local ignore = false
-    ignore = ignore or not api.is_suitable_mode()
-    if ignore then
-      return
+  -- Check invalid condition.
+  local ignore = false
+  ignore = ignore or not api.is_suitable_mode()
+  if ignore then
+    return
+  end
+
+  -- Check fetching sources.
+  local sources = {}
+  for _, s in ipairs(self:get_sources({ source.SourceStatus.FETCHING, source.SourceStatus.COMPLETED })) do
+    if not s.incomplete and SOURCE_TIMEOUT > s:get_fetching_time() then
+      -- Reserve filter call for timeout.
+      self.filter.timeout = SOURCE_TIMEOUT - s:get_fetching_time()
+      self:filter()
+      break
     end
+    table.insert(sources, s)
+  end
 
-    local sources = {}
-    for _, s in ipairs(self:get_sources({ source.SourceStatus.FETCHING, source.SourceStatus.COMPLETED })) do
-      if not s.incomplete and SOURCE_TIMEOUT > s:get_fetching_time() then
-        -- Reserve filter call for timeout.
-        self.filter.timeout = SOURCE_TIMEOUT - s:get_fetching_time()
-        self:filter()
-        break
-      end
-      table.insert(sources, s)
+  local ctx = self:get_context()
+
+  -- Display completion results.
+  self.view:open(ctx, sources)
+
+  -- Check onetime config.
+  if #self:get_sources(function(s)
+    if s.status == source.SourceStatus.FETCHING then
+      return true
+    elseif #s:get_entries(ctx) > 0 then
+      return true
     end
-
-    local ctx = self:get_context()
-
-    -- Display completion results.
-    self.view:open(ctx, sources)
-
-    -- Check onetime config.
-    if #self:get_sources(function(s)
-      if s.status == source.SourceStatus.FETCHING then
-        return true
-      elseif #s:get_entries(ctx) > 0 then
-        return true
-      end
-      return false
-    end) == 0 then
-      config.set_onetime({})
-    end
-  end),
-  THROTTLE_TIME
-)
+    return false
+  end) == 0 then
+    config.set_onetime({})
+  end
+end, THROTTLE_TIME)
 
 ---Confirm completion.
 ---@param e cmp.Entry
@@ -318,7 +357,7 @@ core.confirm = function(self, e, option, callback)
   -- Close menus.
   self.view:close()
 
-  feedkeys.call(keymap.t('<Cmd>set indentkeys=<CR>'), 'n')
+  feedkeys.call(keymap.indentkeys(), 'n')
   feedkeys.call('', 'n', function()
     local ctx = context.new()
     local keys = {}
@@ -424,12 +463,13 @@ core.confirm = function(self, e, option, callback)
       feedkeys.call(table.concat(keys, ''), 'int')
     end
   end)
-  feedkeys.call(keymap.t('<Cmd>set indentkeys=%s<CR>'):format(vim.fn.escape(vim.bo.indentkeys, ' "|\\')), 'n')
+  feedkeys.call(keymap.indentkeys(vim.bo.indentkeys), 'n')
   feedkeys.call('', 'n', function()
     e:execute(vim.schedule_wrap(function()
       release()
       self.event:emit('confirm_done', {
         entry = e,
+        commit_character = option.commit_character,
       })
       if callback then
         callback()

@@ -48,7 +48,7 @@ The recommendation configurations are the below.
 
 NOTE:
   1. You must setup `snippet.expand` function.
-  2. The `cmp.setup.cmdline` won't work if you specified the `experimental.native_menu` option.
+  2. The `cmp.setup.cmdline` won't work if you are using `native` completion menu. 
   3. You can disable the `default` options via specifying `cmp.config.disable` value.
 >
   call plug#begin(s:plug_dir)
@@ -148,6 +148,9 @@ NOTE: You can call these functions in mapping via `<Cmd>lua require('cmp').compl
 *cmp.setup* (config: cmp.ConfigSchema)
   Setup global configuration. See configuration option.
 
+*cmp.setup.filetype* (filetype: string, config: cmp.ConfigSchema)
+  Setup filetype configuration to the specific filetype.
+
 *cmp.setup.buffer* (config: cmp.ConfigSchema)
   Setup buffer configuration to the current buffer.
 
@@ -201,6 +204,20 @@ NOTE: You can call these functions in mapping via `<Cmd>lua require('cmp').compl
 <
   NOTE: The `config` means a temporary setting, but the `config.mapping` remains permanent.
 
+*cmp.complete_common_string* ()
+  Complete common string as like as shell completion behavior.
+>
+  cmp.setup {
+    mapping = {
+      ['<C-l>'] = cmp.mapping(function(fallback)
+        if cmp.visible() then
+          return cmp.complete_common_string()
+        end
+        fallback()
+      end, { 'i', 'c' }),
+    }
+  }
+<
 *cmp.confirm* (option: cmp.ConfirmOption, callback: function)
   Accept current selected completion item.
   If you didn't select any items and specified the `{ select = true }` for
@@ -275,6 +292,9 @@ You can also use built-in mapping helpers.
 
   *cmp.mapping.complete* (option: cmp.CompleteParams)
     Same as |cmp.complete|
+
+  *cmp.mapping.complete_common_string* ()
+    Same as |cmp.complete_common_string|
 
   *cmp.mapping.confirm* (option: cmp.ConfirmOption)
     Same as |cmp.confirm|
@@ -380,17 +400,39 @@ completion.autocomplete~
   nvim-cmp does not completion automatically but you can still use the manual
   completion though.
 
-                                                  *cmp-config.formatting.format*
-formatting.format~
-  `fun(entry: cmp.Entry, vim_item: vim.CompletedItem): vim.CompletedItem`
-  The function to customize the completion menu appearance. See |complete-items|.
-  NOTE: The `vim.CompletedItem` can have special properties `abbr_hl_group`,
-  `kind_hl_group` and `menu_hl_group`.
+                                             *cmp-config.completion.completeopt*
+completion.completeopt~
+  `string`
+  The vim's completeopt like setting. See 'completeopt'.
+  Besically, You don't need to modify this.
 
                                                   *cmp-config.formatting.fields*
 formatting.fields~
   `cmp.ItemField[]`
   The array of completion menu field to specify the order of them.
+
+                                                  *cmp-config.formatting.format*
+formatting.format~
+  `fun(entry: cmp.Entry, vim_item: vim.CompletedItem): vim.CompletedItem`
+  The function to customize the completion menu appearance. See |complete-items|.
+  This value also can be used to modify `dup` property. 
+  NOTE: The `vim.CompletedItem` can have special properties `abbr_hl_group`,
+  `kind_hl_group` and `menu_hl_group`.
+
+                                   *cmp-config.matching.disallow_fuzzy_matching*
+matching.disallow_fuzzy_matching~
+  `boolean`
+  Specify disallow or allow fuzzy matching.
+
+                                 *cmp-config.matching.disallow_partial_matching*
+matching.disallow_partial_matching~
+  `boolean`
+  Specify disallow or allow partial matching.
+
+                                *cmp-config.matching.disallow_prefix_unmatching*
+matching.disallow_prefix_unmatching~
+  `boolean`
+  Specify disallow or allow prefix unmatching.
 
                                             *cmp-config.sorting.priority_weight*
 sorting.priority_weight~
@@ -473,15 +515,16 @@ sources[n].group_index~
       })
     }
 <
+                                                               *cmp-config.view*
+view~
+  `{ entries: cmp.EntriesConfig|string }`
+  Specify the view class to customize appearance.
+  Currently, the possible configurations are:
+
                                             *cmp-config.experimental.ghost_text*
 experimental.ghost_text~
   `boolean | { hl_group = string }`
   The boolean value to enable or disable the ghost_text feature.
-
-                                           *cmp-config.experimental.native_menu*
-experimental.native_menu~
-  `boolean`
-  The boolean value to enable or disable the native completion menu.
 
 
 
@@ -572,7 +615,7 @@ FAQ                                                                    *cmp-faq*
 How to disable auto-completion?~
 How to use nvim-cmp as like omnifunc?~
 
-You can disable auto-completion like this.
+  You can disable auto-completion like this.
 >
   cmp.setup {
     ...
@@ -582,7 +625,7 @@ You can disable auto-completion like this.
     ...
   }
 <
-And you can invoke completion manually.
+  And you can invoke completion manually.
 >
   inoremap <C-x><C-o> <Cmd>lua require('cmp').complete()<CR>
 <
@@ -590,19 +633,44 @@ And you can invoke completion manually.
 How to disable nvim-cmp on the specific buffer?~
 How to setup on the specific buffer?~
 
-You can setup buffer specific configuration like this.
+  You can setup buffer specific configuration like this.
 >
-  autocmd FileType markdown * lua require('cmp').setup.buffer {
-  \   sources = {
-  \     { name = 'path' },
-  \     { name = 'buffer' },
-  \   }
-  \ }
+  cmp.setup.filetype({ 'markdown', 'help' }, {
+    sources = {
+      { name = 'path' },
+      { name = 'buffer' },
+    }
+  })
 <
+
+How to integrate with copilot.vim?~
+
+  The copilot.vim and nvim-cmp both have a `key-mapping fallback` mechanism.
+  Therefore, You should manage those plugins by yourself.
+
+  Fortunately, the copilot.vim has the feature that disables the fallback mechanism.
+>
+  let g:copilot_no_tab_map = v:true
+  imap <expr> <Plug>(vimrc:copilot-dummy-map) copilot#Accept("\<Tab>")
+<
+  You can manage copilot.vim's accept feature with nvim-cmp' key-mapping configuration. 
+>
+  cmp.setup {
+    mapping = {
+      ['<C-g>'] = cmp.mapping(function(fallback)
+        vim.api.nvim_feedkeys(vim.fn['copilot#Accept'](vim.api.nvim_replace_termcodes('<Tab>', true, true, true)), 'n', true)
+      end)
+    },
+    experimental = {
+      ghost_text = false -- this feature conflict to the copilot.vim's preview.
+    }
+  }
+<
+
 
 How to customize menu appearance?~
 
-You can see the nvim-cmp wiki (https://github.com/hrsh7th/nvim-cmp/wiki).
+  You can see the nvim-cmp wiki (https://github.com/hrsh7th/nvim-cmp/wiki).
 
 
 
