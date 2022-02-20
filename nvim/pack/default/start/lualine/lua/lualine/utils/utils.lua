@@ -170,4 +170,14 @@ function M.retry_call_wrap(fn, times)
   end
 end
 
+---Escape % in str so it doesn't get picked as stl item.
+---@param str string
+---@return string
+function M.stl_escape(str)
+  if type(str) ~= 'string' then
+    return str
+  end
+  return str:gsub('%%', '%%%%')
+end
+
 return M

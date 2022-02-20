@@ -17,10 +17,14 @@ TreeExplorer = nil
 function M.init(with_open, foldername)
   TreeExplorer = explorer.Explorer.new(foldername)
   TreeExplorer:init(function()
-    renderer.draw()
     if with_open then
-      M.open()
+      if M.hijack_unnamed_buffer_when_opening then
+        view.open_in_current_win()
+      else
+        view.open()
+      end
     end
+    renderer.draw()
 
     if not first_init_done then
       events._dispatch_ready()
@@ -103,24 +107,34 @@ function M.set_target_win()
   M.target_winid = id
 end
 
-function M.open()
-  M.set_target_win()
-
-  local cwd = vim.fn.getcwd()
-  if view.View.bufnr == nil then
-    vim.schedule(function ()
-      M.open()
-    end)
-    return
-  end
-  local should_redraw = view.open()
-
+local function handle_buf_cwd(cwd)
   local respect_buf_cwd = vim.g.nvim_tree_respect_buf_cwd or 0
   if respect_buf_cwd == 1 and cwd ~= TreeExplorer.cwd then
     require'nvim-tree.actions.change-dir'.fn(cwd)
   end
-  if should_redraw then
+end
+
+local function open_view_and_draw()
+  local cwd = vim.fn.getcwd()
+  view.open()
+  handle_buf_cwd(cwd)
+  renderer.draw()
+end
+
+function M.open(cwd)
+  M.set_target_win()
+  if not TreeExplorer or cwd then
+    M.init(false, cwd or vim.loop.cwd())
+  end
+  local bufnr = api.nvim_get_current_buf()
+  if M.hijack_unnamed_buffer_when_opening
+    and api.nvim_buf_get_name(bufnr) == ""
+    and not api.nvim_buf_get_option(bufnr, "modified")
+    and api.nvim_buf_get_option(bufnr, "ft") == "" then
+    view.open_in_current_win()
     renderer.draw()
+  else
+    open_view_and_draw()
   end
 end
 
@@ -136,5 +150,9 @@ M.refresh_tree = require'nvim-tree.actions.reloaders'.reload_explorer
 M.reload_git = require'nvim-tree.actions.reloaders'.reload_git
 -- @deprecated: use nvim-tree.actions.find-file.fn
 M.set_index_and_redraw = require'nvim-tree.actions.find-file'.fn
+
+function M.setup(opts)
+  M.hijack_unnamed_buffer_when_opening = opts.hijack_unnamed_buffer_when_opening
+end
 
 return M

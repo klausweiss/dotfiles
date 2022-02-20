@@ -52,6 +52,7 @@ that config. This file is accessible in neovim via `:help lspconfig-server-confi
 - [graphql](#graphql)
 - [groovyls](#groovyls)
 - [haxe_language_server](#haxe_language_server)
+- [hdl_checker](#hdl_checker)
 - [hie](#hie)
 - [hls](#hls)
 - [html](#html)
@@ -103,6 +104,7 @@ that config. This file is accessible in neovim via `:help lspconfig-server-confi
 - [scry](#scry)
 - [serve_d](#serve_d)
 - [sixtyfps](#sixtyfps)
+- [slint_lsp](#slint_lsp)
 - [solang](#solang)
 - [solargraph](#solargraph)
 - [solc](#solc)
@@ -238,7 +240,7 @@ require'lspconfig'.ansiblels.setup{}
   
   Default Values:
     cmd = { "ansible-language-server", "--stdio" }
-    filetypes = { "yaml", "yaml.ansible" }
+    filetypes = { "yaml.ansible" }
     root_dir = function(startpath)
         return M.search_ancestors(startpath, matcher)
       end
@@ -2113,6 +2115,7 @@ require'lspconfig'.gopls.setup{}
     cmd = { "gopls" }
     filetypes = { "go", "gomod", "gotmpl" }
     root_dir = root_pattern("go.mod", ".git")
+    single_file_support = true
 ```
 
 
@@ -2267,6 +2270,31 @@ require'lspconfig'.haxe_language_server.setup{}
         executable = "haxe"
       }
     }
+```
+
+
+## hdl_checker
+
+https://github.com/suoto/hdl_checker
+Language server for hdl-checker.
+Install using: `pip install hdl-checker --upgrade`
+
+
+
+**Snippet to enable the language server:**
+```lua
+require'lspconfig'.hdl_checker.setup{}
+```
+
+**Commands and default values:**
+```lua
+  Commands:
+  
+  Default Values:
+    cmd = { "hdl_checker", "--lsp" }
+    filetypes = { "vhdl", "verilog", "systemverilog" }
+    root_dir = util.find_git_ancestor
+    single_file_support = true
 ```
 
 
@@ -2932,8 +2960,6 @@ This server accepts configuration via the `settings` key.
 
 - **`java.configuration.checkProjectSettingsExclusions`**: `boolean`
 
-  Default: `true`
-  
   Controls whether to exclude extension\-generated project settings files \(\.project\, \.classpath\, \.factorypath\, \.settings\/\) from the file explorer\.
 
 - **`java.configuration.maven.globalSettings`**: `string`
@@ -3437,9 +3463,14 @@ require'lspconfig'.jsonls.setup{}
 
 ## jsonnet_ls
 
-https://github.com/jdbaldry/jsonnet-language-server
+https://github.com/grafana/jsonnet-language-server
 
 A Language Server Protocol (LSP) server for Jsonnet.
+
+The language server can be installed with `go`:
+```sh
+go install github.com/grafana/jsonnet-language-server@latest
+```
 
 
 
@@ -3489,11 +3520,11 @@ julia --project=/path/to/my/project -e 'using Pkg; Pkg.instantiate()'
 This server accepts configuration via the `settings` key.
 <details><summary>Available settings:</summary>
 
-- **`julia.NumThreads`**: `integer|null`
+- **`julia.NumThreads`**: `integer|string|null`
 
   Default: `vim.NIL`
   
-  Number of threads to use for Julia processes\.
+  null
 
 - **`julia.additionalArgs`**: `array`
 
@@ -3686,6 +3717,12 @@ This server accepts configuration via the `settings` key.
   Default: `"julia_vscode"`
   
   null
+
+- **`julia.persistentSession.warnOnKill`**: `boolean`
+
+  Default: `true`
+  
+  Warn when stopping a persistent session\.
 
 - **`julia.plots.path`**: `string`
 
@@ -3969,19 +4006,26 @@ require'lspconfig'.leanls.setup{}
     cmd = { "lake", "serve", "--" }
     filetypes = { "lean" }
     on_new_config = function(_, d, _)
-              lake_version = table.concat(d, '\n')
-            end,
-            stdout_buffered = true,
-          })
-          if lake_job > 0 and vim.fn.jobwait({ lake_job })[1] == 0 then
-            local major = lake_version:match 'Lake version (%d).'
-            if major and tonumber(major) < 3 then
-              config.cmd = legacy_cmd
+                lake_version = table.concat(d, '\n')
+              end,
+              stdout_buffered = true,
+            })
+            if lake_job > 0 and vim.fn.jobwait({ lake_job })[1] == 0 then
+              local major = lake_version:match 'Lake version (%d).'
+              if major and tonumber(major) >= 3 then
+                use_lake_serve = true
+              end
             end
+          end
+          if not use_lake_serve then
+            config.cmd = config.options.no_lake_lsp_cmd
           end
           -- add root dir as command-line argument for `ps aux`
           table.insert(config.cmd, root_dir)
         end,
+    options = {
+      no_lake_lsp_cmd = { "lean", "--server" }
+    }
     root_dir = root_pattern("lakefile.lean", "lean-toolchain", "leanpkg.toml", ".git")
     single_file_support = true
 ```
@@ -6719,6 +6763,42 @@ require'lspconfig'.sixtyfps.setup{}
   Default Values:
     cmd = { "sixtyfps-lsp" }
     filetypes = { "sixtyfps" }
+    single_file_support = true
+```
+
+
+## slint_lsp
+
+https://github.com/slint-ui/slint
+`Slint`'s language server
+
+You can build and install `slint-lsp` binary with `cargo`:
+```sh
+cargo install slint-lsp
+```
+
+Vim does not have built-in syntax for the `slint` filetype at this time.
+
+This can be added via an autocmd:
+
+```lua
+vim.cmd [[ autocmd BufRead,BufNewFile *.slint set filetype=slint ]]
+```
+
+
+
+**Snippet to enable the language server:**
+```lua
+require'lspconfig'.slint_lsp.setup{}
+```
+
+**Commands and default values:**
+```lua
+  Commands:
+  
+  Default Values:
+    cmd = { "slint-lsp" }
+    filetypes = { "slint" }
     single_file_support = true
 ```
 

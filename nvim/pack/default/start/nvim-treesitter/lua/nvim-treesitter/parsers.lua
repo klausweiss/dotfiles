@@ -323,7 +323,16 @@ list.elixir = {
     files = { "src/parser.c", "src/scanner.cc" },
     branch = "main",
   },
-  maintainers = { "@jonatanklosko" },
+  maintainers = { "@jonatanklosko", "@connorlay" },
+}
+
+list.gleam = {
+  install_info = {
+    url = "https://github.com/J3RN/tree-sitter-gleam",
+    files = { "src/parser.c" },
+    branch = "main",
+  },
+  maintainers = { "@connorlay" },
 }
 
 list.surface = {

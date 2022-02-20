@@ -179,6 +179,12 @@ telescope.setup({opts})                                    *telescope.setup()*
 
         Default: 0
 
+                                          *telescope.defaults.wrap_results*
+    wrap_results: ~
+        Word wrap the search results
+
+        Default: false
+
                                          *telescope.defaults.prompt_prefix*
     prompt_prefix: ~
         The character(s) that will be shown in front of Telescope's prompt.
@@ -1311,9 +1317,6 @@ builtin.lsp_references({opts})                      *builtin.lsp_references()*
     Parameters: ~
         {opts} (table)  options to pass to the picker
 
-    Options: ~
-        {timeout} (number)  timeout for the sync call (default: 10000)
-
 
 builtin.lsp_definitions({opts})                    *builtin.lsp_definitions()*
     Goto the definition of the word under the cursor, if there's only one,
@@ -1324,8 +1327,6 @@ builtin.lsp_definitions({opts})                    *builtin.lsp_definitions()*
         {opts} (table)  options to pass to the picker
 
     Options: ~
-        {timeout}         (number)   timeout for the sync call (default:
-                                     10000)
         {jump_type}       (string)   how to goto definition if there is only
                                      one, values: "tab", "split", "vsplit",
                                      "never"
@@ -1341,8 +1342,6 @@ builtin.lsp_type_definitions({opts})          *builtin.lsp_type_definitions()*
         {opts} (table)  options to pass to the picker
 
     Options: ~
-        {timeout}         (number)   timeout for the sync call (default:
-                                     10000)
         {jump_type}       (string)   how to goto definition if there is only
                                      one, values: "tab", "split", "vsplit",
                                      "never"
@@ -1358,8 +1357,6 @@ builtin.lsp_implementations({opts})            *builtin.lsp_implementations()*
         {opts} (table)  options to pass to the picker
 
     Options: ~
-        {timeout}         (number)   timeout for the sync call (default:
-                                     10000)
         {jump_type}       (string)   how to goto implementation if there is
                                      only one, values: "tab", "split",
                                      "vsplit", "never"
@@ -1404,8 +1401,6 @@ builtin.lsp_document_symbols({opts})          *builtin.lsp_document_symbols()*
         {opts} (table)  options to pass to the picker
 
     Options: ~
-        {timeout}           (number)        timeout for the sync call
-                                            (default: 10000)
         {ignore_filename}   (boolean)       dont show filenames (default:
                                             true)
         {show_line}         (boolean)       if true, shows the content of the
@@ -1429,8 +1424,6 @@ builtin.lsp_workspace_symbols({opts})        *builtin.lsp_workspace_symbols()*
     Options: ~
         {query}             (string)        for what to query the workspace
                                             (default: "")
-        {timeout}           (number)        timeout for the sync call
-                                            (default: 10000)
         {ignore_filename}   (boolean)       dont show filenames (default:
                                             false)
         {show_line}         (boolean)       if true, shows the content of the

@@ -23,7 +23,7 @@ COMMANDS                                           *nvim-tree-commands*
 
 |:NvimTreeOpen| 	                                  *:NvimTreeOpen*
 
-opens the tree
+opens the tree. Takes an optional path argument.
 
 |:NvimTreeClose| 	                          *:NvimTreeClose*
 
@@ -71,11 +71,11 @@ function.
 
 >
     require'nvim-tree'.setup {
-      disable_netrw        = true,
+      disable_netrw        = false,
       hijack_netrw         = true,
       open_on_setup        = false,
       ignore_ft_on_setup   = {},
-      update_to_buf_dir    = {
+      hijack_directories   = {
         enable = true,
         auto_open = true,
       },
@@ -84,6 +84,7 @@ function.
       open_on_tab          = false,
       hijack_cursor        = false,
       update_cwd           = false,
+      hijack_unnamed_buffer_when_opening = false,
       diagnostics          = {
         enable = false,
         show_on_dirs = false,
@@ -147,7 +148,7 @@ Here is a list of the options available in the setup call:
 *nvim-tree.disable_netrw*
 - |disable_netrw|: completely disable netrw
   type: `boolean`
-  default: `true`
+  default: `false`
 
 *nvim-tree.hijack_netrw*
 - |hijack_netrw|: hijack netrw windows (overriden if |disable_netrw| is `true`)
@@ -183,16 +184,22 @@ Here is a list of the options available in the setup call:
   type: `boolean`
   default: `false`
 
-*nvim-tree.update_to_buf_dir*
-- |update_to_buf_dir|: hijacks new directory buffers when they are opened (`:e dir`).
+*nvim-tree.hijack_unnamed_buffer_when_opening*
+- |hijack_unnamed_buffer_when_opening|: opens in place of the unnamed
+  buffer if it's empty.
+  type: `boolean`
+  default: `false`
 
-  - |update_to_buf_dir.enable|: enable the feature. Disable this option if you
+*nvim-tree.hijack_directories*
+- |hijack_directories|: hijacks new directory buffers when they are opened (`:e dir`).
+
+  - |hijack_directories.enable|: enable the feature. Disable this option if you
     use vim-dirvish or dirbuf.nvim. If |hijack_netrw| and |disable_netrw| are
     `false`, this feature will be disabled.
     type: `boolean`
     default: `true`
 
-  - |update_to_buf_dir.auto_open|: opens the tree if the tree was previously closed.
+  - |hijack_directories.auto_open|: opens the tree if the tree was previously closed.
     type: `boolean`
     default: `true`
 
@@ -634,7 +641,7 @@ Defaults to:
 The `list` option in `view.mappings.list` is a table of
 
 - key can be either a string or a table of string (lhs)
-- action is the name of the action
+- action is the name of the action, set to `""` to remove default action
 - action_cb is the function that will be called, it receives the node as a parameter. Optional for default actions
 - mode is normal by default
 >
@@ -649,6 +656,7 @@ The `list` option in `view.mappings.list` is a table of
       { key = {"<CR>", "o" }, action = "edit", mode = "n"},
       { key = "p", action = "print_path", action_cb = print_node_path },
       { key = "s", cb = tree_cb("vsplit") }, --tree_cb and the cb property are deprecated
+      { key = "<2-RightMouse>", action = "" }, -- will remove default cd action
     }
 
 

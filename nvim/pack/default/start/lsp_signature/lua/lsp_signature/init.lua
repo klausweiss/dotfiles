@@ -254,7 +254,14 @@ local signature_handler = helper.mk_handler(function(err, result, ctx, config)
   local lines = {}
   local off_y = 0
   local ft = vim.api.nvim_buf_get_option(bufnr, "ft")
+
   ft = helper.ft2md(ft)
+  -- handles multiple file type, we should just take the first filetype
+  -- find the first file type and substring until the .
+  local dot_index = string.find(ft, ".")
+  if dot_index ~= nil then
+      ft = string.sub(ft, 0, dot_index)
+  end
 
   lines = vim.lsp.util.convert_signature_help_to_markdown_lines(result, ft)
 
@@ -614,6 +621,17 @@ M.deprecated = function(cfg)
     print("decorator deprecated, use hi_parameter instead")
   end
 end
+local function cleanup_logs(cfg)
+  local log_path = cfg.log_path or _LSP_SIG_CFG.log_path or nil
+  local fp = io.open(log_path, "r")
+  if fp then
+    local size = fp:seek("end")
+    fp:close()
+    if size > 1234567 then
+      os.remove(log_path)
+    end
+  end
+end
 
 M.on_attach = function(cfg, bufnr)
   bufnr = bufnr or 0
@@ -630,6 +648,7 @@ M.on_attach = function(cfg, bufnr)
 
   if type(cfg) == "table" then
     _LSP_SIG_CFG = vim.tbl_extend("keep", cfg, _LSP_SIG_CFG)
+    cleanup_logs(cfg)
     log(_LSP_SIG_CFG)
   end
 

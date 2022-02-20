@@ -27,6 +27,10 @@
 (class_constant_access_expression
   . [(name) (qualified_name)] @type
   (name) @constant)
+(trait_declaration
+  name: (name) @type)
+(use_declaration
+    (name) @type)
 
 ; Functions, methods, constructors
 
