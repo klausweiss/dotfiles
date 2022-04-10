@@ -268,8 +268,8 @@ local on_attach = function(client, bufnr)
   buf_set_keymap("n", "<leader>lf", "<cmd>lua vim.lsp.buf.formatting()<CR>", opts)
   buf_set_keymap('n', '[d', '<cmd>lua vim.diagnostic.goto_prev()<CR>', opts)
   buf_set_keymap('n', ']d', '<cmd>lua vim.diagnostic.goto_next()<CR>', opts)
-  buf_set_keymap('', '<F2>', '<cmd>lua vim.diagnostic.goto_prev()<CR>', opts)
-  buf_set_keymap('', '<S-F2>', '<cmd>lua vim.diagnostic.goto_next()<CR>', opts)
+  buf_set_keymap('', '<F2>', '<cmd>lua vim.diagnostic.goto_next()<CR>', opts)
+  buf_set_keymap('', '<S-F2>', '<cmd>lua vim.diagnostic.goto_prev()<CR>', opts)
   buf_set_keymap('', '<F3>', '<cmd>SymbolsOutline<CR>', opts)
 
   -- lsp signature
