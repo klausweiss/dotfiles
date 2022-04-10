@@ -1,6 +1,5 @@
 local server = require "nvim-lsp-installer.server"
-local process = require "nvim-lsp-installer.process"
-local context = require "nvim-lsp-installer.installers.context"
+local path = require "nvim-lsp-installer.path"
 
 return function(name, root_dir)
     local function create_install_script(install_dir)
@@ -8,15 +7,31 @@ return function(name, root_dir)
 options(langserver_library = %q);
 options(repos = list(CRAN = "http://cran.rstudio.com/"));
 rlsLib <- getOption("langserver_library");
-install.packages("languageserversetup", lib = rlsLib);
-loadNamespace("languageserversetup", lib.loc = rlsLib);
 
+didInstallRemotes <- FALSE;
+tryCatch(
+  expr = { library("remotes") },
+  error = function (e) {
+    install.packages("remotes", lib = rlsLib);
+    loadNamespace("remotes", lib.loc = rlsLib);
+    didInstallRemotes <- TRUE;
+  }
+);
+
+remotes::install_github("jozefhajnala/languageserversetup", lib = rlsLib);
+
+if (didInstallRemotes) {
+    remove.packages("remotes", lib = rlsLib);
+}
+
+loadNamespace("languageserversetup", lib.loc = rlsLib);
 languageserversetup::languageserver_install(
     fullReinstall = TRUE,
     confirmBeforeInstall = FALSE,
     strictLibrary = TRUE
 );
-]]):format(install_dir, install_dir, install_dir)
+library("languageserver", lib.loc = rlsLib);
+]]):format(install_dir)
     end
 
     local server_script = ([[
@@ -32,20 +47,22 @@ languageserver::run();
         root_dir = root_dir,
         homepage = "https://github.com/REditorSupport/languageserver",
         languages = { "R" },
-        installer = {
-            function(_, callback, ctx)
-                process.spawn("R", {
-                    cwd = ctx.install_dir,
-                    args = { "-e", create_install_script(ctx.install_dir) },
-                    stdio_sink = ctx.stdio_sink,
-                }, callback)
-            end,
-            context.receipt(function(receipt)
-                receipt:with_primary_source(receipt.r_package "languageserver")
-            end),
-        },
+        async = true,
+        ---@param ctx InstallContext
+        installer = function(ctx)
+            ctx.spawn.R {
+                "--no-save",
+                on_spawn = function(_, stdio)
+                    local stdin = stdio[1]
+                    stdin:write(create_install_script(ctx.cwd:get()))
+                    stdin:close()
+                end,
+            }
+            ctx.fs:write_file("server.R", server_script)
+            ctx.receipt:with_primary_source(ctx.receipt.r_package "languageserver")
+        end,
         default_options = {
-            cmd = { "R", "--slave", "-e", server_script },
+            cmd = { "R", "--slave", "-f", path.concat { root_dir, "server.R" } },
         },
     }
 end

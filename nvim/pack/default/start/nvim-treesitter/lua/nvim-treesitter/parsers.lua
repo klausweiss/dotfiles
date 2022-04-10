@@ -15,6 +15,8 @@ local filetype_to_parsername = {
   cls = "latex",
   sty = "latex",
   OpenFOAM = "foam",
+  pandoc = "markdown",
+  rmd = "markdown",
 }
 
 local list = setmetatable({}, {
@@ -47,6 +49,15 @@ list.javascript = {
     files = { "src/parser.c", "src/scanner.c" },
   },
   maintainers = { "@steelsojka" },
+}
+
+list.rego = {
+  install_info = {
+    url = "https://github.com/FallenAngel97/tree-sitter-rego",
+    files = { "src/parser.c" },
+  },
+  maintainers = { "@FallenAngel97" },
+  filetype = "rego",
 }
 
 list.c = {
@@ -411,6 +422,17 @@ list.c_sharp = {
   maintainers = { "@Luxed" },
 }
 
+list.todotxt = {
+  install_info = {
+    url = "https://github.com/arnarg/tree-sitter-todotxt.git",
+    files = { "src/parser.c" },
+    branch = "main",
+  },
+  filetype = "todotxt",
+  maintainers = { "@arnarg" },
+  experimental = true,
+}
+
 list.typescript = {
   install_info = {
     url = "https://github.com/tree-sitter/tree-sitter-typescript",
@@ -448,6 +470,16 @@ list.supercollider = {
   },
   maintainers = { "@madskjeldgaard" },
   filetype = "supercollider",
+}
+
+list.slint = {
+  install_info = {
+    url = "https://github.com/jrmoulton/tree-sitter-slint",
+    files = { "src/parser.c" },
+    branch = "main",
+  },
+  maintainers = { "@jrmoulton" },
+  experimental = true,
 }
 
 list.haskell = {
@@ -806,6 +838,16 @@ list.vim = {
   maintainers = { "@vigoux" },
 }
 
+list.help = {
+  install_info = {
+    url = "https://github.com/vigoux/tree-sitter-vimdoc",
+    files = { "src/parser.c", "src/scanner.c" },
+  },
+  filetype = "help",
+  maintainers = { "@vigoux" },
+  experimental = true,
+}
+
 list.json5 = {
   install_info = {
     url = "https://github.com/Joakker/tree-sitter-json5",
@@ -936,6 +978,42 @@ list.lalrpop = {
     files = { "src/parser.c", "src/scanner.c" },
   },
   maintainers = { "@traxys" },
+}
+
+list.solidity = {
+  install_info = {
+    url = "https://github.com/YongJieYongJie/tree-sitter-solidity",
+    branch = "with-generated-c-code",
+    files = { "src/parser.c" },
+  },
+  maintainers = { "@YongJieYongJie" },
+}
+
+list.cooklang = {
+  install_info = {
+    url = "https://github.com/addcninblue/tree-sitter-cooklang",
+    branch = "master",
+    files = { "src/parser.c", "src/scanner.cc" },
+  },
+  maintainers = { "@addcninblue" },
+}
+
+list.elvish = {
+  install_info = {
+    url = "https://github.com/ckafi/tree-sitter-elvish",
+    branch = "main",
+    files = { "src/parser.c" },
+  },
+  maintainers = { "@ckafi" },
+}
+
+list.astro = {
+  install_info = {
+    url = "https://github.com/virchau13/tree-sitter-astro",
+    branch = "master",
+    files = { "src/parser.c", "src/scanner.cc" },
+  },
+  maintainers = { "@virchau13" },
 }
 
 local M = {

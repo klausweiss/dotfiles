@@ -3,7 +3,7 @@ local cache = require("luasnip.loaders._caches").vscode
 local util = require("luasnip.util.util")
 local loader_util = require("luasnip.loaders.util")
 local Path = require("luasnip.util.path")
-local session = require("luasnip.session")
+local sp = require("luasnip.nodes.snippetProxy")
 
 local function json_decode(data)
 	local status, result = pcall(util.json_decode, data)
@@ -18,51 +18,45 @@ local function load_snippet_file(langs, snippet_set_path)
 	if not Path.exists(snippet_set_path) then
 		return
 	end
-	Path.async_read_file(
-		snippet_set_path,
-		vim.schedule_wrap(function(data)
-			local snippet_set_data = json_decode(data)
-			if snippet_set_data == nil then
-				return
-			end
+	local data = Path.read_file(snippet_set_path)
+	local snippet_set_data = json_decode(data)
+	if snippet_set_data == nil then
+		return
+	end
 
-			for _, lang in pairs(langs) do
-				local lang_snips = ls.snippets[lang] or {}
-				local auto_lang_snips = ls.autosnippets[lang] or {}
-				for name, parts in pairs(snippet_set_data) do
-					local body = type(parts.body) == "string" and parts.body
-						or table.concat(parts.body, "\n")
+	for _, lang in pairs(langs) do
+		local lang_snips = {}
+		local auto_lang_snips = {}
+		for name, parts in pairs(snippet_set_data) do
+			local body = type(parts.body) == "string" and parts.body
+				or table.concat(parts.body, "\n")
 
-					-- There are still some snippets that fail while loading
-					pcall(function()
-						-- Sometimes it's a list of prefixes instead of a single one
-						local prefixes = type(parts.prefix) == "table"
-								and parts.prefix
-							or { parts.prefix }
-						for _, prefix in ipairs(prefixes) do
-							local ls_conf = parts.luasnip or {}
+			-- There are still some snippets that fail while loading
+			pcall(function()
+				-- Sometimes it's a list of prefixes instead of a single one
+				local prefixes = type(parts.prefix) == "table" and parts.prefix
+					or { parts.prefix }
+				for _, prefix in ipairs(prefixes) do
+					local ls_conf = parts.luasnip or {}
 
-							local snip = ls.parser.parse_snippet({
-								trig = prefix,
-								name = name,
-								dscr = parts.description or name,
-								wordTrig = true,
-							}, body)
+					local snip = sp({
+						trig = prefix,
+						name = name,
+						dscr = parts.description or name,
+						wordTrig = true,
+					}, body)
 
-							if ls_conf.autotrigger then
-								table.insert(auto_lang_snips, snip)
-							else
-								table.insert(lang_snips, snip)
-							end
-						end
-					end)
+					if ls_conf.autotrigger then
+						table.insert(auto_lang_snips, snip)
+					else
+						table.insert(lang_snips, snip)
+					end
 				end
-				ls.snippets[lang] = lang_snips
-				ls.autosnippets[lang] = auto_lang_snips
-				ls.refresh_notify(lang)
-			end
-		end)
-	)
+			end)
+		end
+		ls.add_snippets(lang, lang_snips, { type = "snippets" })
+		ls.add_snippets(lang, auto_lang_snips, { type = "autosnippets" })
+	end
 end
 
 local function filter_list(list, exclude, include)
@@ -82,37 +76,30 @@ end
 
 local function load_snippet_folder(root, opts)
 	local package = Path.join(root, "package.json")
-	Path.async_read_file(
-		package,
-		vim.schedule_wrap(function(data)
-			local package_data = json_decode(data)
-			if
-				not (
-					package_data
-					and package_data.contributes
-					and package_data.contributes.snippets
-				)
-			then
-				return
-			end
+	local data = Path.read_file(package)
+	local package_data = json_decode(data)
+	if
+		not (
+			package_data
+			and package_data.contributes
+			and package_data.contributes.snippets
+		)
+	then
+		return
+	end
 
-			for _, snippet_entry in pairs(package_data.contributes.snippets) do
-				local langs = snippet_entry.language
+	for _, snippet_entry in pairs(package_data.contributes.snippets) do
+		local langs = snippet_entry.language
 
-				if type(snippet_entry.language) ~= "table" then
-					langs = { langs }
-				end
-				langs = filter_list(langs, opts.exclude, opts.include)
+		if type(snippet_entry.language) ~= "table" then
+			langs = { langs }
+		end
+		langs = filter_list(langs, opts.exclude, opts.include)
 
-				if #langs ~= 0 then
-					load_snippet_file(
-						langs,
-						Path.join(root, snippet_entry.path)
-					)
-				end
-			end
-		end)
-	)
+		if #langs ~= 0 then
+			load_snippet_file(langs, Path.join(root, snippet_entry.path))
+		end
+	end
 end
 
 local function get_snippet_rtp()

@@ -79,20 +79,10 @@ of the default settings:
 ==============================================================================
 MAPPINGS                                                   *gitsigns-mappings*
 
-All mappings are configurable via |gitsigns-setup()|.
+Custom mappings can be defined in the `on_attach` callback in the config table
+passed to |gitsigns-setup()|. See |gitsigns-config-on_attach|.
 
 Most actions can be repeated with `.` if you have |vim-repeat| installed.
-
-Buffer ~
-    ]c         Jump to the next hunk.
-    [c         Jump to the previous hunk.
-    <leader>hs Stage the hunk at the cursor position.
-    <leader>hu Undo the last stage hunk.
-    <leader>hr Reset the lines of the hunk to what is in Git's index.
-    <leader>hp Preview the hunk in a floating window.
-
-Custom mappings are defined using the `keymaps` table in the config table
-passed to |gitsigns-setup()|. See |gitsigns-config-keymaps|.
 
 ==============================================================================
 FUNCTIONS                                                 *gitsigns-functions*
@@ -191,6 +181,9 @@ setqflist({target}, {opts})                             *gitsigns.setqflist()*
 diffthis({base})                                         *gitsigns.diffthis()*
                 Perform a |vimdiff| on the given file with {base} if it is
                 given, or with the currently set base (index by default).
+
+                If {base} is the index, then the opened diff buffer is editable
+                and any written changes will update the index accordingly.
 
                 Examples: >
                   " Diff against the index
@@ -312,6 +305,9 @@ next_hunk({opts})                                       *gitsigns.next_hunk()*
                               Expand folds when navigating to a hunk which is
                               inside a fold. Defaults to `true` if 'foldopen'
                               contains `search`.
+                            • {preview}: (boolean)
+                              Automatically open preview_hunk() upon navigating
+                              to a hunk.
 
 reset_buffer_index()                           *gitsigns.reset_buffer_index()*
                 Unstage all hunks for current buffer in the index. Note:

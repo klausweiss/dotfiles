@@ -45,6 +45,15 @@ function M.buf_lines(bufnr)
    return buftext
 end
 
+function M.set_lines(bufnr, start_row, end_row, lines)
+   if vim.bo[bufnr].fileformat == 'dos' then
+      for i = 1, #lines do
+         lines[i] = lines[i]:gsub('\r$', '')
+      end
+   end
+   vim.api.nvim_buf_set_lines(bufnr, start_row, end_row, false, lines)
+end
+
 function M.tmpname()
    if is_unix then
       return os.tmpname()
@@ -89,5 +98,37 @@ function M.get_relative_time(timestamp)
       return to_relative_string(elapsed, year_seconds, 'year')
    end
 end
+
+function M.copy_array(x)
+   local r = {}
+   for i, e in ipairs(x) do
+      r[i] = e
+   end
+   return r
+end
+
+
+function M.strip_cr(xs0)
+   for i = 1, #xs0 do
+      if xs0[i]:sub(-1) ~= '\r' then
+
+         return xs0
+      end
+   end
+
+   local xs = vim.deepcopy(xs0)
+   for i = 1, #xs do
+      xs[i] = xs[i]:sub(1, -2)
+   end
+   return xs
+end
+
+function M.calc_base(base)
+   if base and base:sub(1, 1):match('[~\\^]') then
+      base = 'HEAD' .. base
+   end
+   return base
+end
+
 
 return M

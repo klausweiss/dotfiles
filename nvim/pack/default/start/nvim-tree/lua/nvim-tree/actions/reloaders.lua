@@ -2,14 +2,15 @@ local git = require "nvim-tree.git"
 local diagnostics = require "nvim-tree.diagnostics"
 local view = require "nvim-tree.view"
 local renderer = require "nvim-tree.renderer"
-local explorer_module = require'nvim-tree.explorer'
+local explorer_module = require "nvim-tree.explorer"
+local core = require "nvim-tree.core"
 
 local M = {}
 
 local function refresh_nodes(node, projects)
-  local cwd = node.absolute_path or node.cwd
+  local cwd = node.cwd or node.link_to or node.absolute_path
   local project_root = git.get_project_root(cwd)
-  explorer_module.reload(node, cwd, projects[project_root] or {})
+  explorer_module.reload(node, projects[project_root] or {})
   for _, _node in ipairs(node.nodes) do
     if _node.nodes and _node.open then
       refresh_nodes(_node, projects)
@@ -33,36 +34,31 @@ function M.reload_node_status(parent_node, projects)
 end
 
 local event_running = false
-function M.reload_explorer(callback)
-  if event_running or not TreeExplorer or not TreeExplorer.cwd or vim.v.exiting ~= vim.NIL then
+function M.reload_explorer()
+  if event_running or not core.get_explorer() or vim.v.exiting ~= vim.NIL then
     return
   end
   event_running = true
 
-  git.reload(function(projects)
-    refresh_nodes(TreeExplorer, projects)
-    if view.is_visible() then
-      renderer.draw()
-      if callback and type(callback) == 'function' then
-        callback()
-      end
-    end
-    diagnostics.update()
-    event_running = false
-  end)
+  local projects = git.reload()
+  refresh_nodes(core.get_explorer(), projects)
+  if view.is_visible() then
+    renderer.draw()
+  end
+  diagnostics.update()
+  event_running = false
 end
 
 function M.reload_git()
-  if not TreeExplorer or not git.config.enable or event_running then
+  if not core.get_explorer() or not git.config.enable or event_running then
     return
   end
   event_running = true
 
-  git.reload(function(projects)
-    M.reload_node_status(TreeExplorer, projects)
-    renderer.draw()
-    event_running = false
-  end)
+  local projects = git.reload()
+  M.reload_node_status(core.get_explorer(), projects)
+  renderer.draw()
+  event_running = false
 end
 
 return M

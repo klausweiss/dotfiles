@@ -1,13 +1,17 @@
 local dispatcher = require "nvim-lsp-installer.dispatcher"
+local a = require "nvim-lsp-installer.core.async"
+local InstallContext = require "nvim-lsp-installer.core.installer.context"
 local fs = require "nvim-lsp-installer.fs"
 local log = require "nvim-lsp-installer.log"
 local platform = require "nvim-lsp-installer.platform"
 local settings = require "nvim-lsp-installer.settings"
 local installers = require "nvim-lsp-installer.installers"
+local installer = require "nvim-lsp-installer.core.installer"
 local servers = require "nvim-lsp-installer.servers"
 local status_win = require "nvim-lsp-installer.ui.status-win"
 local path = require "nvim-lsp-installer.path"
 local receipt = require "nvim-lsp-installer.core.receipt"
+local Optional = require "nvim-lsp-installer.core.optional"
 
 local M = {}
 
@@ -24,6 +28,7 @@ M.get_server_root_path = servers.get_server_install_path
 ---@field public  deprecated ServerDeprecation|nil @The existence (not nil) of this field indicates this server is depracted.
 ---@field public  languages string[]
 ---@field private _installer ServerInstallerFunction
+---@field private _async boolean
 ---@field private _on_ready_handlers fun(server: Server)[]
 ---@field private _default_options table @The server's default options. This is used in @see Server#setup.
 M.Server = {}
@@ -37,9 +42,10 @@ function M.Server:new(opts)
         root_dir = opts.root_dir,
         homepage = opts.homepage,
         deprecated = opts.deprecated,
+        _async = opts.async or false,
         languages = opts.languages or {},
         _on_ready_handlers = {},
-        _installer = type(opts.installer) == "function" and opts.installer or installers.pipe(opts.installer),
+        _installer = opts.installer,
         _default_options = opts.default_options,
     }, M.Server)
 end
@@ -207,33 +213,43 @@ end
 ---@param context ServerInstallContext
 ---@param callback ServerInstallCallback
 function M.Server:install_attached(context, callback)
-    context.receipt = receipt.InstallReceiptBuilder.new()
-    context.receipt:with_start_time(vim.loop.gettimeofday())
-    local context_ok, context_err = pcall(self._setup_install_context, self, context)
-    if not context_ok then
-        log.error("Failed to setup installation context.", context_err)
-        callback(false)
-        return
-    end
-    local install_ok, install_err = pcall(
-        self._installer,
-        self,
-        vim.schedule_wrap(function(success)
-            if success then
-                if not self:promote_install_dir(context.install_dir) then
-                    context.stdio_sink.stderr(
-                        ("Failed to promote the temporary installation directory %q.\n"):format(context.install_dir)
-                    )
-                    pcall(fs.rmrf, self:get_tmp_install_dir())
-                    pcall(fs.rmrf, context.install_dir)
-                    callback(false)
-                    return
-                end
+    if self._async then
+        a.run(function()
+            local install_context = InstallContext.new {
+                name = self.name,
+                boundary_path = settings.current.install_root_dir,
+                stdio_sink = context.stdio_sink,
+                destination_dir = self.root_dir,
+                requested_version = Optional.of_nilable(context.requested_server_version),
+            }
+            installer.execute(install_context, self._installer):get_or_throw()
+            a.scheduler()
+            dispatcher.dispatch_server_ready(self)
+            for _, on_ready_handler in ipairs(self._on_ready_handlers) do
+                on_ready_handler(self)
+            end
+        end, callback)
+    else
+        --- Deprecated
+        a.run(
+            function()
+                context.receipt = receipt.InstallReceiptBuilder.new()
+                context.receipt:with_start_time(vim.loop.gettimeofday())
 
-                -- The tmp dir should in most cases have been "promoted" and already renamed to its final destination,
-                -- but we make sure to delete it should the installer modify the installation working directory during
-                -- installation.
-                pcall(fs.rmrf, self:get_tmp_install_dir())
+                a.scheduler()
+                self:_setup_install_context(context)
+                local async_installer = a.promisify(function(server, context, callback)
+                    local normalized_installer = type(self._installer) == "function" and self._installer
+                        or installers.pipe(self._installer)
+                    -- args are shifted
+                    return normalized_installer(server, callback, context)
+                end)
+                assert(async_installer(self, context), "Installation failed.")
+
+                a.scheduler()
+                if not self:promote_install_dir(context.install_dir) then
+                    error(("Failed to promote the temporary installation directory %q."):format(context.install_dir))
+                end
 
                 self:_write_receipt(context.receipt)
 
@@ -244,19 +260,20 @@ function M.Server:install_attached(context, callback)
                         on_ready_handler(self)
                     end
                 end)
-                callback(true)
-            else
+            end,
+            vim.schedule_wrap(function(ok, result)
+                if not ok then
+                    pcall(fs.rmrf, context.install_dir)
+                    log.fmt_error("Server installation failed, server_name=%s, error=%s", self.name, result)
+                    context.stdio_sink.stderr(tostring(result) .. "\n")
+                end
+                -- The tmp dir should in most cases have been "promoted" and already renamed to its final destination,
+                -- but we make sure to delete it should the installer modify the installation working directory during
+                -- installation.
                 pcall(fs.rmrf, self:get_tmp_install_dir())
-                pcall(fs.rmrf, context.install_dir)
-                callback(false)
-            end
-        end),
-        context
-    )
-    if not install_ok then
-        log.error("Installer raised an unexpected error.", install_err)
-        context.stdio_sink.stderr(tostring(install_err) .. "\n")
-        callback(false)
+                callback(ok)
+            end)
+        )
     end
 end
 

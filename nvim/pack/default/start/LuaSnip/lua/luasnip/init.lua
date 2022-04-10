@@ -1,6 +1,7 @@
 local snip_mod = require("luasnip.nodes.snippet")
 local util = require("luasnip.util.util")
 local session = require("luasnip.session")
+local snippet_collection = require("luasnip.session.snippet_collection")
 
 local next_expand = nil
 local next_expand_params = nil
@@ -21,21 +22,29 @@ end
 -- returns matching snippet (needs to be copied before usage!) and its expand-
 -- parameters(trigger and captures). params are returned here because there's
 -- no need to recalculate them.
-local function match_snippet(line, snippet_table)
-	local expand_params
-	local fts = util.get_snippet_filetypes()
+local function match_snippet(line, type)
+	return snippet_collection.match_snippet(
+		line,
+		util.get_snippet_filetypes(),
+		type
+	)
+end
 
-	-- search filetypes, then "all".
-	for _, ft in ipairs(fts) do
-		for _, snip in ipairs(snippet_table[ft] or {}) do
-			expand_params = snip:matches(line)
-			if expand_params then
-				-- return matching snippet and table with expand-parameters.
-				return snip, expand_params
-			end
-		end
-	end
-	return nil
+-- ft:
+-- * string: interpreted as filetype, return corresponding snippets.
+-- * nil: return snippets for all filetypes:
+-- {
+-- 	lua = {...},
+-- 	cpp = {...},
+-- 	...
+-- }
+-- opts: optional args, can contain `type`, either "snippets" or "autosnippets".
+--
+-- return table, may be empty.
+local function get_snippets(ft, opts)
+	opts = opts or {}
+
+	return snippet_collection.get_snippets(ft, opts.type or "snippets") or {}
 end
 
 local function get_context(snip)
@@ -53,24 +62,18 @@ local function available()
 	local res = {}
 	for _, ft in ipairs(fts) do
 		res[ft] = {}
-		for _, snippet_table in pairs({ ls.snippets, ls.autosnippets }) do
-			if snippet_table[ft] then
-				for _, snip in ipairs(snippet_table[ft]) do
-					table.insert(res[ft], get_context(snip))
-				end
+		for _, snip in ipairs(get_snippets(ft)) do
+			if not snip.invalidated then
+				table.insert(res[ft], get_context(snip))
+			end
+		end
+		for _, snip in ipairs(get_snippets(ft, { type = "autosnippets" })) do
+			if not snip.invalidated then
+				table.insert(res[ft], get_context(snip))
 			end
 		end
 	end
 	return res
-end
-
-local function no_region_check_wrap(fn, ...)
-	session.jump_active = true
-	-- will run on next tick, after autocommands (especially CursorMoved) for this are done.
-	vim.schedule(function()
-		session.jump_active = false
-	end)
-	return fn(...)
 end
 
 local function safe_jump(node, dir, no_move)
@@ -105,7 +108,7 @@ local function jump(dir)
 	local current = session.current_nodes[vim.api.nvim_get_current_buf()]
 	if current then
 		session.current_nodes[vim.api.nvim_get_current_buf()] =
-			no_region_check_wrap(
+			util.no_region_check_wrap(
 				safe_jump,
 				current,
 				dir
@@ -124,7 +127,7 @@ end
 local function expandable()
 	next_expand, next_expand_params = match_snippet(
 		util.get_current_line_to_cursor(),
-		ls.snippets
+		"snippets"
 	)
 	return next_expand ~= nil
 end
@@ -200,7 +203,7 @@ local function snip_expand(snippet, opts)
 	end
 
 	session.current_nodes[vim.api.nvim_get_current_buf()] =
-		no_region_check_wrap(
+		util.no_region_check_wrap(
 			snip.jump_into,
 			snip,
 			1
@@ -230,7 +233,7 @@ local function expand()
 	else
 		snip, expand_params = match_snippet(
 			util.get_current_line_to_cursor(),
-			ls.snippets
+			"snippets"
 		)
 	end
 	if snip then
@@ -255,7 +258,7 @@ end
 local function expand_auto()
 	local snip, expand_params = match_snippet(
 		util.get_current_line_to_cursor(),
-		ls.autosnippets
+		"autosnippets"
 	)
 	if snip then
 		local cursor = util.get_cursor_0ind()
@@ -302,7 +305,7 @@ end
 
 local function change_choice(val)
 	assert(session.active_choice_node, "No active choiceNode")
-	local new_active = no_region_check_wrap(
+	local new_active = util.no_region_check_wrap(
 		session.active_choice_node.change_choice,
 		session.active_choice_node,
 		val,
@@ -385,7 +388,8 @@ local function store_snippet_docstrings(snippet_table)
 	local cache_size = vim.loop.fs_fstat(docstring_cache_fd).size
 	local file_could_be_read, docstrings = pcall(
 		util.json_decode,
-		vim.loop.fs_read(docstring_cache_fd, cache_size)
+		-- offset 0.
+		vim.loop.fs_read(docstring_cache_fd, cache_size, 0)
 	)
 	docstrings = file_could_be_read and docstrings or {}
 
@@ -421,7 +425,8 @@ local function load_snippet_docstrings(snippet_table)
 	-- get size for fs_read()
 	local cache_size = vim.loop.fs_fstat(docstring_cache_fd).size
 	local docstrings = util.json_decode(
-		vim.loop.fs_read(docstring_cache_fd, cache_size)
+		-- offset 0.
+		vim.loop.fs_read(docstring_cache_fd, cache_size, 0)
 	)
 
 	for ft, snippets in pairs(snippet_table) do
@@ -521,14 +526,67 @@ end
 local function cleanup()
 	-- Use this to reload luasnip
 	vim.cmd([[doautocmd User LuasnipCleanup]])
+	-- clear all snippets.
+	snippet_collection.clear_snippets()
 end
 
 local function refresh_notify(ft)
-	vim.validate({
-		filetype = { ft, "string" },
-	})
-	session.latest_load_ft = ft
-	vim.cmd([[doautocmd User LuasnipSnippetsAdded]])
+	-- vim.validate({
+	-- 	filetype = { ft, { "string", "nil" } },
+	-- })
+
+	if not ft then
+		-- call refresh_notify for all filetypes that have snippets.
+		for ft_, _ in pairs(ls.snippets) do
+			refresh_notify(ft_)
+		end
+	else
+		session.latest_load_ft = ft
+		vim.cmd([[doautocmd User LuasnipSnippetsAdded]])
+	end
+end
+
+local function setup_snip_env()
+	setfenv(2, vim.tbl_extend("force", _G, session.config.snip_env))
+end
+
+local function get_id_snippet(id)
+	return snippet_collection.get_id_snippet(id)
+end
+
+local function add_snippets(ft, snippets, opts)
+	-- don't use yet, not available in some neovim-versions.
+	--
+	-- vim.validate({
+	-- 	filetype = { ft, { "string", "nil" } },
+	-- 	snippets = { snippets, "table" },
+	-- 	opts = { opts, { "table", "nil" } },
+	-- })
+
+	opts = opts or {}
+	opts.refresh_notify = opts.refresh_notify or true
+	-- alternatively, "autosnippets"
+	opts.type = opts.type or "snippets"
+
+	-- if ft is nil, snippets already has this format.
+	if ft then
+		snippets = {
+			[ft] = snippets,
+		}
+	end
+
+	snippet_collection.add_snippets(snippets, opts)
+
+	if opts.refresh_notify then
+		for ft_, _ in pairs(snippets) do
+			refresh_notify(ft_)
+		end
+	end
+end
+
+local function clean_invalidated(opts)
+	opts = opts or {}
+	snippet_collection.clean_invalidated(opts)
 end
 
 ls = {
@@ -556,6 +614,11 @@ ls = {
 	unlink_current_if_deleted = unlink_current_if_deleted,
 	filetype_extend = filetype_extend,
 	filetype_set = filetype_set,
+	add_snippets = add_snippets,
+	get_snippets = get_snippets,
+	get_id_snippet = get_id_snippet,
+	setup_snip_env = setup_snip_env,
+	clean_invalidated = clean_invalidated,
 	s = snip_mod.S,
 	sn = snip_mod.SN,
 	t = require("luasnip.nodes.textNode").T,
@@ -576,8 +639,6 @@ ls = {
 	restore_node = require("luasnip.nodes.restoreNode").R,
 	parser = require("luasnip.util.parser"),
 	config = require("luasnip.config"),
-	snippets = { all = {} },
-	autosnippets = { all = {} },
 	session = session,
 	cleanup = cleanup,
 	refresh_notify = refresh_notify,

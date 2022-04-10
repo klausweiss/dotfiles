@@ -98,6 +98,9 @@ By doing so, nvim-lsp-installer will make sure to inject any necessary propertie
 function for you. You may find a minimal example below. To see how you can override the default settings for a server,
 refer to the [Wiki][overriding-default-settings].
 
+Make sure you don't also set up your servers directly via lspconfig (e.g. `require("lspconfig").clangd.setup {}`), as
+this will cause servers to be set up twice!
+
 [overriding-default-settings]: https://github.com/williamboman/nvim-lsp-installer/wiki/Advanced-Configuration#overriding-the-default-lsp-server-options
 
 ```lua
@@ -175,6 +178,7 @@ lsp_installer.settings({
 | Cucumber                            | `cucumber_language_server` |
 | Dart                                | `dartls`                   |
 | Deno                                | `denols`                   |
+| Dhall                               | `dhall_lsp_server`         |
 | Diagnostic (general purpose server) | `diagnosticls`             |
 | Dlang                               | `serve_d`                  |
 | Docker                              | `dockerls`                 |
@@ -209,12 +213,15 @@ lsp_installer.settings({
 | LaTeX                               | `texlab`                   |
 | Lelwel                              | `lelwel_ls`                |
 | Lua                                 | `sumneko_lua`              |
+| Markdown                            | `prosemd_lsp`              |
 | Markdown                            | `remark_ls`                |
 | Markdown                            | `zeta_note`                |
 | Markdown                            | `zk`                       |
+| Metamath Zero                       | `mm0_ls`                   |
 | Nickel                              | `nickel_ls`                |
 | Nim                                 | `nimls`                    |
 | OCaml                               | `ocamlls`                  |
+| OCaml                               | `ocamllsp`                 |
 | Objective C                         | `ccls`                     |
 | OneScript, 1C:Enterprise            | `bsl_ls`                   |
 | OpenAPI                             | `spectral`                 |
@@ -222,15 +229,18 @@ lsp_installer.settings({
 | PHP                                 | `intelephense`             |
 | PHP                                 | `phpactor`                 |
 | PHP                                 | `psalm`                    |
+| Perl                                | `perlnavigator`            |
 | Powershell                          | `powershell_es`            |
 | Prisma                              | `prismals`                 |
 | Puppet                              | `puppet`                   |
 | PureScript                          | `purescriptls`             |
 | Python                              | `jedi_language_server`     |
 | Python                              | `pyright`                  |
+| Python                              | `sourcery`                 |
 | Python [(docs)][pylsp]              | `pylsp`                    |
 | R                                   | `r_language_server`        |
 | ReScript                            | `rescriptls`               |
+| Reason                              | `reason_ls`                |
 | Rome                                | `rome`                     |
 | Ruby                                | `solargraph`               |
 | Rust [(wiki)][rust_analyzer]        | `rust_analyzer`            |

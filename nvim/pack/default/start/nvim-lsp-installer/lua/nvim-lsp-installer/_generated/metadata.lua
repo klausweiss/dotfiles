@@ -64,6 +64,9 @@ return {
   denols = {
     filetypes = { "javascript", "javascriptreact", "javascript.jsx", "typescript", "typescriptreact", "typescript.tsx" }
   },
+  dhall_lsp_server = {
+    filetypes = { "dhall" }
+  },
   diagnosticls = {
     filetypes = {}
   },
@@ -163,6 +166,9 @@ return {
   ltex = {
     filetypes = { "bib", "gitcommit", "markdown", "org", "plaintex", "rst", "rnoweb", "tex" }
   },
+  mm0_ls = {
+    filetypes = { "metamath-zero" }
+  },
   nickel_ls = {
     filetypes = { "ncl", "nickel" }
   },
@@ -172,11 +178,17 @@ return {
   ocamlls = {
     filetypes = { "ocaml", "reason" }
   },
+  ocamllsp = {
+    filetypes = { "ocaml", "ocaml.menhir", "ocaml.interface", "ocaml.ocamllex", "reason" }
+  },
   omnisharp = {
     filetypes = { "cs", "vb" }
   },
   opencl_ls = {
     filetypes = { "opencl" }
+  },
+  perlnavigator = {
+    filetypes = { "perl" }
   },
   phpactor = {
     filetypes = { "php" }
@@ -186,6 +198,9 @@ return {
   },
   prismals = {
     filetypes = { "prisma" }
+  },
+  prosemd_lsp = {
+    filetypes = { "markdown" }
   },
   psalm = {
     filetypes = { "php" }
@@ -207,6 +222,9 @@ return {
   },
   r_language_server = {
     filetypes = { "r", "rmd" }
+  },
+  reason_ls = {
+    filetypes = { "reason" }
   },
   remark_ls = {
     filetypes = { "markdown" }
@@ -253,6 +271,9 @@ return {
   sourcekit = {
     filetypes = { "swift", "c", "cpp", "objective-c", "objective-cpp" }
   },
+  sourcery = {
+    filetypes = { "python" }
+  },
   spectral = {
     filetypes = { "yaml", "json", "yml" }
   },
@@ -275,7 +296,7 @@ return {
     filetypes = { "verilog", "systemverilog" }
   },
   tailwindcss = {
-    filetypes = { "aspnetcorerazor", "astro", "astro-markdown", "blade", "django-html", "edge", "eelixir", "ejs", "erb", "eruby", "gohtml", "haml", "handlebars", "hbs", "html", "html-eex", "heex", "jade", "leaf", "liquid", "markdown", "mdx", "mustache", "njk", "nunjucks", "php", "razor", "slim", "twig", "css", "less", "postcss", "sass", "scss", "stylus", "sugarss", "javascript", "javascriptreact", "reason", "rescript", "typescript", "typescriptreact", "vue", "svelte" }
+    filetypes = { "aspnetcorerazor", "astro", "astro-markdown", "blade", "django-html", "htmldjango", "edge", "eelixir", "ejs", "erb", "eruby", "gohtml", "haml", "handlebars", "hbs", "html", "html-eex", "heex", "jade", "leaf", "liquid", "markdown", "mdx", "mustache", "njk", "nunjucks", "php", "razor", "slim", "twig", "css", "less", "postcss", "sass", "scss", "stylus", "sugarss", "javascript", "javascriptreact", "reason", "rescript", "typescript", "typescriptreact", "vue", "svelte" }
   },
   taplo = {
     filetypes = { "toml" }

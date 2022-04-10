@@ -13,10 +13,13 @@ local utils = require "telescope.utils"
 local lsp = {}
 
 lsp.references = function(opts)
+  local filepath = vim.api.nvim_buf_get_name(opts.bufnr)
+  local lnum = vim.api.nvim_win_get_cursor(opts.winnr)[1]
   local params = vim.lsp.util.make_position_params(opts.winnr)
-  params.context = { includeDeclaration = true }
+  local include_current_line = vim.F.if_nil(opts.include_current_line, false)
+  params.context = { includeDeclaration = vim.F.if_nil(opts.include_declaration, true) }
 
-  vim.lsp.buf_request(opts.bufnr, "textDocument/references", params, function(err, result, ctx, _config)
+  vim.lsp.buf_request(opts.bufnr, "textDocument/references", params, function(err, result, ctx, _)
     if err then
       vim.api.nvim_err_writeln("Error when finding references: " .. err.message)
       return
@@ -24,10 +27,15 @@ lsp.references = function(opts)
 
     local locations = {}
     if result then
-      vim.list_extend(
-        locations,
-        vim.lsp.util.locations_to_items(result, vim.lsp.get_client_by_id(ctx.client_id).offset_encoding) or {}
-      )
+      local results = vim.lsp.util.locations_to_items(result, vim.lsp.get_client_by_id(ctx.client_id).offset_encoding)
+      if include_current_line then
+        locations = vim.tbl_filter(function(v)
+          -- Remove current line from result
+          return not (v.filename == filepath and v.lnum == lnum)
+        end, vim.F.if_nil(results, {}))
+      else
+        locations = vim.F.if_nil(results, {})
+      end
     end
 
     if vim.tbl_isempty(locations) then
@@ -42,6 +50,7 @@ lsp.references = function(opts)
       },
       previewer = conf.qflist_previewer(opts),
       sorter = conf.generic_sorter(opts),
+      push_cursor_on_edit = true,
     }):find()
   end)
 end
@@ -50,7 +59,7 @@ local function list_or_jump(action, title, opts)
   opts = opts or {}
 
   local params = vim.lsp.util.make_position_params(opts.winnr)
-  vim.lsp.buf_request(opts.bufnr, action, params, function(err, result, ctx, _config)
+  vim.lsp.buf_request(opts.bufnr, action, params, function(err, result, ctx, _)
     if err then
       vim.api.nvim_err_writeln("Error when executing " .. action .. " : " .. err.message)
       return
@@ -114,7 +123,10 @@ lsp.document_symbols = function(opts)
     end
 
     if not result or vim.tbl_isempty(result) then
-      print "No results from textDocument/documentSymbol"
+      utils.notify("builtin.lsp_document_symbols", {
+        msg = "No results from textDocument/documentSymbol",
+        level = "INFO",
+      })
       return
     end
 
@@ -126,7 +138,10 @@ lsp.document_symbols = function(opts)
     end
 
     if vim.tbl_isempty(locations) then
-      print "locations table empty"
+      utils.notify("builtin.lsp_document_symbols", {
+        msg = "No document_symbol locations found",
+        level = "INFO",
+      })
       return
     end
 
@@ -142,6 +157,7 @@ lsp.document_symbols = function(opts)
         tag = "symbol_type",
         sorter = conf.generic_sorter(opts),
       },
+      push_cursor_on_edit = true,
     }):find()
   end)
 end
@@ -162,12 +178,18 @@ lsp.code_actions = function(opts)
   )
 
   if err then
-    print("ERROR: " .. err)
+    utils.notify("builtin.lsp_code_actions", {
+      msg = err,
+      level = "ERROR",
+    })
     return
   end
 
   if not results_lsp or vim.tbl_isempty(results_lsp) then
-    print "No results from textDocument/codeAction"
+    utils.notify("builtin.lsp_document_symbols", {
+      msg = "No results from textDocument/codeAction",
+      level = "INFO",
+    })
     return
   end
 
@@ -203,7 +225,10 @@ lsp.code_actions = function(opts)
   end
 
   if #results == 0 then
-    print "No code actions available"
+    utils.notify("builtin.lsp_document_symbols", {
+      msg = "No code actions available",
+      level = "INFO",
+    })
     return
   end
 
@@ -263,7 +288,7 @@ lsp.code_actions = function(opts)
       -- Fixed Java/jdtls compatibility with Telescope
       -- See fix_zero_version commentary for more information
       local command = (action.command and action.command.command) or action.command
-      if not (command == "java.apply.workspaceEdit") then
+      if command ~= "java.apply.workspaceEdit" then
         return action
       end
       local arguments = (action.command and action.command.arguments) or action.arguments
@@ -314,7 +339,10 @@ lsp.code_actions = function(opts)
         then
           client.request("codeAction/resolve", action, function(resolved_err, resolved_action)
             if resolved_err then
-              vim.notify(resolved_err.code .. ": " .. resolved_err.message, vim.log.levels.ERROR)
+              utils.notify("builtin.lsp_code_actions", {
+                msg = string.format("codeAction/resolve failed: %s : %s", resolved_err.code, resolved_err.message),
+                level = "ERROR",
+              })
               return
             end
             if resolved_action then
@@ -355,10 +383,11 @@ lsp.workspace_symbols = function(opts)
     end
 
     if vim.tbl_isempty(locations) then
-      print(
-        "No results from workspace/symbol. Maybe try a different query: "
-          .. "Telescope lsp_workspace_symbols query=example"
-      )
+      utils.notify("builtin.lsp_workspace_symbols", {
+        msg = "No results from workspace/symbol. Maybe try a different query: "
+          .. "'Telescope lsp_workspace_symbols query=example'",
+        level = "INFO",
+      })
       return
     end
 
@@ -426,9 +455,15 @@ local function check_capabilities(feature, bufnr)
     return true
   else
     if #clients == 0 then
-      print "LSP: no client attached"
+      utils.notify("builtin.lsp_*", {
+        msg = "no client attached",
+        level = "INFO",
+      })
     else
-      print("LSP: server does not support " .. feature)
+      utils.notify("builtin.lsp_*", {
+        msg = "server does not support " .. feature,
+        level = "INFO",
+      })
     end
     return false
   end

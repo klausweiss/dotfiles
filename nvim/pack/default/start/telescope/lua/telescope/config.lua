@@ -420,6 +420,27 @@ append(
 )
 
 append(
+  "results_title",
+  "Results",
+  [[
+  Defines the default title of the results window. A false value
+  can be used to hide the title altogether.
+
+  Default: "Results"]]
+)
+
+append(
+  "prompt_title",
+  "Prompt",
+  [[
+  Defines the default title of the prompt window. A false value
+  can be used to hide the title altogether. Most of the times builtins
+  define a prompt_title which will be prefered over this default.
+
+  Default: "Prompt"]]
+)
+
+append(
   "history",
   {
     path = vim.fn.stdpath "data" .. os_sep .. "telescope_history",
@@ -446,7 +467,7 @@ append(
                default: stdpath("data")/telescope_history
     - limit:   The amount of entries that will be written in the
                history.
-               Warning: If limit is set to nil it will grown unbound.
+               Warning: If limit is set to nil it will grow unbound.
                default: 100
     - handler: A lua function that implements the history.
                This is meant as a developer setting for extensions to
@@ -689,6 +710,16 @@ append(
       ...,
       ["jj"] = { "<esc>", type = "command" },
       ["kk"] = { "<cmd>echo \"Hello, World!\"<cr>", type = "command" },)
+      ...,
+
+  You can also add additional options for mappings of any type
+  ("action" and "command"). For example:
+
+      ...,
+      ["<C-j>"] = {
+        action = actions.move_selection_next,
+        opts = { nowait = true, silent = true }
+      },
       ...,
   ]]
 )

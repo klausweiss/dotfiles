@@ -38,7 +38,7 @@ end
 function M:set_separator()
   if self.options.separator == nil then
     if self.options.component_separators then
-      if self.options.self.section < 'lualine_x' then
+      if self.options.self.section < 'x' then
         self.options.separator = self.options.component_separators.left
       else
         self.options.separator = self.options.component_separators.right
@@ -54,7 +54,17 @@ function M:create_option_highlights()
     self.options.color_highlight = highlight.create_component_highlight_group(
       self.options.color,
       self.options.component_name,
-      self.options
+      self.options,
+      false
+    )
+  end
+  -- setup icon highlight
+  if type(self.options.icon) == 'table' and self.options.icon.color then
+    self.options.icon_color_highlight = highlight.create_component_highlight_group(
+      self.options.icon.color,
+      self.options.component_name .. 'icon',
+      self.options,
+      false
     )
   end
 end
@@ -89,7 +99,9 @@ end
 ---applies custom highlights for component
 function M:apply_highlights(default_highlight)
   if self.options.color_highlight then
-    self.status = highlight.component_format_highlight(self.options.color_highlight) .. self.status
+    local hl_fmt
+    hl_fmt, M.color_fn_cache = highlight.component_format_highlight(self.options.color_highlight)
+    self.status = hl_fmt .. self.status
   end
   if type(self.options.separator) ~= 'table' and self.status:find('%%#') then
     -- Apply default highlight only when we aren't applying trans sep and
@@ -108,8 +120,22 @@ end
 
 ---apply icon in front of component (prepemds component with icon)
 function M:apply_icon()
-  if self.options.icons_enabled and self.options.icon then
-    self.status = self.options.icon .. ' ' .. self.status
+  local icon = self.options.icon
+  if self.options.icons_enabled and icon then
+    if type(icon) == 'table' then
+      icon = icon[1]
+    end
+    if self.options.icon_color_highlight then
+      self.status = table.concat {
+        highlight.component_format_highlight(self.options.icon_color_highlight),
+        icon,
+        self:get_default_hl(),
+        ' ',
+        self.status,
+      }
+    else
+      self.status = table.concat({ icon, self.status }, ' ')
+    end
   end
 end
 
@@ -119,7 +145,7 @@ function M:apply_separator()
   local separator = self.options.separator
   if type(separator) == 'table' then
     if self.options.separator[2] == '' then
-      if self.options.self.section < 'lualine_x' then
+      if self.options.self.section < 'x' then
         separator = self.options.component_separators.left
       else
         separator = self.options.component_separators.right
@@ -159,6 +185,16 @@ function M:strip_separator()
   return self.status
 end
 
+function M:get_default_hl()
+  if self.options.color_highlight then
+    return highlight.component_format_highlight(self.options.color_highlight)
+  elseif self.default_hl then
+    return self.default_hl
+  else
+    return highlight.format_highlight(self.options.self.section)
+  end
+end
+
 -- luacheck: push no unused args
 ---actual function that updates a component. Must be overwritten with component functionality
 function M:update_status(is_focused) end
@@ -172,6 +208,7 @@ function M:draw(default_highlight, is_focused)
   if self.options.cond ~= nil and self.options.cond() ~= true then
     return self.status
   end
+  self.default_hl = default_highlight
   local status = self:update_status(is_focused)
   if self.options.fmt then
     status = self.options.fmt(status or '')

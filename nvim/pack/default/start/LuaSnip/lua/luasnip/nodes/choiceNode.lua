@@ -69,7 +69,7 @@ local function C(pos, choices, opts)
 		dependents = {},
 		-- default to true.
 		restore_cursor = opts.restore_cursor,
-	})
+	}, opts)
 	c:init_nodes()
 	return c
 end
@@ -112,7 +112,7 @@ function ChoiceNode:put_initial(pos)
 	local mark_opts = vim.tbl_extend("keep", {
 		right_gravity = false,
 		end_right_gravity = false,
-	}, self.parent.ext_opts[self.active_choice.type].passive)
+	}, self.active_choice.ext_opts.passive)
 
 	self.active_choice.mark = mark(old_pos, pos, mark_opts)
 	self.visible = true
@@ -131,7 +131,7 @@ function ChoiceNode:expand_tabs(tabwidth)
 end
 
 function ChoiceNode:input_enter()
-	self.mark:update_opts(self.parent.ext_opts[self.type].active)
+	self.mark:update_opts(self.ext_opts.active)
 	self.parent:enter_node(self.indx)
 
 	self.prev_choice_node = session.active_choice_node
@@ -144,7 +144,7 @@ end
 function ChoiceNode:input_leave()
 	self:event(events.leave)
 
-	self.mark:update_opts(self.parent.ext_opts[self.type].passive)
+	self.mark:update_opts(self.ext_opts.passive)
 	self:update_dependents()
 	session.active_choice_node = self.prev_choice_node
 	self.active = false
@@ -208,7 +208,7 @@ end
 -- used to uniquely identify this change-choice-action.
 local change_choice_id = 0
 
-function ChoiceNode:change_choice(dir, current_node)
+function ChoiceNode:set_choice(choice, current_node)
 	change_choice_id = change_choice_id + 1
 	-- to uniquely identify this node later (storing the pointer isn't enough
 	-- because this is supposed to work with restoreNodes, which are copied).
@@ -229,21 +229,18 @@ function ChoiceNode:change_choice(dir, current_node)
 
 	self.active_choice:exit()
 
-	-- store in old_choice, active_choice has to be disabled to prevent reading
-	-- from cleared mark in set_mark_rgrav (which will be called in
-	-- parent:set_text(self,...) a few lines below).
-	local old_choice = self.active_choice
-	self.active_choice = nil
-
 	-- clear text.
+	--
+	-- active_choice has to be disabled (nilled?) to prevent reading from
+	-- cleared mark in set_mark_rgrav (which will be called in
+	-- parent:set_text(self,...) a few lines below).
+	self.active_choice = nil
 	self.parent:set_text(self, { "" })
 
-	-- stylua: ignore
-	self.active_choice = dir == 1 and old_choice.next_choice
-	                               or old_choice.prev_choice
+	self.active_choice = choice
 
 	self.active_choice.mark = self.mark:copy_pos_gravs(
-		vim.deepcopy(self.parent.ext_opts[self.active_choice.type].passive)
+		vim.deepcopy(self.active_choice.ext_opts.passive)
 	)
 	self.active_choice:put_initial(self.mark:pos_begin_raw())
 
@@ -284,6 +281,14 @@ function ChoiceNode:change_choice(dir, current_node)
 	return self.active_choice:jump_into(1)
 end
 
+function ChoiceNode:change_choice(dir, current_node)
+	-- stylua: ignore
+	return self:set_choice(
+		dir == 1 and self.active_choice.next_choice
+		          or self.active_choice.prev_choice,
+		current_node )
+end
+
 function ChoiceNode:copy()
 	local o = vim.deepcopy(self)
 	for i, node in ipairs(self.choices) do
@@ -317,7 +322,7 @@ function ChoiceNode:set_mark_rgrav(rgrav_beg, rgrav_end)
 end
 
 function ChoiceNode:set_ext_opts(name)
-	self.mark:update_opts(self.parent.ext_opts[self.type][name])
+	self.mark:update_opts(self.ext_opts[name])
 	self.active_choice:set_ext_opts(name)
 end
 

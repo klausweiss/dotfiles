@@ -1,11 +1,9 @@
-local void      = require('plenary.async.async').void
-local scheduler = require('plenary.async.util').scheduler
+local void      = require('gitsigns.async').void
+local scheduler = require('gitsigns.async').scheduler
 
-local Status        = require("gitsigns.status")
 local config        = require('gitsigns.config').config
 local mk_repeatable = require('gitsigns.repeat').mk_repeatable
 local popup         = require('gitsigns.popup')
-local signs         = require('gitsigns.signs')
 local util          = require('gitsigns.util')
 local manager       = require('gitsigns.manager')
 local git           = require('gitsigns.git')
@@ -28,6 +26,7 @@ local record NavHunkOpts
   wrap: boolean
   navigation_message: boolean
   foldopen: boolean
+  preview: boolean
 end
 
 local record M
@@ -48,7 +47,7 @@ local record M
   blame_line         : function -- function()
   change_base        : function(base: string, global: boolean)
   reset_base         : function(global: boolean)
-  diffthis           : function -- function(base: string)
+  diffthis           : function(base: string)
 
   record QFListOpts
     use_location_list: boolean
@@ -116,6 +115,13 @@ local function get_cursor_hunk(bufnr: integer, hunks: {Hunk}): Hunk, integer
   return gs_hunks.find_hunk(lnum, hunks)
 end
 
+local function update(bufnr: integer)
+  manager.update(bufnr)
+  if vim.wo.diff then
+    require('gitsigns.diffthis').update(bufnr)
+  end
+end
+
 --- Stage the hunk at the cursor position, or all lines in the
 --- given range. If {range} is provided, all lines in the given
 --- range are staged. This supports partial-hunks, meaning if a
@@ -166,22 +172,7 @@ M.stage_hunk = mk_repeatable(void(function(range: {integer, integer})
   table.insert(bcache.staged_diffs, hunk)
 
   bcache.compare_text = nil -- Invalidate
-
-  local hunk_signs = gs_hunks.process_hunks({hunk})
-
-  scheduler()
-
-  -- If watch_gitdir is enabled then that will eventually kick in and update the
-  -- signs, however for  smoother UX we can update the signs immediately without
-  -- running a full diff.
-  --
-  -- We cannot update the status bar as that requires a full diff.
-  if not bcache.base then
-    for lnum, _ in pairs(hunk_signs) do
-      signs.remove(bufnr, lnum)
-    end
-  end
-  manager.update(bufnr)
+  update(bufnr)
 end))
 
 --- Reset the lines of the hunk at the cursor position, or all
@@ -229,8 +220,7 @@ M.reset_hunk = mk_repeatable(function(range: {integer, integer})
     lstart = hunk.start - 1
     lend = hunk.start - 1 + hunk.added.count
   end
-  local lines = hunk.removed.lines
-  api.nvim_buf_set_lines(bufnr, lstart, lend, false, lines)
+  util.set_lines(bufnr, lstart, lend, hunk.removed.lines)
 end)
 
 --- Reset the lines of all hunks in the buffer.
@@ -241,7 +231,7 @@ M.reset_buffer = function()
     return
   end
 
-  api.nvim_buf_set_lines(bufnr, 0, -1, false, bcache:get_compare_text())
+  util.set_lines(bufnr, 0, -1, bcache:get_compare_text())
 end
 
 --- Undo the last call of stage_hunk().
@@ -266,11 +256,7 @@ M.undo_stage_hunk = void(function()
 
   bcache.git_obj:stage_hunks({hunk}, true)
   bcache.compare_text = nil -- Invalidate
-  scheduler()
-  if not bcache.base then
-    signs.add(config, bufnr, gs_hunks.process_hunks({hunk}))
-  end
-  manager.update(bufnr)
+  update(bufnr)
 end)
 
 --- Stage all hunks in current buffer.
@@ -304,11 +290,7 @@ M.stage_buffer = void(function()
   end
   bcache.compare_text = nil -- Invalidate
 
-  scheduler()
-  if not bcache.base then
-    signs.remove(bufnr)
-  end
-  Status:clear_diff(bufnr)
+  update(bufnr)
 end)
 
 --- Unstage all hunks for current buffer in the index. Note:
@@ -330,17 +312,13 @@ M.reset_buffer_index = void(function()
   -- some sort of initial population from git diff, after that this function can
   -- be improved to check if any staged hunks exists and it can undo changes
   -- using git apply line by line instead of reseting whole file
-  local hunks = bcache.staged_diffs
   bcache.staged_diffs = {}
 
   bcache.git_obj:unstage_file()
   bcache.compare_text = nil -- Invalidate
 
   scheduler()
-  if not bcache.base then
-    signs.add(config, bufnr, gs_hunks.process_hunks(hunks))
-  end
-  manager.update(bufnr)
+  update(bufnr)
 end)
 
 local function process_nav_opts(opts: NavHunkOpts)
@@ -356,6 +334,15 @@ local function process_nav_opts(opts: NavHunkOpts)
 
   if opts.foldopen == nil then
     opts.foldopen = vim.tbl_contains(vim.opt.foldopen:get(), 'search')
+  end
+end
+
+-- Defer function to the next main event
+local function defer(fn: function)
+  if vim.in_fast_event() then
+    vim.schedule(fn)
+  else
+    vim.defer_fn(fn, 1)
   end
 end
 
@@ -395,8 +382,10 @@ local function nav_hunk(opts: NavHunkOpts)
     if opts.foldopen then
       vim.cmd('silent! foldopen!')
     end
-    if pcall(api.nvim_buf_get_var, 0, '_gitsigns_preview_open') then
-      vim.schedule(M.preview_hunk)
+    if opts.preview or popup.is_open() then
+      -- Use defer so the cursor change can settle, otherwise the popup might
+      -- appear in the old position
+      defer(M.preview_hunk)
     end
 
     if index ~= nil and opts.navigation_message then
@@ -420,6 +409,9 @@ end
 ---               Expand folds when navigating to a hunk which is
 ---               inside a fold. Defaults to `true` if 'foldopen'
 ---               contains `search`.
+---             • {preview}: (boolean)
+---               Automatically open preview_hunk() upon navigating
+---               to a hunk.
 M.next_hunk = function(opts: NavHunkOpts)
   opts = opts or {}
   opts.forwards = true
@@ -466,22 +458,6 @@ local function noautocmd(f: function()): function()
   end
 end
 
--- Strip '\r' from the EOL of each line only if all lines end with '\r'
-local function strip_cr(xs0: {string}): {string}
-  for i = 1, #xs0 do
-    if xs0[i]:sub(-1) ~= '\r' then
-      -- don't strip, return early
-      return xs0
-    end
-  end
-  -- all lines end with '\r', need to strip
-  local xs = vim.deepcopy(xs0)
-  for i = 1, #xs do
-    xs[i] = xs[i]:sub(1, -2)
-  end
-  return xs
-end
-
 --- Preview the hunk at the cursor position in a floating
 --- window.
 M.preview_hunk = noautocmd(function()
@@ -494,7 +470,7 @@ M.preview_hunk = noautocmd(function()
 
   local hlines = gs_hunks.patch_lines(hunk)
   if vim.bo[cbuf].fileformat == 'dos' then
-    hlines = strip_cr(hlines)
+    hlines = util.strip_cr(hlines)
   end
 
   local lines = {
@@ -505,9 +481,6 @@ M.preview_hunk = noautocmd(function()
   local _, bufnr = popup.create(lines, config.preview_config)
 
   add_highlight(bufnr, -1, 'Title', 0, 0, -1)
-
-  api.nvim_buf_set_var(cbuf, '_gitsigns_preview_open', true)
-  vim.cmd[[autocmd CursorMoved,CursorMovedI <buffer> ++once silent! unlet b:_gitsigns_preview_open]]
 
   local offset = #lines - hunk.removed.count - hunk.added.count
   highlight_hunk_lines(bufnr as integer, offset, hunk)
@@ -555,16 +528,6 @@ M.get_hunks = function(bufnr: integer): {Hunk_Public}
     }
   end
   return ret
-end
-
-local function defer(duration: integer, callback: function()): vim.loop.Timer
-  local timer = vim.loop.new_timer()
-  timer:start(duration, 0, function()
-    timer:stop()
-    timer:close()
-    vim.schedule_wrap(callback)()
-  end)
-  return timer
 end
 
 local function run_diff(a: {string}, b: {string}): {Hunk}
@@ -625,9 +588,9 @@ M.blame_line = void(function(opts: boolean | BlameOpts)
     ignore_whitespace = opts.ignore_whitespace
   end
 
-  local loading = defer(1000, function()
+  local loading = vim.defer_fn(function()
     popup.create({'Loading...'}, config.preview_config)
-  end)
+  end, 1000)
 
   scheduler()
   local buftext = util.buf_lines(bufnr)
@@ -705,17 +668,10 @@ M.blame_line = void(function(opts: boolean | BlameOpts)
   end
 end)
 
-local function calc_base(base: string): string
-  if base and base:sub(1, 1):match('[~\\^]') then
-    base = 'HEAD'..base
-  end
-  return base
-end
-
 local function update_buf_base(buf: integer, bcache: CacheEntry, base: string)
     bcache.base = base
     bcache.compare_text = nil
-    manager.update(buf, bcache)
+    update(buf)
 end
 
 --- Change the base revision to diff against. If {base} is not
@@ -752,7 +708,7 @@ end
 --- For a more complete list of ways to specify bases, see
 --- |gitsigns-revision|.
 M.change_base = void(function(base: string, global: boolean)
-  base = calc_base(base)
+  base = util.calc_base(base)
 
   if global then
     config.base = base
@@ -780,6 +736,9 @@ end
 --- Perform a |vimdiff| on the given file with {base} if it is
 --- given, or with the currently set base (index by default).
 ---
+--- If {base} is the index, then the opened diff buffer is editable
+--- and any written changes will update the index accordingly.
+---
 --- Examples: >
 ---   " Diff against the index
 ---   :Gitsigns diffthis
@@ -793,61 +752,10 @@ end
 ---
 --- Attributes: ~
 ---     {async}
-M.diffthis = void(function(base: string)
-  local bufnr = current_buf()
-  local bcache = cache[bufnr]
-  if not bcache then return end
-
-  if api.nvim_win_get_option(0, 'diff') then return end
-
-  local ff = vim.bo[bufnr].fileformat
-
-  local text: {string}
-  local err: string
-  local comp_rev = bcache:get_compare_rev(calc_base(base))
-
-  if base then
-    text, err = bcache.git_obj:get_show_text(comp_rev)
-    if ff == 'dos' then
-      text = strip_cr(text)
-    end
-    if err then
-      print(err)
-      return
-    end
-    scheduler()
-  else
-    text = bcache:get_compare_text()
-  end
-
-  local ft = api.nvim_buf_get_option(bufnr, 'filetype')
-
-  local bufname = string.format(
-    'gitsigns://%s/%s',
-    bcache.git_obj.repo.gitdir,
-    comp_rev..':'..bcache.git_obj.relpath
-  )
-
-  vim.cmd'diffthis'
-
-  vim.cmd(table.concat({
-    'keepalt', 'aboveleft',
-    config.diff_opts.vertical and 'vertical' or '',
-    'split', bufname
-  }, ' '))
-
-  local dbuf = current_buf()
-
-  api.nvim_buf_set_option(dbuf, 'modifiable', true)
-  api.nvim_buf_set_lines(dbuf, 0, -1, false, text)
-  api.nvim_buf_set_option(dbuf, 'modifiable', false)
-
-  api.nvim_buf_set_option(dbuf, 'filetype', ft)
-  api.nvim_buf_set_option(dbuf, 'buftype', 'nowrite')
-  api.nvim_buf_set_option(dbuf, 'bufhidden', 'wipe')
-
-  vim.cmd'diffthis'
-end)
+M.diffthis = function(base: string)
+  local diffthis = require('gitsigns.diffthis')
+  diffthis.run(base, config.diff_opts.vertical)
+end
 
 local function hunks_to_qflist(buf_or_filename: number|string, hunks: {Hunk}, qflist: {vim.fn.QFItem})
   for i, hunk in ipairs(hunks) do
@@ -1030,7 +938,8 @@ end
 --- Attributes: ~
 ---     {async}
 M.refresh = void(function()
-  manager.setup_signs_and_highlights(true)
+  manager.setup_signs(true)
+  require('gitsigns.highlight').setup_highlights()
   require('gitsigns.current_line_blame').setup()
   for k, v in pairs(cache as {integer:CacheEntry}) do
     -- Invalidate cache fields

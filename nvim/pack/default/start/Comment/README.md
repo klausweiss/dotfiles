@@ -67,7 +67,7 @@ Following are the **default** config for the [`setup()`](#setup). If you want to
 ```lua
 {
     ---Add a space b/w comment and the line
-    ---@type boolean
+    ---@type boolean|fun():boolean
     padding = true,
 
     ---Whether the cursor should stay at its position
@@ -155,10 +155,6 @@ These mappings are enabled by default. (config: `mappings.basic`)
 `gc[count]{motion}` - (Op-pending) Toggles the region using linewise comment
 `gb[count]{motion}` - (Op-pending) Toggles the region using blockwise comment
 ```
-
-<a id="count-prefix">
-
-> NOTE: Dot repeat is not supported with `[count]gcc` and `[count]gbc`
 
 - VISUAL mode
 

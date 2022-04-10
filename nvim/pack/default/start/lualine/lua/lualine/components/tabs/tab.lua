@@ -19,7 +19,10 @@ end
 --- of the tab.
 ---@return string
 function Tab:label()
-  local custom_tabname = vim.t[self.tabId].tabname
+  local ok, custom_tabname = pcall(vim.api.nvim_tabpage_get_var, self.tabId, 'tabname')
+  if not ok then
+    custom_tabname = nil
+  end
   if custom_tabname and custom_tabname ~= '' then
     return modules.utils.stl_escape(custom_tabname)
   end
@@ -70,11 +73,11 @@ function Tab:render()
     .. line
 
   -- apply separators
-  if self.options.self.section < 'lualine_x' and not self.first then
+  if self.options.self.section < 'x' and not self.first then
     local sep_before = self:separator_before()
     line = sep_before .. line
     self.len = self.len + vim.fn.strchars(sep_before)
-  elseif self.options.self.section >= 'lualine_x' and not self.last then
+  elseif self.options.self.section >= 'x' and not self.last then
     local sep_after = self:separator_after()
     line = line .. sep_after
     self.len = self.len + vim.fn.strchars(sep_after)

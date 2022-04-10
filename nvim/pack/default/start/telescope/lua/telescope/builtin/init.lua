@@ -210,7 +210,7 @@ builtin.builtin = require_on_exported_call("telescope.builtin.internal").builtin
 ---@field cache_index number: what picker to resume, where 1 denotes most recent (default: 1)
 builtin.resume = require_on_exported_call("telescope.builtin.internal").resume
 
---- Opens a picker over previously cached pickers in there preserved states (incl. multi selections)
+--- Opens a picker over previously cached pickers in their preserved states (incl. multi selections)
 --- - Default keymaps:
 ---   - `<C-x>`: delete the selected cached picker
 --- - Notes:
@@ -352,6 +352,8 @@ builtin.jumplist = require_on_exported_call("telescope.builtin.internal").jumpli
 
 --- Lists LSP references for word under the cursor, jumps to reference on `<cr>`
 ---@param opts table: options to pass to the picker
+---@field include_declaration boolean: include symbol declaration in the lsp references (default: true)
+---@field include_current_line boolean: include current line (default: false)
 builtin.lsp_references = require_on_exported_call("telescope.builtin.lsp").references
 
 --- Goto the definition of the word under the cursor, if there's only one, otherwise show all options in Telescope
@@ -392,6 +394,7 @@ builtin.lsp_range_code_actions = require_on_exported_call("telescope.builtin.lsp
 ---@field ignore_filename boolean: dont show filenames (default: true)
 ---@field show_line boolean: if true, shows the content of the line the tag is found on (default: false)
 ---@field symbols string|table: filter results by symbol kind(s)
+---@field ignore_symbols string|table: list of symbols to ignore
 ---@field symbol_highlights table: string -> string. Matches symbol with hl_group
 builtin.lsp_document_symbols = require_on_exported_call("telescope.builtin.lsp").document_symbols
 
@@ -403,6 +406,7 @@ builtin.lsp_document_symbols = require_on_exported_call("telescope.builtin.lsp")
 ---@field ignore_filename boolean: dont show filenames (default: false)
 ---@field show_line boolean: if true, shows the content of the line the tag is found on (default: false)
 ---@field symbols string|table: filter results by symbol kind(s)
+---@field ignore_symbols string|table: list of symbols to ignore
 ---@field symbol_highlights table: string -> string. Matches symbol with hl_group
 builtin.lsp_workspace_symbols = require_on_exported_call("telescope.builtin.lsp").workspace_symbols
 
@@ -413,6 +417,7 @@ builtin.lsp_workspace_symbols = require_on_exported_call("telescope.builtin.lsp"
 ---@field ignore_filename boolean: dont show filenames (default: false)
 ---@field show_line boolean: if true, shows the content of the line the symbol is found on (default: false)
 ---@field symbols string|table: filter results by symbol kind(s)
+---@field ignore_symbols string|table: list of symbols to ignore
 ---@field symbol_highlights table: string -> string. Matches symbol with hl_group
 builtin.lsp_dynamic_workspace_symbols = require_on_exported_call("telescope.builtin.lsp").dynamic_workspace_symbols
 
@@ -422,7 +427,7 @@ builtin.lsp_dynamic_workspace_symbols = require_on_exported_call("telescope.buil
 --
 --
 
---- Lists diagnostics for current or all open buffers
+--- Lists diagnostics
 --- - Fields:
 ---   - `All severity flags can be passed as `string` or `number` as per `:vim.diagnostic.severity:`
 --- - Default keymaps:
@@ -432,6 +437,8 @@ builtin.lsp_dynamic_workspace_symbols = require_on_exported_call("telescope.buil
 ---@field severity string|number: filter diagnostics by severity name (string) or id (number)
 ---@field severity_limit string|number: keep diagnostics equal or more severe wrt severity name (string) or id (number)
 ---@field severity_bound string|number: keep diagnostics equal or less severe wrt severity name (string) or id (number)
+---@field root_dir string|boolean: if set to string, get diagnostics only for buffers under this dir otherwise cwd
+---@field no_unlisted boolean: if true, get diagnostics only for listed buffers
 ---@field no_sign boolean: hide DiagnosticSigns from Results (default: false)
 ---@field line_width number: set length of diagnostic entry text in Results
 ---@field namespace number: limit your diagnostics to a specific namespace

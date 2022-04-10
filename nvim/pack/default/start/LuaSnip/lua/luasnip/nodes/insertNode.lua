@@ -1,11 +1,11 @@
 local InsertNode = require("luasnip.nodes.node").Node:new()
 local ExitNode = InsertNode:new()
 local util = require("luasnip.util.util")
-local config = require("luasnip.config")
 local types = require("luasnip.util.types")
 local events = require("luasnip.util.events")
+local session = require("luasnip.session")
 
-local function I(pos, static_text)
+local function I(pos, static_text, opts)
 	static_text = util.wrap_value(static_text)
 	if pos == 0 then
 		return ExitNode:new({
@@ -16,7 +16,7 @@ local function I(pos, static_text)
 			type = types.exitNode,
 			-- will only be needed for 0-node, -1-node isn't set with this.
 			ext_gravities_active = { false, false },
-		})
+		}, opts)
 	else
 		return InsertNode:new({
 			pos = pos,
@@ -25,7 +25,7 @@ local function I(pos, static_text)
 			dependents = {},
 			type = types.insertNode,
 			inner_active = false,
-		})
+		}, opts)
 	end
 end
 
@@ -64,7 +64,7 @@ function ExitNode:input_leave()
 end
 
 function ExitNode:jump_into(dir, no_move)
-	if not config.config.history then
+	if not session.config.history then
 		self:input_enter(no_move)
 		if (dir == 1 and not self.next) or (dir == -1 and not self.prev) then
 			if self.pos == 0 then
@@ -90,7 +90,7 @@ function ExitNode:update_dependents_static() end
 function ExitNode:update_all_dependents_static() end
 
 function InsertNode:input_enter(no_move)
-	self.mark:update_opts(self.parent.ext_opts[self.type].active)
+	self.mark:update_opts(self.ext_opts.active)
 	if not no_move then
 		self.parent:enter_node(self.indx)
 
@@ -124,7 +124,7 @@ function InsertNode:jump_into(dir, no_move)
 		if dir == 1 then
 			if self.next then
 				self.inner_active = false
-				if not config.config.history then
+				if not session.config.history then
 					self.inner_first = nil
 					self.inner_last = nil
 				end
@@ -136,7 +136,7 @@ function InsertNode:jump_into(dir, no_move)
 		else
 			if self.prev then
 				self.inner_active = false
-				if not config.config.history then
+				if not session.config.history then
 					self.inner_first = nil
 					self.inner_last = nil
 				end
@@ -186,10 +186,13 @@ function InsertNode:input_leave()
 	self:event(events.leave)
 
 	self:update_dependents()
-	self.mark:update_opts(self.parent.ext_opts[self.type].passive)
+	self.mark:update_opts(self.ext_opts.passive)
 end
 
 function InsertNode:exit()
+	if self.inner_first then
+		self.inner_first:exit()
+	end
 	self.visible = false
 	self.inner_first = nil
 	self.inner_last = nil

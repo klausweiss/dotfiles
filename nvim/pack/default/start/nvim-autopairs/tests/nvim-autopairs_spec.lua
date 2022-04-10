@@ -113,6 +113,20 @@ local data = {
         after  = [[(   many char (|))]]
     },
     {
+        filetype = 'vim',
+        name='add bracket inside quote when nextchar is ignore',
+        key = [[{]],
+        before = [["|"]],
+        after = [["{|}"]]
+    },
+    {
+        filetype = '',
+        name='add bracket inside quote when next char is ignore',
+        key = [[{]],
+        before = [[" |"]],
+        after = [[" {|}"]]
+    },
+    {
         name = "move right on quote line " ,
         key    = [["]],
         before = [["|"]],
@@ -167,6 +181,21 @@ local data = {
         key = [["]],
         before = [[ ('x').expect("|");]],
         after = [[ ('x').expect(""|);]],
+    },
+    {
+        filetype = 'rust',
+        name = "move right, should not move when bracket not closing",
+        key = [[}]],
+        before = [[{{ |} ]],
+        after = [[{{ }|} ]]
+    },
+
+    {
+        filetype = 'rust',
+        name = "move right, should move when bracket closing",
+        key = [[}]],
+        before = [[{ }|} ]],
+        after = [[{ }}| ]]
     },
     {
         name = "delete bracket",

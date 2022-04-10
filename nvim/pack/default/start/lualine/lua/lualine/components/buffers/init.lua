@@ -44,33 +44,52 @@ end
 function M:init(options)
   M.super.init(self, options)
   default_options.buffers_color = {
-    active = get_hl(options.self.section, true),
-    inactive = get_hl(options.self.section, false),
+    active = get_hl('lualine_' .. options.self.section, true),
+    inactive = get_hl('lualine_' .. options.self.section, false),
   }
   self.options = vim.tbl_deep_extend('keep', self.options or {}, default_options)
-  self.highlights = {
-    active = highlight.create_component_highlight_group(
-      self.options.buffers_color.active,
-      'buffers_active',
-      self.options
-    ),
-    inactive = highlight.create_component_highlight_group(
-      self.options.buffers_color.inactive,
-      'buffers_active',
-      self.options
-    ),
+  if self.options.component_name == 'buffers' then
+    self.highlights = {
+      active = highlight.create_component_highlight_group(
+        self.options.buffers_color.active,
+        'buffers_active',
+        self.options,
+        false
+      ),
+      inactive = highlight.create_component_highlight_group(
+        self.options.buffers_color.inactive,
+        'buffers_inactive',
+        self.options,
+        false
+      ),
+    }
+  end
+end
+
+function M:new_buffer(bufnr)
+  bufnr = bufnr or vim.api.nvim_get_current_buf()
+
+  return Buffer:new {
+    bufnr = bufnr,
+    options = self.options,
+    highlights = self.highlights,
   }
+end
+
+function M:buffers()
+  local buffers = {}
+  for b = 1, vim.fn.bufnr('$') do
+    if vim.fn.buflisted(b) ~= 0 and vim.api.nvim_buf_get_option(b, 'buftype') ~= 'quickfix' then
+      buffers[#buffers + 1] = self:new_buffer(b)
+    end
+  end
+
+  return buffers
 end
 
 function M:update_status()
   local data = {}
-  local buffers = {}
-  for b = 1, vim.fn.bufnr('$') do
-    if vim.fn.buflisted(b) ~= 0 and vim.api.nvim_buf_get_option(b, 'buftype') ~= 'quickfix' then
-      buffers[#buffers + 1] = Buffer { bufnr = b, options = self.options, highlights = self.highlights }
-    end
-  end
-  local current_bufnr = vim.api.nvim_get_current_buf()
+  local buffers = self:buffers()
   local current = -2
   -- mark the first, last, current, before current, after current buffers
   -- for rendering
@@ -81,7 +100,7 @@ function M:update_status()
     buffers[#buffers].last = true
   end
   for i, buffer in ipairs(buffers) do
-    if buffer.bufnr == current_bufnr then
+    if buffer:is_current() then
       buffer.current = true
       current = i
     end
@@ -110,9 +129,9 @@ function M:update_status()
   -- start drawing from current buffer and draw left and right of it until
   -- all buffers are drawn or max_length has been reached.
   if current == -2 then
-    local b = Buffer { bufnr = vim.api.nvim_get_current_buf(), options = self.options, highlights = self.highlights }
+    local b = self:new_buffer()
     b.current = true
-    if self.options.self.section < 'lualine_x' then
+    if self.options.self.section < 'x' then
       b.last = true
       if #buffers > 0 then
         buffers[#buffers].last = nil

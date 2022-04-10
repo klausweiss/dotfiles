@@ -1,3 +1,5 @@
+local nvim = require('gitsigns.nvim')
+
 local popup = {}
 
 local api = vim.api
@@ -57,6 +59,8 @@ function popup.create(lines: {string}, opts: {string:any}): integer, integer
 
   local win_id = api.nvim_open_win(bufnr, false, opts1)
 
+  api.nvim_win_set_var(win_id, 'gitsigns_preview', true)
+
   if not opts.height then
     expand_height(win_id, #lines)
   end
@@ -69,20 +73,38 @@ function popup.create(lines: {string}, opts: {string:any}): integer, integer
 
   -- Close the popup when navigating to any window which is not the preview
   -- itself.
-  vim.cmd("augroup GitsignsPopup"..win_id)
-  vim.cmd("autocmd CursorMoved,CursorMovedI * "..
-          ("lua package.loaded['gitsigns.popup'].close(%d)"):format(win_id))
-  vim.cmd("augroup END")
+  local group = 'gitsigns_popup'..win_id
+  nvim.augroup(group)
+  local old_cursor = api.nvim_win_get_cursor(0)
+
+  nvim.autocmd({'CursorMoved', 'CursorMovedI'}, {
+    group = group,
+    callback = function()
+      local cursor = api.nvim_win_get_cursor(0)
+      -- Did the cursor REALLY change (neovim/neovim#12923)
+      if (old_cursor[1] ~= cursor[1] or old_cursor[2] ~= cursor[2])
+        and api.nvim_get_current_win() ~= win_id then
+        -- Clear the augroup
+        nvim.augroup(group)
+        pcall(api.nvim_win_close, win_id, true)
+        return
+      end
+      old_cursor = cursor
+    end
+  })
 
   return win_id, bufnr
 end
 
-function popup.close(win_id: integer)
-  if api.nvim_get_current_win() ~= win_id then
-    -- Delete the augroup
-    vim.cmd("silent! augroup! GitsignsPopup"..win_id)
-    pcall(api.nvim_win_close, win_id, true)
+
+function popup.is_open(): boolean
+  for _, winid in ipairs(api.nvim_list_wins()) do
+    local exists = pcall(api.nvim_win_get_var, winid, 'gitsigns_preview')
+    if exists then
+      return true
+    end
   end
+  return false
 end
 
 return popup

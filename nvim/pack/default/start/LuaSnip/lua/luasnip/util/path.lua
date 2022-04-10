@@ -38,6 +38,19 @@ function Path.async_read_file(path, callback)
 	end)
 end
 
+---@param path string
+---@return string buffer @content of file
+function Path.read_file(path)
+	-- permissions: rrr
+	local fd = assert(uv.fs_open(path, "r", tonumber("0444", 8)))
+	local stat = assert(uv.fs_fstat(fd))
+	-- read from offset 0.
+	local buf = assert(uv.fs_read(fd, stat.size, 0))
+	uv.fs_close(fd)
+
+	return buf
+end
+
 local MYCONFIG_ROOT = vim.env.MYVIMRC
 -- if MYVIMRC is not set then it means nvim was called with -u
 -- therefore the first script is the configuration
@@ -58,25 +71,35 @@ function Path.expand(filepath)
 	return uv.fs_realpath(expanded)
 end
 
----Return t in path as a list
----@param path string
----@param t string @type like file, directory
----@return string[]
-function Path.scandir(path, t)
-	local ret = {}
-	local fs = uv.fs_scandir(path)
+---Return files and directories in path as a list
+---@param root string
+---@return string[] files, string[] directories
+function Path.scandir(root)
+	local files, dirs = {}, {}
+	local fs = uv.fs_scandir(root)
 	if fs then
-		while true do
-			local name, type = uv.fs_scandir_next(fs)
-			if type == t then
-				table.insert(ret, name)
-			end
-			if name == nil then
-				break
+		local name, type = "", ""
+		while name do
+			name, type = uv.fs_scandir_next(fs)
+			local path = Path.join(root, name)
+			if type == "file" then
+				table.insert(files, path)
+			elseif type == "directory" then
+				table.insert(dirs, path)
+			elseif type == "link" then
+				local followed_path = uv.fs_realpath(path)
+				if followed_path then
+					local stat = uv.fs_stat(followed_path)
+					if stat.type == "file" then
+						table.insert(files, path)
+					elseif stat.type == "directory" then
+						table.insert(dirs, path)
+					end
+				end
 			end
 		end
 	end
-	return ret
+	return files, dirs
 end
 
 ---Get basename
@@ -92,7 +115,7 @@ function Path.basename(filepath, ext)
 		base = base:match(("%s([^%s]+)$"):format(sep, sep))
 	end
 	if ext then
-		return base:match("(.+)%.(.+)")
+		return base:match("(.*)%.(.+)")
 	else
 		return base
 	end

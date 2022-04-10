@@ -16,11 +16,17 @@ local function setup(opt)
     end
 
     local bracket = function(...)
+        local rule = basic(...)
         if opt.enable_check_bracket_line == true then
-            return basic(...)
+            rule
                 :with_pair(cond.is_bracket_line())
+                :with_move(cond.is_bracket_line_move())
         end
-        return basic(...)
+        if opt.enable_bracket_in_quote then
+            -- still add bracket if text is quote "|" and next_char have "
+            rule:with_pair(cond.is_bracket_in_quote(), 1)
+        end
+        return rule
     end
 
     -- stylua: ignore
@@ -30,7 +36,7 @@ local function setup(opt)
         Rule("```.*$", "```", { 'markdown', 'vimwiki', 'rmarkdown', 'rmd', 'pandoc' })
             :only_cr()
             :use_regex(true),
-        Rule('"""', '"""', { 'python', 'elixir', 'julia' }),
+        Rule('"""', '"""', { 'python', 'elixir', 'julia', 'kotlin' }),
         basic("'", "'", '-rust')
             :with_pair(cond.not_before_regex("%w")),
         basic("'", "'", 'rust')

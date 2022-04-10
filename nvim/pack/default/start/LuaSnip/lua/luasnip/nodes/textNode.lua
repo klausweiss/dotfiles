@@ -5,15 +5,16 @@ local events = require("luasnip.util.events")
 
 local TextNode = node_mod.Node:new()
 
-local function T(static_text)
+local function T(static_text, opts)
 	return TextNode:new({
 		static_text = util.wrap_value(static_text) or { "" },
 		mark = nil,
 		type = types.textNode,
-	})
+	}, opts)
 end
 
 function TextNode:input_enter(no_move)
+	self.mark:update_opts(self.ext_opts.active)
 	if not no_move then
 		local mark_begin_pos = self.mark:pos_begin_raw()
 		if vim.fn.mode() == "i" then
@@ -35,4 +36,5 @@ function TextNode:update_all_dependents() end
 
 return {
 	T = T,
+	textNode = TextNode,
 }

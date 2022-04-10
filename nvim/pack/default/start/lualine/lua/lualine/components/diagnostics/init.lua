@@ -33,22 +33,26 @@ function M:init(options)
       error = modules.highlight.create_component_highlight_group(
         self.options.diagnostics_color.error,
         'diagnostics_error',
-        self.options
+        self.options,
+        false
       ),
       warn = modules.highlight.create_component_highlight_group(
         self.options.diagnostics_color.warn,
         'diagnostics_warn',
-        self.options
+        self.options,
+        false
       ),
       info = modules.highlight.create_component_highlight_group(
         self.options.diagnostics_color.info,
         'diagnostics_info',
-        self.options
+        self.options,
+        false
       ),
       hint = modules.highlight.create_component_highlight_group(
         self.options.diagnostics_color.hint,
         'diagnostics_hint',
-        self.options
+        self.options,
+        false
       ),
     }
   end
@@ -100,13 +104,17 @@ function M:update_status()
 
   -- format the counts with symbols and highlights
   if self.options.colored then
-    local colors = {}
+    local colors, bgs = {}, {}
     for name, hl in pairs(self.highlight_groups) do
       colors[name] = modules.highlight.component_format_highlight(hl)
+      bgs[name] = modules.utils.extract_highlight_colors(colors[name]:match('%%#(.-)#'), 'bg')
     end
+    local previous_section, padding
     for _, section in ipairs(self.options.sections) do
       if diagnostics_count[section] ~= nil and (always_visible or diagnostics_count[section] > 0) then
-        table.insert(result, colors[section] .. self.symbols[section] .. diagnostics_count[section])
+        padding = previous_section and (bgs[previous_section] ~= bgs[section]) and ' ' or ''
+        previous_section = section
+        table.insert(result, colors[section] .. padding .. self.symbols[section] .. diagnostics_count[section])
       end
     end
   else

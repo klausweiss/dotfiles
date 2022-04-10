@@ -1,11 +1,13 @@
-local void = require('plenary.async.async').void
-local scheduler = require('plenary.async.util').scheduler
+local void = require('gitsigns.async').void
+local scheduler = require('gitsigns.async').scheduler
 
 local Status = require("gitsigns.status")
 local git = require('gitsigns.git')
 local manager = require('gitsigns.manager')
+local nvim = require('gitsigns.nvim')
 local signs = require('gitsigns.signs')
 local util = require('gitsigns.util')
+local hl = require('gitsigns.highlight')
 
 local gs_cache = require('gitsigns.cache')
 local cache = gs_cache.cache
@@ -24,10 +26,6 @@ local uv = vim.loop
 local current_buf = api.nvim_get_current_buf
 
 local M = {}
-
-
-
-
 
 
 
@@ -162,6 +160,10 @@ end
 local function parse_fugitive_uri(name)
    local _, _, root_path, sub_module_path, commit, real_path = 
    name:find([[^fugitive://(.*)/%.git(.*/)/(%x-)/(.*)]])
+   if commit == '0' then
+
+      commit = nil
+   end
    if root_path then
       sub_module_path = sub_module_path:gsub("^/modules", "")
       name = root_path .. sub_module_path .. real_path
@@ -319,11 +321,11 @@ local attach0 = function(cbuf, aucmd)
    end
 end
 
-M._attach_enable = function()
+local function _attach_enable()
    attach_disabled = false
 end
 
-M._attach_disable = function()
+local function _attach_disable()
    attach_disabled = true
 end
 
@@ -439,8 +441,6 @@ local _update_cwd_head = function()
    end
 end
 
-M._update_cwd_head = void(_update_cwd_head)
-
 local function setup_command()
    if api.nvim_add_user_command then
       api.nvim_add_user_command('Gitsigns', function(params)
@@ -461,6 +461,36 @@ local function setup_command()
          'Gitsigns',
          'lua require("gitsigns")._run_func({<range>, <line1>, <line2>}, <f-args>)',
       }, ' '))
+   end
+end
+
+local function wrap_func(fn, ...)
+   local args = { ... }
+   local nargs = select('#', ...)
+   return function()
+      fn(unpack(args, 1, nargs))
+   end
+end
+
+local function autocmd(event, opts)
+   local opts0 = {}
+   if type(opts) == "function" then
+      opts0.callback = wrap_func(opts)
+   else
+      opts0 = opts
+   end
+   opts0.group = 'gitsigns'
+   nvim.autocmd(event, opts0)
+end
+
+local function on_or_after_vimenter(fn)
+   if vim.v.vim_did_enter == 1 then
+      fn()
+   else
+      nvim.autocmd('VimEnter', {
+         callback = wrap_func(fn),
+         once = true,
+      })
    end
 end
 
@@ -503,11 +533,8 @@ M.setup = void(function(cfg)
 
 
 
-   if vim.v.vim_did_enter == 1 then
-      manager.setup_signs_and_highlights()
-   else
-      vim.cmd([[autocmd VimEnter * ++once lua require('gitsigns.manager').setup_signs_and_highlights()]])
-   end
+   on_or_after_vimenter(hl.setup_highlights)
+   manager.setup_signs()
 
    setup_command()
 
@@ -516,10 +543,10 @@ M.setup = void(function(cfg)
    api.nvim_set_decoration_provider(namespace, {
       on_win = function(_, _, bufnr, top, bot)
          local bcache = cache[bufnr]
-         if not bcache or not bcache.pending_signs then
+         if not bcache or not bcache.hunks then
             return false
          end
-         manager.apply_win_signs(bufnr, bcache.pending_signs, top + 1, bot + 1)
+         manager.apply_win_signs(bufnr, bcache.hunks, top + 1, bot + 1)
 
          if config.word_diff and config.diff_opts.internal then
             for i = top, bot do
@@ -542,35 +569,32 @@ M.setup = void(function(cfg)
       end
    end
 
-   vim.cmd([[
-    augroup gitsigns
-      autocmd!
-      autocmd VimLeavePre  * lua _G.package.loaded.gitsigns.detach_all()
-      autocmd ColorScheme  * lua _G.package.loaded.gitsigns._update_highlights()
-      autocmd BufRead      * lua _G.package.loaded.gitsigns.attach(nil, 'BufRead')
-      autocmd BufNewFile   * lua _G.package.loaded.gitsigns.attach(nil, 'BufNewFile')
-      autocmd BufWritePost * lua _G.package.loaded.gitsigns.attach(nil, 'BufWritePost')
+   nvim.augroup('gitsigns')
 
-      autocmd OptionSet fileformat lua _G.package.loaded.gitsigns.refresh()
+   autocmd('VimLeavePre', M.detach_all)
+   autocmd('ColorScheme', hl.setup_highlights)
+   autocmd('BufRead', wrap_func(M.attach, nil, 'BufRead'))
+   autocmd('BufNewFile', wrap_func(M.attach, nil, 'BufNewFile'))
+   autocmd('BufWritePost', wrap_func(M.attach, nil, 'BufWritePost'))
 
-      " vimpgrep creates and deletes lots of buffers so attaching to each one will
-      " waste lots of resource and even slow down vimgrep.
-      autocmd QuickFixCmdPre  *vimgrep* lua _G.package.loaded.gitsigns._attach_disable()
-      autocmd QuickFixCmdPost *vimgrep* lua _G.package.loaded.gitsigns._attach_enable()
-    augroup END
-  ]])
+   autocmd('OptionSet', {
+      pattern = 'fileformat',
+      callback = function()
+         require('gitsigns.actions').refresh()
+      end, })
+
+
+
+
+   autocmd('QuickFixCmdPre', { pattern = '*vimgrep*', callback = _attach_disable })
+   autocmd('QuickFixCmdPost', { pattern = '*vimgrep*', callback = _attach_enable })
 
    require('gitsigns.current_line_blame').setup()
 
    scheduler()
-   M._update_cwd_head()
-   vim.cmd([[autocmd gitsigns DirChanged * lua _G.package.loaded.gitsigns._update_cwd_head()]])
+   _update_cwd_head()
+   autocmd('DirChanged', void(_update_cwd_head))
 end)
-
-
-M._update_highlights = function()
-   manager.setup_signs_and_highlights()
-end
 
 setmetatable(M, {
    __index = function(_, f)

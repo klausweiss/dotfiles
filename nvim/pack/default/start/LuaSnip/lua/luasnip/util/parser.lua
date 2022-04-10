@@ -7,7 +7,7 @@ local snipNode = require("luasnip.nodes.snippet")
 local Environ = require("luasnip.util.environ")
 local functions = require("luasnip.util.functions")
 local util = require("luasnip.util.util")
-local config = require("luasnip.config")
+local session = require("luasnip.session")
 
 local function is_escaped(text, indx)
 	local count = 0
@@ -179,8 +179,8 @@ local function parse_placeholder(text, tab_stops, brackets)
 						return snipNode.SN(nil, iNode.I(1, iText))
 					end, {})
 				else
-					if config.config.parser_nested_assembler then
-						tab_stops[pos] = config.config.parser_nested_assembler(
+					if session.config.parser_nested_assembler then
+						tab_stops[pos] = session.config.parser_nested_assembler(
 							pos,
 							snip
 						)
@@ -261,23 +261,15 @@ local function parse_variable(text)
 end
 
 local function fix_node_indices(nodes)
-	local highest = 0
 	local used_nodes = {}
 	for _, node in ipairs(nodes) do
-		if node.pos then
-			highest = node.pos > highest and node.pos or highest
+		if node.pos and node.pos > 0 then
 			used_nodes[node.pos] = node
 		end
 	end
 
-	for i = 1, highest do
-		if not used_nodes[i] then
-			for j = i + 1, highest do
-				if used_nodes[j] then
-					used_nodes[j].pos = used_nodes[j].pos - 1
-				end
-			end
-		end
+	for _, v, i in util.key_sorted_pairs(used_nodes) do
+		v.pos = i
 	end
 	return nodes
 end
@@ -387,6 +379,11 @@ parse_snippet = function(context, body, tab_stops, brackets)
 			if type(context) == "number" then
 				return snipNode.SN(context, fix_node_indices(nodes))
 			else
+				-- return raw nodes.
+				if type(context) == "nil" then
+					return fix_node_indices(nodes)
+				end
+
 				if type(context) == "string" then
 					context = { trig = context }
 				end

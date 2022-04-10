@@ -5,10 +5,10 @@
   (class_body)
   (export_clause)
   (formal_parameters)
-  (method_definition)
   (named_imports)
   (object)
   (object_pattern)
+  (parenthesized_expression)
   (return_statement)
   (statement_block)
   (switch_case)
@@ -49,3 +49,5 @@
   (comment)
   (template_string)
 ] @ignore
+
+(ERROR) @auto

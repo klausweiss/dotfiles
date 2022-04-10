@@ -1,11 +1,13 @@
-local void = require('plenary.async.async').void
-local scheduler = require('plenary.async.util').scheduler
+local void = require('gitsigns.async').void
+local scheduler = require('gitsigns.async').scheduler
 
 local Status     = require("gitsigns.status")
 local git        = require('gitsigns.git')
 local manager    = require('gitsigns.manager')
+local nvim       = require('gitsigns.nvim')
 local signs      = require('gitsigns.signs')
 local util       = require('gitsigns.util')
+local hl         = require('gitsigns.highlight')
 
 local gs_cache   = require('gitsigns.cache')
 local cache      = gs_cache.cache
@@ -30,12 +32,8 @@ local record M
   attach     : function(cbuf: integer, trigger: string)
 
   -- Internal, API unstable
-  _update_highlights : function()
-  _update_cwd_head   : function()
   _run_func          : function(range: {integer, integer, integer}, func: string, ...: any)
   _complete          : function(arglead: string, line: string): {string}
-  _attach_enable     : function()
-  _attach_disable    : function()
 end
 
 local namespace: integer
@@ -162,6 +160,10 @@ end
 local function parse_fugitive_uri(name: string): string, string
   local _, _, root_path, sub_module_path, commit, real_path =
     name:find([[^fugitive://(.*)/%.git(.*/)/(%x-)/(.*)]])
+  if commit == '0' then
+    -- '0' means the index so cleat commit so we attach normally
+    commit = nil
+  end
   if root_path then
     sub_module_path = sub_module_path:gsub("^/modules", "")
     name = root_path .. sub_module_path .. real_path
@@ -319,11 +321,11 @@ local attach0 = function(cbuf: integer, aucmd: string)
   end
 end
 
-M._attach_enable = function()
+local function _attach_enable()
   attach_disabled = false
 end
 
-M._attach_disable = function()
+local function _attach_disable()
   attach_disabled = true
 end
 
@@ -439,8 +441,6 @@ local _update_cwd_head = function()
   end
 end
 
-M._update_cwd_head = void(_update_cwd_head)
-
 local function setup_command()
   if api.nvim_add_user_command then
     api.nvim_add_user_command('Gitsigns', function(params: api.UserCmdParams)
@@ -461,6 +461,36 @@ local function setup_command()
       'Gitsigns',
       'lua require("gitsigns")._run_func({<range>, <line1>, <line2>}, <f-args>)'
     }, ' '))
+  end
+end
+
+local function wrap_func(fn: function, ...: any): function()
+  local args = {...}
+  local nargs = select('#', ...)
+  return function()
+    fn(unpack(args, 1, nargs))
+  end
+end
+
+local function autocmd(event: string, opts: function|vim.api.AutoCmdOpts)
+  local opts0: vim.api.AutoCmdOpts = {}
+  if opts is function then
+    opts0.callback = wrap_func(opts)
+  else
+    opts0 = opts
+  end
+  opts0.group = 'gitsigns'
+  nvim.autocmd(event, opts0)
+end
+
+local function on_or_after_vimenter(fn: function)
+  if vim.v.vim_did_enter == 1 then
+    fn()
+  else
+    nvim.autocmd('VimEnter', {
+      callback = wrap_func(fn),
+      once = true
+    })
   end
 end
 
@@ -503,11 +533,8 @@ M.setup = void(function(cfg: Config)
   -- Make sure highlights are setup on or after VimEnter so the colorscheme is
   -- loaded. Do not set them up with vim.schedule as this removes the intro
   -- message.
-  if vim.v.vim_did_enter == 1 then
-    manager.setup_signs_and_highlights()
-  else
-    vim.cmd[[autocmd VimEnter * ++once lua require('gitsigns.manager').setup_signs_and_highlights()]]
-  end
+  on_or_after_vimenter(hl.setup_highlights)
+  manager.setup_signs()
 
   setup_command()
 
@@ -516,10 +543,10 @@ M.setup = void(function(cfg: Config)
   api.nvim_set_decoration_provider(namespace, {
     on_win = function(_, _, bufnr: integer, top: integer, bot: integer): boolean
       local bcache = cache[bufnr]
-      if not bcache or not bcache.pending_signs then
+      if not bcache or not bcache.hunks then
         return false
       end
-      manager.apply_win_signs(bufnr, bcache.pending_signs, top+1, bot+1)
+      manager.apply_win_signs(bufnr, bcache.hunks, top+1, bot+1)
 
       if config.word_diff and config.diff_opts.internal then
         for i = top, bot do
@@ -542,35 +569,32 @@ M.setup = void(function(cfg: Config)
     end
   end
 
-  vim.cmd[[
-    augroup gitsigns
-      autocmd!
-      autocmd VimLeavePre  * lua _G.package.loaded.gitsigns.detach_all()
-      autocmd ColorScheme  * lua _G.package.loaded.gitsigns._update_highlights()
-      autocmd BufRead      * lua _G.package.loaded.gitsigns.attach(nil, 'BufRead')
-      autocmd BufNewFile   * lua _G.package.loaded.gitsigns.attach(nil, 'BufNewFile')
-      autocmd BufWritePost * lua _G.package.loaded.gitsigns.attach(nil, 'BufWritePost')
+  nvim.augroup('gitsigns')
 
-      autocmd OptionSet fileformat lua _G.package.loaded.gitsigns.refresh()
+  autocmd('VimLeavePre' , M.detach_all)
+  autocmd('ColorScheme' , hl.setup_highlights)
+  autocmd('BufRead'     , wrap_func(M.attach, nil, 'BufRead'))
+  autocmd('BufNewFile'  , wrap_func(M.attach, nil, 'BufNewFile'))
+  autocmd('BufWritePost', wrap_func(M.attach, nil, 'BufWritePost'))
 
-      " vimpgrep creates and deletes lots of buffers so attaching to each one will
-      " waste lots of resource and even slow down vimgrep.
-      autocmd QuickFixCmdPre  *vimgrep* lua _G.package.loaded.gitsigns._attach_disable()
-      autocmd QuickFixCmdPost *vimgrep* lua _G.package.loaded.gitsigns._attach_enable()
-    augroup END
-  ]]
+  autocmd('OptionSet', {
+    pattern = 'fileformat',
+    callback = function()
+      require('gitsigns.actions').refresh()
+    end}
+  )
+
+  -- vimpgrep creates and deletes lots of buffers so attaching to each one will
+  -- waste lots of resource and even slow down vimgrep.
+  autocmd('QuickFixCmdPre' , { pattern ='*vimgrep*', callback = _attach_disable})
+  autocmd('QuickFixCmdPost', { pattern ='*vimgrep*', callback = _attach_enable})
 
   require('gitsigns.current_line_blame').setup()
 
   scheduler()
-  M._update_cwd_head()
-  vim.cmd[[autocmd gitsigns DirChanged * lua _G.package.loaded.gitsigns._update_cwd_head()]]
+  _update_cwd_head()
+  autocmd('DirChanged', void(_update_cwd_head))
 end)
-
--- Internal, API unstable
-M._update_highlights = function()
-  manager.setup_signs_and_highlights()
-end
 
 setmetatable(M, {
   __index = function(_, f: string): any

@@ -88,6 +88,12 @@ local function _normalize_path(filename, cwd)
     return filename
   end
 
+  -- handles redundant `./` in the middle
+  local redundant = path.sep .. "%." .. path.sep
+  if filename:match(redundant) then
+    filename = filename:gsub(redundant, path.sep)
+  end
+
   local out_file = filename
 
   local has = string.find(filename, path.sep .. "..", 1, true) or string.find(filename, ".." .. path.sep, 1, true)
@@ -146,6 +152,7 @@ end
 -- S_IFLNK  = 0o120000  # symbolic link
 -- S_IFSOCK = 0o140000  # socket file
 
+---@class Path
 local Path = {
   path = path,
 }
@@ -340,7 +347,8 @@ function Path:normalize(cwd)
   self:make_relative(cwd)
 
   -- Substitute home directory w/ "~"
-  self.filename = self.filename:gsub("^" .. path.home, "~" .. path.sep, 1)
+  local removed_path_sep = path.home:gsub(path.sep .. "$", "")
+  self.filename = self.filename:gsub("^" .. removed_path_sep, "~", 1)
 
   return _normalize_path(self.filename, self._cwd)
 end
@@ -834,13 +842,50 @@ end
 function Path:iter()
   local data = self:readlines()
   local i = 0
-  local n = table.getn(data)
+  local n = #data
   return function()
     i = i + 1
     if i <= n then
       return data[i]
     end
   end
+end
+
+function Path:readbyterange(offset, length)
+  self = check_self(self)
+
+  local fd = uv.fs_open(self:expand(), "r", 438)
+  if not fd then
+    return
+  end
+  local stat = assert(uv.fs_fstat(fd))
+  if stat.type ~= "file" then
+    uv.fs_close(fd)
+    return nil
+  end
+
+  if offset < 0 then
+    offset = stat.size + offset
+    -- Windows fails if offset is < 0 even though offset is defined as signed
+    -- http://docs.libuv.org/en/v1.x/fs.html#c.uv_fs_read
+    if offset < 0 then
+      offset = 0
+    end
+  end
+
+  local data = ""
+  while #data < length do
+    local read_chunk = assert(uv.fs_read(fd, length - #data, offset))
+    if #read_chunk == 0 then
+      break
+    end
+    data = data .. read_chunk
+    offset = offset + #read_chunk
+  end
+
+  assert(uv.fs_close(fd))
+
+  return data
 end
 
 return Path

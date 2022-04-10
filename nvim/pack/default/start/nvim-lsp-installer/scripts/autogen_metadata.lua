@@ -1,8 +1,10 @@
 local uv = vim.loop
-local a = require "plenary.async"
-local curl = require "plenary.curl"
+local a = require "nvim-lsp-installer.core.async"
 local Path = require "nvim-lsp-installer.path"
+local fetch = require "nvim-lsp-installer.core.fetch"
 local Data = require "nvim-lsp-installer.data"
+
+local async_fetch = a.promisify(fetch, true)
 
 local coalesce = Data.coalesce
 
@@ -67,14 +69,15 @@ local function get_supported_filetypes(server)
     local default_options = server:get_default_options()
     local filetypes = coalesce(
         -- nvim-lsp-installer options has precedence
-        default_options.filetypes,
+        default_options and default_options.filetypes,
         config.default_config.filetypes,
         {}
     )
     return filetypes
 end
 
-local create_filetype_map = a.void(function()
+---@async
+local function create_filetype_map()
     local filetype_map = {}
 
     local available_servers = servers.get_available_servers()
@@ -89,9 +92,10 @@ local create_filetype_map = a.void(function()
     end
 
     write_file(Path.concat { generated_dir, "filetype_map.lua" }, "return " .. vim.inspect(filetype_map), "w")
-end)
+end
 
-local create_autocomplete_map = a.void(function()
+---@async
+local function create_autocomplete_map()
     ---@type table<string, Server>
     local language_map = {}
 
@@ -131,9 +135,10 @@ local create_autocomplete_map = a.void(function()
         "return " .. vim.inspect(autocomplete_candidates),
         "w"
     )
-end)
+end
 
-local create_server_metadata = a.void(function()
+---@async
+local function create_server_metadata()
     local metadata = {}
 
     ---@param server Server
@@ -147,21 +152,21 @@ local create_server_metadata = a.void(function()
     end
 
     write_file(Path.concat { generated_dir, "metadata.lua" }, "return " .. vim.inspect(metadata), "w")
-end)
+end
 
-local create_setting_schema_files = a.void(function()
+---@async
+local function create_setting_schema_files()
     local available_servers = servers.get_available_servers()
-    local gist_response =
-        a.wrap(curl.get, 1) "https://gist.githubusercontent.com/williamboman/a01c3ce1884d4b57cc93422e7eae7702/raw/lsp-packages.json"
-    local package_json_mappings = vim.json.decode(gist_response.body)
+    local gist_data =
+        async_fetch "https://gist.githubusercontent.com/williamboman/a01c3ce1884d4b57cc93422e7eae7702/raw/lsp-packages.json"
+    local package_json_mappings = vim.json.decode(gist_data)
 
     for _, server in pairs(available_servers) do
         local package_json_url = package_json_mappings[server.name]
         if package_json_url then
             print(("Fetching %q..."):format(package_json_url))
-            local response = a.wrap(curl.get, 1)(package_json_url)
-            assert(response.status == 200, "Failed to fetch package.json for " .. server.name)
-            local schema = vim.json.decode(response.body)
+            local response = async_fetch(package_json_url)
+            local schema = vim.json.decode(response)
             if schema.contributes and schema.contributes.configuration then
                 schema = schema.contributes.configuration
             end
@@ -177,9 +182,11 @@ local create_setting_schema_files = a.void(function()
             end
         end
     end
-end)
+end
 
-create_filetype_map()
-create_autocomplete_map()
-create_server_metadata()
-create_setting_schema_files()
+a.run_blocking(function()
+    create_filetype_map()
+    create_autocomplete_map()
+    create_server_metadata()
+    create_setting_schema_files()
+end)

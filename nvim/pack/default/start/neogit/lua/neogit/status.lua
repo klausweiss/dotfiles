@@ -388,18 +388,23 @@ end
 
 local dispatch_refresh = a.void(refresh)
 
---- Compatibility endpoint to refresh data from an autocommand.
---  `fname` should be `<afile>` in this case. This function will take care of
---  resolving the file name to the path relative to the repository root and
---  refresh that file's cache data.
-local refresh_viml_compat = a.void(function (fname)
+local refresh_manually = a.void(function (fname)
   if not fname or fname == "" then return end
 
   local path = fs.relpath_from_repository(fname)
   if not path then return end
-  if not config.values.auto_refresh then return end
   refresh({ status = true, diffs = { "*:" .. path } })
 end)
+
+--- Compatibility endpoint to refresh data from an autocommand.
+--  `fname` should be `<afile>` in this case. This function will take care of
+--  resolving the file name to the path relative to the repository root and
+--  refresh that file's cache data.
+local function refresh_viml_compat(fname)
+  if not config.values.auto_refresh then return end
+
+  refresh_manually(fname)
+end
 
 local function current_line_is_hunk()
   local _,_,h = save_cursor_location()
@@ -696,8 +701,9 @@ local discard = function()
       cli.apply.reverse.with_patch(patch).call()
     end
   elseif section.name == "untracked" then
+    local repo_root = cli.git_root()
     a.util.scheduler()
-    vim.fn.delete(item.name)
+    vim.fn.delete(repo_root .. '/' .. item.name)
   else
 
     local on_hunk = current_line_is_hunk()
@@ -966,6 +972,7 @@ M.dispatch_reset = dispatch_reset
 M.refresh = refresh
 M.dispatch_refresh = dispatch_refresh
 M.refresh_viml_compat = refresh_viml_compat
+M.refresh_manually = refresh_manually
 M.close = close
 
 function M.enable()

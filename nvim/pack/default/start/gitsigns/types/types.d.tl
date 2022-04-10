@@ -9,14 +9,14 @@ global unpack: function<T>({T}, number, number): T...
 global getfenv: function(function): table
 
 global record jit
-    arch: string
-    os: string
-    version: string
-    version_num: number
-    off: function()
-    off: function(function)
-    on: function()
-    status: function(): boolean
+  arch: string
+  os: string
+  version: string
+  version_num: number
+  off: function()
+  off: function(function)
+  on: function()
+  status: function(): boolean
 end
 
 local record api
@@ -79,6 +79,25 @@ local record api
   nvim_command: function(string)
   nvim_create_buf: function(boolean, boolean): integer
   nvim_create_namespace: function(string): integer
+
+  record AugroupOpts
+    clear: boolean
+  end
+
+  nvim_create_augroup: function(string, AugroupOpts): integer
+
+  record AutoCmdOpts
+    callback: function()
+    command: string
+    group: string
+    pattern: string|{string}
+    once: boolean
+    nested: boolean
+    desc: string
+    buffer: integer
+  end
+
+  nvim_create_autocmd: function(string|{string}, AutoCmdOpts): integer
   nvim_del_current_line: function()
   nvim_del_keymap: function(string, string)
   nvim_del_var: function(string)
@@ -118,7 +137,7 @@ local record api
   nvim_list_runtime_paths: function(): {string}
   nvim_list_tabpages: function(): {any}
   nvim_list_uis: function(): any
-  nvim_list_wins: function(): {number}
+  nvim_list_wins: function(): {integer}
   nvim_load_context: function({string:any}): any
   nvim_open_win: function(number, boolean, {string:any}): integer
   nvim_out_write: function(string)
@@ -159,7 +178,7 @@ local record api
   nvim_win_call: function<T>(number, (function(): T)): T
   nvim_win_close: function(number, boolean)
   nvim_win_del_var: function(number, string)
-  nvim_win_get_buf: function(number): number
+  nvim_win_get_buf: function(integer): integer
   nvim_win_get_config: function(number): {string:any}
   nvim_win_get_cursor: function(number): {integer}
   nvim_win_get_height: function(integer): integer
@@ -190,6 +209,7 @@ global record vim
     executable: function(string): integer
     expand: function(string): string
     getcwd: function(): string
+    input: function(string, string): string
 
     record QFItem
       bufnr: integer
@@ -253,6 +273,8 @@ global record vim
 
   deepcopy: function<T>(T): T
 
+  defer_fn: function(function, integer): loop.Timer
+
   diff: function(string|{string}, string|{string}, table)
 
   record o
@@ -269,13 +291,35 @@ global record vim
   record BufOption
     {BufOption}
     fileformat: string
+    filetype: string
+    modifiable: boolean
+    modified: boolean
+
+    enum BufHidden
+      '' 'hide' 'unload' 'delete' 'wipe'
+    end
+
+    bufhidden: BufHidden
+
+    enum BufType
+      '' 'acwrite' 'help' 'nofile' 'nowrite' 'quickfix' 'terminal' 'prompt'
+    end
+    buftype: BufType
   end
 
   bo: BufOption
 
+  record BufVar
+    {BufVar}
+    changedtick: integer
+  end
+
+  b: BufVar
+
   record v
     vim_did_enter: integer
   end
+
 
   record opt
     record Opt<T>
@@ -459,6 +503,10 @@ global record vim
   end
 
   wait: function(number, function, number, boolean)
+
+  record ui
+    input: function({string:any}, function(string))
+  end
 
   record VersionDetails
     api_compatible: integer

@@ -4,16 +4,18 @@ local util = require("luasnip.util.util")
 local node_util = require("luasnip.nodes.util")
 local types = require("luasnip.util.types")
 local events = require("luasnip.util.events")
-local tNode = require("luasnip.nodes.textNode")
+local tNode = require("luasnip.nodes.textNode").textNode
 
-local function F(fn, args, ...)
+local function F(fn, args, opts)
+	opts = opts or {}
+
 	return FunctionNode:new({
 		fn = fn,
 		args = node_util.wrap_args(args),
 		type = types.functionNode,
 		mark = nil,
-		user_args = { ... },
-	})
+		user_args = opts.user_args or {},
+	}, opts)
 end
 
 FunctionNode.input_enter = tNode.input_enter
@@ -42,7 +44,7 @@ function FunctionNode:update()
 	local text = util.wrap_value(
 		self.fn(args, self.parent, unpack(self.user_args))
 	)
-	if vim.o.expandtab then
+	if vim.bo.expandtab then
 		util.expand_tabs(text, util.tab_width())
 	end
 	-- don't expand tabs in parent.indentstr, use it as-is.

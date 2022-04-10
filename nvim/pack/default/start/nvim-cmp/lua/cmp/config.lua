@@ -157,6 +157,9 @@ end
 ---@param c cmp.ConfigSchema
 ---@return cmp.ConfigSchema
 config.normalize = function(c)
+  -- make sure c is not 'nil'
+  c = c == nil and {} or c
+
   if c.mapping then
     local normalized = {}
     for k, v in pairs(c.mapping) do

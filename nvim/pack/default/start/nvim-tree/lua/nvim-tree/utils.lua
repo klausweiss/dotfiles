@@ -1,14 +1,14 @@
-local has_notify, notify = pcall(require, 'notify')
+local has_notify, notify = pcall(require, "notify")
 
 local a = vim.api
 local uv = vim.loop
 
 local M = {}
 
-M.is_windows = vim.fn.has("win32") == 1 or vim.fn.has("win32unix") == 1
+M.is_windows = vim.fn.has "win32" == 1 or vim.fn.has "win32unix" == 1
 
 function M.path_to_matching_str(path)
-  return path:gsub('(%-)', '(%%-)'):gsub('(%.)', '(%%.)'):gsub('(%_)', '(%%_)')
+  return path:gsub("(%-)", "(%%-)"):gsub("(%.)", "(%%.)"):gsub("(%_)", "(%%_)")
 end
 
 function M.warn(msg)
@@ -16,7 +16,7 @@ function M.warn(msg)
     if has_notify then
       notify(msg, vim.log.levels.WARN, { title = "NvimTree" })
     else
-      vim.notify("[NvimTree] "..msg, vim.log.levels.WARN)
+      vim.notify("[NvimTree] " .. msg, vim.log.levels.WARN)
     end
   end)
 end
@@ -27,21 +27,25 @@ end
 
 function M.read_file(path)
   local fd = uv.fs_open(path, "r", 438)
-  if not fd then return '' end
+  if not fd then
+    return ""
+  end
   local stat = uv.fs_fstat(fd)
-  if not stat then return '' end
+  if not stat then
+    return ""
+  end
   local data = uv.fs_read(fd, stat.size, 0)
   uv.fs_close(fd)
-  return data or ''
+  return data or ""
 end
 
-local path_separator = package.config:sub(1,1)
+local path_separator = package.config:sub(1, 1)
 function M.path_join(paths)
   return table.concat(vim.tbl_map(M.path_remove_trailing, paths), path_separator)
 end
 
 function M.path_split(path)
-  return path:gmatch('[^'..path_separator..']+'..path_separator..'?')
+  return path:gmatch("[^" .. path_separator .. "]+" .. path_separator .. "?")
 end
 
 ---Get the basename of the given path.
@@ -50,7 +54,9 @@ end
 function M.path_basename(path)
   path = M.path_remove_trailing(path)
   local i = path:match("^.*()" .. path_separator)
-  if not i then return path end
+  if not i then
+    return path
+  end
   return path:sub(i + 1, #path)
 end
 
@@ -68,18 +74,18 @@ function M.path_add_trailing(path)
     return path
   end
 
-  return path..path_separator
+  return path .. path_separator
 end
 
 function M.path_remove_trailing(path)
-  local p, _ = path:gsub(path_separator..'$', '')
+  local p, _ = path:gsub(path_separator .. "$", "")
   return p
 end
 
 M.path_separator = path_separator
 
 function M.clear_prompt()
-  vim.api.nvim_command('normal! :')
+  vim.api.nvim_command "normal! :"
 end
 
 function M.get_user_input_char()
@@ -93,101 +99,35 @@ end
 -- get the node from the tree that matches the predicate
 -- @param nodes list of node
 -- @param fn    function(node): boolean
-function M.find_node(_nodes, _fn)
-  local function iter(nodes, fn)
+function M.find_node(nodes, fn)
+  local function iter(nodes_, fn_)
     local i = 1
-    for _, node in ipairs(nodes) do
-      if fn(node) then return node, i end
+    for _, node in ipairs(nodes_) do
+      if fn_(node) then
+        return node, i
+      end
       if node.open and #node.nodes > 0 then
-        local n, idx = iter(node.nodes, fn)
+        local n, idx = iter(node.nodes, fn_)
         i = i + idx
-        if n then return n, i end
+        if n then
+          return n, i
+        end
       else
         i = i + 1
       end
     end
     return nil, i
   end
-  local node, i = iter(_nodes, _fn)
-  i = require'nvim-tree.view'.View.hide_root_folder and i - 1 or i
+  local node, i = iter(nodes, fn)
+  i = require("nvim-tree.view").View.hide_root_folder and i - 1 or i
   return node, i
-end
-
----Create a shallow copy of a portion of a list.
----@param t table
----@param first integer First index, inclusive
----@param last integer Last index, inclusive
----@return table
-function M.tbl_slice(t, first, last)
-  local slice = {}
-  for i = first, last or #t, 1 do
-    table.insert(slice, t[i])
-  end
-
-  return slice
-end
-
-local function merge(t, first, mid, last, comparator)
-  local n1 = mid - first + 1
-  local n2 = last - mid
-  local ls = M.tbl_slice(t, first, mid)
-  local rs = M.tbl_slice(t, mid + 1, last)
-  local i = 1
-  local j = 1
-  local k = first
-
-  while (i <= n1 and j <= n2) do
-    if comparator(ls[i], rs[j]) then
-      t[k] = ls[i]
-      i = i + 1
-    else
-      t[k] = rs[j]
-      j = j + 1
-    end
-    k = k + 1
-  end
-
-  while i <= n1 do
-    t[k] = ls[i]
-    i = i + 1
-    k = k + 1
-  end
-
-  while j <= n2 do
-    t[k] = rs[j]
-    j = j + 1
-    k = k + 1
-  end
-end
-
-local function split_merge(t, first, last, comparator)
-  if (last - first) < 1 then return end
-
-  local mid = math.floor((first + last) / 2)
-
-  split_merge(t, first, mid, comparator)
-  split_merge(t, mid + 1, last, comparator)
-  merge(t, first, mid, last, comparator)
-end
-
----Perform a merge sort on a given list.
----@param t any[]
----@param comparator function|nil
-function M.merge_sort(t, comparator)
-  if not comparator then
-    comparator = function (left, right)
-      return left < right
-    end
-  end
-
-  split_merge(t, 1, #t, comparator)
 end
 
 ---Matching executable files in Windows.
 ---@param ext string
 ---@return boolean
-local PATHEXT = vim.env.PATHEXT or ''
-local wexe = vim.split(PATHEXT:gsub('%.', ''), ';')
+local PATHEXT = vim.env.PATHEXT or ""
+local wexe = vim.split(PATHEXT:gsub("%.", ""), ";")
 local pathexts = {}
 for _, v in pairs(wexe) do
   pathexts[v] = true
@@ -197,13 +137,23 @@ function M.is_windows_exe(ext)
   return pathexts[ext:upper()]
 end
 
-function M.rename_loaded_buffers(old_name, new_name)
+function M.rename_loaded_buffers(old_path, new_path)
   for _, buf in pairs(a.nvim_list_bufs()) do
     if a.nvim_buf_is_loaded(buf) then
-      if a.nvim_buf_get_name(buf) == old_name then
-        a.nvim_buf_set_name(buf, new_name)
-        -- to avoid the 'overwrite existing file' error message on write
-        vim.api.nvim_buf_call(buf, function() vim.cmd("silent! w!") end)
+      local buf_name = a.nvim_buf_get_name(buf)
+      local exact_match = buf_name == old_path
+      local child_match = (
+        buf_name:sub(1, #old_path) == old_path and buf_name:sub(#old_path + 1, #old_path + 1) == path_separator
+      )
+      if exact_match or child_match then
+        a.nvim_buf_set_name(buf, new_path .. buf_name:sub(#old_path + 1))
+        -- to avoid the 'overwrite existing file' error message on write for
+        -- normal files
+        if a.nvim_buf_get_option(buf, "buftype") == "" then
+          a.nvim_buf_call(buf, function()
+            vim.cmd "silent! write!"
+          end)
+        end
       end
     end
   end
@@ -219,10 +169,53 @@ end
 --- @param path string
 --- @return string
 function M.canonical_path(path)
-  if M.is_windows and path:match '^%a:' then
+  if M.is_windows and path:match "^%a:" then
     return path:sub(1, 1):upper() .. path:sub(2)
   end
   return path
+end
+
+-- Create empty sub-tables if not present
+-- @param tbl to create empty inside of
+-- @param sub dot separated string of sub-tables
+-- @return deepest sub-table
+function M.table_create_missing(tbl, sub)
+  if tbl == nil then
+    return nil
+  end
+
+  local t = tbl
+  for s in string.gmatch(sub, "([^%.]+)%.*") do
+    if t[s] == nil then
+      t[s] = {}
+    end
+    t = t[s]
+  end
+
+  return t
+end
+
+function M.format_bytes(bytes)
+  local units = { "B", "K", "M", "G", "T" }
+
+  bytes = math.max(bytes, 0)
+  local pow = math.floor((bytes and math.log(bytes) or 0) / math.log(1024))
+  pow = math.min(pow, #units)
+
+  local value = bytes / (1024 ^ pow)
+  value = math.floor((value * 10) + 0.5) / 10
+
+  pow = pow + 1
+
+  return (units[pow] == nil) and (bytes .. "B") or (value .. units[pow])
+end
+
+function M.key_by(tbl, key)
+  local keyed = {}
+  for _, val in ipairs(tbl) do
+    keyed[val[key]] = val
+  end
+  return keyed
 end
 
 return M

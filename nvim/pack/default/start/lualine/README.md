@@ -123,6 +123,7 @@ require('lualine').setup {
     section_separators = { left = '', right = ''},
     disabled_filetypes = {},
     always_divide_middle = true,
+    globalstatus = false,
   },
   sections = {
     lualine_a = {'mode'},
@@ -240,6 +241,7 @@ sections = {lualine_a = {'mode'}}
 - `mode` (vim mode)
 - `progress` (%progress in file)
 - `tabs` (shows currently available tabs)
+- `windows` (shows currently available windows)
 
 #### Custom components
 
@@ -338,6 +340,9 @@ options = {
   always_divide_middle = true, -- When set to true, left sections i.e. 'a','b' and 'c'
                                -- can't take over the entire statusline even
                                -- if neither of 'x', 'y' or 'z' are present.
+  globalstatus = false,        -- enable global statusline (have a single statusline
+                               -- at bottom of neovim instead of one for  every window).
+                               -- This feature is only available in neovim 0.7 and higher.
 }
 ```
 
@@ -352,7 +357,12 @@ sections = {
     {
       'mode',
       icons_enabled = true, -- Enables the display of icons alongside the component.
-      icon = nil,           -- Defines the icon to be displayed in front of the component.
+      -- Defines the icon to be displayed in front of the component.
+      -- Can be string|table
+      -- As table it must contain the icon as first entry and can use
+      -- color option to custom color the icon. Example:
+      -- {'branch', icon = ''} / {'branch', icon = {'', color={fg='green'}}}
+      icon = nil,
 
       separator = nil,      -- Determines what separator to use for the component.
                             -- Note:
@@ -374,15 +384,19 @@ sections = {
 
       -- Defines a custom color for the component:
       --
-      -- 'highlight_group_name' | { fg = '#rrggbb'|cterm_value(0-255)|'color_name(red)', bg= '#rrggbb', gui='style' }
+      -- 'highlight_group_name' | { fg = '#rrggbb'|cterm_value(0-255)|'color_name(red)', bg= '#rrggbb', gui='style' } | function
       -- Note:
       --  '|' is synonymous with 'or', meaning a different acceptable format for that placeholder.
+      -- color function has to return one of other color types ('highlight_group_name' | { fg = '#rrggbb'|cterm_value(0-255)|'color_name(red)', bg= '#rrggbb', gui='style' })
+      -- color functions can be used to have different colors based on state as shown below.
       --
       -- Examples:
       --   color = { fg = '#ffaa88', bg = 'grey', gui='italic,bold' },
       --   color = { fg = 204 }   -- When fg/bg are omitted, they default to the your theme's fg/bg.
       --   color = 'WarningMsg'   -- Highlight groups can also be used.
-      --
+      --   color = function(section)
+      --      return { fg = vim.bo.modified and '#aa3355' or '#33aa88' }
+      --   end,
       color = nil, -- The default is your theme's color for that section and mode.
 
       -- Specify what type a component is, if omitted, lualine will guess it for you.
@@ -584,6 +598,43 @@ sections = {
 }
 ```
 
+#### windows component options
+
+```lua
+sections = {
+  lualine_a = {
+    {
+      'windows',
+      show_filename_only = true,   -- Shows shortened relative path when set to false.
+      show_modified_status = true, -- Shows indicator when the window is modified.
+
+      mode = 0, -- 0: Shows window name
+                -- 1: Shows window index (bufnr)
+                -- 2: Shows window name + window index (bufnr)
+
+      max_length = vim.o.columns * 2 / 3, -- Maximum width of windows component,
+                                          -- it can also be a function that returns
+                                          -- the value of `max_length` dynamically.
+      filetype_names = {
+        TelescopePrompt = 'Telescope',
+        dashboard = 'Dashboard',
+        packer = 'Packer',
+        fzf = 'FZF',
+        alpha = 'Alpha'
+      }, -- Shows specific window name for that filetype ( { `filetype` = `window_name`, ... } )
+
+      disabled_buftypes = { 'quickfix', 'prompt' }, -- Hide a window if its buffer's type is disabled
+
+      windows_color = {
+        -- Same values as the general color option can be used here.
+        active = 'lualine_{section}_normal',     -- Color for active window.
+        inactive = 'lualine_{section}_inactive', -- Color for inactive window.
+      },
+    }
+  }
+}
+```
+
 ---
 
 ### Tabline
@@ -711,6 +762,8 @@ Thanks to these wonderful people, we enjoy this awesome plugin.
   <img src="https://contrib.rocks/image?repo=nvim-lualine/lualine.nvim" />
 </a>
 
+<!-- panvimdoc-ignore-end -->
+
 ### Wiki
 
 Check out the [wiki](https://github.com/nvim-lualine/lualine.nvim/wiki) for more info.
@@ -720,4 +773,5 @@ You can find some useful [configuration snippets](https://github.com/nvim-lualin
 If you want to extend lualine with plugins or want to know
 which ones already do, [wiki/plugins](https://github.com/nvim-lualine/lualine.nvim/wiki/Plugins) is for you.
 
-<!-- panvimdoc-ignore-end -->
+### Support
+I you appreciate my work you can by me a coffee [here](https://www.buymeacoffee.com/shadmansalJ).

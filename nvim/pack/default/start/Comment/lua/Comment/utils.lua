@@ -48,12 +48,6 @@ U.cmotion = {
     V = 5,
 }
 
----Print a msg on stderr
----@param msg string
-function U.eprint(msg)
-    vim.notify('Comment :: ' .. msg, vim.log.levels.ERROR)
-end
-
 ---Check whether the line is empty
 ---@param ln string
 ---@return boolean
@@ -72,11 +66,11 @@ end
 
 ---Helper to get padding (I was tired to check this everywhere)
 ---NOTE: We can also use function to calculate padding if someone wants more spacing
----@param flag boolean
+---@param flag boolean|fun():boolean
 ---@return string string Padding chars
 ---@return string string Padding pattern
 function U.get_padding(flag)
-    if not flag then
+    if not U.is_fn(flag) then
         return '', ''
     end
     return ' ', '%s?'
@@ -99,17 +93,13 @@ function U.escape(str)
 end
 
 ---Call a function if exists
----@param fn function Hook function
+---@param fn function Wanna be function
 ---@return boolean|string
 function U.is_fn(fn, ...)
-    return type(fn) == 'function' and fn(...)
-end
-
----Helper to compute the ignore pattern
----@param ig string|function
----@return boolean|string
-function U.get_pattern(ig)
-    return ig and (type(ig) == 'string' and ig or U.is_fn(ig))
+    if type(fn) == 'function' then
+        return fn(...)
+    end
+    return fn
 end
 
 ---Check if the given line is ignored or not with the given pattern
@@ -126,8 +116,8 @@ end
 ---@return CRange
 function U.get_region(vmode)
     if not vmode then
-        local row, col = unpack(A.nvim_win_get_cursor(0))
-        return { srow = row, scol = col, erow = row, ecol = col }
+        local row = unpack(A.nvim_win_get_cursor(0))
+        return { srow = row, scol = 0, erow = row, ecol = 0 }
     end
 
     local m = A.nvim_buf_get_mark
@@ -174,8 +164,12 @@ end
 ---@return string|boolean
 function U.unwrap_cstr(cstr)
     local lcs, rcs = cstr:match('(.*)%%s(.*)')
+
     if not (lcs or rcs) then
-        return U.eprint(("Invalid commentstring: %q. Run ':h commentstring' for help."):format(cstr))
+        return vim.notify(
+            ("[Comment] Invalid commentstring - %q. Run ':h commentstring' for help."):format(cstr),
+            vim.log.levels.ERROR
+        )
     end
 
     -- Return false if a part is empty, otherwise trim it
