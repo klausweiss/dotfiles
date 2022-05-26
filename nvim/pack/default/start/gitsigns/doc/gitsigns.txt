@@ -178,12 +178,33 @@ setqflist({target}, {opts})                             *gitsigns.setqflist()*
                                Open the quickfix/location list viewer.
                                Defaults to `true`.
 
+show({revision})                                             *gitsigns.show()*
+                Show revision {base} of the current file, if it is given, or
+                with the currently set base (index by default).
+
+                If {base} is the index, then the opened buffer is editable and
+                any written changes will update the index accordingly.
+
+                Examples: >
+                  " View the index version of the file
+                  :Gitsigns show
+
+                  " View revision of file in the last commit
+                  :Gitsigns show ~1
+<
+
+                For a more complete list of ways to specify bases, see
+                |gitsigns-revision|.
+
+                Attributes: ~
+                    {async}
+
 diffthis({base})                                         *gitsigns.diffthis()*
                 Perform a |vimdiff| on the given file with {base} if it is
                 given, or with the currently set base (index by default).
 
-                If {base} is the index, then the opened diff buffer is editable
-                and any written changes will update the index accordingly.
+                If {base} is the index, then the opened buffer is editable and
+                any written changes will update the index accordingly.
 
                 Examples: >
                   " Diff against the index
@@ -248,7 +269,7 @@ blame_line({opts})                                     *gitsigns.blame_line()*
                     {opts}   (table|nil):
                              Additional options:
                              • {full}: (boolean)
-                               Display full commit message
+                               Display full commit message with hunk.
                              • {ignore_whitespace}: (boolean)
                                Ignore whitespace when running blame.
 
@@ -360,23 +381,65 @@ stage_hunk({range})                                    *gitsigns.stage_hunk()*
                     {range} table|nil List-like table of two integers making
                     up the line range from which you want to stage the hunks.
 
-toggle_deleted()                                   *gitsigns.toggle_deleted()*
+toggle_deleted({value})                            *gitsigns.toggle_deleted()*
                 Toggle |gitsigns-config-show_deleted|
 
-toggle_current_line_blame()             *gitsigns.toggle_current_line_blame()*
+                Parameters:~
+                    {value} boolean|nil Value to set toggle. If `nil`
+                    the toggle value is inverted.
+
+                Returns:~
+                    Current value of |gitsigns-config-show_deleted|
+
+toggle_current_line_blame({value})      *gitsigns.toggle_current_line_blame()*
                 Toggle |gitsigns-config-current_line_blame|
 
-toggle_word_diff()                               *gitsigns.toggle_word_diff()*
+                Parameters:~
+                    {value} boolean|nil Value to set toggle. If `nil`
+                    the toggle value is inverted.
+
+                Returns:~
+                    Current value of |gitsigns-config-current_line_blame|
+
+toggle_word_diff({value})                        *gitsigns.toggle_word_diff()*
                 Toggle |gitsigns-config-word_diff|
 
-toggle_linehl()                                     *gitsigns.toggle_linehl()*
+                Parameters:~
+                    {value} boolean|nil Value to set toggle. If `nil`
+                    the toggle value is inverted.
+
+                Returns:~
+                    Current value of |gitsigns-config-word_diff|
+
+toggle_linehl({value})                              *gitsigns.toggle_linehl()*
                 Toggle |gitsigns-config-linehl|
 
-toggle_numhl()                                       *gitsigns.toggle_numhl()*
+                Parameters:~
+                    {value} boolean|nil Value to set toggle. If `nil`
+                    the toggle value is inverted.
+
+                Returns:~
+                    Current value of |gitsigns-config-linehl|
+
+toggle_numhl({value})                                *gitsigns.toggle_numhl()*
                 Toggle |gitsigns-config-numhl|
 
-toggle_signs()                                       *gitsigns.toggle_signs()*
-                Toggle |gitsigns-config-signcolumn|
+                Parameters:~
+                    {value} boolean|nil Value to set toggle. If `nil`
+                    the toggle value is inverted.
+
+                Returns:~
+                    Current value of |gitsigns-config-numhl|
+
+toggle_signs({value})                                *gitsigns.toggle_signs()*
+                Toggle |gitsigns-config-signbooleancolumn|
+
+                Parameters:~
+                    {value} boolean|nil Value to set toggle. If `nil`
+                    the toggle value is inverted.
+
+                Returns:~
+                    Current value of |gitsigns-config-signcolumn|
 
 
 ==============================================================================
@@ -392,10 +455,10 @@ signs                                                  *gitsigns-config-signs*
       Type: `table[extended]`
       Default: >
         {
-          add          = {hl = 'GitSignsAdd'   , text = '│', numhl='GitSignsAddNr'   , linehl='GitSignsAddLn'    },
-          change       = {hl = 'GitSignsChange', text = '│', numhl='GitSignsChangeNr', linehl='GitSignsChangeLn' },
-          delete       = {hl = 'GitSignsDelete', text = '_', numhl='GitSignsDeleteNr', linehl='GitSignsDeleteLn' },
-          topdelete    = {hl = 'GitSignsDelete', text = '‾', numhl='GitSignsDeleteNr', linehl='GitSignsDeleteLn' },
+          add          = {hl = 'GitSignsAdd'   , text = '┃', numhl='GitSignsAddNr'   , linehl='GitSignsAddLn'    },
+          change       = {hl = 'GitSignsChange', text = '┃', numhl='GitSignsChangeNr', linehl='GitSignsChangeLn' },
+          delete       = {hl = 'GitSignsDelete', text = '▁', numhl='GitSignsDeleteNr', linehl='GitSignsDeleteLn' },
+          topdelete    = {hl = 'GitSignsDelete', text = '▔', numhl='GitSignsDeleteNr', linehl='GitSignsDeleteLn' },
           changedelete = {hl = 'GitSignsChange', text = '~', numhl='GitSignsChangeNr', linehl='GitSignsChangeLn' },
         }
 <
@@ -517,7 +580,7 @@ show_deleted                                    *gitsigns-config-show_deleted*
 
       Show the old version of hunks inline in the buffer (via virtual lines).
 
-      Note: Virtual lines currently use the highlight `GitSignsDeleteLn`.
+      Note: Virtual lines currently use the highlight `GitSignsDeleteVirtLn`.
 
 diff_opts                                          *gitsigns-config-diff_opts*
       Type: `table[extended]`, Default: derived from 'diffopt'
@@ -537,7 +600,7 @@ diff_opts                                          *gitsigns-config-diff_opts*
 
             Note Neovim v0.5 uses LuaJIT's FFI interface, whereas v0.5+ uses
             `vim.diff`.
-        • indent_heuristic: string
+        • indent_heuristic: boolean
             Use the indent heuristic for the internal
             diff library.
         • vertical: boolean
@@ -630,6 +693,7 @@ current_line_blame_opts              *gitsigns-config-current_line_blame_opts*
         {
           virt_text = true,
           virt_text_pos = 'eol',
+          virt_text_priority = 100,
           delay = 1000
         }
 <
@@ -649,6 +713,8 @@ current_line_blame_opts              *gitsigns-config-current_line_blame_opts*
           displayed.
         • ignore_whitespace: boolean
           Ignore whitespace when running blame.
+        • virt_text_priority: integer
+          Priority of virtual text.
 
 current_line_blame_formatter_opts
                            *gitsigns-config-current_line_blame_formatter_opts*
@@ -741,6 +807,15 @@ current_line_blame_formatter    *gitsigns-config-current_line_blame_formatter*
           The result of this function is passed directly to the `opts.virt_text`
           field of |nvim_buf_set_extmark| and thus must be a list of
           [text, highlight] tuples.
+
+current_line_blame_formatter_nc
+                             *gitsigns-config-current_line_blame_formatter_nc*
+      Type: `string|function`, Default: `' <author>'`
+
+      String or function used to format the virtual text of
+      |gitsigns-config-current_line_blame| for lines that aren't committed.
+
+      See |gitsigns-config-current_line_blame_formatter| for more information.
 
 trouble                                              *gitsigns-config-trouble*
       Type: `boolean`, Default: true if installed

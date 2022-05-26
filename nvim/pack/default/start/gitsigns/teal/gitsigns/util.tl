@@ -1,4 +1,6 @@
 local record M
+  type FmtInfo = {string:string|integer|{string}}
+
   path_sep: string
 end
 
@@ -130,5 +132,54 @@ function M.calc_base(base: string): string
   return base
 end
 
+function M.emptytable<T>(): T
+  return setmetatable({} as T, {
+    __index = function(t: table, k: any): any
+      t[k] = {}
+      return t[k]
+    end
+  })
+end
+
+local function expand_date(fmt: string, time: integer): string
+  if fmt == '%R' then
+    return M.get_relative_time(time)
+  end
+  return os.date(fmt, time)
+end
+
+---@param reltime Use relative time as the default date format
+function M.expand_format(fmt: string, info: M.FmtInfo, reltime: boolean): string
+  local ret = {}
+
+  for _ = 1, 20 do -- loop protection
+    -- Capture <name> or <name:format>
+    local scol, ecol, match, key, time_fmt = fmt:find('(<([^:>]+):?([^>]*)>)')
+    if not match then
+      break
+    end
+
+    ret[#ret+1], fmt = fmt:sub(1, scol-1), fmt:sub(ecol+1)
+
+    local v = info[key]
+
+    if v then
+      if v is {string} then
+        v = table.concat(v, '\n')
+      end
+      if vim.endswith(key, '_time') then
+        if time_fmt == '' then
+          time_fmt = reltime and '%R' or '%Y-%m-%d'
+        end
+        v = expand_date(time_fmt, v as integer)
+      end
+      match = tostring(v)
+    end
+    ret[#ret+1] = match
+  end
+
+  ret[#ret+1] = fmt
+  return table.concat(ret, '')
+end
 
 return M

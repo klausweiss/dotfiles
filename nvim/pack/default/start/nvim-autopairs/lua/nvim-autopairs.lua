@@ -19,7 +19,7 @@ local default = {
     disable_filetype = { 'TelescopePrompt', 'spectre_panel' },
     disable_in_macro = false,
     disable_in_visualblock = false,
-    ignored_next_char = string.gsub([[ [%w%%%'%[%"%.] ]], '%s+', ''),
+    ignored_next_char = [=[[%w%%%'%[%"%.]]=],
     check_ts = false,
     enable_moveright = true,
     enable_afterquote = true,
@@ -407,17 +407,9 @@ M.autopairs_map = function(bufnr, char)
     local rules = M.get_buf_rules(bufnr)
     for _, rule in pairs(rules) do
         if rule.start_pair then
-            if rule.is_regex and rule.key_map and rule.key_map ~= '' then
+            if rule.key_map and rule.key_map:match('<.*>') then
                 new_text = line:sub(1, col) .. line:sub(col + 1, #line)
                 add_char = 0
-            elseif rule.key_map and rule.key_map:match('<.*>') then
-                -- if it is a special key like <c-a>
-                if utils.esc(rule.key_map) ~= char then
-                    new_text = ''
-                else
-                    new_text = line:sub(1, col) .. line:sub(col + 1, #line)
-                    add_char = 0
-                end
             else
                 new_text = line:sub(1, col) .. char .. line:sub(col + 1, #line)
                 add_char = rule.key_map and #rule.key_map or 1
@@ -553,43 +545,43 @@ M.autopairs_cr = function(bufnr)
                 #rule.end_pair,
                 rule.is_regex
             )
+
+            local cond_opt = {
+                ts_node = M.state.ts_node,
+                check_endwise_ts = true,
+                rule = rule,
+                bufnr = bufnr,
+                col = col,
+                line = line,
+                prev_char = prev_char,
+                next_char = next_char,
+            }
+
+            local end_pair = rule:get_end_pair(cond_opt)
+            local end_pair_length = rule:get_end_pair_length(end_pair)
+
             -- log.debug('prev_char' .. rule.start_pair)
             -- log.debug('prev_char' .. prev_char)
             -- log.debug('next_char' .. next_char)
             if
                 rule.is_endwise
                 and utils.compare(rule.start_pair, prev_char, rule.is_regex)
-                and rule:can_cr({
-                    ts_node = M.state.ts_node,
-                    check_endwise_ts = true,
-                    bufnr = bufnr,
-                    rule = rule,
-                    col = col,
-                    prev_char = prev_char,
-                    next_char = next_char,
-                    line = line,
-                })
+                and rule:can_cr(cond_opt)
             then
                 return utils.esc(
-                    rule.end_pair
-                        .. utils.repeat_key(utils.key.join_left, #rule.end_pair)
+                    end_pair
+                        .. utils.repeat_key(utils.key.join_left, end_pair_length)
                         -- FIXME do i need to re indent twice #118
                         .. '<cr><esc>====O'
                 )
             end
+
+            cond_opt.check_endwise_ts = false
+
             if
                 utils.compare(rule.start_pair, prev_char, rule.is_regex)
                 and utils.compare(rule.end_pair, next_char, rule.is_regex)
-                and rule:can_cr({
-                    ts_node = M.state.ts_node,
-                    check_endwise_ts = false,
-                    bufnr = bufnr,
-                    rule = rule,
-                    col = col,
-                    prev_char = prev_char,
-                    next_char = next_char,
-                    line = line,
-                })
+                and rule:can_cr(cond_opt)
             then
                 log.debug('do_cr')
                 return utils.esc(rule:get_map_cr({rule = rule, line = line, color = col, bufnr = bufnr}))

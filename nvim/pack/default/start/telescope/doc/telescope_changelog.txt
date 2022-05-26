@@ -159,5 +159,41 @@ functions. Note that there is no longer a workspace diagnostics. You can only
 get all diagnostics for all open buffers.
 
 
+                                                    *telescope.changelog-1851*
+
+Date: April 22, 2022
+PR: https://github.com/nvim-telescope/telescope.nvim/pull/1851
+
+Telescope requires now Neovim release 0.7.0 or a more recent nightly.
+If you are running Neovim nightly, you need to make sure that you are on the
+LATEST version. Every other commit is not supported. So make sure you build
+the newest nightly before reporting issues.
+In the future, we will adopt a different release strategy. This release
+strategy follows the approach that the latest telescope.nvim master will only
+work with latest Neovim nightly and we will provide tags for specific Neovim
+versions. You can read more about this strategy here:
+https://github.com/nvim-telescope/telescope.nvim/issues/1772
+
+
+                                                    *telescope.changelog-1866*
+
+Date: April 25, 2022
+PR: https://github.com/nvim-telescope/telescope.nvim/pull/1866
+
+We decided to remove both `lsp_code_actions` and `lsp_range_code_actions`.
+Currently, both functions are highly duplicated code from neovim, with fewer
+features, because it's out of date. So rather that we copy over the required
+changes to fix some bugs or implement client side code actions, we decided to
+remove both of them and suggest you use `vim.lsp.buf.code_action` and
+`vim.lsp.buf.range_code_action`. The transition to it is easy thanks to
+`vim.ui.select` which allows you to override the select UI. We provide a small
+extension for quite some time that make it easy to use telescope for
+`vim.ui.select`. You can found the code here
+https://github.com/nvim-telescope/telescope-ui-select.nvim. It offers the same
+displaying as the current version of `lsp_code_actions`. An alternative is
+https://github.com/stevearc/dressing.nvim which has support for multiple
+different backends including telescope.
+
+
 
  vim:tw=78:ts=8:ft=help:norl:

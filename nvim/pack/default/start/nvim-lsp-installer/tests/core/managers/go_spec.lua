@@ -1,4 +1,3 @@
-local match = require "luassert.match"
 local mock = require "luassert.mock"
 local stub = require "luassert.stub"
 local spy = require "luassert.spy"
@@ -6,6 +5,7 @@ local Optional = require "nvim-lsp-installer.core.optional"
 local Result = require "nvim-lsp-installer.core.result"
 local go = require "nvim-lsp-installer.core.managers.go"
 local spawn = require "nvim-lsp-installer.core.spawn"
+local installer = require "nvim-lsp-installer.core.installer"
 
 describe("go manager", function()
     ---@type InstallContext
@@ -22,26 +22,26 @@ describe("go manager", function()
         "should call go install",
         async_test(function()
             ctx.requested_version = Optional.of "42.13.37"
-            go.packages { "main-package", "supporting-package", "supporting-package2" }(ctx)
+            installer.run_installer(ctx, go.packages { "main-package", "supporting-package", "supporting-package2" })
             assert.spy(ctx.spawn.go).was_called(3)
-            assert.spy(ctx.spawn.go).was_called_with(match.tbl_containing {
+            assert.spy(ctx.spawn.go).was_called_with {
                 "install",
                 "-v",
                 "main-package@42.13.37",
-                env = match.list_containing "GOBIN=/tmp/install-dir",
-            })
-            assert.spy(ctx.spawn.go).was_called_with(match.tbl_containing {
+                env = { GOBIN = "/tmp/install-dir" },
+            }
+            assert.spy(ctx.spawn.go).was_called_with {
                 "install",
                 "-v",
                 "supporting-package@latest",
-                env = match.list_containing "GOBIN=/tmp/install-dir",
-            })
-            assert.spy(ctx.spawn.go).was_called_with(match.tbl_containing {
+                env = { GOBIN = "/tmp/install-dir" },
+            }
+            assert.spy(ctx.spawn.go).was_called_with {
                 "install",
                 "-v",
                 "supporting-package2@latest",
-                env = match.list_containing "GOBIN=/tmp/install-dir",
-            })
+                env = { GOBIN = "/tmp/install-dir" },
+            }
         end)
     )
 
@@ -49,27 +49,21 @@ describe("go manager", function()
         "should provide receipt information",
         async_test(function()
             ctx.requested_version = Optional.of "42.13.37"
-            go.packages { "main-package", "supporting-package", "supporting-package2" }(ctx)
-            assert.equals(
-                vim.inspect {
+            installer.run_installer(ctx, go.packages { "main-package", "supporting-package", "supporting-package2" })
+            assert.same({
+                type = "go",
+                package = "main-package",
+            }, ctx.receipt.primary_source)
+            assert.same({
+                {
                     type = "go",
-                    package = "main-package",
+                    package = "supporting-package",
                 },
-                vim.inspect(ctx.receipt.primary_source)
-            )
-            assert.equals(
-                vim.inspect {
-                    {
-                        type = "go",
-                        package = "supporting-package",
-                    },
-                    {
-                        type = "go",
-                        package = "supporting-package2",
-                    },
+                {
+                    type = "go",
+                    package = "supporting-package2",
                 },
-                vim.inspect(ctx.receipt.secondary_sources)
-            )
+            }, ctx.receipt.secondary_sources)
         end)
     )
 end)
@@ -87,15 +81,12 @@ gopls: go1.18
 
     it("should parse go version output", function()
         local parsed = go.parse_mod_version_output(go_version_output)
-        assert.equals(
-            vim.inspect {
-                path = { ["golang.org/x/tools/gopls"] = "" },
-                mod = { ["golang.org/x/tools/gopls"] = "v0.8.1" },
-                dep = { ["github.com/google/go-cmp"] = "v0.5.7", ["mvdan.cc/xurls/v2"] = "v2.4.0" },
-                build = { ["-compiler=gc"] = "", ["GOOS=darwin"] = "" },
-            },
-            vim.inspect(parsed)
-        )
+        assert.same({
+            path = { ["golang.org/x/tools/gopls"] = "" },
+            mod = { ["golang.org/x/tools/gopls"] = "v0.8.1" },
+            dep = { ["github.com/google/go-cmp"] = "v0.5.7", ["mvdan.cc/xurls/v2"] = "v2.4.0" },
+            build = { ["-compiler=gc"] = "", ["GOOS=darwin"] = "" },
+        }, parsed)
     end)
 
     it(
@@ -137,18 +128,13 @@ gopls: go1.18
                 "list",
                 "-json",
                 "-m",
-                "-versions",
-                "golang.org/x/tools/gopls",
+                "golang.org/x/tools/gopls@latest",
                 cwd = "/tmp/install/dir",
             }).returns(Result.success {
                 stdout = [[
             {
                 "Path": "/tmp/install/dir",
-                "Versions": [
-                    "v1.0.0",
-                    "v1.0.1",
-                    "v2.0.0"
-                ]
+                "Version": "v2.0.0"
             }
             ]],
             })
@@ -172,14 +158,11 @@ gopls: go1.18
             )
 
             assert.is_true(result:is_success())
-            assert.equals(
-                vim.inspect {
-                    name = "golang.org/x/tools/gopls",
-                    current_version = "v0.8.1",
-                    latest_version = "v2.0.0",
-                },
-                vim.inspect(result:get_or_nil())
-            )
+            assert.same({
+                name = "golang.org/x/tools/gopls",
+                current_version = "v0.8.1",
+                latest_version = "v2.0.0",
+            }, result:get_or_nil())
 
             spawn.go = nil
         end)

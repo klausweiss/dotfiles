@@ -9,6 +9,7 @@ that config. This file is accessible in neovim via `:help lspconfig-server-confi
 - [ansiblels](#ansiblels)
 - [arduino_language_server](#arduino_language_server)
 - [asm_lsp](#asm_lsp)
+- [astro](#astro)
 - [awk_ls](#awk_ls)
 - [bashls](#bashls)
 - [beancount](#beancount)
@@ -47,6 +48,7 @@ that config. This file is accessible in neovim via `:help lspconfig-server-confi
 - [fstar](#fstar)
 - [gdscript](#gdscript)
 - [ghcide](#ghcide)
+- [glint](#glint)
 - [golangci_lint_ls](#golangci_lint_ls)
 - [gopls](#gopls)
 - [gradle_ls](#gradle_ls)
@@ -126,6 +128,7 @@ that config. This file is accessible in neovim via `:help lspconfig-server-confi
 - [spectral](#spectral)
 - [sqlls](#sqlls)
 - [sqls](#sqls)
+- [steep](#steep)
 - [stylelint_lsp](#stylelint_lsp)
 - [sumneko_lua](#sumneko_lua)
 - [svelte](#svelte)
@@ -391,6 +394,44 @@ require'lspconfig'.asm_lsp.setup{}
   ```
 
 
+## astro
+
+https://github.com/withastro/language-tools/tree/main/packages/language-server
+
+`astro-ls` can be installed via `npm`:
+```sh
+npm install -g @astrojs/language-server
+```
+
+
+
+**Snippet to enable the language server:**
+```lua
+require'lspconfig'.astro.setup{}
+```
+
+
+**Default values:**
+  - `cmd` : 
+  ```lua
+  { "astro-ls", "--stdio" }
+  ```
+  - `filetypes` : 
+  ```lua
+  { "astro" }
+  ```
+  - `init_options` : 
+  ```lua
+  {
+    configuration = {}
+  }
+  ```
+  - `root_dir` : 
+  ```lua
+  root_pattern("package.json", "tsconfig.json", "jsconfig.json", ".git")
+  ```
+
+
 ## awk_ls
 
 https://github.com/Beaglefoot/awk-language-server/
@@ -484,22 +525,21 @@ require'lspconfig'.beancount.setup{}
 **Default values:**
   - `cmd` : 
   ```lua
-  { "beancount-langserver", "--stdio" }
+  { "beancount-language-server", "--stdio" }
   ```
   - `filetypes` : 
   ```lua
-  { "beancount" }
+  { "beancount", "bean" }
   ```
   - `init_options` : 
   ```lua
   {
-    journalFile = "",
-    pythonPath = "python3"
+    journalFile = ""
   }
   ```
   - `root_dir` : 
   ```lua
-  root_pattern("elm.json")
+  root_pattern(".git")
   ```
   - `single_file_support` : 
   ```lua
@@ -640,7 +680,7 @@ require'lspconfig'.ccls.setup{}
   ```
   - `root_dir` : 
   ```lua
-  root_pattern("compile_commands.json", ".ccls", ".git")
+  <function 1>
   ```
   - `single_file_support` : 
   ```lua
@@ -1062,7 +1102,7 @@ require'lspconfig'.dartls.setup{}
 **Default values:**
   - `cmd` : 
   ```lua
-  { "dart", "./snapshots/analysis_server.dart.snapshot", "--lsp" }
+  { "dart", "language-server" }
   ```
   - `filetypes` : 
   ```lua
@@ -1380,7 +1420,7 @@ require'lspconfig'.elixirls.setup{}
 **Default values:**
   - `filetypes` : 
   ```lua
-  { "elixir", "eelixir" }
+  { "elixir", "eelixir", "heex" }
   ```
   - `root_dir` : 
   ```lua
@@ -1580,7 +1620,7 @@ require'lspconfig'.esbonio.setup {
 }
 ```
 
-A full list and explanation of the available options can be found [here](https://swyddfa.github.io/esbonio/docs/lsp/editors/index.html)
+A full list and explanation of the available options can be found [here](https://swyddfa.github.io/esbonio/docs/latest/en/lsp/getting-started.html#configuration)
 
 
 
@@ -1799,9 +1839,17 @@ require'lspconfig'.foam_ls.setup{}
 
 ## fortls
 
-https://github.com/hansec/fortran-language-server
+https://github.com/gnikit/fortls
 
-Fortran Language Server for the Language Server Protocol
+fortls is a Fortran Language Server, the server can be installed via pip
+
+```sh
+pip install fortls
+```
+
+Settings to the server can be passed either through the `cmd` option or through
+a local configuration file e.g. `.fortls`. For more information
+see the `fortls` [documentation](https://gnikit.github.io/fortls/options.html).
     
 
 
@@ -1814,7 +1862,7 @@ require'lspconfig'.fortls.setup{}
 **Default values:**
   - `cmd` : 
   ```lua
-  { "fortls" }
+  { "fortls", "--notify_init", "--hover_signature", "--hover_language=fortran", "--use_signature_help" }
   ```
   - `filetypes` : 
   ```lua
@@ -1826,9 +1874,7 @@ require'lspconfig'.fortls.setup{}
   ```
   - `settings` : 
   ```lua
-  {
-    nthreads = 1
-  }
+  {}
   ```
 
 
@@ -1965,6 +2011,57 @@ require'lspconfig'.ghcide.setup{}
   - `root_dir` : 
   ```lua
   root_pattern("stack.yaml", "hie-bios", "BUILD.bazel", "cabal.config", "package.yaml")
+  ```
+
+
+## glint
+
+  https://github.com/typed-ember/glint
+
+  https://typed-ember.gitbook.io/glint/
+
+  `glint-language-server` is installed when adding `@glint/core` to your project's devDependencies:
+
+  ```sh
+  npm install @glint/core --save-dev
+  ```
+
+  or
+
+  ```sh
+  yarn add -D @glint/core
+  ```
+
+  or
+
+  ```sh
+  pnpm add -D @glint/core
+  ```
+
+
+
+**Snippet to enable the language server:**
+```lua
+require'lspconfig'.glint.setup{}
+```
+
+
+**Default values:**
+  - `cmd` : 
+  ```lua
+  { "glint-language-server" }
+  ```
+  - `filetypes` : 
+  ```lua
+  { "html.handlebars", "handlebars", "typescript", "typescript.glimmer", "javascript", "javascript.glimmer" }
+  ```
+  - `on_new_config` : 
+  ```lua
+  see source file
+  ```
+  - `root_dir` : 
+  ```lua
+  see source file
   ```
 
 
@@ -3427,7 +3524,7 @@ require'lspconfig'.ocamllsp.setup{}
   ```
   - `filetypes` : 
   ```lua
-  { "ocaml", "ocaml.menhir", "ocaml.interface", "ocaml.ocamllex", "reason" }
+  { "ocaml", "ocaml.menhir", "ocaml.interface", "ocaml.ocamllex", "reason", "dune" }
   ```
   - `get_language_id` : 
   ```lua
@@ -3435,7 +3532,7 @@ require'lspconfig'.ocamllsp.setup{}
   ```
   - `root_dir` : 
   ```lua
-  root_pattern("*.opam", "esy.json", "package.json", ".git")
+  root_pattern("*.opam", "esy.json", "package.json", ".git", "dune-project", "dune-workspace")
   ```
 
 
@@ -4352,14 +4449,7 @@ require'lspconfig'.racket_langserver.setup{}
 
 Reason language server
 
-**By default, reason_ls doesn't have a `cmd` set.** This is because nvim-lspconfig does not make assumptions about your path.
-You have to install the language server manually.
-
 You can install reason language server from [reason-language-server](https://github.com/jaredly/reason-language-server) repository.
-
-```lua
-cmd = {'<path_to_reason_language_server>'}
-```
 
 
 
@@ -5272,6 +5362,37 @@ require'lspconfig'.sqls.setup{}
   ```
 
 
+## steep
+
+https://github.com/soutaro/steep
+
+`steep` is a static type checker for Ruby.
+
+You need `Steepfile` to make it work. Generate it with `steep init`.
+
+
+
+**Snippet to enable the language server:**
+```lua
+require'lspconfig'.steep.setup{}
+```
+
+
+**Default values:**
+  - `cmd` : 
+  ```lua
+  { "steep", "langserver" }
+  ```
+  - `filetypes` : 
+  ```lua
+  { "ruby", "eruby" }
+  ```
+  - `root_dir` : 
+  ```lua
+  root_pattern("Steepfile", ".git")
+  ```
+
+
 ## stylelint_lsp
 
 https://github.com/bmatcuk/stylelint-lsp
@@ -5327,21 +5448,25 @@ https://github.com/sumneko/lua-language-server
 
 Lua language server.
 
-`lua-language-server` can be installed by following the instructions [here](https://github.com/sumneko/lua-language-server/wiki/Build-and-Run). The default `cmd` assumes that the `lua-language-server` binary can be found in `$PATH`.
+`lua-language-server` can be installed by following the instructions [here](https://github.com/sumneko/lua-language-server/wiki/Build-and-Run).
+
+The default `cmd` assumes that the `lua-language-server` binary can be found in `$PATH`.
+
+If you primarily use `lua-language-server` for Neovim, and want to provide completions,
+analysis, and location handling for plugins on runtime path, you can use the following
+settings.
+
+Note: that these settings will meaningfully increase the time until `lua-language-server` can service
+initial requests (completion, location) upon starting as well as time to first diagnostics.
+Completion results will include a workspace indexing progress message until the server has finished indexing.
 
 ```lua
-local runtime_path = vim.split(package.path, ';')
-table.insert(runtime_path, "lua/?.lua")
-table.insert(runtime_path, "lua/?/init.lua")
-
 require'lspconfig'.sumneko_lua.setup {
   settings = {
     Lua = {
       runtime = {
         -- Tell the language server which version of Lua you're using (most likely LuaJIT in the case of Neovim)
         version = 'LuaJIT',
-        -- Setup your lua path
-        path = runtime_path,
       },
       diagnostics = {
         -- Get the language server to recognize the `vim` global
@@ -5359,6 +5484,11 @@ require'lspconfig'.sumneko_lua.setup {
   },
 }
 ```
+
+See `lua-language-server`'s [documentation](https://github.com/sumneko/lua-language-server/blob/master/locale/en-us/setting.lua) for an explanation of the above fields:
+* [Lua.runtime.path](https://github.com/sumneko/lua-language-server/blob/076dd3e5c4e03f9cef0c5757dfa09a010c0ec6bf/locale/en-us/setting.lua#L5-L13)
+* [Lua.workspace.library](https://github.com/sumneko/lua-language-server/blob/076dd3e5c4e03f9cef0c5757dfa09a010c0ec6bf/locale/en-us/setting.lua#L77-L78)
+
 
 
 
@@ -6092,6 +6222,7 @@ require'lspconfig'.vimls.setup{}
       projectRootPatterns = { "runtime", "nvim", ".git", "autoload", "plugin" },
       runtimepath = true
     },
+    isNeovim = true,
     iskeyword = "@,48-57,_,192-255,-#",
     runtimepath = "",
     suggest = {
@@ -6105,6 +6236,10 @@ require'lspconfig'.vimls.setup{}
   ```lua
   see source file
   ```
+  - `single_file_support` : 
+  ```lua
+  true
+  ```
 
 
 ## vls
@@ -6114,17 +6249,6 @@ https://github.com/vlang/vls
 V language server.
 
 `v-language-server` can be installed by following the instructions [here](https://github.com/vlang/vls#installation).
-
-**By default, v-language-server doesn't have a `cmd` set.** This is because nvim-lspconfig does not make assumptions about your path. You must add the following to your init.vim or init.lua to set `cmd` to the absolute path ($HOME and ~ are not expanded) of your unzipped and compiled v-language-server.
-
-```lua
--- set the path to the vls installation;
-local vls_root_path = vim.fn.stdpath('cache')..'/lspconfig/vls'
-local vls_binary = vls_root_path.."/cmd/vls/vls"
-
-require'lspconfig'.vls.setup {
-  cmd = {vls_binary},
-}
 ```
 
 
@@ -6136,6 +6260,10 @@ require'lspconfig'.vls.setup{}
 
 
 **Default values:**
+  - `cmd` : 
+  ```lua
+  { "vls" }
+  ```
   - `filetypes` : 
   ```lua
   { "vlang" }
@@ -6158,9 +6286,11 @@ Volar can be installed via npm:
 npm install -g @volar/vue-language-server
 ```
 
-Volar by default supports Vue 3 projects. Vue 2 projects need [additional configuration](https://github.com/johnsoncodehk/volar/blob/master/extensions/vscode-vue-language-features/README.md?plain=1#L28-L63).
+Volar by default supports Vue 3 projects. Vue 2 projects need
+[additional configuration](https://github.com/johnsoncodehk/volar/blob/master/extensions/vscode-vue-language-features/README.md?plain=1#L28-L63).
 
 **Take Over Mode**
+
 Volar can serve as a language server for both Vue and TypeScript via [Take Over Mode](https://github.com/johnsoncodehk/volar/discussions/471).
 
 To enable Take Over Mode, override the default filetypes in `setup{}` as follows:
@@ -6172,7 +6302,9 @@ require'lspconfig'.volar.setup{
 ```
 
 **Overriding the default TypeScript Server used by Volar**
-The default config looks for TS in the local node_modules. The alternatives are:
+
+The default config looks for TS in the local `node_modules`. This can lead to issues
+e.g. when working on a [monorepo](https://monorepo.tools/). The alternatives are:
 
 - use a global TypeScript Server installation
 
@@ -6181,26 +6313,33 @@ require'lspconfig'.volar.setup{
   init_options = {
     typescript = {
       serverPath = '/path/to/.npm/lib/node_modules/typescript/lib/tsserverlib.js'
+      -- Alternative location if installed as root:
+      -- serverPath = '/usr/local/lib/node_modules/typescript/lib/tsserverlibrary.js'
     }
   }
 }
 ```
 
-- use a global TypeScript Server installation if a local server is not found
+- use a local server and fall back to a global TypeScript Server installation
 
 ```lua
 local util = require 'lspconfig.util'
-
 local function get_typescript_server_path(root_dir)
-  local project_root = util.find_node_modules_ancestor(root_dir)
 
-  local local_tsserverlib = project_root ~= nil and util.path.join(project_root, 'node_modules', 'typescript', 'lib', 'tsserverlibrary.js')
-  local global_tsserverlib = '/home/[yourusernamehere]/.npm/lib/node_modules/typescript/lib/tsserverlibrary.js'
-
-  if local_tsserverlib and util.path.exists(local_tsserverlib) then
-    return local_tsserverlib
+  local global_ts = '/home/[yourusernamehere]/.npm/lib/node_modules/typescript/lib/tsserverlibrary.js'
+  -- Alternative location if installed as root:
+  -- local global_ts = '/usr/local/lib/node_modules/typescript/lib/tsserverlibrary.js'
+  local found_ts = ''
+  local function check_dir(path)
+    found_ts =  util.path.join(path, 'node_modules', 'typescript', 'lib', 'tsserverlibrary.js')
+    if util.path.exists(found_ts) then
+      return path
+    end
+  end
+  if util.search_ancestors(root_dir, check_dir) then
+    return found_ts
   else
-    return global_tsserverlib
+    return global_ts
   end
 end
 
@@ -6458,13 +6597,6 @@ https://github.com/artempyanykh/zeta-note
 Markdown LSP server for easy note-taking with cross-references and diagnostics.
 
 Binaries can be downloaded from https://github.com/artempyanykh/zeta-note/releases
-
-**By default, zeta-note doesn't have a `cmd` set.** This is because nvim-lspconfig does not make assumptions about your path. You must add the following to your init.vim or init.lua to set `cmd` to the absolute path ($HOME and ~ are not expanded) of your zeta-note binary.
-
-```lua
-require'lspconfig'.zeta_note.setup{
-  cmd = {'path/to/zeta-note'}
-}
 ```
 
 
@@ -6476,6 +6608,10 @@ require'lspconfig'.zeta_note.setup{}
 
 
 **Default values:**
+  - `cmd` : 
+  ```lua
+  { "zeta-note" }
+  ```
   - `filetypes` : 
   ```lua
   { "markdown" }

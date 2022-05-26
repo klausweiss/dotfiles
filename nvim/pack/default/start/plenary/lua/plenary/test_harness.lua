@@ -47,6 +47,8 @@ function harness.test_directory(directory, opts)
     timeout = 50000,
   }, opts or {})
 
+  vim.env.PLENARY_TEST_TIMEOUT = opts.timeout
+
   local res = {}
   if not headless then
     res = win_float.percentage_range_window(0.95, 0.70, opts.winopts)
@@ -158,10 +160,10 @@ function harness.test_directory(directory, opts)
 
   if headless then
     if failure then
-      os.exit(1)
+      return vim.cmd "1cq"
     end
 
-    os.exit(0)
+    return vim.cmd "0cq"
   end
 end
 

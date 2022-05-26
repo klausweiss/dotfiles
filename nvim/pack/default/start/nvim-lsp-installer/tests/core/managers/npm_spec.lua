@@ -2,6 +2,7 @@ local spy = require "luassert.spy"
 local match = require "luassert.match"
 local mock = require "luassert.mock"
 local Optional = require "nvim-lsp-installer.core.optional"
+local installer = require "nvim-lsp-installer.core.installer"
 local npm = require "nvim-lsp-installer.core.managers.npm"
 local Result = require "nvim-lsp-installer.core.result"
 local spawn = require "nvim-lsp-installer.core.spawn"
@@ -21,7 +22,7 @@ describe("npm manager", function()
         "should call npm install",
         async_test(function()
             ctx.requested_version = Optional.of "42.13.37"
-            npm.packages { "main-package", "supporting-package", "supporting-package2" }(ctx)
+            installer.run_installer(ctx, npm.packages { "main-package", "supporting-package", "supporting-package2" })
             assert.spy(ctx.spawn.npm).was_called(1)
             assert.spy(ctx.spawn.npm).was_called_with(match.tbl_containing {
                 "install",
@@ -39,7 +40,9 @@ describe("npm manager", function()
         async_test(function()
             ctx.fs.file_exists = mockx.returns(false)
             ctx.fs.dir_exists = mockx.returns(false)
-            npm.install { "main-package", "supporting-package", "supporting-package2" }(ctx)
+            installer.run_installer(ctx, function()
+                npm.install { "main-package", "supporting-package", "supporting-package2" }
+            end)
             assert.spy(ctx.spawn.npm).was_called_with {
                 "init",
                 "--yes",
@@ -52,7 +55,7 @@ describe("npm manager", function()
         "should append .npmrc file",
         async_test(function()
             ctx.requested_version = Optional.of "42.13.37"
-            npm.packages { "main-package", "supporting-package", "supporting-package2" }(ctx)
+            installer.run_installer(ctx, npm.packages { "main-package", "supporting-package", "supporting-package2" })
             assert.spy(ctx.fs.append_file).was_called(1)
             assert.spy(ctx.fs.append_file).was_called_with(ctx.fs, ".npmrc", "global-style=true")
         end)
@@ -62,27 +65,21 @@ describe("npm manager", function()
         "should provide receipt information",
         async_test(function()
             ctx.requested_version = Optional.of "42.13.37"
-            npm.packages { "main-package", "supporting-package", "supporting-package2" }(ctx)
-            assert.equals(
-                vim.inspect {
+            installer.run_installer(ctx, npm.packages { "main-package", "supporting-package", "supporting-package2" })
+            assert.same({
+                type = "npm",
+                package = "main-package",
+            }, ctx.receipt.primary_source)
+            assert.same({
+                {
                     type = "npm",
-                    package = "main-package",
+                    package = "supporting-package",
                 },
-                vim.inspect(ctx.receipt.primary_source)
-            )
-            assert.equals(
-                vim.inspect {
-                    {
-                        type = "npm",
-                        package = "supporting-package",
-                    },
-                    {
-                        type = "npm",
-                        package = "supporting-package2",
-                    },
+                {
+                    type = "npm",
+                    package = "supporting-package2",
                 },
-                vim.inspect(ctx.receipt.secondary_sources)
-            )
+            }, ctx.receipt.secondary_sources)
         end)
     )
 end)
@@ -165,14 +162,11 @@ describe("npm version check", function()
                 cwd = "/tmp/install/dir",
             }
             assert.is_true(result:is_success())
-            assert.equals(
-                vim.inspect {
-                    name = "bash-language-server",
-                    current_version = "1.17.0",
-                    latest_version = "2.0.0",
-                },
-                vim.inspect(result:get_or_nil())
-            )
+            assert.same({
+                name = "bash-language-server",
+                current_version = "1.17.0",
+                latest_version = "2.0.0",
+            }, result:get_or_nil())
 
             spawn.npm = nil
         end)

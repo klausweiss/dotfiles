@@ -1,5 +1,6 @@
 local spy = require "luassert.spy"
 local mock = require "luassert.mock"
+local installer = require "nvim-lsp-installer.core.installer"
 local Optional = require "nvim-lsp-installer.core.optional"
 local composer = require "nvim-lsp-installer.core.managers.composer"
 local Result = require "nvim-lsp-installer.core.result"
@@ -21,7 +22,10 @@ describe("composer manager", function()
         async_test(function()
             ctx.fs.file_exists = mockx.returns(false)
             ctx.requested_version = Optional.of "42.13.37"
-            composer.require { "main-package", "supporting-package", "supporting-package2" }(ctx)
+            installer.run_installer(
+                ctx,
+                composer.packages { "main-package", "supporting-package", "supporting-package2" }
+            )
             assert.spy(ctx.spawn.composer).was_called(2)
             assert.spy(ctx.spawn.composer).was_called_with {
                 "init",
@@ -43,27 +47,24 @@ describe("composer manager", function()
         "should provide receipt information",
         async_test(function()
             ctx.requested_version = Optional.of "42.13.37"
-            composer.require { "main-package", "supporting-package", "supporting-package2" }(ctx)
-            assert.equals(
-                vim.inspect {
+            installer.run_installer(
+                ctx,
+                composer.packages { "main-package", "supporting-package", "supporting-package2" }
+            )
+            assert.same({
+                type = "composer",
+                package = "main-package",
+            }, ctx.receipt.primary_source)
+            assert.same({
+                {
                     type = "composer",
-                    package = "main-package",
+                    package = "supporting-package",
                 },
-                vim.inspect(ctx.receipt.primary_source)
-            )
-            assert.equals(
-                vim.inspect {
-                    {
-                        type = "composer",
-                        package = "supporting-package",
-                    },
-                    {
-                        type = "composer",
-                        package = "supporting-package2",
-                    },
+                {
+                    type = "composer",
+                    package = "supporting-package2",
                 },
-                vim.inspect(ctx.receipt.secondary_sources)
-            )
+            }, ctx.receipt.secondary_sources)
         end)
     )
 end)
@@ -148,14 +149,11 @@ describe("composer version check", function()
                 cwd = "/tmp/install/dir",
             }
             assert.is_true(result:is_success())
-            assert.equals(
-                vim.inspect {
-                    name = "vimeo/psalm",
-                    current_version = "4.0.0",
-                    latest_version = "4.22.0",
-                },
-                vim.inspect(result:get_or_nil())
-            )
+            assert.same({
+                name = "vimeo/psalm",
+                current_version = "4.0.0",
+                latest_version = "4.22.0",
+            }, result:get_or_nil())
 
             spawn.composer = nil
         end)

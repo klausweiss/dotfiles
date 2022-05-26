@@ -159,23 +159,15 @@ vim.g.undotree_SetFocusWhenToggle = 1
 
 -- nvim tree
 -- vim.g.nvim_tree_update_cwd = 1 -- TODO: upstream issue: https://github.com/kyazdani42/nvim-tree.lua/issues/441
-vim.g.nvim_tree_quit_on_open = 0
 vim.g.nvim_tree_show_icons = {
   git= 1,
   files= 1,
   folders= 1,
   folder_arrows= 1
 }
-vim.g.nvim_tree_window_picker_exclude = {
-  filetype = {
-    'Outline'
-  },
-  buftype = {
-    'terminal'
-  }
-}
+-- automatically close nvim when nvim-tree is the last open window
+cmd "autocmd BufEnter * ++nested if winnr('$') == 1 && bufname() == 'NvimTree_' . tabpagenr() | quit | endif"
 require'nvim-tree'.setup {
-  auto_close = true,
   update_focused_file = {
     enable      = true,
     -- update the root directory of the tree to the one of the folder containing the file if the file is not under the current root directory
@@ -185,6 +177,17 @@ require'nvim-tree'.setup {
     -- only relevant when `update_focused_file.update_cwd` is true and `update_focused_file.enable` is true
     ignore_list = {}
   },
+  actions = {
+    open_file = {
+      quit_on_open = false,
+      window_picker = {
+        exclude = {
+          filetype = { 'Outline' },
+          buftype = { 'terminal' }
+        }
+      }
+    }
+  }
 }
 
 -- session

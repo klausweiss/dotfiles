@@ -1,6 +1,7 @@
 local spy = require "luassert.spy"
 local match = require "luassert.match"
 local mock = require "luassert.mock"
+local installer = require "nvim-lsp-installer.core.installer"
 local Optional = require "nvim-lsp-installer.core.optional"
 local gem = require "nvim-lsp-installer.core.managers.gem"
 local Result = require "nvim-lsp-installer.core.result"
@@ -21,7 +22,7 @@ describe("gem manager", function()
         "should call gem install",
         async_test(function()
             ctx.requested_version = Optional.of "42.13.37"
-            gem.packages { "main-package", "supporting-package", "supporting-package2" }(ctx)
+            installer.run_installer(ctx, gem.packages { "main-package", "supporting-package", "supporting-package2" })
             assert.spy(ctx.spawn.gem).was_called(1)
             assert.spy(ctx.spawn.gem).was_called_with(match.tbl_containing {
                 "install",
@@ -42,27 +43,21 @@ describe("gem manager", function()
         "should provide receipt information",
         async_test(function()
             ctx.requested_version = Optional.of "42.13.37"
-            gem.packages { "main-package", "supporting-package", "supporting-package2" }(ctx)
-            assert.equals(
-                vim.inspect {
+            installer.run_installer(ctx, gem.packages { "main-package", "supporting-package", "supporting-package2" })
+            assert.same({
+                type = "gem",
+                package = "main-package",
+            }, ctx.receipt.primary_source)
+            assert.same({
+                {
                     type = "gem",
-                    package = "main-package",
+                    package = "supporting-package",
                 },
-                vim.inspect(ctx.receipt.primary_source)
-            )
-            assert.equals(
-                vim.inspect {
-                    {
-                        type = "gem",
-                        package = "supporting-package",
-                    },
-                    {
-                        type = "gem",
-                        package = "supporting-package2",
-                    },
+                {
+                    type = "gem",
+                    package = "supporting-package2",
                 },
-                vim.inspect(ctx.receipt.secondary_sources)
-            )
+            }, ctx.receipt.secondary_sources)
         end)
     )
 end)
@@ -96,10 +91,11 @@ strscan (default: 3.0.1)
             assert.spy(spawn.gem).was_called_with(match.tbl_containing {
                 "list",
                 cwd = "/tmp/install/dir",
-                env = match.all_of(
-                    match.list_containing "GEM_HOME=/tmp/install/dir",
-                    match.list_containing "GEM_PATH=/tmp/install/dir"
-                ),
+                env = match.tbl_containing {
+                    GEM_HOME = "/tmp/install/dir",
+                    GEM_PATH = "/tmp/install/dir",
+                    PATH = match.matches "^/tmp/install/dir/bin:.*$",
+                },
             })
             assert.is_true(result:is_success())
             assert.equals("0.44.0", result:get_or_nil())
@@ -138,20 +134,18 @@ solargraph (0.44.0 < 0.44.3)
             assert.spy(spawn.gem).was_called_with(match.tbl_containing {
                 "outdated",
                 cwd = "/tmp/install/dir",
-                env = match.all_of(
-                    match.list_containing "GEM_HOME=/tmp/install/dir",
-                    match.list_containing "GEM_PATH=/tmp/install/dir"
-                ),
+                env = match.tbl_containing {
+                    GEM_HOME = "/tmp/install/dir",
+                    GEM_PATH = "/tmp/install/dir",
+                    PATH = match.matches "^/tmp/install/dir/bin:.*$",
+                },
             })
             assert.is_true(result:is_success())
-            assert.equals(
-                vim.inspect {
-                    name = "solargraph",
-                    current_version = "0.44.0",
-                    latest_version = "0.44.3",
-                },
-                vim.inspect(result:get_or_nil())
-            )
+            assert.same({
+                name = "solargraph",
+                current_version = "0.44.0",
+                latest_version = "0.44.3",
+            }, result:get_or_nil())
 
             spawn.gem = nil
         end)
@@ -184,22 +178,16 @@ solargraph (0.44.0 < 0.44.3)
 
     it("parses outdated gem output", function()
         local normalize = gem.parse_outdated_gem
-        assert.equal(
-            vim.inspect {
-                name = "solargraph",
-                current_version = "0.42.2",
-                latest_version = "0.44.2",
-            },
-            vim.inspect(normalize [[solargraph (0.42.2 < 0.44.2)]])
-        )
-        assert.equal(
-            vim.inspect {
-                name = "sorbet-runtime",
-                current_version = "0.5.9307",
-                latest_version = "0.5.9468",
-            },
-            vim.inspect(normalize [[sorbet-runtime (0.5.9307 < 0.5.9468)]])
-        )
+        assert.same({
+            name = "solargraph",
+            current_version = "0.42.2",
+            latest_version = "0.44.2",
+        }, normalize [[solargraph (0.42.2 < 0.44.2)]])
+        assert.same({
+            name = "sorbet-runtime",
+            current_version = "0.5.9307",
+            latest_version = "0.5.9468",
+        }, normalize [[sorbet-runtime (0.5.9307 < 0.5.9468)]])
     end)
 
     it("returns nil when unable to parse outdated gem", function()
@@ -208,19 +196,19 @@ solargraph (0.44.0 < 0.44.3)
     end)
 
     it("should parse gem list output", function()
-        assert.equals(
-            vim.inspect {
+        assert.same(
+            {
                 ["solargraph"] = "0.44.3",
                 ["unicode-display_width"] = "2.1.0",
             },
-            vim.inspect(gem.parse_gem_list_output [[
+            gem.parse_gem_list_output [[
 
 *** LOCAL GEMS ***
 
 nokogiri (1.13.3 arm64-darwin)
 solargraph (0.44.3)
 unicode-display_width (2.1.0)
-]])
+]]
         )
     end)
 end)

@@ -24,7 +24,14 @@ local SchemaElem = {Deprecated = {}, }
 
 
 
-local M = {Config = {DiffOpts = {}, SignsConfig = {}, watch_gitdir = {}, current_line_blame_formatter_opts = {}, current_line_blame_opts = {}, yadm = {}, }, }
+local M = {Config = {DiffOpts = {}, SignConfig = {}, watch_gitdir = {}, current_line_blame_formatter_opts = {}, current_line_blame_opts = {}, yadm = {}, }, }
+
+
+
+
+
+
+
 
 
 
@@ -115,10 +122,10 @@ M.schema = {
       type = 'table',
       deep_extend = true,
       default = {
-         add = { hl = 'GitSignsAdd', text = '│', numhl = 'GitSignsAddNr', linehl = 'GitSignsAddLn' },
-         change = { hl = 'GitSignsChange', text = '│', numhl = 'GitSignsChangeNr', linehl = 'GitSignsChangeLn' },
-         delete = { hl = 'GitSignsDelete', text = '_', numhl = 'GitSignsDeleteNr', linehl = 'GitSignsDeleteLn' },
-         topdelete = { hl = 'GitSignsDelete', text = '‾', numhl = 'GitSignsDeleteNr', linehl = 'GitSignsDeleteLn' },
+         add = { hl = 'GitSignsAdd', text = '┃', numhl = 'GitSignsAddNr', linehl = 'GitSignsAddLn' },
+         change = { hl = 'GitSignsChange', text = '┃', numhl = 'GitSignsChangeNr', linehl = 'GitSignsChangeLn' },
+         delete = { hl = 'GitSignsDelete', text = '▁', numhl = 'GitSignsDeleteNr', linehl = 'GitSignsDeleteLn' },
+         topdelete = { hl = 'GitSignsDelete', text = '▔', numhl = 'GitSignsDeleteNr', linehl = 'GitSignsDeleteLn' },
          changedelete = { hl = 'GitSignsChange', text = '~', numhl = 'GitSignsChangeNr', linehl = 'GitSignsChangeLn' },
       },
       description = [[
@@ -262,7 +269,7 @@ M.schema = {
       description = [[
       Show the old version of hunks inline in the buffer (via virtual lines).
 
-      Note: Virtual lines currently use the highlight `GitSignsDeleteLn`.
+      Note: Virtual lines currently use the highlight `GitSignsDeleteVirtLn`.
     ]],
    },
 
@@ -311,7 +318,7 @@ M.schema = {
 
             Note Neovim v0.5 uses LuaJIT's FFI interface, whereas v0.5+ uses
             `vim.diff`.
-        • indent_heuristic: string
+        • indent_heuristic: boolean
             Use the indent heuristic for the internal
             diff library.
         • vertical: boolean
@@ -434,6 +441,7 @@ M.schema = {
       default = {
          virt_text = true,
          virt_text_pos = 'eol',
+         virt_text_priority = 100,
          delay = 1000,
       },
       description = [[
@@ -453,6 +461,8 @@ M.schema = {
           displayed.
         • ignore_whitespace: boolean
           Ignore whitespace when running blame.
+        • virt_text_priority: integer
+          Priority of virtual text.
     ]],
    },
 
@@ -551,6 +561,17 @@ M.schema = {
     ]],
    },
 
+   current_line_blame_formatter_nc = {
+      type = { 'string', 'function' },
+      default = ' <author>',
+      description = [[
+      String or function used to format the virtual text of
+      |gitsigns-config-current_line_blame| for lines that aren't committed.
+
+      See |gitsigns-config-current_line_blame_formatter| for more information.
+    ]],
+   },
+
    trouble = {
       type = 'boolean',
       default = function()
@@ -626,6 +647,22 @@ M.schema = {
       default = true,
       description = [[
       Cache blame results for current_line_blame
+    ]],
+   },
+
+   _threaded_diff = {
+      type = 'boolean',
+      default = false,
+      description = [[
+      Run diffs on a separate thread
+    ]],
+   },
+
+   _extmark_signs = {
+      type = 'boolean',
+      default = false,
+      description = [[
+      Use extmarks for placing signs.
     ]],
    },
 

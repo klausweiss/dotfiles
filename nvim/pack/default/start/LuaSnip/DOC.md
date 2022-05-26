@@ -31,6 +31,9 @@ local d = ls.dynamic_node
 local r = ls.restore_node
 local events = require("luasnip.util.events")
 local ai = require("luasnip.nodes.absolute_indexer")
+local fmt = require("luasnip.extras.fmt").fmt
+local m = require("luasnip.extras").m
+local lambda = require("luasnip.extras").l
 ```
 
 # BASICS
@@ -138,14 +141,16 @@ The third argument (`opts`) is a table with the following valid keys:
   should be set as follows:
   ```lua
   {
+  	-- position of the node, not the jump-position!!
+  	-- s("trig", {t"first node", t"second node", i(1, "third node")}).
   	[2] = {
-  		[events.enter] = function(node) print("2!") end
+  		[events.enter] = function(node, _event_args) print("2!") end
   	}
   }
   ```
   To register a callback for the snippets' own events, the key `[-1]` may
   be used.
-  The callbacks are passed only one argument, the node that triggered it.
+  More info on events [here](#here)
 - `child_ext_opts`, `merge_child_ext_opts`: `ext_opts` applied to the children
   of this snippet. More info [here](#ext_opts).
 
@@ -428,8 +433,19 @@ c(1, {
 })
 ```
 
+The active choice for a choiceNode can be changed by calling `ls.change_choice(1)`
+(forwards) or `ls.change_choice(-1)` (backwards), for example via
 
+```lua
+-- set keybinds for both INSERT and VISUAL.
+vim.api.nvim_set_keymap("i", "<C-n>", "<Plug>luasnip-next-choice", {})
+vim.api.nvim_set_keymap("s", "<C-n>", "<Plug>luasnip-next-choice", {})
+vim.api.nvim_set_keymap("i", "<C-p>", "<Plug>luasnip-prev-choice", {})
+vim.api.nvim_set_keymap("s", "<C-p>", "<Plug>luasnip-prev-choice", {})
+```
 
+Apart from this, there is also a [picker](#select_choice) where no cycling is necessary and any
+choice can be selected right away, via `vim.ui.select`.
 
 # SNIPPETNODE
 
@@ -812,6 +828,64 @@ insert 1 appended to itself, but the second jump will lead to it, making it
 easy to override the generated text.
 The text will only be changed when a argnode updates it.
 
+## FMT
+
+`require("luasnip.extras.fmt").fmt` can be used to create snippets in a more
+readable way.
+
+Simple example:
+
+```lua
+ls.add_snippets("all", {
+	-- important! fmt does not return a snippet, it returns a table of nodes.
+	s("example1", fmt("just an {iNode1}", {
+		iNode1 = i(1, "example")
+	}),
+	s("example2", fmt([[
+		if {} then
+			{}
+		end
+	]], {
+		-- i(1) is at nodes[1], i(2) at nodes[2].
+		i(1, "not now"), i(2, "when")
+	}),
+	s("example3", fmt([[
+		if <> then
+			<>
+		end
+	]], {
+		-- i(1) is at nodes[1], i(2) at nodes[2].
+		i(1, "not now"), i(2, "when")
+	}, {
+		delimiters = "<>"
+	}),
+})
+```
+
+`fmt(format:string, nodes:table of nodes, opts:table|nil) -> table of nodes`
+
+* `format`: a string. Occurences of `{<somekey>}` ( `{,}` are customizable, more
+  on that later) are replaced with `content[<somekey>]` (which should be a
+  node), while surrounding text becomes `textNode`s.  
+  To escape a delimiter, repeat it (`"{{"`).  
+  If no key is given (`{}`) are numbered automatically:  
+  `"{} ? {} : {}"` becomes `"{1} ? {2} : {3}"`, while
+  `"{} ? {3} : {}"` becomes `"{1} ? {3} : {4}"` (the count restarts at each
+  numbered placeholder).
+* `nodes`: just a table of nodes.
+* `opts`: optional arguments:
+  * `delimiters`: string, two characters. Change `{,}` to some other pair, eg.
+  	`"<>"`.
+  * `strict`: Warn about unused nodes (default true).
+  * `trim_empty`: remove empty (`"%s*"`) first and last line in `format`. Useful
+  	when passing multiline strings via `[[]]` (default true).
+  * `dedent`: remove indent common to all lines in `format`. Again, makes
+  	passing multiline-strings a bit nicer (default true).
+
+There is also `require("luasnip.extras.fmt").fmta`. This only differs from `fmt`
+by using angle-brackets (`<>`) as the default-delimiter.
+
+
 ## On The Fly snippets
 You can create snippets that are not for being used all the time but only
 in a single session.
@@ -850,8 +924,43 @@ preferably via some keybind, eg.
 ```vim
 inoremap <c-u> <cmd>lua require("luasnip.extras.select_choice")()<cr>
 ```
-, while inside a choiceNode.
+, while inside a choiceNode. The `opts.kind` hint for `vim.ui.select` will be set to `luasnip`.
 
+
+## filetype_functions
+
+Contains some utility-functions that can be passed to the `ft_func` or
+`load_ft_func`-settings.
+
+* `from_filetype`: the default for `ft_func`. Simply returns the filetype(s) of
+  the buffer.
+* `from_cursor_pos`: uses treesitter to determine the filetype at the cursor.
+  With that, it's possible to expand snippets in injected regions, as long as
+  the treesitter-parser supports them.
+  If this is used in conjuction with `lazy_load`, extra care must be taken that
+  all the filetypes that can be expanded in a given buffer are also returned by
+  `load_ft_func` (otherwise their snippets may not be loaded).
+  This can easily be achieved with `extend_load_ft`.
+* `extend_load_ft`: `fn(extend_ft:map) -> fn`
+  A simple solution to the problem described above is loading more filetypes
+  than just that of the target-buffer when `lazy_load`ing. This can be done
+  ergonomically via `extend_load_ft`: calling it with a table where the keys are
+  filetypes and the values are the filetypes that should be loaded additionaly
+  returns a function that can be passed to `load_ft_func` and takes care of
+  extending the filetypes properly.
+
+  ```lua
+  ls.config.setup({
+  	load_ft_func =
+  		-- Also load both lua and json when a markdown-file is opened,
+  		-- javascript for html.
+  		-- Other filetypes just load themselves.
+  		require("luasnip.extras.filetype_functions").extend_load_ft({
+  			markdown = {"lua", "json"},
+  			html = {"javascript"}
+  		})
+  })
+  ```
 
 # LSP-SNIPPETS
 
@@ -892,114 +1001,228 @@ hitting `<Tab>` while in Visualmode will populate the `*SELECT*`-vars for the ne
 snippet and then clear them.
 
 
+# LOADERS
 
-# VSCODE SNIPPETS LOADER
+Luasnip is capable of loading snippets from different formats, including both
+the well-established vscode- and snipmate-format, as well as plain lua-files for
+snippets written in lua
 
-As luasnip is capable of loading the same format of plugins as vscode, it also
-includes an easy way for loading those automatically. You just have to call:
+All loaders share a similar interface:
 ```lua
-require("luasnip.loaders.from_vscode").load(opts) -- opts can be ommited
+require("luasnip.loaders.from_{vscode,snipmate,lua}").{lazy_,}load(opts:table|nil)
 ```
 
-Where `opts` is a table containing the keys:
-	-  `paths`: List of paths to load. Can be a table or a single,
-		comma-separated string. If not set, `runtimepath` is used. The paths
-		may begin with `~/` or `./` to indicate that the path is relative to
-		your home or to the folder where your `$MYVIMRC` resides (useful to
-		add your snippets). The directories passed this way must be structured
-		like [`friendly-snippets`](https://github.com/rafamadriz/friendly-snippets)
-		eg. include a `package.json`.
-	-  `exclude`: List of languages to exclude, by default is empty.
-	-  `include`: List of languages to include, by default is not set.
+where `opts` can contain the following keys:
 
-The last two are useful mainly to avoid loading snippets from 3erd parties you
-don't wanna include.
+- `paths`: List of paths to load. Can be a table or a single,
+  comma-separated string.
+  The paths may begin with `~/` or `./` to indicate that the path is
+  relative to your `$HOME` or to the directory where your `$MYVIMRC` resides
+  (useful to add your snippets).  
+  If not set, `runtimepath` is searched for
+  directories that contain snippets. This procedure differs slightly for
+  each loader:
+  - `lua`: the snippet-library has to be in a directory named
+    `"luasnippets"`.
+  - `snipmate`: similar to lua, but the directory has to be `"snippets"`.
+  - `vscode`: any directory in `runtimepath` that contains a
+    `package.json` contributing snippets.
+- `exclude`: List of languages to exclude, empty by default.
+- `include`: List of languages to include, includes everything by default.
+- `{override,default}_priority`: These keys are passed straight to the
+  [`add_snippets`](#api-reference)-calls and can therefore change the priority
+  of snippets loaded from some colletion (or, in combination with
+  `{in,ex}clude`, only some of its snippets).
 
-Keep in mind that it will extend your `snippets` table, so do it after setting
-your snippets or you will have to extend the table as well.
+While `load` will immediately load the snippets, `lazy_load` will defer loading until
+the snippets are actually needed (whenever a new buffer is created or the
+filetype is changed luasnip actually loads `lazy_load`ed snippets for the
+filetypes associated with this buffer. This association can be changed by
+customizing `load_ft_func` in `setup`: the option takes a function that, passed
+a `bufnr`, returns the filetypes that should be loaded (`fn(bufnr) -> filetypes
+(string[])`)).
 
-Another way of using the loader is making it lazily
+All of the loaders support reloading, so simply editing any file contributing
+snippets will reload its snippets (only in the session the file was edited in,
+we use `BufWritePost` for reloading, not some lower-level mechanism).
 
-```lua
-require("luasnip.loaders.from_vscode").lazy_load(opts) -- opts can be ommited
+For easy editing of these files, Luasnip provides a [`vim.ui.select`-based
+dialog](#edit_snippets) where first the filetype, and then the file can be
+selected.
+
+## Troubleshooting
+
+* Luasnip uses `all` as the global filetype. As most snippet collections don't
+  explicitly target luasnip, they may not provide global snippets for this
+  filetype, but another, like `_` (`honza/vim-snippets`).
+  In these cases, it's necessary to extend luasnip's global filetype with the
+  collection's global filetype:
+  ```lua
+  ls.filetype_extend("all", { "_" })
+  ```
+
+  In general, if some snippets don't show up when loading a collection, a good
+  first step is checking the filetype luasnip is actually looking into (print
+  them for the current buffer via `:lua
+  print(vim.inspect(require("luasnip").get_snippet_filetypes()))`), against the
+  one the missing snippet is provided for (in the collection).  
+  If there is indeed a mismatch, `filetype_extend` can be used to also search
+  the collection's filetype:
+  ```lua
+  ls.filetype_extend("<luasnip-filetype>", { "<collection-filetype>" })
+  ```
+
+* As we only load `lazy_load`ed snippet on some events, `lazy_load` will
+  probably not play nice when a non-default `ft_func` is used: if it depends on
+  eg. the cursor-position, only the filetypes for the cursor-position when the
+  `lazy_load`-events are triggered will be loaded. Check
+  [filetype_function's `extend_load_ft`](#filetype_functions) for a solution.
+
+## VSCODE
+
+As a reference on the structure of these snippet-libraries, see
+[`friendly-snippets`](https://github.com/rafamadriz/friendly-snippets).
+
+We support a small extension: snippets can contain luasnip-specific options in
+the `luasnip`-table:
+```json
+"example1": {
+	"prefix": "options",
+	"body": [
+		"whoa! :O"
+	],
+	"luasnip": {
+		"priority": 2000,
+		"autotrigger": true
+	}
+}
 ```
 
-In this case `opts` only accepts paths (`runtimepath` if any). That will load
-the general snippets (the ones of filetype 'all') and those of the filetype
-of the buffers, you open every time you open a new one (but it won't reload them).
+**Example**:
 
-Apart from what is stipulated by the start each snippet in the json file can
-contain a "luasnip" field which is a table for extra parameters for the snippet,
-till now the only valid one is autotrigger.
-
-After snippets were lazy-loaded, the `User LuasnipSnippetsAdded`-event will be
-triggered.
-
-Note load vscode-style packages using `require("luasnip.loaders.from_vscode").load()`, if 
-you've configured luasnip to detect the filetype based on the cursor position. Else the
-snippets won't be available to the `from_cursor_pos` function.
-
-# SNIPMATE SNIPPETS LOADER
-
-As the snipmate snippet format is fundamentally the same as vscode, it can also
-be loaded.
-
-```lua
-require("luasnip.loaders.from_snipmate").load(opts) -- opts can be ommited
+`~/.config/nvim/my_snippets/package.json`:
+```json
+{
+	"name": "example-snippets",
+	"contributes": {
+		"snippets": [
+			{
+				"language": [
+					"all"
+				],
+				"path": "./snippets/all.json"
+			},
+			{
+				"language": [
+					"lua"
+				],
+				"path": "./lua.json"
+			}
+		]
+	}
+}
+```
+`~/.config/nvim/my_snippets/snippets/all.json`:
+```json
+{
+	"snip1": {
+		"prefix": "all1",
+		"body": [
+			"expands? jumps? $1 $2 !"
+		]
+	},
+	"snip2": {
+		"prefix": "all2",
+		"body": [
+			"multi $1",
+			"line $2",
+			"snippet$0"
+		]
+	},
+}
 ```
 
-See `from_vscode` for an explanation of opts.
-If `opts.paths` is ommited, snippets are loaded from any directory named
-`snippets` located in the `runtimepath`.
-
-Luasnip is compatible with
-[honza/vim-snippets](https://github.com/honza/vim-snippets).
-Please use it as a reference for your directory structure.
-
-When using `honza/vim-snippets`, the file with the global snippets is
-`_.snippets`, So we need to tell luasnip that `_` also contains global snippets:
+`~/.config/nvim/my_snippets/lua.json`:
+```json
+{
+	"snip1": {
+		"prefix": "lua",
+		"body": [
+			"lualualua"
+		]
+	}
+}
+```
+This collection can be loaded with any of
 ```lua
-ls.filetype_extend("all", { "_" })
+-- don't pass any arguments, luasnip will find the collection because it is
+-- (probably) in rtp.
+require("luasnip.loaders.from_vscode").lazy_load()
+-- specify the full path...
+require("luasnip.loaders.from_vscode").lazy_load({paths = "~/.config/nvim/my_snippets"})
+-- or relative to the directory of $MYVIMRC
+require("luasnip.loaders.from_vscode").load({paths = "./my_snippets"})
+```
+## SNIPMATE
+
+Luasnip does not support the full snipmate format: Only `./{ft}.snippets` and
+`./{ft}/*.snippets` will be loaded. See
+[honza/vim-snippets](https://github.com/honza/vim-snippets) for lots of
+examples.
+
+Like vscode, the snipmate-format is also extended to make use of some of
+luasnips more advanced capabilities:
+```snippets
+priority 2000
+autosnippet options
+	whoa :O
 ```
 
-Something similar may have to be done for other snippet-repos as well.
+**Example**:
 
-Using both `extends OtherFileType` in `FileType.snippets` and
-`ls.filetype_extend("FileType", {"OtherFileType"})` leads to duplicate snippets.
-
-
-Lazy loading is also available with the snipmate-loader.
-
-```lua
-require("luasnip.loaders.from_snipmate").lazy_load(opts) -- opts can be ommited
+`~/.config/nvim/snippets/c.snippets`:
+```snippets
+# this is a comment
+snippet c c-snippet
+	c!
 ```
 
+`~/.config/nvim/snippets/cpp.snippets`:
+```snippets
+extends c
 
-Here is a summary of the differences from the original snipmate format.
+snippet cpp cpp-snippet
+	cpp!
+```
 
-- Only `./{ft}.snippets` and `./{ft}/*.snippets` will be loaded.
-- The file name or folder name will be used as file type.
-- You can use the comment and extends syntax.
-- `${VISUAL}` will be replaced by `$TM_SELECTED_TEXT` to make the snippets
-compatible with luasnip
-- We do not implement eval using \` (backtick). This may be implemented in the future.
+This can, again, be loaded with any of 
+```lua
+require("luasnip.loaders.from_snipmate").load()
+-- specify the full path...
+require("luasnip.loaders.from_snipmate").lazy_load({paths = "~/.config/nvim/snippets"})
+-- or relative to the directory of $MYVIMRC
+require("luasnip.loaders.from_snipmate").lazy_load({paths = "./snippets"})
+```
 
+Stuff to watch out for:
 
-# LUA SNIPPETS LOADER
+* Using both `extends <ft2>` in `<ft1>.snippets` and
+  `ls.filetype_extend("<ft1>", {"<ft2>"})` leads to duplicate snippets.
+* `${VISUAL}` will be replaced by `$TM_SELECTED_TEXT` to make the snippets
+  compatible with luasnip
+* We do not implement eval using \` (backtick). This may be implemented in the
+  future.
+
+## LUA
 
 Instead of adding all snippets via `add_snippets`, it's possible to store them
-in separate files (each for one filetype) and load all of those.
-
-For this, the files need to be
-
-- in a single directory. The directory may be passed directly to `load()`, or it
-  can be named `luasnippets` and in the `runtimepath`, in which case it will be
-  automatically detected.
-- named `<filetype>.lua` or in a subdirectory `<filetype>/somename.lua`
-  (Snipmate-structure).
-- return two lists of snippets (either may be `nil`). The snippets in the first
-  are regular snippets for `<filetype>`, the ones in the second are autosnippets
-  (make sure they are enabled if this table is used).
+in separate files and load all of those.
+The file-structure here is exactly the supported snipmate-structure, eg.
+`<ft>.lua` or `<ft>/*.lua` to add snippets for the filetype `<ft>`.  
+The files need to return two lists of snippets (either may be `nil`). The
+snippets in the first are regular snippets for `<ft>`, the ones in the
+second are autosnippets (make sure they are enabled in `setup` or `set_config`
+if this table is used).
 
 As defining all of the snippet-constructors (`s`, `c`, `t`, ...) in every file
 is rather cumbersome, luasnip will bring some globals into scope for executing
@@ -1009,23 +1232,7 @@ possible to customize them by setting `snip_env` in `setup`.
 
 [snip-env-src]: https://github.com/L3MON4D3/LuaSnip/blob/69cb81cf7490666890545fef905d31a414edc15b/lua/luasnip/config.lua#L82-L104
 
-These collections can be loaded directly
-(`require("luasnip.loaders.from_lua").load(opts)`) or lazily
-(`require("luasnip.loaders.from_lua").lazy_load(opts)`).
-
-lua-`opts` may contain the same keys as vscode-`opts`, but here `include` and
-`exclude` can be used in `lazy_load`.
-
-Apart from loading, `from_lua` also exposes functions to edit files associated
-with the currently active filetypes, which could be called via an command, for
-example:
-
-```vim
-command! LuaSnipEdit :lua require("luasnip.loaders.from_lua").edit_snippet_files()
-```
-Once loaded, files will be reloaded on save (`BufWritePost`).
-
-Example:
+**Example**:
 
 `~/snippets/all.lua`:
 ```lua
@@ -1045,6 +1252,33 @@ return {
 Load via 
 ```lua
 require("luasnip.loaders.from_lua").load({paths = "~/snippets"})
+```
+
+## EDIT_SNIPPETS
+
+To easily edit snippets for the current session, the files loaded by any loader
+can be quickly edited via
+`require("luasnip.loaders").edit_snippet_files(opts:table|nil)`  
+When called, it will open a `vim.ui.select`-dialog to select first a filetype,
+and then (if there are multiple) the associated file to edit.
+
+`opts` currently only contains only one setting:
+
+* `format`: `fn(file:string, source_name:string) -> string|nil`  
+  `file` is simply the path to the file, `source_name` is one of `"lua"`,
+  `"snipmate"` or `"vscode"`.  
+  If a string is returned, it is used as the title of the item, `nil` on the
+  other hand will filter out this item.  
+  The default simply replaces some long strings (packer-path and config-path)
+  in `file` with shorter, symbolic names (`"$PLUGINS"`, `"$CONFIG"`), but
+  this can be extended to
+  * filter files from some specific source/path
+  * more aggressively shorten paths using symbolic names, eg.
+  	`"$FRIENDLY_SNIPPETS"`
+
+One comfortable way to call this function is registering it as a command:
+```vim
+command! LuaSnipEdit :lua require("luasnip.loaders").edit_snippet_files()
 ```
 
 # SNIPPETPROXY
@@ -1323,18 +1557,81 @@ The cache is located at `stdpath("cache")/luasnip/docstrings.json` (probably
 
 # EVENTS
 
-Upon leaving/entering nodes or changing a choice an event is triggered:
-`User Luasnip<Node>{Enter,Leave}`, where `<Node>` is the name of a node in
-PascalCase, eg. `InsertNode` or `DynamicNode` or `Snippet`.
-The event triggered when changing the choice in a `choiceNode` is
-`User LuasnipChangeChoice`.
+Events can be used to react to some action inside snippets. These callbacks can
+be defined per-snippet (`callbacks`-key in snippet constructor) or globally
+(autocommand).
+
+`callbacks`: `fn(node[, event_args])`  
+All callbacks get the `node` associated with the event and event-specific
+optional arguments, `event_args`.
+
+`autocommand`:
+Luasnip uses `User`-events. Autocommands for these can be registered using
+```vim
+au User SomeUserEvent echom "SomeUserEvent was triggered"
+```
+
+or
+```lua
+vim.api.nvim_create_autocommand("User", {
+	patter = "SomeUserEvent",
+	command = "echom SomeUserEvent was triggered"
+})
+```
+The node and `event_args` can be accessed through `require("luasnip").session`:
+
+* `node`: `session.event_node`  
+* `event_args`: `session.event_args`
+
+**Events**:
+
+* `enter/leave`: Called when a node is entered/left (for example when jumping
+  around in a snippet).  
+  `User-event`: `"Luasnip<Node>{Enter,Leave}"`, with `<Node>` in
+  PascalCase, eg. `InsertNode` or `DynamicNode`.  
+  `event_args`: none
+* `change_choice`: When the active choice in a choiceNode is changed.  
+  `User-event`: `"LuasnipChangeChoice"`  
+  `event_args`: none
+* `pre_expand`: Called before a snippet is expanded. Modifying text is allowed,
+  the expand-position will be adjusted so the snippet expands at the same
+  position relative to existing text.  
+  `User-event`: `"LuasnipPreExpand"`  
+  `event_args`:
+  * `expand_pos`: `{<row>, <column>}`, position at which the snippet will be
+  	expanded. `<row>` and `<column>` are both 0-indexed.
 
 A pretty useless, beyond serving as an example here, application of these would
 be printing eg. the nodes' text after entering:
 
-```vim
-au User LuasnipInsertNodeEnter
-	\lua print(require("luasnip").session.event_node:get_text()[1])
+```lua
+vim.api.nvim_create_autocmd("User", {
+	pattern = "LuasnipInsertNodeEnter",
+	callback = function()
+		local node = require("luasnip").session.event_node
+		print(table.concat(node:get_text(), "\n"))
+	end
+})
+```
+
+or some information about expansions
+
+```lua
+vim.api.nvim_create_autocmd("User", {
+	pattern = "LuasnipPreExpand",
+	callback = function()
+		-- get event-parameters from `session`.
+		local snippet = require("luasnip").session.event_node
+		local expand_position =
+			require("luasnip").session.event_args.expand_pos
+
+		print(string.format("expanding snippet %s at %s:%s",
+			table.concat(snippet:get_docstring(), "\n"),
+			expand_position[1],
+			expand_position[2]
+		))
+	end
+})
 ```
 
 # CLEANUP
@@ -1421,7 +1718,24 @@ the lazy_load.
       `nvim_win_get_cursor()`), where the snippet should be expanded. The
       snippet will be put between `(line,col-1)` and `(line,col)`. The snippet
       will be expanded at the current cursor if pos is nil.
-  `opts` and either of its parameter may be nil.
+    - `jump_into_func`: fn(snippet) -> node:
+      Callback responsible for jumping into the snippet. The returned node is
+      set as the new active node, ie. it is the origin of the next jump.
+      The default is basically this
+      ```lua
+      function(snip)
+      	-- jump_into set the placeholder of the snippet, 1
+      	-- to jump forwards.
+      	return snip:jump_into(1)
+      ```
+      While this can be used to only insert the snippet
+      ```lua
+      function(snip)
+      	return snip.insert_nodes[0]
+      end
+      ```
+
+  `opts` and any of its parameters may be nil.
 
 - `get_active_snip()`: returns the currently active snippet (not node!).
 
@@ -1498,6 +1812,14 @@ the lazy_load.
 - `refresh_notify(ft:string)`: Triggers an autocmd that other plugins can hook
   into to perform various cleanup for the refreshed filetype.
   Useful for signaling that new snippets were added for the filetype `ft`.
+- `set_choice(indx:number)`: Changes to the `indx`th choice.
+  If no `choiceNode` is active, an error is thrown.
+  If the active `choiceNode` doesn't have an `indx`th choice, an error is
+  thrown.
+- `get_current_choices() -> string[]`: Returns a list of multiline-strings
+  (themselves lists, even if they have only one line), the `i`th string
+  corresponding to the `i`th choice of the currently active `choiceNode`.
+  If no `choiceNode` is active, an error is thrown.
 
 Not covered in this section are the various node-constructors exposed by
 the module, their usage is shown either previously in this file or in

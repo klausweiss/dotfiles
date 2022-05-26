@@ -41,7 +41,7 @@ local record api
     force: boolean
     complete: string|function(arglead: string, line: string): {string}
   end
-  nvim_add_user_command: function(string, function(UserCmdParams), UserCmdOpts)
+  nvim_create_user_command: function(string, function(UserCmdParams), UserCmdOpts)
   nvim_buf_add_highlight: function(number, number, string, number, number, number): number
   nvim_buf_attach: function(number, boolean, {string:any}): boolean
   nvim_buf_call: function(number, function)
@@ -54,7 +54,20 @@ local record api
   nvim_buf_get_changedtick: function(number): number
   nvim_buf_get_commands: function(number, {string:any}): {string:any}
   nvim_buf_get_extmark_by_id: function(number, number, number, table): {number}
-  nvim_buf_get_extmarks: function(number, number, any, any, {string:any}): any
+
+  record GetExtmarOpts
+    limit: integer
+    details: boolean
+  end
+
+  nvim_buf_get_extmarks: function(
+    buf: integer,
+    ns: integer,
+    start: integer | {integer, integer},
+    eend: integer | {integer, integer},
+    GetExtmarOpts
+  ): {{integer, integer, integer}}
+
   nvim_buf_get_keymap: function(number, string): {{string:any}}
   nvim_buf_get_lines: function(number, number, number, boolean): {string}
   nvim_buf_get_mark: function(number, string): {number}
@@ -117,7 +130,7 @@ local record api
   nvim_get_current_buf: function(): integer
   nvim_get_current_line: function(): string
   nvim_get_current_tabpage: function(): any
-  nvim_get_current_win: function(): number
+  nvim_get_current_win: function(): integer
   nvim_get_hl_by_id: function(number, boolean): {string:any}
   nvim_get_hl_by_name: function(string, boolean): {string:any}
   nvim_get_hl_id_by_name: function(string): number
@@ -203,11 +216,13 @@ end
 global record vim
   api: api
   record fn
+    iconv: function(string, string, string): string
     line: function(string): integer
     join: function({any}, string): string
     getpos: function(string): {integer}
     executable: function(string): integer
     expand: function(string): string
+    foldclosed: function(integer): integer
     getcwd: function(): string
     input: function(string, string): string
 
@@ -266,7 +281,9 @@ global record vim
     sign_undefine: function(string): number
     strdisplaywidth: function(string, integer): integer
     stridx: function(haystack: string, needle: string, start: integer): integer
+    string: function(any): string
     tempname: function(): string
+    type: function(any): integer
   end
 
   cmd: function(string): any
@@ -275,7 +292,10 @@ global record vim
 
   defer_fn: function(function, integer): loop.Timer
 
-  diff: function(string|{string}, string|{string}, table)
+  type DiffResult = {integer, integer, integer, integer}
+
+  -- Assume result_type == 'indices'
+  diff: function(string|{string}, string|{string}, table): {DiffResult}
 
   record o
     diffopt: string
@@ -284,13 +304,17 @@ global record vim
     shortmess: string
   end
 
-  record wo
+  record WinOption
+    {WinOption}
     diff: boolean
   end
+
+  wo: WinOption
 
   record BufOption
     {BufOption}
     fileformat: string
+    fileencoding: string
     filetype: string
     modifiable: boolean
     modified: boolean
@@ -318,6 +342,7 @@ global record vim
 
   record v
     vim_did_enter: integer
+    t_string: integer
   end
 
 
@@ -349,6 +374,7 @@ global record vim
       get_repeat: function(Timer): number
       get_due_in: function(Timer): number
     end
+    hrtime: function(): number
     new_timer: function(): Timer
     timer_start: function(Timer, integer, integer, function()): integer | string
 
@@ -356,8 +382,9 @@ global record vim
 
     record FSPollObj
       userdata
-      start: function
-      stop: function
+      start: function(FSPollObj, string, integer, function)
+      stop: function(FSPollObj)
+      getpath: function(FSPollObj): string
     end
     new_fs_poll: function(): FSPollObj
 
@@ -428,6 +455,12 @@ global record vim
     new_pipe: function(boolean): Pipe
     shutdown: function(any, function)
     close: function(any, function)
+
+    record WorkCtx
+      queue: function(WorkCtx, ...:any)
+    end
+
+    new_work: function(function, function): WorkCtx
   end
 
   in_fast_event: function(): boolean
@@ -452,15 +485,21 @@ global record vim
     end
   end
   notify: function(string, integer, table)
+  pretty_print: function(any)
+
   split: function(string, string): {string}
   split: function(string, string, boolean): {string}
 
   gsplit: function(string, string, boolean): function(): string
 
+  pesc: function(string): string
+
   startswith: function(string, string): boolean
   endswith: function(string, string): boolean
 
+  schedule_wrap: function(function()): function()
   schedule_wrap: function(function(...:any): any...): function(...:any): any...
+
   schedule: function(function)
   validate: function({string:{any}})
   trim: function(string): string
@@ -471,6 +510,7 @@ global record vim
     'force'
   end
 
+  tbl_add_reverse_lookup: function<K,I>({K:I}): {I:K}
   tbl_deep_extend: function(ExtendBehavior, table, table, ...: table): table
 
   tbl_extend: function(ExtendBehavior, table, table, ...: table): table
@@ -519,4 +559,10 @@ global record vim
 
   version: function(): VersionDetails
 
+  record mpack
+    encode: function(any): string
+    decode: function(string): any
+  end
+
+  is_thread: function(): boolean
 end

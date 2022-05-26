@@ -1,7 +1,8 @@
-local Data = require "nvim-lsp-installer.data"
-local path = require "nvim-lsp-installer.path"
-local fs = require "nvim-lsp-installer.fs"
+local _ = require "nvim-lsp-installer.core.functional"
+local path = require "nvim-lsp-installer.core.path"
+local fs = require "nvim-lsp-installer.core.fs"
 local settings = require "nvim-lsp-installer.settings"
+local log = require "nvim-lsp-installer.log"
 
 local M = {}
 
@@ -30,11 +31,12 @@ local INSTALL_DIRS = {
     ["yamlls"] = "yaml",
 }
 
-local CORE_SERVERS = Data.set_of {
+local CORE_SERVERS = _.set_of {
     "angularls",
     "ansiblels",
     "arduino_language_server",
     "asm_lsp",
+    "astro",
     "awk_ls",
     "bashls",
     "beancount",
@@ -42,6 +44,7 @@ local CORE_SERVERS = Data.set_of {
     "bsl_ls",
     "ccls",
     "clangd",
+    "clarity_lsp",
     "clojure_lsp",
     "cmake",
     "codeqlls",
@@ -75,6 +78,7 @@ local CORE_SERVERS = Data.set_of {
     "groovyls",
     "haxe_language_server",
     "hls",
+    "hoon_ls",
     "html",
     "intelephense",
     "jdtls",
@@ -109,6 +113,7 @@ local CORE_SERVERS = Data.set_of {
     "remark_ls",
     "rescriptls",
     "rnix",
+    "robotframework_ls",
     "rome",
     "rust_analyzer",
     "salt_ls",
@@ -122,7 +127,6 @@ local CORE_SERVERS = Data.set_of {
     "sorbet",
     "sourcekit",
     "sourcery",
-    "spectral",
     "sqlls",
     "sqls",
     "stylelint_lsp",
@@ -139,10 +143,10 @@ local CORE_SERVERS = Data.set_of {
     "vala_ls",
     "verible",
     "vimls",
+    "vls",
     "volar",
     "vuels",
     "yamlls",
-    "zeta_note",
     "zk",
     "zls",
 }
@@ -156,10 +160,12 @@ local function scan_server_roots()
     if cached_server_roots then
         return cached_server_roots
     end
+    log.trace "Scanning server roots"
     ---@type string[]
     local result = {}
-    local ok, entries = pcall(fs.readdir, settings.current.install_root_dir)
+    local ok, entries = pcall(fs.sync.readdir, settings.current.install_root_dir)
     if not ok then
+        log.debug("Failed to scan server roots", entries)
         -- presume servers root dir has not been created yet (i.e., no servers installed)
         return {}
     end
@@ -169,25 +175,33 @@ local function scan_server_roots()
             result[#result + 1] = entry.name
         end
     end
-    cached_server_roots = Data.set_of(result)
+    cached_server_roots = _.set_of(result)
     vim.schedule(function()
         cached_server_roots = nil
     end)
+    log.trace("Resolved server roots", cached_server_roots)
     return cached_server_roots
 end
 
 ---@param server_name string
 ---@return string
 local function get_server_install_dir(server_name)
-    return INSTALL_DIRS[server_name] or server_name
+    log.fmt_trace("Getting server installation dirname. uses_new_setup=%s", settings.uses_new_setup)
+    if settings.uses_new_setup then
+        return server_name
+    else
+        return INSTALL_DIRS[server_name] or server_name
+    end
 end
 
 function M.get_server_install_path(dirname)
+    log.trace("Getting server installation path", settings.current.install_root_dir, dirname)
     return path.concat { settings.current.install_root_dir, dirname }
 end
 
 ---@param server_name string
 function M.is_server_installed(server_name)
+    log.trace("Checking if server is installed", server_name)
     local scanned_server_dirs = scan_server_roots()
     local dirname = get_server_install_dir(server_name)
     return scanned_server_dirs[dirname] or false
@@ -212,6 +226,7 @@ function M.get_server(server_name)
 
     local ok, server_factory = pcall(require, ("nvim-lsp-installer.servers.%s"):format(server_name))
     if ok then
+        log.trace("Initializing core server", server_name)
         INITIALIZED_SERVERS[server_name] = server_factory(
             server_name,
             M.get_server_install_path(get_server_install_dir(server_name))
@@ -224,17 +239,14 @@ function M.get_server(server_name)
         ):format(server_name, "https://github.com/williamboman/nvim-lsp-installer", server_factory)
 end
 
----@param server_names string[]
----@return Server[]
-local function resolve_servers(server_names)
-    return Data.list_map(function(server_name)
-        local ok, server = M.get_server(server_name)
-        if not ok then
-            error(server)
-        end
-        return server
-    end, server_names)
-end
+---@type fun(server_names: string): Server[]
+local resolve_servers = _.map(function(server_name)
+    local ok, server = M.get_server(server_name)
+    if not ok then
+        error(server)
+    end
+    return server
+end)
 
 ---@return string[]
 function M.get_available_server_names()

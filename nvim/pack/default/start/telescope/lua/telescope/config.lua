@@ -315,7 +315,9 @@ append(
   - "tail"      only display the file name, and not the path
   - "absolute"  display absolute paths
   - "smart"     remove as much from the path as possible to only show
-                the difference between the displayed paths
+                the difference between the displayed paths.
+                Warning: The nature of the algorithm might have a negative
+                performance impact!
   - "shorten"   only display the first character of each directory in
                 the path
   - "truncate"  truncates the start of the path when the whole path will
@@ -650,7 +652,8 @@ append(
   "color_devicons",
   true,
   [[
-  Boolean if devicons should be enabled or not.
+  Boolean if devicons should be enabled or not. If set to false, the
+  "TelescopeResultsFileIcon" highlight group is used.
   Hint: Coloring only works if |termguicolors| is enabled.
 
   Default: true]]
@@ -782,6 +785,20 @@ append(
   information about lua regex
 
   Default: nil]]
+)
+
+append(
+  "get_selection_window",
+  function()
+    return 0
+  end,
+  [[
+    Function that takes function(picker, entry) and returns a window id.
+    The window ID will be used to decide what window the chosen file will
+    be opened in and the cursor placed in upon leaving the picker.
+
+    Default: `function() return 0 end`
+  ]]
 )
 
 append(

@@ -74,9 +74,10 @@ end
 ---Suspend completion
 core.suspend = function(self)
   self.suspending = true
-  return function()
+  -- It's needed to avoid conflicting with autocmd debouncing.
+  return vim.schedule_wrap(function()
     self.suspending = false
-  end
+  end)
 end
 
 ---Get sources that sorted by priority
@@ -276,17 +277,9 @@ core.complete = function(self, ctx)
         if s_.incomplete and new:changed(s_.context) then
           s_:complete(new, callback)
         else
-          for _, s__ in ipairs(self:get_sources({ source.SourceStatus.FETCHING })) do
-            if s_ == s__ then
-              break
-            end
-            if not s__.incomplete and SOURCE_TIMEOUT > s__:get_fetching_time() then
-              return
-            end
-          end
           if not self.view:get_active_entry() then
             self.filter.stop()
-            self.filter.timeout = self.view:visible() and DEBOUNCE_TIME or 0
+            self.filter.timeout = DEBOUNCE_TIME
             self:filter()
           end
         end
@@ -296,14 +289,14 @@ core.complete = function(self, ctx)
   end
 
   if not self.view:get_active_entry() then
-    self.filter.timeout = self.view:visible() and THROTTLE_TIME or 0
+    self.filter.timeout = self.view:visible() and THROTTLE_TIME or 1
     self:filter()
   end
 end
 
 ---Update completion menu
 core.filter = async.throttle(function(self)
-  self.filter.timeout = self.view:visible() and THROTTLE_TIME or 0
+  self.filter.timeout = THROTTLE_TIME
 
   -- Check invalid condition.
   local ignore = false
@@ -315,11 +308,13 @@ core.filter = async.throttle(function(self)
   -- Check fetching sources.
   local sources = {}
   for _, s in ipairs(self:get_sources({ source.SourceStatus.FETCHING, source.SourceStatus.COMPLETED })) do
+    -- Reserve filter call for timeout.
     if not s.incomplete and SOURCE_TIMEOUT > s:get_fetching_time() then
-      -- Reserve filter call for timeout.
       self.filter.timeout = SOURCE_TIMEOUT - s:get_fetching_time()
       self:filter()
-      break
+      if #sources == 0 then
+        return
+      end
     end
     table.insert(sources, s)
   end
@@ -366,7 +361,7 @@ core.confirm = function(self, e, option, callback)
     table.insert(keys, keymap.backspace(ctx.cursor.character - misc.to_utfindex(ctx.cursor_line, e:get_offset())))
     table.insert(keys, e:get_word())
     table.insert(keys, keymap.undobreak())
-    feedkeys.call(table.concat(keys, ''), 'int')
+    feedkeys.call(table.concat(keys, ''), 'in')
   end)
   feedkeys.call('', 'n', function()
     local ctx = context.new()

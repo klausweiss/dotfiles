@@ -3,7 +3,7 @@ local mock = require "luassert.mock"
 local util = require "luassert.util"
 
 local a = require "nvim-lsp-installer.core.async"
-local process = require "nvim-lsp-installer.process"
+local process = require "nvim-lsp-installer.core.process"
 local server = require "nvim-lsp-installer.server"
 local Optional = require "nvim-lsp-installer.core.optional"
 local receipt = require "nvim-lsp-installer.core.receipt"
@@ -32,12 +32,12 @@ mockx = {
 }
 
 function ServerGenerator(opts)
+    local name = opts.name or "dummy"
     return server.Server:new(vim.tbl_deep_extend("force", {
-        name = "dummy",
+        name = name,
         languages = { "dummylang" },
-        root_dir = server.get_server_root_path "dummy",
+        root_dir = server.get_server_root_path(name),
         homepage = "https://dummylang.org",
-        async = true,
         installer = function(ctx)
             ctx.stdio_sink.stdout "Installing dummy!\n"
         end,

@@ -5,6 +5,7 @@ local feedkeys = require('cmp.utils.feedkeys')
 local autocmd = require('cmp.utils.autocmd')
 local keymap = require('cmp.utils.keymap')
 local misc = require('cmp.utils.misc')
+local async = require('cmp.utils.async')
 
 local cmp = {}
 
@@ -29,6 +30,7 @@ cmp.config.disable = misc.none
 cmp.config.compare = require('cmp.config.compare')
 cmp.config.sources = require('cmp.config.sources')
 cmp.config.mapping = require('cmp.config.mapping')
+cmp.config.window = require('cmp.config.window')
 
 ---Sync asynchronous process.
 cmp.sync = function(callback)
@@ -170,7 +172,7 @@ end)
 
 ---Scrolling documentation window if possible
 cmp.scroll_docs = cmp.sync(function(delta)
-  if cmp.core.view:visible() then
+  if cmp.core.view.docs_view:visible() then
     cmp.core.view:scroll_docs(delta)
     return true
   else
@@ -282,39 +284,27 @@ cmp.setup = setmetatable({
   end,
 })
 
-autocmd.subscribe('InsertEnter', function()
-  feedkeys.call('', 'i', function()
-    if config.enabled() then
-      cmp.core:prepare()
-      cmp.core:on_change('InsertEnter')
-    end
-  end)
-end)
-
-autocmd.subscribe('InsertLeave', function()
-  cmp.core:reset()
-  cmp.core.view:close()
-end)
-
-autocmd.subscribe('CmdlineEnter', function()
+-- In InsertEnter autocmd, vim will detects mode=normal unexpectedly.
+local on_insert_enter = function()
   if config.enabled() then
+    cmp.config.compare.scopes:update()
+    cmp.config.compare.locality:update()
     cmp.core:prepare()
     cmp.core:on_change('InsertEnter')
   end
-end)
+end
+autocmd.subscribe({ 'InsertEnter', 'CmdlineEnter' }, async.debounce_next_tick(on_insert_enter))
 
-autocmd.subscribe('CmdlineLeave', function()
-  cmp.core:reset()
-  cmp.core.view:close()
-end)
-
-autocmd.subscribe('TextChanged', function()
+-- async.throttle is needed for performance. The mapping `:<C-u>...<CR>` will fire `CmdlineChanged` for each character.
+local on_text_changed = function()
   if config.enabled() then
     cmp.core:on_change('TextChanged')
   end
-end)
+end
+autocmd.subscribe({ 'TextChangedI', 'TextChangedP' }, on_text_changed)
+autocmd.subscribe('CmdlineChanged', async.debounce_next_tick(on_text_changed))
 
-autocmd.subscribe('CursorMoved', function()
+autocmd.subscribe('CursorMovedI', function()
   if config.enabled() then
     cmp.core:on_moved()
   else
@@ -323,9 +313,10 @@ autocmd.subscribe('CursorMoved', function()
   end
 end)
 
-autocmd.subscribe('InsertEnter', function()
-  cmp.config.compare.scopes:update()
-  cmp.config.compare.locality:update()
+-- If make this asynchronous, the completion menu will not close when the command output is displayed.
+autocmd.subscribe({ 'InsertLeave', 'CmdlineLeave' }, function()
+  cmp.core:reset()
+  cmp.core.view:close()
 end)
 
 cmp.event:on('complete_done', function(evt)

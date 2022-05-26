@@ -131,51 +131,27 @@ end
 local function open_file_in_tab(filename)
   if M.quit_on_open then
     view.close()
-  else
-    -- Switch window first to ensure new window doesn't inherit settings from
-    -- NvimTree
-    if lib.target_winid > 0 and api.nvim_win_is_valid(lib.target_winid) then
-      api.nvim_set_current_win(lib.target_winid)
-    else
-      vim.cmd "wincmd p"
-    end
   end
-
-  -- This sequence of commands are here to ensure a number of things: the new
-  -- buffer must be opened in the current tabpage first so that focus can be
-  -- brought back to the tree if it wasn't quit_on_open. It also ensures that
-  -- when we open the new tabpage with the file, its window doesn't inherit
-  -- settings from NvimTree, as it was already loaded.
-
-  vim.cmd("edit " .. vim.fn.fnameescape(filename))
-
-  local alt_bufid = vim.fn.bufnr "#"
-  if alt_bufid ~= -1 then
-    api.nvim_set_current_buf(alt_bufid)
-  end
-
-  if not M.quit_on_open then
-    vim.cmd "wincmd p"
-  end
-
   vim.cmd("tabe " .. vim.fn.fnameescape(filename))
 end
 
-function M.fn(mode, filename)
-  if mode == "tabnew" then
-    open_file_in_tab(filename)
-    return
+local function on_preview(buf_loaded)
+  if not buf_loaded then
+    vim.bo.bufhidden = "delete"
+
+    api.nvim_create_autocmd({ "TextChanged", "TextChangedI" }, {
+      group = api.nvim_create_augroup("RemoveBufHidden", {}),
+      buffer = api.nvim_get_current_buf(),
+      callback = function()
+        vim.bo.bufhidden = ""
+      end,
+      once = true,
+    })
   end
+  view.focus()
+end
 
-  if mode == "edit_in_place" then
-    require("nvim-tree.view").abandon_current_window()
-    vim.cmd("edit " .. vim.fn.fnameescape(filename))
-    return
-  end
-
-  local tabpage = api.nvim_get_current_tabpage()
-  local win_ids = api.nvim_tabpage_list_wins(tabpage)
-
+local function get_target_winid(mode)
   local target_winid
   if not M.window_picker.enable or mode == "edit_no_picker" then
     target_winid = lib.target_winid
@@ -190,54 +166,99 @@ function M.fn(mode, filename)
   if target_winid == -1 then
     target_winid = lib.target_winid
   end
+  return target_winid
+end
 
+-- This is only to avoid the BufEnter for nvim-tree to trigger
+-- which would cause find-file to run on an invalid file.
+local function set_current_win_no_autocmd(winid)
+  vim.cmd "set ei=BufEnter"
+  api.nvim_set_current_win(winid)
+  vim.cmd 'set ei=""'
+end
+
+local function when_not_found(filename, mode, win_ids)
+  local target_winid = get_target_winid(mode)
   local do_split = mode == "split" or mode == "vsplit"
   local vertical = mode ~= "split"
 
-  -- Check if filename is already open in a window
-  local found = false
-  for _, id in ipairs(win_ids) do
-    if filename == api.nvim_buf_get_name(api.nvim_win_get_buf(id)) then
-      if mode == "preview" then
-        return
-      end
-      found = true
-      api.nvim_set_current_win(id)
-      break
+  -- Target is invalid or window does not exist in current tabpage: create new window
+  if not target_winid or not vim.tbl_contains(win_ids, target_winid) then
+    local split_cmd = get_split_cmd()
+    local splitside = view.is_vertical() and "vsp" or "sp"
+    vim.cmd(split_cmd .. " " .. splitside)
+    target_winid = api.nvim_get_current_win()
+    lib.target_winid = target_winid
+
+    -- No need to split, as we created a new window.
+    do_split = false
+  elseif not vim.o.hidden then
+    -- If `hidden` is not enabled, check if buffer in target window is
+    -- modified, and create new split if it is.
+    local target_bufid = api.nvim_win_get_buf(target_winid)
+    if api.nvim_buf_get_option(target_bufid, "modified") then
+      do_split = true
     end
   end
 
+  local fname = vim.fn.fnameescape(filename)
+
+  local cmd
+  if do_split or #api.nvim_list_wins() == 1 then
+    cmd = string.format("%ssplit %s", vertical and "vertical " or "", fname)
+  else
+    cmd = string.format("edit %s", fname)
+  end
+
+  set_current_win_no_autocmd(target_winid)
+  pcall(vim.cmd, cmd)
+  lib.set_target_win()
+end
+
+local function is_already_open(filename, win_ids)
+  for _, id in ipairs(win_ids) do
+    if filename == api.nvim_buf_get_name(api.nvim_win_get_buf(id)) then
+      api.nvim_set_current_win(id)
+      return true
+    end
+  end
+
+  return false
+end
+
+local function is_already_loaded(filename)
+  for _, buf_id in ipairs(api.nvim_list_bufs()) do
+    if api.nvim_buf_is_loaded(buf_id) and filename == api.nvim_buf_get_name(buf_id) then
+      return true
+    end
+  end
+  return false
+end
+
+local function edit_in_current_buf(filename)
+  require("nvim-tree.view").abandon_current_window()
+  vim.cmd("edit " .. vim.fn.fnameescape(filename))
+end
+
+function M.fn(mode, filename)
+  if mode == "tabnew" then
+    return open_file_in_tab(filename)
+  end
+
+  if mode == "edit_in_place" then
+    return edit_in_current_buf(filename)
+  end
+
+  local tabpage = api.nvim_get_current_tabpage()
+  local win_ids = api.nvim_tabpage_list_wins(tabpage)
+
+  local found = is_already_open(filename, win_ids)
+  if found and mode == "preview" then
+    return
+  end
+
   if not found then
-    if not target_winid or not vim.tbl_contains(win_ids, target_winid) then
-      -- Target is invalid, or window does not exist in current tabpage: create
-      -- new window
-      local split_cmd = get_split_cmd()
-      local splitside = view.is_vertical() and "vsp" or "sp"
-      vim.cmd(split_cmd .. " " .. splitside)
-      target_winid = api.nvim_get_current_win()
-      lib.target_winid = target_winid
-
-      -- No need to split, as we created a new window.
-      do_split = false
-    elseif not vim.o.hidden then
-      -- If `hidden` is not enabled, check if buffer in target window is
-      -- modified, and create new split if it is.
-      local target_bufid = api.nvim_win_get_buf(target_winid)
-      if api.nvim_buf_get_option(target_bufid, "modified") then
-        do_split = true
-      end
-    end
-
-    local cmd
-    if do_split or #api.nvim_list_wins() == 1 then
-      cmd = string.format("%ssplit ", vertical and "vertical " or "")
-    else
-      cmd = "edit "
-    end
-
-    cmd = cmd .. vim.fn.fnameescape(filename)
-    api.nvim_set_current_win(target_winid)
-    pcall(vim.cmd, cmd)
+    when_not_found(filename, mode, win_ids)
   end
 
   if M.resize_window then
@@ -245,8 +266,8 @@ function M.fn(mode, filename)
   end
 
   if mode == "preview" then
-    view.focus()
-    return
+    local buf_loaded = is_already_loaded(filename)
+    return on_preview(buf_loaded)
   end
 
   if M.quit_on_open then

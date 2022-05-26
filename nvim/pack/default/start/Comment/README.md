@@ -111,7 +111,8 @@ Following are the **default** config for the [`setup()`](#setup). If you want to
     },
 
     ---Create basic (operator-pending) and extended mappings for NORMAL + VISUAL mode
-    ---@type table
+    ---NOTE: If `mappings = false` then the plugin won't create any mappings
+    ---@type boolean|table
     mappings = {
         ---Operator-pending mapping
         ---Includes `gcc`, `gbc`, `gc[count]{motion}` and `gb[count]{motion}`
@@ -225,7 +226,9 @@ These mappings are disabled by default. (config: `mappings.extended`)
 
 ### ⚙️ API
 
-Read [doc/API.md](./doc/API.md) to see all the API/functions that are exported from the plugin.
+- [Plug Mappings](./doc/plugs.md) - Excellent for creating custom keybindings
+
+- [Lua API](./doc/API.md) - Details the Lua API. Great for making custom comment function.
 
 <a id="treesitter"></a>
 
@@ -235,6 +238,7 @@ This plugin has native **treesitter** support for calculating `commentstring` wh
 
 1. No `jsx/tsx` support. Its implementation was quite complicated.
 2. Invalid comment on the region where one language ends and the other starts. [Read more](https://github.com/numToStr/Comment.nvim/pull/62#issuecomment-972790418)
+3. Unexpected comment on a line with multiple languages. [#144](https://github.com/numToStr/Comment.nvim/issues/144)
 
 For advance use cases, use [nvim-ts-context-commentstring](https://github.com/JoosepAlviste/nvim-ts-context-commentstring). See [`pre_hook`](#pre-hook) section for the integration.
 
@@ -257,7 +261,7 @@ There are two hook methods i.e `pre_hook` and `post_hook` which are called befor
         if vim.bo.filetype == 'typescriptreact' then
             local U = require('Comment.utils')
 
-            -- Detemine whether to use linewise or blockwise commentstring
+            -- Determine whether to use linewise or blockwise commentstring
             local type = ctx.ctype == U.ctype.line and '__default' or '__multiline'
 
             -- Determine the location where to calculate commentstring from

@@ -160,6 +160,11 @@ local function init_snippet_opts(opts)
 		in_node.stored[key] = wrap_nodes_in_snippetNode(nodes)
 	end
 
+	-- init invalidated here.
+	-- This is because invalidated is a key that can be populated without any
+	-- information on the actual snippet (it can be used by snippetProxy!).
+	in_node.invalidated = false
+
 	return vim.tbl_extend("error", in_node, init_snippetNode_opts(opts))
 end
 
@@ -226,7 +231,6 @@ local function _S(snip, nodes, opts)
 			active = false,
 			type = types.snippet,
 			dependents_dict = dict.new(),
-			invalidated = false,
 		}),
 		opts
 	)
@@ -282,8 +286,41 @@ end
 local function ISN(pos, nodes, indent_text, opts)
 	local snip = SN(pos, nodes, opts)
 
+	local function get_indent(parent_indent)
+		local indentstring = ""
+		if vim.bo.expandtab then
+			-- preserve content of $PARENT_INDENT, but expand tabs before/after it
+			for str in vim.gsplit(indent_text, "$PARENT_INDENT", true) do
+				-- append expanded text and parent_indent, we'll remove the superfluous one after the loop.
+				indentstring = indentstring
+					.. util.expand_tabs(
+						{ str },
+						util.tab_width(),
+						#indentstring + #parent_indent
+					)[1]
+					.. parent_indent
+			end
+			indentstring = indentstring:sub(1, -#parent_indent - 1)
+		else
+			indentstring = indent_text:gsub("$PARENT_INDENT", parent_indent)
+		end
+
+		return indentstring
+	end
+
 	function snip:indent(parent_indent)
-		Snippet.indent(self, indent_text:gsub("$PARENT_INDENT", parent_indent))
+		Snippet.indent(self, get_indent(parent_indent))
+	end
+
+	-- expand_tabs also needs to be modified: the children of the isn get the
+	-- indent of the isn, so we'll have to calculate it now.
+	-- This is done with a dummy-indentstring of the correct length.
+	function snip:expand_tabs(tabwidth, indentstrlen)
+		Snippet.expand_tabs(
+			self,
+			tabwidth,
+			#get_indent(string.rep(" ", indentstrlen))
+		)
 	end
 
 	return snip
@@ -376,12 +413,18 @@ local function insert_into_jumplist(snippet, start_node, current_node)
 	start_node.next = snippet
 end
 
-function Snippet:trigger_expand(current_node, pos)
+function Snippet:trigger_expand(current_node, pos_id, env)
+	local pos = vim.api.nvim_buf_get_extmark_by_id(0, session.ns_id, pos_id, {})
+	self:event(events.pre_expand, { expand_pos = pos })
+	-- update pos, event-callback might have moved the extmark.
+	pos = vim.api.nvim_buf_get_extmark_by_id(0, session.ns_id, pos_id, {})
+
+	local indentstring = util.line_chars_before(pos):match("^%s*")
 	-- expand tabs before indenting to keep indentstring unmodified
 	if vim.bo.expandtab then
-		self:expand_tabs(util.tab_width())
+		self:expand_tabs(util.tab_width(), #indentstring)
 	end
-	self:indent(util.line_chars_before(pos):match("^%s*"))
+	self:indent(indentstring)
 
 	-- (possibly) keep user-set opts.
 	if self.merge_child_ext_opts then
@@ -408,7 +451,7 @@ function Snippet:trigger_expand(current_node, pos)
 		self.effective_child_ext_opts[self.type]
 	)
 
-	self.env = Environ:new(pos)
+	self.env = env
 	self:subsnip_init()
 
 	self:init_positions({})
@@ -787,9 +830,9 @@ function Snippet:indent(prefix)
 	end
 end
 
-function Snippet:expand_tabs(tabwidth)
+function Snippet:expand_tabs(tabwidth, indenstringlen)
 	for _, node in ipairs(self.nodes) do
-		node:expand_tabs(tabwidth)
+		node:expand_tabs(tabwidth, indenstringlen)
 	end
 end
 
@@ -973,10 +1016,10 @@ function Snippet:text_only()
 	return true
 end
 
-function Snippet:event(event)
+function Snippet:event(event, event_args)
 	local callback = self.callbacks[-1][event]
 	if callback then
-		callback(self)
+		callback(self, event_args)
 	end
 	if self.type == types.snippetNode and self.pos then
 		-- if snippetNode, also do callback for position in parent.
@@ -987,6 +1030,7 @@ function Snippet:event(event)
 	end
 
 	session.event_node = self
+	session.event_args = event_args
 	vim.cmd("doautocmd User Luasnip" .. events.to_string(self.type, event))
 end
 

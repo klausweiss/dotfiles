@@ -75,16 +75,17 @@ describe('gitsigns', function()
   it('gitdir watcher works on a fresh repo', function()
     screen:try_resize(20,6)
     setup_test_repo{no_add=true}
-    config.watch_gitdir = {interval = 5}
+    -- Don't set this too low, or else the test will lock up
+    config.watch_gitdir = {interval = 100}
     setup_gitsigns(config)
     edit(test_file)
 
     expectf(function()
       match_dag(debug_messages(), {
-        'run_job: git --no-pager --version',
+        p'run_job: git .* %-%-version',
         'attach(1): Attaching (trigger=BufRead)',
         p'run_job: git .* config user.name',
-        'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
+        p'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD',
         p('run_job: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard %-%-eol '..test_file),
         'watch_gitdir(1): Watching git dir',
         p'run_job: git .* show :0:dummy.txt',
@@ -114,7 +115,7 @@ describe('gitsigns', function()
     match_debug_messages {
       'attach(1): Attaching (trigger=BufRead)',
       p'run_job: git .* config user.name',
-      'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
+      p'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD',
       'new: Not in git repo',
       'attach(1): Empty git obj',
     }
@@ -125,8 +126,8 @@ describe('gitsigns', function()
 
     match_debug_messages {
       'attach(1): Attaching (trigger=BufWritePost)',
-      'run_job: git --no-pager config user.name',
-      'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
+      p'run_job: git .* config user.name',
+      p'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD',
       'new: Not in git repo',
       'attach(1): Empty git obj'
     }
@@ -179,7 +180,7 @@ describe('gitsigns', function()
       match_debug_messages {
         'attach(1): Attaching (trigger=BufRead)',
         p'run_job: git .* config user.name',
-        'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
+        p'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD',
         p'run_job: git .* ls%-files .*/dummy_ignored.txt',
         'attach(1): Cannot resolve file in repo',
       }
@@ -194,7 +195,7 @@ describe('gitsigns', function()
       match_debug_messages {
         'attach(1): Attaching (trigger=BufNewFile)',
         p'run_job: git .* config user.name',
-        'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
+        p'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD',
         p('run_job: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard %-%-eol '..newfile),
         'attach(1): Not a file',
       }
@@ -338,9 +339,9 @@ describe('gitsigns', function()
       match_debug_messages {
         'attach(1): Attaching (trigger=BufRead)',
         p'run_job: git .* config user.name',
-        'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
-        'run_job: git --no-pager rev-parse --short HEAD',
-        p'run_job: git %-%-no%-pager %-%-git%-dir=.* %-%-stage %-%-others %-%-exclude%-standard %-%-eol.*',
+        p'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD',
+        p'run_job: git .* rev%-parse %-%-short HEAD',
+        p'run_job: git .* %-%-git%-dir=.* %-%-stage %-%-others %-%-exclude%-standard %-%-eol.*',
         'attach(1): User on_attach() returned false',
       }
     end)
@@ -450,8 +451,8 @@ describe('gitsigns', function()
         edit(newfile)
         match_debug_messages{
           'attach(1): Attaching (trigger=BufNewFile)',
-          'run_job: git --no-pager config user.name',
-          'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
+          p'run_job: git .* config user.name',
+          p'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD',
           p'run_job: git .* ls%-files .*',
           'attach(1): Not a file',
         }
@@ -461,7 +462,7 @@ describe('gitsigns', function()
         local messages = {
           'attach(1): Attaching (trigger=BufWritePost)',
           p"run_job: git .* config user.name",
-          'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
+          p'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD',
           p'run_job: git .* ls%-files .*',
           'watch_gitdir(1): Watching git dir',
           p'run_job: git .* show :0:newfile.txt'
@@ -714,6 +715,36 @@ describe('gitsigns', function()
       {2:~ }^orem ipsum        |
       {6:~                   }|
     ]]}
+  end)
+
+  it('handle #521', function()
+    screen:detach()
+    screen:attach({ext_messages=false})
+    screen:try_resize(20,3)
+    setup_test_repo()
+    setup_gitsigns(config)
+    edit(test_file)
+    feed('dd')
+
+    local function check_screen()
+      screen:expect{grid=[[
+        {4:^ }^is                |
+        {1:  }a                 |
+        {1:  }file              |
+      ]]}
+    end
+
+    check_screen()
+
+    -- Write over the text with itself. This will remove all the signs but the
+    -- calculated hunks won't change.
+    exec_lua[[
+      local text = vim.api.nvim_buf_get_lines(0, 0, -1, false)
+      vim.api.nvim_buf_set_lines(0, 0, -1, true, text)
+    ]]
+
+    check_screen()
+
   end)
 
 end)

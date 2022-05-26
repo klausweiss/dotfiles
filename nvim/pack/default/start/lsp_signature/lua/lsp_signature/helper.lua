@@ -7,6 +7,8 @@ local special_chars = { "%", "*", "[", "]", "^", "$", "(", ")", ".", "+", "-", "
 local contains = vim.tbl_contains
 local lsp_trigger_chars = {}
 
+local vim_version = vim_version or vim.version().major * 100 + vim.version().minor * 10 + vim.version().patch
+
 local function is_special(ch)
   return contains(special_chars, ch)
 end
@@ -52,14 +54,20 @@ end
 
 local log = helper.log
 
-local function findwholeword(input, word)
+local function replace_special(word)
   for _, value in pairs(special_chars) do
     local fd = "%" .. value
     local as_loc = word:find(fd)
-    if as_loc then
+    while as_loc do
       word = word:sub(1, as_loc - 1) .. "%" .. value .. word:sub(as_loc + 1, -1)
+      as_loc = word:find(fd, as_loc + 2)
     end
   end
+  return word
+end
+
+local function findwholeword(input, word)
+  word = replace_special(word)
 
   local l, e = string.find(input, "%(") -- All languages I know, func parameter start with (
   l = l or 1
@@ -154,8 +162,14 @@ helper.match_parameter = function(result, config)
     log("incorrect signature response?", result, config)
     activeParameter = helper.fallback(config.triggered_chars or { "(", "," })
   end
+
   if signature.parameters == nil then
-    log("incorrect signature response?", result)
+    log("incorrect signature response, missing signature.parameters", result)
+    return result, "", 0, 0
+  end
+
+  if activeParameter == nil or activeParameter + 1 > #signature.parameters then
+    log("incorrect signature response, failed to detect activeParameter", result)
     return result, "", 0, 0
   end
 
@@ -165,8 +179,7 @@ helper.match_parameter = function(result, config)
     log("no next param")
     return result, "", 0, 0
   end
-  -- local dec_pre = _LSP_SIG_CFG.decorator[1]
-  -- local dec_after = _LSP_SIG_CFG.decorator[2]
+
   local label = signature.label
   local nexp = ""
   local s, e
@@ -175,8 +188,6 @@ helper.match_parameter = function(result, config)
   if type(nextParameter.label) == "table" then -- label = {2, 4} c style
     local range = nextParameter.label
     nexp = label:sub(range[1] + 1, range[2])
-    -- label = label:sub(1, range[1]) .. dec_pre .. label:sub(range[1] + 1, range[2]) .. dec_after
-    --             .. label:sub(range[2] + 1, #label + 1)
     s = range[1] + 1
     e = range[2]
     signature.label = label
@@ -185,10 +196,7 @@ helper.match_parameter = function(result, config)
     if type(nextParameter.label) == "string" then -- label = 'par1 int'
       -- log("range str ", label, nextParameter.label)
       local i, j = findwholeword(label, nextParameter.label)
-      -- local i, j = label:find(nextParameter.label, 1, true)
       if i ~= nil then
-        -- label = label:sub(1, i - 1) .. dec_pre .. label:sub(i, j) .. dec_after
-        --             .. label:sub(j + 1, #label + 1)
         signature.label = label
       end
       nexp = nextParameter.label
@@ -427,12 +435,15 @@ function helper.cal_woff(line_to_cursor, label)
   local sig_woff = label:find("%([^%(]*$")
   if woff and sig_woff then
     local function_name = label:sub(1, sig_woff - 1)
+
     -- run this again for some language have multiple `()`
     local sig_woff2 = function_name:find("%([^%(]*$")
     if sig_woff2 then
       function_name = label:sub(1, sig_woff2 - 1)
     end
-    local function_on_line = line_to_cursor:match(".*" .. function_name)
+    local f = function_name
+    f = ".*" .. replace_special(f)
+    local function_on_line = line_to_cursor:match(f)
     if function_on_line then
       woff = #line_to_cursor - #function_on_line + #function_name
     else
@@ -513,12 +524,19 @@ function helper.check_lsp_cap(clients, line_to_cursor)
   for _, value in pairs(clients) do
     if value ~= nil then
       local sig_provider = value.server_capabilities.signatureHelpProvider
-      local rslv_cap = value.resolved_capabilities
+      local rslv_cap = value.server_capabilities
+      if vim_version < 61 then
+        vim.notify("LSP: lsp-signature requires neovim 0.6.1 or later", vim.log.levels.WARN)
+        return
+      end
       if rslv_cap.signature_help == true or sig_provider ~= nil then
         signature_cap = true
         total_lsp = total_lsp + 1
 
-        local h = rslv_cap.hover
+        local h = rslv_cap.hoverProvider
+        if vim_version <= 70 then
+          h = rslv_cap.hover
+        end
 
         if h == true or (h ~= nil and h ~= {}) then
           hover_cap = true
@@ -537,10 +555,11 @@ function helper.check_lsp_cap(clients, line_to_cursor)
           if _LSP_SIG_CFG.extra_trigger_chars ~= nil then
             triggered_chars = tbl_combine(triggered_chars, _LSP_SIG_CFG.extra_trigger_chars)
           end
-        elseif rslv_cap ~= nil and rslv_cap.signature_help_trigger_characters ~= nil then
-          triggered_chars = tbl_combine(triggered_chars, value.server_capabilities.signature_help_trigger_characters)
-        elseif rslv_cap and rslv_cap.signatureHelpProvider and rslv_cap.signatureHelpProvider.triggerCharacters then
-          triggered_chars = tbl_combine(triggered_chars, rslv_cap.signatureHelpProvider.triggerCharacters)
+        end
+        if sig_provider == nil and vim_version <= 70 then -- TODO: deprecated
+          if rslv_cap ~= nil and rslv_cap.signature_help_trigger_characters ~= nil then
+            triggered_chars = tbl_combine(triggered_chars, value.server_capabilities.signature_help_trigger_characters)
+          end
         end
 
         if triggered == false then
@@ -564,7 +583,6 @@ end
 helper.highlight_parameter = function(s, l)
   -- Not sure why this not working
   -- api.nvim_command("autocmd User SigComplete".." <buffer> ++once lua pcall(vim.api.nvim_win_close, "..winnr..", true)")
-
   _LSP_SIG_CFG.ns = vim.api.nvim_create_namespace("lsp_signature_hi_parameter")
   local hi = _LSP_SIG_CFG.hi_parameter
   log("extmark", _LSP_SIG_CFG.bufnr, s, l, #_LSP_SIG_CFG.padding, hi)
@@ -603,6 +621,27 @@ helper.remove_doc = function(result)
       end
     end
   end
+end
+
+helper.get_doc = function(result)
+  for i = 1, #result.signatures do
+    if result.signatures[i] and result.signatures[i].documentation then
+      if result.signatures[i].documentation.value then
+        return result.signatures[i].documentation.value
+      else
+        return result.signatures[i].documentation
+      end
+    end
+  end
+end
+
+helper.completion_visible = function()
+  local hascmp, cmp = pcall(require, "cmp")
+  if hascmp then
+    return cmp.visible()
+  end
+
+  return vim.fn.pumvisible() ~= 0
 end
 
 return helper

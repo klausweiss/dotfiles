@@ -1,12 +1,14 @@
 local server = require "nvim-lsp-installer.server"
-local path = require "nvim-lsp-installer.path"
+local path = require "nvim-lsp-installer.core.path"
 
 return function(name, root_dir)
     local function create_install_script(install_dir)
         return ([[
 options(langserver_library = %q);
+options(langserver_quiet = FALSE);
 options(repos = list(CRAN = "http://cran.rstudio.com/"));
 rlsLib <- getOption("langserver_library");
+.libPaths(new = rlsLib);
 
 didInstallRemotes <- FALSE;
 tryCatch(
@@ -18,7 +20,9 @@ tryCatch(
   }
 );
 
-remotes::install_github("jozefhajnala/languageserversetup", lib = rlsLib);
+# We set force = TRUE because this command will error if languageserversetup is already installed (even if it's at a
+# different library location).
+remotes::install_github("jozefhajnala/languageserversetup", lib = rlsLib, force = TRUE);
 
 if (didInstallRemotes) {
     remove.packages("remotes", lib = rlsLib);
@@ -26,7 +30,7 @@ if (didInstallRemotes) {
 
 loadNamespace("languageserversetup", lib.loc = rlsLib);
 languageserversetup::languageserver_install(
-    fullReinstall = TRUE,
+    fullReinstall = FALSE,
     confirmBeforeInstall = FALSE,
     strictLibrary = TRUE
 );
@@ -37,7 +41,7 @@ library("languageserver", lib.loc = rlsLib);
     local server_script = ([[
 options("langserver_library" = %q);
 rlsLib <- getOption("langserver_library");
-.libPaths(new = rlsLib);
+.libPaths(new = c(rlsLib, .libPaths()));
 loadNamespace("languageserver", lib.loc = rlsLib);
 languageserver::run();
   ]]):format(root_dir)
@@ -47,7 +51,6 @@ languageserver::run();
         root_dir = root_dir,
         homepage = "https://github.com/REditorSupport/languageserver",
         languages = { "R" },
-        async = true,
         ---@param ctx InstallContext
         installer = function(ctx)
             ctx.spawn.R {

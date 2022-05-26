@@ -2,6 +2,9 @@ local snip_mod = require("luasnip.nodes.snippet")
 local util = require("luasnip.util.util")
 local session = require("luasnip.session")
 local snippet_collection = require("luasnip.session.snippet_collection")
+local Environ = require("luasnip.util.environ")
+
+local loader = require("luasnip.loaders")
 
 local next_expand = nil
 local next_expand_params = nil
@@ -154,6 +157,10 @@ local function expand_or_locally_jumpable()
 	return expandable() or (in_snippet() and jumpable())
 end
 
+local function _jump_into_default(snippet)
+	return util.no_region_check_wrap(snippet.jump_into, snippet, 1)
+end
+
 -- opts.clear_region: table, keys `from` and `to`, both (0,0)-indexed.
 local function snip_expand(snippet, opts)
 	local snip = snippet:copy()
@@ -162,19 +169,27 @@ local function snip_expand(snippet, opts)
 	opts.expand_params = opts.expand_params or {}
 	-- override with current position if none given.
 	opts.pos = opts.pos or util.get_cursor_0ind()
+	opts.jump_into_func = opts.jump_into_func or _jump_into_default
 
 	snip.trigger = opts.expand_params.trigger or snip.trigger
 	snip.captures = opts.expand_params.captures or {}
 
-	snip:trigger_expand(
-		session.current_nodes[vim.api.nvim_get_current_buf()],
-		opts.pos
+	local env = Environ:new(opts.pos)
+
+	local pos_id = vim.api.nvim_buf_set_extmark(
+		0,
+		session.ns_id,
+		opts.pos[1],
+		opts.pos[2],
+		-- track position between pos[2]-1 and pos[2].
+		{ right_gravity = false }
 	)
 
 	-- optionally clear text. Text has to be cleared befor jumping into the new
 	-- snippet, as the cursor-position can end up in the wrong position (to be
-	-- precise the text will be moved, the cursor will stay at the same position,
-	-- which is just as bad) if text before the cursor, on the same line is cleared.
+	-- precise the text will be moved, the cursor will stay at the same
+	-- position, which is just as bad) if text before the cursor, on the same
+	-- line is cleared.
 	if opts.clear_region then
 		vim.api.nvim_buf_set_text(
 			0,
@@ -185,6 +200,12 @@ local function snip_expand(snippet, opts)
 			{ "" }
 		)
 	end
+
+	snip:trigger_expand(
+		session.current_nodes[vim.api.nvim_get_current_buf()],
+		pos_id,
+		env
+	)
 
 	local current_buf = vim.api.nvim_get_current_buf()
 
@@ -202,12 +223,10 @@ local function snip_expand(snippet, opts)
 		end
 	end
 
-	session.current_nodes[vim.api.nvim_get_current_buf()] =
-		util.no_region_check_wrap(
-			snip.jump_into,
-			snip,
-			1
-		)
+	-- jump_into-callback returns new active node.
+	session.current_nodes[vim.api.nvim_get_current_buf()] = opts.jump_into_func(
+		snip
+	)
 
 	-- stores original snippet, it doesn't contain any data from expansion.
 	session.last_expand_snip = snippet
@@ -312,6 +331,31 @@ local function change_choice(val)
 		session.current_nodes[vim.api.nvim_get_current_buf()]
 	)
 	session.current_nodes[vim.api.nvim_get_current_buf()] = new_active
+end
+
+local function set_choice(choice_indx)
+	assert(session.active_choice_node, "No active choiceNode")
+	local choice = session.active_choice_node.choices[choice_indx]
+	assert(choice, "Invalid Choice")
+	local new_active = util.no_region_check_wrap(
+		session.active_choice_node.set_choice,
+		session.active_choice_node,
+		choice,
+		session.current_nodes[vim.api.nvim_get_current_buf()]
+	)
+	session.current_nodes[vim.api.nvim_get_current_buf()] = new_active
+end
+
+local function get_current_choices()
+	assert(session.active_choice_node, "No active choiceNode")
+
+	local choice_lines = {}
+
+	for i, choice in ipairs(session.active_choice_node.choices) do
+		choice_lines[i] = table.concat(choice:get_docstring(), "\n")
+	end
+
+	return choice_lines
 end
 
 local function unlink_current()
@@ -525,9 +569,10 @@ end
 
 local function cleanup()
 	-- Use this to reload luasnip
-	vim.cmd([[doautocmd User LuasnipCleanup]])
+	vim.cmd([[doautocmd <nomodeline> User LuasnipCleanup]])
 	-- clear all snippets.
 	snippet_collection.clear_snippets()
+	loader.cleanup()
 end
 
 local function refresh_notify(ft)
@@ -542,7 +587,7 @@ local function refresh_notify(ft)
 		end
 	else
 		session.latest_load_ft = ft
-		vim.cmd([[doautocmd User LuasnipSnippetsAdded]])
+		vim.cmd([[doautocmd <nomodeline> User LuasnipSnippetsAdded]])
 	end
 end
 
@@ -604,6 +649,8 @@ ls = {
 	get_active_snip = get_active_snip,
 	choice_active = choice_active,
 	change_choice = change_choice,
+	set_choice = set_choice,
+	get_current_choices = get_current_choices,
 	unlink_current = unlink_current,
 	lsp_expand = lsp_expand,
 	active_update_dependents = active_update_dependents,
@@ -619,6 +666,7 @@ ls = {
 	get_id_snippet = get_id_snippet,
 	setup_snip_env = setup_snip_env,
 	clean_invalidated = clean_invalidated,
+	get_snippet_filetypes = util.get_snippet_filetypes,
 	s = snip_mod.S,
 	sn = snip_mod.SN,
 	t = require("luasnip.nodes.textNode").T,

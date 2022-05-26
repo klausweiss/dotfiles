@@ -49,8 +49,7 @@ You can skip the dependency on `'kyazdani42/nvim-web-devicons'` if you
 install [nerd fonts](https://www.nerdfonts.com/).
 
 ##### Requirements
- - Neovim `0.5`
- - `set termguicolors`
+ - Neovim `0.7`
 
 ## Features
 
@@ -137,6 +136,7 @@ nnoremap <silent>    <A-c> :BufferClose<CR>
 " Close commands
 "                          :BufferCloseAllButCurrent<CR>
 "                          :BufferCloseAllButPinned<CR>
+"                          :BufferCloseAllButCurrentOrPinned<CR>
 "                          :BufferCloseBuffersLeft<CR>
 "                          :BufferCloseBuffersRight<CR>
 " Magic buffer-picking mode
@@ -232,6 +232,7 @@ let bufferline.exclude_name = ['package.json']
 " if set to 'buffer_number', will show buffer number in the tabline
 " if set to 'numbers', will show buffer index in the tabline
 " if set to 'both', will show buffer index and icons in the tabline
+" if set to 'buffer_number_with_icon', will show buffer number and icons in the tabline
 let bufferline.icons = v:true
 
 " Sets the icon's highlight group.
@@ -271,7 +272,6 @@ let bufferline.letters =
 " Sets the name of unnamed buffers. By default format is "[Buffer X]"
 " where X is the buffer number. But only a static string is accepted here.
 let bufferline.no_name_title = v:null
-
 ```
 
 #### Lua
@@ -419,7 +419,7 @@ call s:hi_link([
 " for the reader.
 ```
 
-[See code for the example above](https://github.com/romgrk/barbar.nvim/blob/master/autoload/bufferline/highlight.vim)
+[See code for the example above](https://github.com/romgrk/barbar.nvim/blob/master/lua/bufferline/highlight.lua)
 
 You can also use the [doom-one.vim](https://github.com/romgrk/doom-one.vim)
 colorscheme that defines those groups and is also very pleasant as you could see
@@ -431,21 +431,48 @@ To ensure tabs begin with the shown buffer you can set an offset for the tabline
 
 ![filetree-with-offset](./static/filetree-with-offset.png)
 
-Add tree.lua to your configuration and use the given functions to open and close the file tree. Nvim-tree is used in the given example.
+Add this autocmds to your configuration.
 
 ```lua
-local tree ={}
-tree.open = function ()
-   require'bufferline.state'.set_offset(31, 'FileTree')
-   require'nvim-tree'.find_file(true)
-end
+vim.api.nvim_create_autocmd('BufWinEnter', {
+  pattern = '*',
+  callback = function()
+    if vim.bo.filetype == 'NvimTree' then
+      require'bufferline.state'.set_offset(31, 'FileTree')
+    end
+  end
+})
 
-tree.close = function ()
-   require'bufferline.state'.set_offset(0)
-   require'nvim-tree'.close()
-end
+vim.api.nvim_create_autocmd('BufWinLeave', {
+  pattern = '*',
+  callback = function()
+    if vim.fn.expand('<afile>'):match('NvimTree') then
+      require'bufferline.state'.set_offset(0)
+    end
+  end
+})
+```
 
-return tree 
+And add a mapping to use the above functions:
+
+```vim
+noremap <silent> <C-n> :lua require'tree'.toggle()<CR>
+```
+
+In the case of `nvim-tree`, there is an even simpler solution because it exposes an events API.
+You can add the following functions and then use `nvim-tree` mappings:
+
+```lua
+local nvim_tree_events = require('nvim-tree.events')
+local bufferline_state = require('bufferline.state')
+
+nvim_tree_events.on_tree_open(function ()
+  bufferline_state.set_offset(31, "File Tree")
+end)
+
+nvim_tree_events.on_tree_close(function ()
+  bufferline_state.set_offset(0)
+end)
 ```
 
 ## Known Issues
@@ -455,6 +482,14 @@ return tree
 `BufferNext/BufferPrevious` don't work in netrw buffer due to an issue in
 netrw. See [this comment](https://github.com/romgrk/barbar.nvim/issues/82#issuecomment-748498951)
 for a workaround.
+
+#### Lightline
+
+Barbar doesn't show up because lightline changes the tabline setting. Add:
+
+```vim
+let g:lightline={ 'enable': {'statusline': 1, 'tabline': 0} }
+```
 
 ## About
 
@@ -467,5 +502,5 @@ No, barbar has nothing to do with barbarians.
 
 ## License
 
-barbar.nvim: Distributed under the terms of the JSON license.  
-bbye.vim: Distributed under the terms of the GNU Affero license.  
+barbar.nvim: Distributed under the terms of the JSON license.  
+bbye.vim: Distributed under the terms of the GNU Affero license.

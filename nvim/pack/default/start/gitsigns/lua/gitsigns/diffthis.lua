@@ -11,6 +11,7 @@ local CacheEntry = gs_cache.CacheEntry
 local nvim = require('gitsigns.nvim')
 local util = require('gitsigns.util')
 local manager = require('gitsigns.manager')
+local message = require('gitsigns.message')
 
 local throttle_by_id = require('gitsigns.debounce').throttle_by_id
 
@@ -21,22 +22,22 @@ local M = {}
 
 
 
+
 local bufread = void(function(bufnr, dbufnr, base, bcache)
    local comp_rev = bcache:get_compare_rev(util.calc_base(base))
    local text
    if util.calc_base(base) == util.calc_base(bcache.base) then
-      text = bcache:get_compare_text()
+      text = bcache.compare_text
    else
       local err
       text, err = bcache.git_obj:get_show_text(comp_rev)
       if err then
-         print(err)
-         return
+         error(err, 2)
       end
+      scheduler()
       if vim.bo[bufnr].fileformat == 'dos' then
          text = util.strip_cr(text)
       end
-      scheduler()
    end
 
    local modifiable = vim.bo[dbufnr].modifiable
@@ -47,13 +48,12 @@ local bufread = void(function(bufnr, dbufnr, base, bcache)
    vim.bo[dbufnr].modified = false
    vim.bo[dbufnr].filetype = vim.bo[bufnr].filetype
    vim.bo[dbufnr].bufhidden = 'wipe'
-
-   vim.cmd('diffthis')
 end)
 
 local bufwrite = void(function(bufnr, dbufnr, base, bcache)
    local buftext = util.buf_lines(dbufnr)
    bcache.git_obj:stage_lines(buftext)
+   scheduler()
    vim.bo[dbufnr].modified = false
 
 
@@ -63,31 +63,50 @@ local bufwrite = void(function(bufnr, dbufnr, base, bcache)
    end
 end)
 
-M.run = void(function(base, vertical)
+local function run(base, diffthis, vertical)
    local bufnr = vim.api.nvim_get_current_buf()
    local bcache = cache[bufnr]
    if not bcache then
       return
    end
 
-   if vim.wo.diff then
-      return
-   end
-
    local comp_rev = bcache:get_compare_rev(util.calc_base(base))
-   local bufname = bcache:get_diffthis_bufname(comp_rev)
+   local bufname = bcache:get_rev_bufname(comp_rev)
 
-   vim.cmd('diffthis')
+   if diffthis then
 
-   vim.cmd(table.concat({
-      'keepalt', 'aboveleft',
-      vertical and 'vertical' or '',
-      'split', bufname,
-   }, ' '))
+      vim.cmd('diffthis')
+
+      vim.cmd(table.concat({
+         'keepalt', 'aboveleft',
+         vertical and 'vertical' or '',
+         'split', bufname,
+      }, ' '))
+   else
+
+
+      vim.cmd(table.concat({
+         'edit', bufname,
+      }, ' '))
+   end
 
    local dbuf = vim.api.nvim_get_current_buf()
 
-   bufread(bufnr, dbuf, base, bcache)
+   local ok, err = pcall(bufread, bufnr, dbuf, base, bcache)
+
+   if diffthis then
+      vim.cmd('diffthis')
+   end
+
+   if not ok then
+      message.error(err)
+      scheduler()
+      vim.cmd('bdelete')
+      if diffthis then
+         vim.cmd('diffoff')
+      end
+      return
+   end
 
    if comp_rev == ':0' then
       vim.bo[dbuf].buftype = 'acwrite'
@@ -97,6 +116,9 @@ M.run = void(function(base, vertical)
          buffer = dbuf,
          callback = function()
             bufread(bufnr, dbuf, base, bcache)
+            if diffthis then
+               vim.cmd('diffthis')
+            end
          end,
       })
 
@@ -111,8 +133,18 @@ M.run = void(function(base, vertical)
       vim.bo[dbuf].buftype = 'nowrite'
       vim.bo[dbuf].modifiable = false
    end
+end
+
+M.diffthis = void(function(base, vertical)
+   if vim.wo.diff then
+      return
+   end
+   run(base, true, vertical)
 end)
 
+M.show = void(function(base)
+   run(base, false)
+end)
 
 local function should_reload(bufnr)
    if not vim.bo[bufnr].modified then
@@ -137,7 +169,7 @@ M.update = throttle_by_id(void(function(bufnr)
 
 
 
-   local bufname = bcache:get_diffthis_bufname()
+   local bufname = bcache:get_rev_bufname()
 
    for _, w in ipairs(api.nvim_list_wins()) do
       if api.nvim_win_is_valid(w) then
@@ -146,10 +178,6 @@ M.update = throttle_by_id(void(function(bufnr)
          if bname == bufname or vim.startswith(bname, 'fugitive://') then
             if should_reload(b) then
                api.nvim_buf_call(b, function()
-
-
-
-
                   vim.cmd('doautocmd BufReadCmd')
                   vim.cmd('diffthis')
                end)

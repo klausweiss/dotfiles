@@ -1,9 +1,11 @@
 local health = require "health"
-local process = require "nvim-lsp-installer.process"
-local platform = require "nvim-lsp-installer.platform"
-local Data = require "nvim-lsp-installer.data"
+local process = require "nvim-lsp-installer.core.process"
+local a = require "nvim-lsp-installer.core.async"
+local platform = require "nvim-lsp-installer.core.platform"
+local github_client = require "nvim-lsp-installer.core.managers.github.client"
+local functional = require "nvim-lsp-installer.core.functional"
 
-local when = Data.when
+local when = functional.when
 
 local gem_cmd = platform.is_win and "gem.cmd" or "gem"
 local composer_cmd = platform.is_win and "composer.bat" or "composer"
@@ -125,10 +127,10 @@ end
 
 function M.check()
     health.report_start "nvim-lsp-installer report"
-    if vim.fn.has "nvim-0.6.0" == 1 then
-        health.report_ok "neovim version >= 0.6.0"
+    if vim.fn.has "nvim-0.7.0" == 1 then
+        health.report_ok "neovim version >= 0.7.0"
     else
-        health.report_error "neovim version < 0.6.0"
+        health.report_error "neovim version < 0.7.0"
     end
 
     local completed = 0
@@ -141,7 +143,7 @@ function M.check()
         end
     ))
 
-    local checks = Data.list_not_nil(
+    local checks = functional.list_not_nil(
         check {
             cmd = "go",
             args = { "version" },
@@ -156,6 +158,7 @@ function M.check()
                 end
             end,
         },
+        check { cmd = "cargo", args = { "--version" }, name = "cargo", relaxed = true },
         check { cmd = "ruby", args = { "--version" }, name = "Ruby", relaxed = true },
         check { cmd = gem_cmd, args = { "--version" }, name = "RubyGem", relaxed = true },
         check { cmd = composer_cmd, args = { "--version" }, name = "Composer", relaxed = true },
@@ -225,6 +228,39 @@ function M.check()
     vim.wait(5000, function()
         return completed >= #checks
     end, 50)
+
+    a.run_blocking(function()
+        github_client.fetch_rate_limit()
+            :map(
+                ---@param rate_limit GitHubRateLimitResponse
+                function(rate_limit)
+                    if vim.in_fast_event() then
+                        a.scheduler()
+                    end
+                    local remaining = rate_limit.resources.core.remaining
+                    local used = rate_limit.resources.core.used
+                    local limit = rate_limit.resources.core.limit
+                    local reset = rate_limit.resources.core.reset
+                    local diagnostics = ("Used: %d. Remaining: %d. Limit: %d. Reset: %s."):format(
+                        used,
+                        remaining,
+                        limit,
+                        vim.fn.strftime("%c", reset)
+                    )
+                    if remaining <= 0 then
+                        health.report_error(("GitHub API rate limit exceeded. %s"):format(diagnostics))
+                    else
+                        health.report_ok(("GitHub API rate limit. %s"):format(diagnostics))
+                    end
+                end
+            )
+            :on_failure(function()
+                if vim.in_fast_event() then
+                    a.scheduler()
+                end
+                health.report_warn "Failed to check GitHub API rate limit status."
+            end)
+    end)
 end
 
 return M

@@ -119,6 +119,7 @@ let s:zig_syntax_keywords = {
     \ ,                  "@divTrunc"
     \ ,                  "@embedFile"
     \ ,                  "@export"
+    \ ,                  "@extern"
     \ ,                  "@tagName"
     \ ,                  "@TagType"
     \ ,                  "@errorName"
@@ -194,6 +195,7 @@ let s:zig_syntax_keywords = {
     \ ,                  "@Vector"
     \ ,                  "@sin"
     \ ,                  "@cos"
+    \ ,                  "@tan"
     \ ,                  "@exp"
     \ ,                  "@exp2"
     \ ,                  "@log"
@@ -203,6 +205,8 @@ let s:zig_syntax_keywords = {
     \ ,                  "@floor"
     \ ,                  "@ceil"
     \ ,                  "@trunc"
+    \ ,                  "@wasmMemorySize"
+    \ ,                  "@wasmMemoryGrow"
     \ ,                  "@round"]
     \ }
 

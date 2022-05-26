@@ -179,10 +179,14 @@ end)()
 
 utils.path_tail = (function()
   local os_sep = utils.get_separator()
-  local match_string = "[^" .. os_sep .. "]*$"
 
   return function(path)
-    return string.match(path, match_string)
+    for i = #path, 1, -1 do
+      if path:sub(i, i) == os_sep then
+        return path:sub(i + 1, -1)
+      end
+    end
+    return path
   end
 end)()
 
@@ -431,13 +435,13 @@ utils.transform_devicons = load_once(function()
         return display
       end
 
-      local icon, icon_highlight = devicons.get_icon(filename, string.match(filename, "%a+$"), { default = true })
+      local icon, icon_highlight = devicons.get_icon(utils.path_tail(filename), nil, { default = true })
       local icon_display = (icon or " ") .. " " .. (display or "")
 
       if conf.color_devicons then
         return icon_display, icon_highlight
       else
-        return icon_display
+        return icon_display, "TelescopeResultsFileIcon"
       end
     end
   else
@@ -461,11 +465,11 @@ utils.get_devicons = load_once(function()
         return ""
       end
 
-      local icon, icon_highlight = devicons.get_icon(filename, string.match(filename, "%a+$"), { default = true })
+      local icon, icon_highlight = devicons.get_icon(utils.path_tail(filename), nil, { default = true })
       if conf.color_devicons then
         return icon, icon_highlight
       else
-        return icon
+        return icon, "TelescopeResultsFileIcon"
       end
     end
   else
@@ -477,14 +481,15 @@ end)
 
 --- Telescope Wrapper around vim.notify
 ---@param funname string: name of the function that will be
----@param opts table: opts.level string, opts.msg string
+---@param opts table: opts.level string, opts.msg string, opts.once bool
 utils.notify = function(funname, opts)
+  opts.once = vim.F.if_nil(opts.once, false)
   local level = vim.log.levels[opts.level]
   if not level then
     error("Invalid error level", 2)
   end
-
-  vim.notify(string.format("[telescope.%s]: %s", funname, opts.msg), level, {
+  local notify_fn = opts.once and vim.notify_once or vim.notify
+  notify_fn(string.format("[telescope.%s]: %s", funname, opts.msg), level, {
     title = "telescope.nvim",
   })
 end

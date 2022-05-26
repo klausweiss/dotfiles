@@ -1,5 +1,5 @@
 local server = require "nvim-lsp-installer.server"
-local path = require "nvim-lsp-installer.path"
+local path = require "nvim-lsp-installer.core.path"
 local npm = require "nvim-lsp-installer.core.managers.npm"
 
 return function(name, root_dir)
@@ -9,7 +9,6 @@ return function(name, root_dir)
         languages = { "perl" },
         homepage = "https://github.com/bscan/PerlNavigator",
         installer = npm.packages { "perlnavigator-server" },
-        async = true,
         default_options = {
             cmd = {
                 "node",

@@ -1,6 +1,6 @@
 local util = require 'lspconfig.util'
 local api, validate, lsp = vim.api, vim.validate, vim.lsp
-local tbl_extend = vim.tbl_extend
+local tbl_deep_extend = vim.tbl_deep_extend
 
 local configs = {}
 
@@ -25,7 +25,7 @@ function configs.__newindex(t, config_name, config_def)
 
   local M = {}
 
-  local default_config = tbl_extend('keep', config_def.default_config, util.default_config)
+  local default_config = tbl_deep_extend('keep', config_def.default_config, util.default_config)
 
   -- Force this part.
   default_config.name = config_name
@@ -48,7 +48,7 @@ function configs.__newindex(t, config_name, config_def)
       end
     end
 
-    config = tbl_extend('keep', config, default_config)
+    config = tbl_deep_extend('keep', config, default_config)
 
     if util.on_setup then
       pcall(util.on_setup, config)
@@ -137,10 +137,8 @@ function configs.__newindex(t, config_name, config_def)
     end
 
     local make_config = function(root_dir)
-      local new_config = vim.tbl_deep_extend('keep', vim.empty_dict(), config)
-      new_config = vim.tbl_deep_extend('keep', new_config, default_config)
-      new_config.capabilities = new_config.capabilities or lsp.protocol.make_client_capabilities()
-      new_config.capabilities = vim.tbl_deep_extend('keep', new_config.capabilities, {
+      local new_config = tbl_deep_extend('keep', vim.empty_dict(), config)
+      new_config.capabilities = tbl_deep_extend('keep', new_config.capabilities, {
         workspace = {
           configuration = true,
         },
@@ -182,15 +180,17 @@ function configs.__newindex(t, config_name, config_def)
         if bufnr == api.nvim_get_current_buf() then
           M._setup_buffer(client.id, bufnr)
         else
-          api.nvim_command(
-            string.format(
-              "autocmd BufEnter <buffer=%d> ++once lua require'lspconfig'[%q]._setup_buffer(%d,%d)",
-              bufnr,
-              config_name,
-              client.id,
-              bufnr
+          if vim.api.nvim_buf_is_valid(bufnr) then
+            api.nvim_command(
+              string.format(
+                "autocmd BufEnter <buffer=%d> ++once lua require'lspconfig'[%q]._setup_buffer(%d,%d)",
+                bufnr,
+                config_name,
+                client.id,
+                bufnr
+              )
             )
-          )
+          end
         end
       end)
 

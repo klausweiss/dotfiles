@@ -2,6 +2,7 @@ local spy = require "luassert.spy"
 local match = require "luassert.match"
 local mock = require "luassert.mock"
 local Optional = require "nvim-lsp-installer.core.optional"
+local installer = require "nvim-lsp-installer.core.installer"
 local cargo = require "nvim-lsp-installer.core.managers.cargo"
 local Result = require "nvim-lsp-installer.core.result"
 local spawn = require "nvim-lsp-installer.core.spawn"
@@ -21,7 +22,7 @@ describe("cargo manager", function()
         "should call cargo install",
         async_test(function()
             ctx.requested_version = Optional.of "42.13.37"
-            cargo.crate "my-crate"(ctx)
+            installer.run_installer(ctx, cargo.crate "my-crate")
             assert.spy(ctx.spawn.cargo).was_called(1)
             assert.spy(ctx.spawn.cargo).was_called_with {
                 "install",
@@ -38,7 +39,7 @@ describe("cargo manager", function()
     it(
         "should call cargo install with git source",
         async_test(function()
-            cargo.crate("https://my-crate.git", { git = true })(ctx)
+            installer.run_installer(ctx, cargo.crate("https://my-crate.git", { git = true }))
             assert.spy(ctx.spawn.cargo).was_called(1)
             assert.spy(ctx.spawn.cargo).was_called_with {
                 "install",
@@ -56,9 +57,7 @@ describe("cargo manager", function()
         "should respect options",
         async_test(function()
             ctx.requested_version = Optional.of "42.13.37"
-            cargo.crate("my-crate", {
-                features = "lsp",
-            })(ctx)
+            installer.run_installer(ctx, cargo.crate("my-crate", { features = "lsp" }))
             assert.spy(ctx.spawn.cargo).was_called(1)
             assert.spy(ctx.spawn.cargo).was_called_with {
                 "install",
@@ -77,9 +76,12 @@ describe("cargo manager", function()
         async_test(function()
             ctx.requested_version = Optional.of "42.13.37"
             local err = assert.has_error(function()
-                cargo.crate("my-crate", {
-                    git = true,
-                })(ctx)
+                installer.run_installer(
+                    ctx,
+                    cargo.crate("my-crate", {
+                        git = true,
+                    })
+                )
             end)
             assert.equals("Providing a version when installing a git crate is not allowed.", err)
             assert.spy(ctx.spawn.cargo).was_called(0)
@@ -89,22 +91,19 @@ describe("cargo manager", function()
     it(
         "should provide receipt information",
         async_test(function()
-            cargo.crate "main-package"(ctx)
-            assert.equals(
-                vim.inspect {
-                    type = "cargo",
-                    package = "main-package",
-                },
-                vim.inspect(ctx.receipt.primary_source)
-            )
+            installer.run_installer(ctx, cargo.crate "main-package")
+            assert.same({
+                type = "cargo",
+                package = "main-package",
+            }, ctx.receipt.primary_source)
         end)
     )
 end)
 
 describe("cargo version check", function()
     it("parses cargo installed packages output", function()
-        assert.equal(
-            vim.inspect {
+        assert.same(
+            {
                 ["bat"] = "0.18.3",
                 ["exa"] = "0.10.1",
                 ["git-select-branch"] = "0.1.1",
@@ -113,7 +112,7 @@ describe("cargo version check", function()
                 ["stylua"] = "0.11.2",
                 ["zoxide"] = "0.5.0",
             },
-            vim.inspect(cargo.parse_installed_crates [[bat v0.18.3:
+            cargo.parse_installed_crates [[bat v0.18.3:
     bat
 exa v0.10.1:
     exa
@@ -127,7 +126,7 @@ stylua v0.11.2:
     stylua
 zoxide v0.5.0:
     zoxide
-]])
+]]
         )
     end)
 

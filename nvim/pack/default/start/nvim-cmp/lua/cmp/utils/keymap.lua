@@ -1,4 +1,5 @@
 local misc = require('cmp.utils.misc')
+local buffer = require('cmp.utils.buffer')
 local api = require('cmp.utils.api')
 
 local keymap = {}
@@ -16,12 +17,15 @@ end
 ---@param keys string
 ---@return string
 keymap.normalize = function(keys)
-  vim.api.nvim_set_keymap('t', '<Plug>(cmp.utils.keymap.normalize)', keys, {})
-  for _, map in ipairs(vim.api.nvim_get_keymap('t')) do
-    if keymap.equals(map.lhs, '<Plug>(cmp.utils.keymap.normalize)') then
-      return map.rhs
+  local normalize_buf = buffer.ensure('cmp.util.keymap.normalize')
+  vim.api.nvim_buf_set_keymap(normalize_buf, 't', keys, '<Plug>(cmp.utils.keymap.normalize)', {})
+  for _, map in ipairs(vim.api.nvim_buf_get_keymap(normalize_buf, 't')) do
+    if keymap.equals(map.rhs, '<Plug>(cmp.utils.keymap.normalize)') then
+      vim.api.nvim_buf_del_keymap(normalize_buf, 't', keys)
+      return map.lhs
     end
   end
+  vim.api.nvim_buf_del_keymap(normalize_buf, 't', keys)
   return keys
 end
 

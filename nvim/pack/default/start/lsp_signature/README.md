@@ -3,9 +3,9 @@
 Show function signature when you type
 
 - This nvim plugin is made for completion plugins that do not support signature help.
-  Need neovim-0.5+ and enable nvim-lsp.
+  Need neovim-0.6.1+ and enable nvim-lsp. (check neovim-0.5 branch for earlier version support)
 
-- Part of the code was ported from [completion-nvim](https://github.com/nvim-lua/completion-nvim), which does have lots of cool features.
+- Inspired by [completion-nvim](https://github.com/nvim-lua/completion-nvim), which does have lots of cool features.
 
 - Fully asynchronous lsp buf request.
 
@@ -197,16 +197,16 @@ return a table
 ```lua
 {
   label = 'func fun_name(arg1, arg2...)'
-  hint = 'arg2'
+  hint = 'arg1',
+  range = {start = 13, ['end'] = 17 }
+  doc = 'func_name return arg1 + arg2 ...'
 }
 
 ```
-
+In your statusline or winbar
 ```lua
 local current_signature = function(width)
-  if not packer_plugins["lsp_signature.nvim"] or packer_plugins["lsp_signature.nvim"].loaded == false then
-    return ""
-  end
+  if not pcall(require, 'lsp_signature') then return end
   local sig = require("lsp_signature").status_line(width)
   return sig.label .. "🐼" .. sig.hint
 end

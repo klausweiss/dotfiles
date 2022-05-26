@@ -4,6 +4,7 @@ local match = require "luassert.match"
 
 local pip3 = require "nvim-lsp-installer.core.managers.pip3"
 local Optional = require "nvim-lsp-installer.core.optional"
+local installer = require "nvim-lsp-installer.core.installer"
 local Result = require "nvim-lsp-installer.core.result"
 local settings = require "nvim-lsp-installer.settings"
 local spawn = require "nvim-lsp-installer.core.spawn"
@@ -31,7 +32,7 @@ describe("pip3 manager", function()
         "should create venv and call pip3 install",
         async_test(function()
             ctx.requested_version = Optional.of "42.13.37"
-            pip3.packages { "main-package", "supporting-package", "supporting-package2" }(ctx)
+            installer.run_installer(ctx, pip3.packages { "main-package", "supporting-package", "supporting-package2" })
             assert.spy(ctx.promote_cwd).was_called(1)
             assert.spy(ctx.spawn.python3).was_called(1)
             assert.spy(ctx.spawn.python3).was_called_with {
@@ -52,6 +53,7 @@ describe("pip3 manager", function()
                     "supporting-package2",
                 },
                 env = match.is_table(),
+                check_executable = false,
             })
         end)
     )
@@ -66,7 +68,7 @@ describe("pip3 manager", function()
                 [vim.g.python3_host_prog] = mockx.throws(),
             }
             local err = assert.has_error(function()
-                pip3.packages { "package" }(ctx)
+                installer.run_installer(ctx, pip3.packages { "package" })
             end)
             vim.g.python3_host_prog = nil
 
@@ -86,7 +88,7 @@ describe("pip3 manager", function()
                 python = mockx.returns {},
                 [vim.g.python3_host_prog] = mockx.returns {},
             }
-            pip3.packages { "package" }(ctx)
+            installer.run_installer(ctx, pip3.packages { "package" })
             vim.g.python3_host_prog = nil
             assert.spy(ctx.spawn.python3).was_called(0)
             assert.spy(ctx.spawn.python).was_called(1)
@@ -102,7 +104,7 @@ describe("pip3 manager", function()
                     install_args = { "--proxy", "http://localhost:8080" },
                 },
             }
-            pip3.packages { "package" }(ctx)
+            installer.run_installer(ctx, pip3.packages { "package" })
             settings.set(settings._DEFAULT_SETTINGS)
             assert.spy(ctx.spawn.python).was_called_with(match.tbl_containing {
                 "-m",
@@ -112,6 +114,7 @@ describe("pip3 manager", function()
                 match.tbl_containing { "--proxy", "http://localhost:8080" },
                 match.tbl_containing { "package" },
                 env = match.is_table(),
+                check_executable = false,
             })
         end)
     )
@@ -120,27 +123,21 @@ describe("pip3 manager", function()
         "should provide receipt information",
         async_test(function()
             ctx.requested_version = Optional.of "42.13.37"
-            pip3.packages { "main-package", "supporting-package", "supporting-package2" }(ctx)
-            assert.equals(
-                vim.inspect {
+            installer.run_installer(ctx, pip3.packages { "main-package", "supporting-package", "supporting-package2" })
+            assert.same({
+                type = "pip3",
+                package = "main-package",
+            }, ctx.receipt.primary_source)
+            assert.same({
+                {
                     type = "pip3",
-                    package = "main-package",
+                    package = "supporting-package",
                 },
-                vim.inspect(ctx.receipt.primary_source)
-            )
-            assert.equals(
-                vim.inspect {
-                    {
-                        type = "pip3",
-                        package = "supporting-package",
-                    },
-                    {
-                        type = "pip3",
-                        package = "supporting-package2",
-                    },
+                {
+                    type = "pip3",
+                    package = "supporting-package2",
                 },
-                vim.inspect(ctx.receipt.secondary_sources)
-            )
+            }, ctx.receipt.secondary_sources)
         end)
     )
 end)
@@ -175,6 +172,7 @@ describe("pip3 version check", function()
                 "--format=json",
                 cwd = "/tmp/install/dir",
                 env = match.table(),
+                check_executable = false,
             })
             assert.is_true(result:is_success())
             assert.equals("1.3.0", result:get_or_nil())
@@ -213,16 +211,14 @@ describe("pip3 version check", function()
                 "--format=json",
                 cwd = "/tmp/install/dir",
                 env = match.table(),
+                check_executable = false,
             })
             assert.is_true(result:is_success())
-            assert.equals(
-                vim.inspect {
-                    name = "python-lsp-server",
-                    current_version = "1.3.0",
-                    latest_version = "1.4.0",
-                },
-                vim.inspect(result:get_or_nil())
-            )
+            assert.same({
+                name = "python-lsp-server",
+                current_version = "1.3.0",
+                latest_version = "1.4.0",
+            }, result:get_or_nil())
 
             spawn.python = nil
         end)

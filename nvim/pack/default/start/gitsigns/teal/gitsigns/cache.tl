@@ -1,24 +1,21 @@
 local Hunk = require("gitsigns.hunks").Hunk
 local GitObj = require('gitsigns.git').Obj
 
-local util = require('gitsigns.util')
-
 local record M
   record CacheEntry
     file          : string
     base          : string
-    compare_file  : string    -- For use with externl diff
     compare_text  : {string}  -- For use with internal diff
     hunks         : {Hunk}
-    pending_hunks : {Hunk}    -- Hunks which haven't been drawn
+    force_next_update: boolean
     staged_diffs  : {Hunk}
     gitdir_watcher : vim.loop.FSPollObj -- Timer object watching the gitdir
     git_obj       : GitObj
     commit        : string
 
     get_compare_rev: function(CacheEntry, base: string): string
-    get_compare_text: function(self: CacheEntry): {string}
-    get_diffthis_bufname: function(self: CacheEntry, rev: string): string
+    get_rev_bufname: function(self: CacheEntry, rev: string): string
+    invalidate: function(CacheEntry)
     new: function(CacheEntry): CacheEntry
     destroy: function(CacheEntry)
   end
@@ -49,31 +46,28 @@ CacheEntry.get_compare_rev = function(self: CacheEntry, base: string): string
   return string.format(':%d', stage)
 end
 
-CacheEntry.get_diffthis_bufname = function(self: CacheEntry, rev: string): string
+CacheEntry.get_rev_bufname = function(self: CacheEntry, rev: string): string
   rev = rev or self:get_compare_rev()
   return string.format(
-    'gitsigns://%s/%s',
+    'gitsigns://%s/%s:%s',
     self.git_obj.repo.gitdir,
-    rev..':'..self.git_obj.relpath
+    rev,
+    self.git_obj.relpath
   )
 end
 
-CacheEntry.get_compare_text = function(self: CacheEntry): {string}
-  if self.compare_text then
-    return self.compare_text
-  end
-  return util.file_lines(self.compare_file)
+CacheEntry.invalidate = function(self: CacheEntry)
+  self.compare_text = nil
+  self.hunks = nil
 end
 
 CacheEntry.new = function(o: CacheEntry): CacheEntry
   o.hunks        = o.hunks
   o.staged_diffs = o.staged_diffs or {}
-  o.compare_file = o.compare_file or util.tmpname()
   return setmetatable(o, {__index = CacheEntry})
 end
 
 CacheEntry.destroy = function(self: CacheEntry)
-  os.remove(self.compare_file)
   local w = self.gitdir_watcher
   if w then
     w:stop()

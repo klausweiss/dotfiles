@@ -1,10 +1,15 @@
-local M = {}
+local record M
+  throttle_by_id: function<T1>   (fn: function(T1   ), schedule: boolean): function(T1)
+  throttle_by_id: function<T1,T2>(fn: function(T1,T2), schedule: boolean): function(T1,T2)
+
+  debounce_trailing: function<T1,T2>(ms: number, fn: function(T1,T2), schedule: boolean): function(T1,T2)
+end
 
 --- Debounces a function on the trailing edge.
 ---
---@param ms (number) Timeout in ms
---@param fn (function) Function to debounce
---@returns (function) Debounced function.
+---@param ms (number) Timeout in ms
+---@param fn (function) Function to debounce
+---@returns (function) Debounced function.
 function M.debounce_trailing(ms: number, fn: function): function
   local timer = vim.loop.new_timer()
   return function(...)

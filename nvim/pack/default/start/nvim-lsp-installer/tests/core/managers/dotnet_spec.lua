@@ -1,5 +1,6 @@
 local mock = require "luassert.mock"
 local Optional = require "nvim-lsp-installer.core.optional"
+local installer = require "nvim-lsp-installer.core.installer"
 local dotnet = require "nvim-lsp-installer.core.managers.dotnet"
 
 describe("dotnet manager", function()
@@ -17,7 +18,7 @@ describe("dotnet manager", function()
         "should call dotnet tool update",
         async_test(function()
             ctx.requested_version = Optional.of "42.13.37"
-            dotnet.package "main-package"(ctx)
+            installer.run_installer(ctx, dotnet.package "main-package")
             assert.spy(ctx.spawn.dotnet).was_called(1)
             assert.spy(ctx.spawn.dotnet).was_called_with {
                 "tool",
@@ -34,14 +35,11 @@ describe("dotnet manager", function()
         "should provide receipt information",
         async_test(function()
             ctx.requested_version = Optional.of "42.13.37"
-            dotnet.package "main-package"(ctx)
-            assert.equals(
-                vim.inspect {
-                    type = "dotnet",
-                    package = "main-package",
-                },
-                vim.inspect(ctx.receipt.primary_source)
-            )
+            installer.run_installer(ctx, dotnet.package "main-package")
+            assert.same({
+                type = "dotnet",
+                package = "main-package",
+            }, ctx.receipt.primary_source)
         end)
     )
 end)

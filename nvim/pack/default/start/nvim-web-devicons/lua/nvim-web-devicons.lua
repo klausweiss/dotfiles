@@ -31,6 +31,7 @@
 --   color = "#ffa61a"
 -- },
 
+-- When adding new icons, remember to add an entry to the `filetypes` table, if applicable.
 local icons = {
   [".babelrc"] = {
     icon = "ﬥ",
@@ -290,6 +291,12 @@ local icons = {
     cterm_color = "67",
     name = "ClojureJS",
   },
+  ["cljd"] = {
+    icon = "",
+    color = "#519aba",
+    cterm_color = "67",
+    name = "ClojureDart",
+  },
   ["cmake"] = {
     icon = "",
     color = "#6d8086",
@@ -504,6 +511,12 @@ local icons = {
     color = "#cbcb41",
     cterm_color = "185",
     name = "Favicon",
+  },
+  ["fnl"] = {
+    color = "#fff3d7",
+    icon = "🌜",
+    cterm_color = "230",
+    name = "Fennel"
   },
   ["fish"] = {
     icon = "",
@@ -727,6 +740,12 @@ local icons = {
     cterm_color = "208",
     name = "Kotlin",
   },
+  ["kts"] = {
+    icon = "𝙆",
+    color = "#F88A02",
+    cterm_color = "208",
+    name = "KotlinScript",
+  },
   ["leex"] = {
     icon = "",
     color = "#a074c4",
@@ -816,6 +835,12 @@ local icons = {
     color = "#e37933",
     cterm_color = "173",
     name = "Mli",
+  },
+  ["mo"] = {
+    icon = "∞",
+    color = "#9772FB",
+    cterm_color = "99",
+    name = "Motoko",
   },
   ["mustache"] = {
     icon = "",
@@ -1102,11 +1127,23 @@ local icons = {
     cterm_color = "98",
     name = "Suo",
   },
+  ["sv"] = {
+    icon = "",
+    color = "#019833",
+    cterm_color = "29",
+    name = "SystemVerilog",
+  },
   ["svelte"] = {
     icon = "",
     color = "#ff3e00",
     cterm_color = "202",
     name = "Svelte",
+  },
+  ["svh"] = {
+    icon = "",
+    color = "#019833",
+    cterm_color = "29",
+    name = "SystemVerilog",
   },
   ["svg"] = {
     icon = "ﰟ",
@@ -1125,6 +1162,18 @@ local icons = {
     color = "#519aba",
     cterm_color = "67",
     name = "Tor",
+  },
+  ["tbc"] = {
+    icon = "﯑",
+    color = "#1e5cb3",
+    cterm_color = "67",
+    name = "Tcl",
+  },
+  ["tcl"] = {
+    icon = "﯑",
+    color = "#1e5cb3",
+    cterm_color = "67",
+    name = "Tcl",
   },
   ["terminal"] = {
     icon = "",
@@ -1179,6 +1228,30 @@ local icons = {
     color = "#89e051",
     cterm_color = "113",
     name = "Txt",
+  },
+  ["v"] = {
+    icon = "",
+    color = "#019833",
+    cterm_color = "29",
+    name = "Verilog",
+  },
+  ["vh"] = {
+    icon = "",
+    color = "#019833",
+    cterm_color = "29",
+    name = "Verilog",
+  },
+  ["vhd"] = {
+    icon = "",
+    color = "#019833",
+    cterm_color = "29",
+    name = "VHDL",
+  },
+  ["vhdl"] = {
+    icon = "",
+    color = "#019833",
+    cterm_color = "29",
+    name = "VHDL",
   },
   ["vim"] = {
     icon = "",
@@ -1266,6 +1339,166 @@ local icons = {
   },
 }
 
+-- Map of filetypes -> icon names
+local filetypes = {
+  ["Brewfile"] = "Brewfile",
+  ["COMMIT"] = "COMMIT_EDITMSG",
+  ["COPYING"] = "COPYING",
+  ["Gemfile"] = "Gemfile$",
+  ["LESSER"] = "COPYING.LESSER",
+  ["LICENSE"] = "LICENSE",
+  ["Vagrantfile"] = "Vagrantfile$",
+  ["awk"] = "awk",
+  ["bmp"] = "bmp",
+  ["c"] = "c",
+  ["cfg"] = "cfg",
+  ["clojure"] = "clj",
+  ["cmake"] = "cmake",
+  ["cobol"] = "cobol",
+  ["coffee"] = "coffee",
+  ["conf"] = "conf",
+  ["cp"] = "cp",
+  ["cpp"] = "cpp",
+  ["cr"] = "cr",
+  ["cs"] = "cs",
+  ["csh"] = "csh",
+  ["cson"] = "cson",
+  ["css"] = "css",
+  ["csv"] = "csv",
+  ["d"] = "d",
+  ["dart"] = "dart",
+  ["desktop"] = "desktop",
+  ["diff"] = "diff",
+  ["doc"] = "doc",
+  ["dockerfile"] = "dockerfile",
+  ["dosbatch"] = "bat",
+  ["dosini"] = "ini",
+  ["dropbox"] = "dropbox",
+  ["dump"] = "dump",
+  ["eex"] = "eex",
+  ["ejs"] = "ejs",
+  ["elixir"] = "ex",
+  ["elm"] = "elm",
+  ["epuppet"] = "epp",
+  ["erlang"] = "erl",
+  ["eruby"] = "erb",
+  ["fennel"] = "fnl",
+  ["fish"] = "fish",
+  ["forth"] = "fs",
+  ["fortran"] = "f#",
+  ["fsi"] = "fsi",
+  ["fsscript"] = "fsscript",
+  ["fsx"] = "fsx",
+  ["gd"] = "gd",
+  ["gif"] = "gif",
+  ["git"] = "git",
+  ["gitconfig"] = ".gitconfig",
+  ["glb"] = "glb",
+  ["go"] = "go",
+  ["godot"] = "godot",
+  ["gruntfile"] = "gruntfile",
+  ["gulpfile"] = "gulpfile",
+  ["haml"] = "haml",
+  ["haskell"] = "hs",
+  ["hbs"] = "hbs",
+  ["heex"] = "heex",
+  ["html"] = "html",
+  ["ico"] = "ico",
+  ["idlang"] = "pro",
+  ["import"] = "import",
+  ["java"] = "java",
+  ["javascript"] = "js",
+  ["javascript.jsx"] = "jsx",
+  ["javascriptreact"] = "jsx",
+  ["jpeg"] = "jpeg",
+  ["jpg"] = "jpg",
+  ["json"] = "json",
+  ["julia"] = "jl",
+  ["kotlin"] = "kt",
+  ["leex"] = "leex",
+  ["less"] = "less",
+  ["lhaskell"] = "lhs",
+  ["license"] = "license",
+  ["lprolog"] = "sig",
+  ["lua"] = "lua",
+  ["make"] = "makefile",
+  ["markdown"] = "markdown",
+  ["material"] = "material",
+  ["mdx"] = "mdx",
+  ["mint"] = "mint",
+  ["motoko"] = "mo",
+  ["mustache"] = "mustache",
+  ["nim"] = "nim",
+  ["nix"] = "nix",
+  ["node"] = "node_modules",
+  ["ocaml"] = "ml",
+  ["opus"] = "opus",
+  ["otf"] = "otf",
+  ["pck"] = "pck",
+  ["pdf"] = "pdf",
+  ["perl"] = "pl",
+  ["php"] = "php",
+  ["plaintex"] = "tex",
+  ["png"] = "png",
+  ["postscr"] = "ai",
+  ["ppt"] = "ppt",
+  ["procfile"] = "procfile",
+  ["ps1"] = "ps1",
+  ["psb"] = "psb",
+  ["psd"] = "psd",
+  ["puppet"] = "pp",
+  ["pyc"] = "pyc",
+  ["pyd"] = "pyd",
+  ["pyo"] = "pyo",
+  ["python"] = "py",
+  ["r"] = "r",
+  ["rlib"] = "rlib",
+  ["rmd"] = "rmd",
+  ["rproj"] = "rproj",
+  ["ruby"] = "rb",
+  ["rust"] = "rs",
+  ["sass"] = "sass",
+  ["scala"] = "scala",
+  ["scss"] = "scss",
+  ["sh"] = "sh",
+  ["slim"] = "slim",
+  ["sln"] = "sln",
+  ["sml"] = "sml",
+  ["solidity"] = "sol",
+  ["sql"] = "sql",
+  ["sqlite"] = "sqlite",
+  ["sqlite3"] = "sqlite3",
+  ["styl"] = "styl",
+  ["sublime"] = "sublime",
+  ["suo"] = "suo",
+  ["svelte"] = "svelte",
+  ["svg"] = "svg",
+  ["swift"] = "swift",
+  ["systemverilog"] = "sv",
+  ["tads"] = "t",
+  ["tcl"] = "tcl",
+  ["terminal"] = "terminal",
+  ["toml"] = "toml",
+  ["tres"] = "tres",
+  ["tscn"] = "tscn",
+  ["twig"] = "twig",
+  ["txt"] = "txt",
+  ["typescript"] = "ts",
+  ["typescriptreact"] = "tsx",
+  ["verilog"] = "v",
+  ["vhdl"] = "vhd",
+  ["vim"] = "vim",
+  ["vue"] = "vue",
+  ["webp"] = "webp",
+  ["webpack"] = "webpack",
+  ["xcplayground"] = "xcplayground",
+  ["xls"] = "xls",
+  ["xml"] = "xml",
+  ["yaml"] = "yaml",
+  ["zig"] = "zig",
+  ["zsh"] = "zsh",
+}
+
 local default_icon = {
   icon = "",
   color = "#6d8086",
@@ -1318,6 +1551,15 @@ local function set_up_highlights()
   end
 end
 
+local function get_highlight_foreground(icon_data)
+  return string.format("#%06x", vim.api.nvim_get_hl_by_name(get_highlight_name(icon_data), true).foreground)
+end
+
+local function get_highlight_ctermfg(icon_data)
+  local _, _, ctermfg = string.find(vim.fn.execute("highlight " .. get_highlight_name(icon_data)), "ctermfg=(%d+)")
+  return ctermfg
+end
+
 local loaded = false
 
 local function setup(opts)
@@ -1365,6 +1607,15 @@ local function get_icon(name, ext, opts)
   end
 end
 
+local function get_icon_name_by_filetype(ft)
+  return filetypes[ft]
+end
+
+local function get_icon_by_filetype(ft, opts)
+  local name = get_icon_name_by_filetype(ft)
+  return get_icon(name or '', nil, opts)
+end
+
 local function get_icon_colors(name, ext, opts)
   ext = ext or name:match("^.*%.(.*)$") or ""
   if not loaded then
@@ -1375,8 +1626,19 @@ local function get_icon_colors(name, ext, opts)
   local icon_data = icons[name] or icons[ext] or (has_default and default_icon)
 
   if icon_data then
-    return icon_data.icon, icon_data.color, icon_data.cterm_color
+    local color = icon_data.color
+    local cterm_color = icon_data.cterm_color
+    if icon_data.name and highlight_exists(get_highlight_name(icon_data)) then
+      color = get_highlight_foreground(icon_data) or color
+      cterm_color = get_highlight_ctermfg(icon_data) or cterm_color
+    end
+    return icon_data.icon, color, cterm_color
   end
+end
+
+local function get_icon_colors_by_filetype(ft, opts)
+  local name = get_icon_name_by_filetype(ft)
+  return get_icon_colors(name or '', nil, opts)
 end
 
 local function get_icon_color(name, ext, opts)
@@ -1384,9 +1646,19 @@ local function get_icon_color(name, ext, opts)
   return data[1], data[2]
 end
 
+local function get_icon_color_by_filetype(ft, opts)
+  local name = get_icon_name_by_filetype(ft)
+  return get_icon_color(name or '', nil, opts)
+end
+
 local function get_icon_cterm_color(name, ext, opts)
   local data = { get_icon_colors(name, ext, opts) }
   return data[1], data[3]
+end
+
+local function get_icon_cterm_color_by_filetype(ft, opts)
+  local name = get_icon_name_by_filetype(ft)
+  return get_icon_cterm_color(name or '', nil, opts)
 end
 
 local function set_icon(user_icons)
@@ -1408,6 +1680,11 @@ return {
   get_icon_colors = get_icon_colors,
   get_icon_color = get_icon_color,
   get_icon_cterm_color = get_icon_cterm_color,
+  get_icon_name_by_filetype = get_icon_name_by_filetype,
+  get_icon_by_filetype = get_icon_by_filetype,
+  get_icon_colors_by_filetype = get_icon_colors_by_filetype,
+  get_icon_color_by_filetype = get_icon_color_by_filetype,
+  get_icon_cterm_color_by_filetype = get_icon_cterm_color_by_filetype,
   set_icon = set_icon,
   set_default_icon = set_default_icon,
   setup = setup,

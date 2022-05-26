@@ -165,7 +165,24 @@ local check_self = function(self)
   return self
 end
 
-Path.__index = Path
+Path.__index = function(t, k)
+  local raw = rawget(Path, k)
+  if raw then
+    return raw
+  end
+
+  if k == "_cwd" then
+    local cwd = uv.fs_realpath "."
+    t._cwd = cwd
+    return cwd
+  end
+
+  if k == "_absolute" then
+    local absolute = uv.fs_realpath(t.filename)
+    t._absolute = absolute
+    return absolute
+  end
+end
 
 -- TODO: Could use this to not have to call new... not sure
 -- Path.__call = Path:new
@@ -242,10 +259,6 @@ function Path:new(...)
     filename = path_string,
 
     _sep = sep,
-
-    -- Cached values
-    _absolute = uv.fs_realpath(path_string),
-    _cwd = uv.fs_realpath ".",
   }
 
   setmetatable(obj, Path)
@@ -347,10 +360,18 @@ function Path:normalize(cwd)
   self:make_relative(cwd)
 
   -- Substitute home directory w/ "~"
-  local removed_path_sep = path.home:gsub(path.sep .. "$", "")
-  self.filename = self.filename:gsub("^" .. removed_path_sep, "~", 1)
+  -- string.gsub is not useful here because usernames with dashes at the end
+  -- will be seen as a regexp pattern rather than a raw string
+  local home = path.home
+  if string.sub(path.home, -1) ~= path.sep then
+    home = home .. path.sep
+  end
+  local start, finish = string.find(self.filename, home, 1, true)
+  if start == 1 then
+    self.filename = "~" .. path.sep .. string.sub(self.filename, (finish + 1), -1)
+  end
 
-  return _normalize_path(self.filename, self._cwd)
+  return _normalize_path(clean(self.filename), self._cwd)
 end
 
 local function shorten_len(filename, len, exclude)

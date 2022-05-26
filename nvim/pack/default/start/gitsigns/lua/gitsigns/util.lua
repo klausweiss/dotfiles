@@ -2,6 +2,8 @@ local M = {}
 
 
 
+
+
 function M.path_exists(path)
    return vim.loop.fs_stat(path) and true or false
 end
@@ -130,5 +132,54 @@ function M.calc_base(base)
    return base
 end
 
+function M.emptytable()
+   return setmetatable({}, {
+      __index = function(t, k)
+         t[k] = {}
+         return t[k]
+      end,
+   })
+end
+
+local function expand_date(fmt, time)
+   if fmt == '%R' then
+      return M.get_relative_time(time)
+   end
+   return os.date(fmt, time)
+end
+
+
+function M.expand_format(fmt, info, reltime)
+   local ret = {}
+
+   for _ = 1, 20 do
+
+      local scol, ecol, match, key, time_fmt = fmt:find('(<([^:>]+):?([^>]*)>)')
+      if not match then
+         break
+      end
+
+      ret[#ret + 1], fmt = fmt:sub(1, scol - 1), fmt:sub(ecol + 1)
+
+      local v = info[key]
+
+      if v then
+         if type(v) == "table" then
+            v = table.concat(v, '\n')
+         end
+         if vim.endswith(key, '_time') then
+            if time_fmt == '' then
+               time_fmt = reltime and '%R' or '%Y-%m-%d'
+            end
+            v = expand_date(time_fmt, v)
+         end
+         match = tostring(v)
+      end
+      ret[#ret + 1] = match
+   end
+
+   ret[#ret + 1] = fmt
+   return table.concat(ret, '')
+end
 
 return M

@@ -2,6 +2,7 @@ local spy = require "luassert.spy"
 local mock = require "luassert.mock"
 local spawn = require "nvim-lsp-installer.core.spawn"
 local Result = require "nvim-lsp-installer.core.result"
+local installer = require "nvim-lsp-installer.core.installer"
 
 local git = require "nvim-lsp-installer.core.managers.git"
 local Optional = require "nvim-lsp-installer.core.optional"
@@ -21,7 +22,9 @@ describe("git manager", function()
         "should fail if no git repo provided",
         async_test(function()
             local err = assert.has_errors(function()
-                git.clone {}(ctx)
+                installer.run_installer(ctx, function()
+                    git.clone {}
+                end)
             end)
             assert.equals("No git URL provided.", err)
             assert.spy(ctx.spawn.git).was_not_called()
@@ -31,12 +34,15 @@ describe("git manager", function()
     it(
         "should clone provided repo",
         async_test(function()
-            git.clone { "https://github.com/williamboman/nvim-lsp-installer.git" }(ctx)
+            installer.run_installer(ctx, function()
+                git.clone { "https://github.com/williamboman/nvim-lsp-installer.git" }
+            end)
             assert.spy(ctx.spawn.git).was_called(1)
             assert.spy(ctx.spawn.git).was_called_with {
                 "clone",
                 "--depth",
                 "1",
+                vim.NIL,
                 "https://github.com/williamboman/nvim-lsp-installer.git",
                 ".",
             }
@@ -47,12 +53,15 @@ describe("git manager", function()
         "should fetch and checkout revision if requested",
         async_test(function()
             ctx.requested_version = Optional.of "1337"
-            git.clone { "https://github.com/williamboman/nvim-lsp-installer.git" }(ctx)
+            installer.run_installer(ctx, function()
+                git.clone { "https://github.com/williamboman/nvim-lsp-installer.git" }
+            end)
             assert.spy(ctx.spawn.git).was_called(3)
             assert.spy(ctx.spawn.git).was_called_with {
                 "clone",
                 "--depth",
                 "1",
+                vim.NIL,
                 "https://github.com/williamboman/nvim-lsp-installer.git",
                 ".",
             }
@@ -70,14 +79,13 @@ describe("git manager", function()
     it(
         "should provide receipt information",
         async_test(function()
-            git.clone { "https://github.com/williamboman/nvim-lsp-installer.git" }(ctx)
-            assert.equals(
-                vim.inspect {
-                    type = "git",
-                    remote = "https://github.com/williamboman/nvim-lsp-installer.git",
-                },
-                vim.inspect(ctx.receipt.primary_source)
-            )
+            installer.run_installer(ctx, function()
+                git.clone({ "https://github.com/williamboman/nvim-lsp-installer.git" }).with_receipt()
+            end)
+            assert.same({
+                type = "git",
+                remote = "https://github.com/williamboman/nvim-lsp-installer.git",
+            }, ctx.receipt.primary_source)
             assert.is_true(#ctx.receipt.secondary_sources == 0)
         end)
     )
@@ -138,14 +146,11 @@ describe("git version check", function()
                 cwd = "/tmp/install/dir",
             }
             assert.is_true(result:is_success())
-            assert.equals(
-                vim.inspect {
-                    name = "https://github.com/williamboman/nvim-lsp-installer.git",
-                    current_version = "19c668cd10695b243b09452f0dfd53570c1a2e7d",
-                    latest_version = "728307a74cd5f2dec7ca2ca164785c25673d6328",
-                },
-                vim.inspect(result:get_or_nil())
-            )
+            assert.same({
+                name = "https://github.com/williamboman/nvim-lsp-installer.git",
+                current_version = "19c668cd10695b243b09452f0dfd53570c1a2e7d",
+                latest_version = "728307a74cd5f2dec7ca2ca164785c25673d6328",
+            }, result:get_or_nil())
 
             spawn.git = nil
         end)

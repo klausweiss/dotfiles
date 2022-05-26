@@ -1,39 +1,54 @@
-local Data = require "nvim-lsp-installer.data"
-local process = require "nvim-lsp-installer.process"
-local path = require "nvim-lsp-installer.path"
+local _ = require "nvim-lsp-installer.core.functional"
+local process = require "nvim-lsp-installer.core.process"
+local path = require "nvim-lsp-installer.core.path"
 local Result = require "nvim-lsp-installer.core.result"
 local spawn = require "nvim-lsp-installer.core.spawn"
 local Optional = require "nvim-lsp-installer.core.optional"
-
-local list_copy, list_find_first = Data.list_copy, Data.list_find_first
+local installer = require "nvim-lsp-installer.core.installer"
 
 local M = {}
 
+---@param packages string[]
+local function with_receipt(packages)
+    return function()
+        local ctx = installer.context()
+        ctx.receipt:with_primary_source(ctx.receipt.gem(packages[1]))
+        for i = 2, #packages do
+            ctx.receipt:with_secondary_source(ctx.receipt.gem(packages[i]))
+        end
+    end
+end
+
+---@async
 ---@param packages string[] @The Gem packages to install. The first item in this list will be the recipient of the server version, should the user request a specific one.
 function M.packages(packages)
-    ---@async
-    ---@param ctx InstallContext
-    return function(ctx)
-        local pkgs = list_copy(packages or {})
-
-        ctx.receipt:with_primary_source(ctx.receipt.gem(pkgs[1]))
-        for i = 2, #pkgs do
-            ctx.receipt:with_secondary_source(ctx.receipt.gem(pkgs[i]))
-        end
-
-        ctx.requested_version:if_present(function(version)
-            pkgs[1] = ("%s:%s"):format(pkgs[1], version)
-        end)
-
-        ctx.spawn.gem {
-            "install",
-            "--no-user-install",
-            "--install-dir=.",
-            "--bindir=bin",
-            "--no-document",
-            pkgs,
-        }
+    return function()
+        return M.install(packages).with_receipt()
     end
+end
+
+---@async
+---@param packages string[] @The Gem packages to install. The first item in this list will be the recipient of the server version, should the user request a specific one.
+function M.install(packages)
+    local ctx = installer.context()
+    local pkgs = _.list_copy(packages or {})
+
+    ctx.requested_version:if_present(function(version)
+        pkgs[1] = ("%s:%s"):format(pkgs[1], version)
+    end)
+
+    ctx.spawn.gem {
+        "install",
+        "--no-user-install",
+        "--install-dir=.",
+        "--bindir=bin",
+        "--no-document",
+        pkgs,
+    }
+
+    return {
+        with_receipt = with_receipt(packages),
+    }
 end
 
 ---@alias GemOutdatedPackage {name:string, current_version: string, latest_version: string}
@@ -58,10 +73,10 @@ function M.parse_outdated_gem(outdated_gem)
     return outdated_package
 end
 
----Parses the stdout of the `gem list` command into a Record<package_name, version>
+---Parses the stdout of the `gem list` command into a table<package_name, version>
 ---@param output string
 function M.parse_gem_list_output(output)
-    ---@type Record<string, string>
+    ---@type table<string, string>
     local gem_versions = {}
     for _, line in ipairs(vim.split(output, "\n")) do
         local gem_package, version = line:match "^(%S+) %((%S+)%)$"
@@ -83,27 +98,25 @@ function M.check_outdated_primary_package(receipt, install_dir)
     if receipt.primary_source.type ~= "gem" then
         return Result.failure "Receipt does not have a primary source of type gem"
     end
-    return spawn.gem({ "outdated", cwd = install_dir, env = process.graft_env(M.env(install_dir)) }):map_catching(
-        function(result)
-            ---@type string[]
-            local lines = vim.split(result.stdout, "\n")
-            local outdated_gems = vim.tbl_map(M.parse_outdated_gem, vim.tbl_filter(not_empty, lines))
+    return spawn.gem({ "outdated", cwd = install_dir, env = M.env(install_dir) }):map_catching(function(result)
+        ---@type string[]
+        local lines = vim.split(result.stdout, "\n")
+        local outdated_gems = vim.tbl_map(M.parse_outdated_gem, vim.tbl_filter(not_empty, lines))
 
-            local outdated_gem = list_find_first(outdated_gems, function(gem)
-                return gem.name == receipt.primary_source.package and gem.current_version ~= gem.latest_version
+        local outdated_gem = _.find_first(function(gem)
+            return gem.name == receipt.primary_source.package and gem.current_version ~= gem.latest_version
+        end, outdated_gems)
+
+        return Optional.of_nilable(outdated_gem)
+            :map(function(gem)
+                return {
+                    name = receipt.primary_source.package,
+                    current_version = assert(gem.current_version),
+                    latest_version = assert(gem.latest_version),
+                }
             end)
-
-            return Optional.of_nilable(outdated_gem)
-                :map(function(gem)
-                    return {
-                        name = receipt.primary_source.package,
-                        current_version = assert(gem.current_version),
-                        latest_version = assert(gem.latest_version),
-                    }
-                end)
-                :or_else_throw "Primary package is not outdated."
-        end
-    )
+            :or_else_throw "Primary package is not outdated."
+    end)
 end
 
 ---@async
@@ -113,7 +126,7 @@ function M.get_installed_primary_package_version(receipt, install_dir)
     return spawn.gem({
         "list",
         cwd = install_dir,
-        env = process.graft_env(M.env(install_dir)),
+        env = M.env(install_dir),
     }):map_catching(function(result)
         local gems = M.parse_gem_list_output(result.stdout)
         return Optional.of_nilable(gems[receipt.primary_source.package]):or_else_throw "Failed to find gem package version."

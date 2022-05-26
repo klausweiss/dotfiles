@@ -55,12 +55,12 @@ let s:debug = svelte#GetConfig('debug', 0)
 " Save shiftwidth
 let s:sw = &sw
 
-" Use lib/indent/ files for compatibility
+" Use specific indent files for compatibility
 unlet! b:did_indent
-runtime lib/indent/xml.vim
+runtime indent/svelte-xml.vim
 
 unlet! b:did_indent
-runtime lib/indent/css.vim
+runtime indent/svelte-css.vim
 
 " Use normal indent files
 unlet! b:did_indent
@@ -119,7 +119,7 @@ function! GetSvelteIndent()
   let cursyns = s:SynsSOL(v:lnum)
   let cursyn = get(cursyns, 0, '')
 
-  if s:SynHTML(cursyn)
+  if s:SynHTML(cursyn) && !s:IsMultipleLineSvelteExpression(curline, cursyns)
     call s:Log('syntax: html')
     let ind = XmlIndentGet(v:lnum, 0)
     if prevline =~? s:empty_tag
@@ -231,6 +231,20 @@ endfunction
 
 function! s:SynHTML(syn)
   return a:syn ==? 'htmlSvelteTemplate'
+endfunction
+
+function! s:IsMultipleLineSvelteExpression(curline, syns)
+  if a:curline =~ '^\s*{.*}\s*$'
+    return 0
+  endif
+
+  for syn in a:syns
+    if syn ==? 'svelteExpression'
+      return 1
+    endif
+  endfor
+
+  return 0
 endfunction
 
 function! s:SynBlockBody(syn)

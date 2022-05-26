@@ -8,9 +8,9 @@
 
 " Initialization: {{{
 let s:configuration = gruvbox_material#get_configuration()
-let s:palette = gruvbox_material#get_palette(s:configuration.background, s:configuration.palette)
+let s:palette = gruvbox_material#get_palette(s:configuration.background, s:configuration.foreground, s:configuration.colors_override)
 let s:path = expand('<sfile>:p') " the path of this script
-let s:last_modified = 'Mon Apr  4 01:48:29 UTC 2022'
+let s:last_modified = 'Thu May 26 04:33:29 UTC 2022'
 let g:gruvbox_material_loaded_file_types = []
 
 if !(exists('g:colors_name') && g:colors_name ==# 'gruvbox-material' && s:configuration.better_performance)
@@ -28,7 +28,7 @@ endif
 " }}}
 " Common Highlight Groups: {{{
 " UI: {{{
-if s:configuration.transparent_background
+if s:configuration.transparent_background == 1
   call gruvbox_material#highlight('Normal', s:palette.fg0, s:palette.none)
   call gruvbox_material#highlight('Terminal', s:palette.fg0, s:palette.none)
   if s:configuration.show_eob
@@ -144,6 +144,7 @@ endif
 highlight! link WildMenu PmenuSel
 call gruvbox_material#highlight('PmenuThumb', s:palette.none, s:palette.grey0)
 call gruvbox_material#highlight('NormalFloat', s:palette.fg1, s:palette.bg3)
+call gruvbox_material#highlight('FloatBorder', s:palette.grey1, s:palette.bg3)
 call gruvbox_material#highlight('Question', s:palette.yellow, s:palette.none)
 if s:configuration.spell_foreground ==# 'none'
   call gruvbox_material#highlight('SpellBad', s:palette.none, s:palette.none, 'undercurl', s:palette.red)
@@ -156,30 +157,58 @@ else
   call gruvbox_material#highlight('SpellLocal', s:palette.aqua, s:palette.none, 'undercurl', s:palette.aqua)
   call gruvbox_material#highlight('SpellRare', s:palette.purple, s:palette.none, 'undercurl', s:palette.purple)
 endif
-if s:configuration.statusline_style ==# 'original'
-  call gruvbox_material#highlight('StatusLine', s:palette.grey2, s:palette.bg_statusline2)
-  call gruvbox_material#highlight('StatusLineTerm', s:palette.grey2, s:palette.bg_statusline2)
-  call gruvbox_material#highlight('StatusLineNC', s:palette.grey1, s:palette.bg_statusline1)
-  call gruvbox_material#highlight('StatusLineTermNC', s:palette.grey1, s:palette.bg_statusline1)
-  call gruvbox_material#highlight('TabLine', s:palette.grey2, s:palette.bg_statusline2)
-  call gruvbox_material#highlight('TabLineFill', s:palette.grey2, s:palette.bg0)
-  call gruvbox_material#highlight('TabLineSel', s:palette.bg0, s:palette.grey2)
-elseif s:configuration.statusline_style ==# 'mix'
-  call gruvbox_material#highlight('StatusLine', s:palette.grey2, s:palette.bg_statusline2)
-  call gruvbox_material#highlight('StatusLineTerm', s:palette.grey2, s:palette.bg_statusline2)
-  call gruvbox_material#highlight('StatusLineNC', s:palette.grey1, s:palette.bg_statusline1)
-  call gruvbox_material#highlight('StatusLineTermNC', s:palette.grey1, s:palette.bg_statusline1)
-  call gruvbox_material#highlight('TabLine', s:palette.grey2, s:palette.bg_statusline3)
-  call gruvbox_material#highlight('TabLineFill', s:palette.grey2, s:palette.bg_statusline2)
-  call gruvbox_material#highlight('TabLineSel', s:palette.bg0, s:palette.grey2)
+if s:configuration.transparent_background == 2
+  if s:configuration.statusline_style ==# 'original'
+    call gruvbox_material#highlight('StatusLine', s:palette.grey2, s:palette.none)
+    call gruvbox_material#highlight('StatusLineTerm', s:palette.grey2, s:palette.none)
+    call gruvbox_material#highlight('StatusLineNC', s:palette.grey1, s:palette.none)
+    call gruvbox_material#highlight('StatusLineTermNC', s:palette.grey1, s:palette.none)
+    call gruvbox_material#highlight('TabLine', s:palette.grey2, s:palette.bg_statusline2)
+    call gruvbox_material#highlight('TabLineFill', s:palette.grey2, s:palette.none)
+    call gruvbox_material#highlight('TabLineSel', s:palette.bg0, s:palette.grey2)
+  elseif s:configuration.statusline_style ==# 'mix'
+    call gruvbox_material#highlight('StatusLine', s:palette.grey2, s:palette.none)
+    call gruvbox_material#highlight('StatusLineTerm', s:palette.grey2, s:palette.none)
+    call gruvbox_material#highlight('StatusLineNC', s:palette.grey1, s:palette.none)
+    call gruvbox_material#highlight('StatusLineTermNC', s:palette.grey1, s:palette.none)
+    call gruvbox_material#highlight('TabLine', s:palette.grey2, s:palette.bg_statusline3)
+    call gruvbox_material#highlight('TabLineFill', s:palette.grey2, s:palette.none)
+    call gruvbox_material#highlight('TabLineSel', s:palette.bg0, s:palette.grey2)
+  else
+    call gruvbox_material#highlight('StatusLine', s:palette.fg1, s:palette.none)
+    call gruvbox_material#highlight('StatusLineTerm', s:palette.fg1, s:palette.none)
+    call gruvbox_material#highlight('StatusLineNC', s:palette.grey1, s:palette.none)
+    call gruvbox_material#highlight('StatusLineTermNC', s:palette.grey1, s:palette.none)
+    call gruvbox_material#highlight('TabLine', s:palette.fg1, s:palette.bg_statusline3)
+    call gruvbox_material#highlight('TabLineFill', s:palette.fg1, s:palette.none)
+    call gruvbox_material#highlight('TabLineSel', s:palette.bg0, s:palette.grey2)
+  endif
 else
-  call gruvbox_material#highlight('StatusLine', s:palette.fg1, s:palette.bg_statusline1)
-  call gruvbox_material#highlight('StatusLineTerm', s:palette.fg1, s:palette.bg_statusline1)
-  call gruvbox_material#highlight('StatusLineNC', s:palette.grey1, s:palette.bg_statusline1)
-  call gruvbox_material#highlight('StatusLineTermNC', s:palette.grey1, s:palette.bg_statusline1)
-  call gruvbox_material#highlight('TabLine', s:palette.fg1, s:palette.bg_statusline3)
-  call gruvbox_material#highlight('TabLineFill', s:palette.fg1, s:palette.bg_statusline1)
-  call gruvbox_material#highlight('TabLineSel', s:palette.bg0, s:palette.grey2)
+  if s:configuration.statusline_style ==# 'original'
+    call gruvbox_material#highlight('StatusLine', s:palette.grey2, s:palette.bg_statusline2)
+    call gruvbox_material#highlight('StatusLineTerm', s:palette.grey2, s:palette.bg_statusline2)
+    call gruvbox_material#highlight('StatusLineNC', s:palette.grey1, s:palette.bg_statusline1)
+    call gruvbox_material#highlight('StatusLineTermNC', s:palette.grey1, s:palette.bg_statusline1)
+    call gruvbox_material#highlight('TabLine', s:palette.grey2, s:palette.bg_statusline2)
+    call gruvbox_material#highlight('TabLineFill', s:palette.grey2, s:palette.bg0)
+    call gruvbox_material#highlight('TabLineSel', s:palette.bg0, s:palette.grey2)
+  elseif s:configuration.statusline_style ==# 'mix'
+    call gruvbox_material#highlight('StatusLine', s:palette.grey2, s:palette.bg_statusline2)
+    call gruvbox_material#highlight('StatusLineTerm', s:palette.grey2, s:palette.bg_statusline2)
+    call gruvbox_material#highlight('StatusLineNC', s:palette.grey1, s:palette.bg_statusline1)
+    call gruvbox_material#highlight('StatusLineTermNC', s:palette.grey1, s:palette.bg_statusline1)
+    call gruvbox_material#highlight('TabLine', s:palette.grey2, s:palette.bg_statusline3)
+    call gruvbox_material#highlight('TabLineFill', s:palette.grey2, s:palette.bg_statusline2)
+    call gruvbox_material#highlight('TabLineSel', s:palette.bg0, s:palette.grey2)
+  else
+    call gruvbox_material#highlight('StatusLine', s:palette.fg1, s:palette.bg_statusline1)
+    call gruvbox_material#highlight('StatusLineTerm', s:palette.fg1, s:palette.bg_statusline1)
+    call gruvbox_material#highlight('StatusLineNC', s:palette.grey1, s:palette.bg_statusline1)
+    call gruvbox_material#highlight('StatusLineTermNC', s:palette.grey1, s:palette.bg_statusline1)
+    call gruvbox_material#highlight('TabLine', s:palette.fg1, s:palette.bg_statusline3)
+    call gruvbox_material#highlight('TabLineFill', s:palette.fg1, s:palette.bg_statusline1)
+    call gruvbox_material#highlight('TabLineSel', s:palette.bg0, s:palette.grey2)
+  endif
 endif
 call gruvbox_material#highlight('VertSplit', s:palette.bg5, s:palette.none)
 if s:configuration.visual ==# 'grey background'
@@ -248,6 +277,9 @@ if has('nvim')
   highlight! link LspReferenceText CurrentWord
   highlight! link LspReferenceRead CurrentWord
   highlight! link LspReferenceWrite CurrentWord
+  highlight! link LspCodeLens VirtualTextInfo
+  highlight! link LspCodeLensSeparator VirtualTextHint
+  highlight! link LspSignatureActiveParameter Search
   highlight! link TermCursor Cursor
   highlight! link healthError Red
   highlight! link healthSuccess Green
@@ -519,6 +551,12 @@ highlight! link TSVariableBuiltin BlueItalic
 " }}}
 " neoclide/coc.nvim {{{
 call gruvbox_material#highlight('CocHoverRange', s:palette.none, s:palette.none, 'bold,underline')
+call gruvbox_material#highlight('CocSearch', s:palette.green, s:palette.none, 'bold')
+highlight! link CocDisabled Grey
+highlight! link CocSnippetVisual DiffAdd
+highlight! link CocInlayHint Grey
+highlight! link CocNotificationProgress Green
+highlight! link CocNotificationButton PmenuSel
 highlight! link CocSemClass TSType
 highlight! link CocSemEnum TSType
 highlight! link CocSemInterface TSType
@@ -1093,6 +1131,24 @@ highlight! link plugDeleted Grey
 highlight! link plugEdge Yellow
 highlight! link plugSha Green
 " syn_end }}}
+" syn_begin: packer {{{
+" https://github.com/wbthomason/packer.nvim
+highlight! link packerSuccess Aqua
+highlight! link packerFail Red
+highlight! link packerStatusSuccess Fg
+highlight! link packerStatusFail Fg
+highlight! link packerWorking Yellow
+highlight! link packerString Yellow
+highlight! link packerPackageNotLoaded Grey
+highlight! link packerRelDate Grey
+highlight! link packerPackageName Green
+highlight! link packerOutput Orange
+highlight! link packerHash Green
+highlight! link packerTimeTrivial Blue
+highlight! link packerTimeHigh Red
+highlight! link packerTimeMedium Yellow
+highlight! link packerTimeLow Green
+" syn_end }}}
 " syn_begin: coctree {{{
 " https://github.com/neoclide/coc.nvim
 highlight! link CocTreeOpenClose Aqua
@@ -1192,6 +1248,37 @@ highlight! link VistaPublic Green
 highlight! link VistaProtected Yellow
 highlight! link VistaPrivate Red
 " syn_end }}}
+" syn_begin: aerial {{{
+" https://github.com/stevearc/aerial.nvim
+highlight! link AerialLine CursorLine
+highlight! link AerialGuide LineNr
+highlight! link AerialFileIcon Green
+highlight! link AerialModuleIcon Purple
+highlight! link AerialNamespaceIcon Purple
+highlight! link AerialPackageIcon Purple
+highlight! link AerialClassIcon Red
+highlight! link AerialMethodIcon Green
+highlight! link AerialPropertyIcon Blue
+highlight! link AerialFieldIcon Green
+highlight! link AerialConstructorIcon Green
+highlight! link AerialEnumIcon Yellow
+highlight! link AerialInterfaceIcon Yellow
+highlight! link AerialFunctionIcon Green
+highlight! link AerialVariableIcon Blue
+highlight! link AerialConstantIcon Blue
+highlight! link AerialStringIcon Aqua
+highlight! link AerialNumberIcon Aqua
+highlight! link AerialBooleanIcon Aqua
+highlight! link AerialArrayIcon Aqua
+highlight! link AerialObjectIcon Aqua
+highlight! link AerialKeyIcon Red
+highlight! link AerialNullIcon Aqua
+highlight! link AerialEnumMemberIcon Aqua
+highlight! link AerialStructIcon Yellow
+highlight! link AerialEventIcon Orange
+highlight! link AerialOperatorIcon Orange
+highlight! link AerialTypeParameterIcon Yellow
+" syn_end }}}
 " syn_begin: nerdtree {{{
 " https://github.com/preservim/nerdtree
 highlight! link NERDTreeDir Green
@@ -1241,7 +1328,7 @@ highlight! link NvimTreeLspDiagnosticsHint GreenSign
 " syn_end }}}
 " syn_begin: fern {{{
 " https://github.com/lambdalisue/fern.vim
-highlight! link FernMarkedLine None
+highlight! link FernMarkedLine Purple
 highlight! link FernMarkedText Purple
 highlight! link FernRootSymbol FernRootText
 highlight! link FernRootText Orange

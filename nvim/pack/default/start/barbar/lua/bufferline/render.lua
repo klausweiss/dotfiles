@@ -42,7 +42,12 @@ local function groups_to_string(groups)
   for _, group in ipairs(groups) do
     local hl   = group[1]
     local text = group[2]
-    result = result .. hl .. text
+    -- WARN: We have to escape the text in case it contains '%',
+    --       which is a special character to the tabline.
+    --       To escape '%', we make
+    --       it '%%'. It just so happens that '%' is also a special character in
+    --       Lua, so we have write '%%' to mean '%'.
+    result = result .. hl .. text:gsub('%%', '%%%%')
   end
 
   return result
@@ -88,7 +93,7 @@ local function groups_insert(groups, position, others)
       -- Add new other groups
       local others_width = 0
       for j, other in ipairs(others) do
-        local other_width = strwidth(other[2])
+        local other_width = strwidth(other[3] or other[2])
         others_width = others_width + other_width
         table.insert(new_groups, other)
       end
@@ -211,9 +216,9 @@ local function render(update_names)
 
   local click_enabled = has('tablineat') and opts.clickable
   local has_close = opts.closable
-  local has_icons = (opts.icons == true) or (opts.icons == 'both')
+  local has_icons = (opts.icons == true) or (opts.icons == 'both') or (opts.icons == 'buffer_number_with_icon')
   local has_icon_custom_colors = opts.icon_custom_colors
-  local has_buffer_number = (opts.icons == 'buffer_numbers')
+  local has_buffer_number = (opts.icons == 'buffer_numbers') or (opts.icons == 'buffer_number_with_icon')
   local has_numbers = (opts.icons == 'numbers') or (opts.icons == 'both')
 
   local layout = Layout.calculate(state)

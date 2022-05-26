@@ -324,6 +324,10 @@ function make_entry.gen_from_quickfix(opts)
 
     local line_info = { table.concat({ entry.lnum, entry.col }, ":"), "TelescopeResultsLineNr" }
 
+    if opts.trim_text then
+      entry.text = entry.text:gsub("^%s*(.-)%s*$", "%1")
+    end
+
     return displayer {
       line_info,
       entry.text:gsub(".* | ", ""),
@@ -536,7 +540,7 @@ function make_entry.gen_from_treesitter(opts)
   return function(entry)
     local ts_utils = require "nvim-treesitter.ts_utils"
     local start_row, start_col, end_row, _ = ts_utils.get_node_range(entry.node)
-    local node_text = ts_utils.get_node_text(entry.node, bufnr)[1]
+    local node_text = vim.treesitter.get_node_text(entry.node, bufnr)
     return {
       valid = true,
 
@@ -631,20 +635,15 @@ function make_entry.gen_from_apropos(opts)
 end
 
 function make_entry.gen_from_marks(_)
-  return function(line)
-    local split_value = utils.max_split(line, "%s+", 4)
-
-    local mark_value = split_value[1]
-    local cursor_position = vim.fn.getpos("'" .. mark_value)
-
+  return function(item)
     return {
-      value = line,
-      ordinal = line,
-      display = line,
-      lnum = cursor_position[2],
-      col = cursor_position[3],
-      start = cursor_position[2],
-      filename = vim.api.nvim_buf_get_name(cursor_position[1]),
+      value = item.line,
+      ordinal = item.line,
+      display = item.line,
+      lnum = item.lnum,
+      col = item.col,
+      start = item.lnum,
+      filename = item.filename,
     }
   end
 end
@@ -680,8 +679,12 @@ end
 
 function make_entry.gen_from_keymaps(opts)
   local function get_desc(entry)
-    return entry.desc or entry.rhs or "Lua function"
+    if entry.callback and not entry.desc then
+      return require("telescope.actions.utils")._get_anon_function_name(entry.callback)
+    end
+    return vim.F.if_nil(entry.desc, entry.rhs)
   end
+
   local function get_lhs(entry)
     return utils.display_termcodes(entry.lhs)
   end
@@ -916,13 +919,16 @@ function make_entry.gen_from_ctags(opts)
   local display_items = {
     { remaining = true },
   }
+
+  local idx = 1
   local hidden = utils.is_path_hidden(opts)
   if not hidden then
-    table.insert(display_items, 1, { width = 30 })
+    table.insert(display_items, idx, { width = vim.F.if_nil(opts.fname_width, 30) })
+    idx = idx + 1
   end
 
   if opts.show_line then
-    table.insert(display_items, 1, { width = 30 })
+    table.insert(display_items, idx, { width = 30 })
   end
 
   local displayer = entry_display.create {

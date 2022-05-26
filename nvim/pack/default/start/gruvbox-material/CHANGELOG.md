@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [1.2.4] - 2022-05-26
+
 ### Added
 
 - Add `g:gruvbox_material_spell_foreground`.
@@ -13,6 +15,9 @@ All notable changes to this project will be documented in this file.
 - Optimize `rcarriga/nvim-dap-ui`.
 - Add `g:gruvbox_material_disable_terminal_colors`.
 - Optimize `voldikss/vim-floaterm`.
+- Support `g:gruvbox_material_transparent_background == 2`.
+- Optimize `stevearc/aerial.nvim`.
+- Optimize `wbthomason/packer.nvim`.
 
 ### Changed
 
@@ -20,6 +25,7 @@ All notable changes to this project will be documented in this file.
 - Redesign `liuchengxu/vim-clap`.
 - Redesign semantic hi groups in coc.nvim [neoclide/coc.nvim#3355](https://github.com/neoclide/coc.nvim/pull/3355).
 - Generate `/after/syntax`.
+- Split `g:gruvbox_material_palette` into `g:gruvbox_material_foreground` and `g:gruvbox_material_colors_override`.
 
 ### Fixed
 
@@ -348,7 +354,8 @@ All notable changes to this project will be documented in this file.
 - Lightline theme.
 - Finish AUR package and add the url in README.
 
-[unreleased]: https://github.com/sainnhe/gruvbox-material/compare/v1.2.3...HEAD
+[unreleased]: https://github.com/sainnhe/gruvbox-material/compare/v1.2.4...HEAD
+[1.2.4]: https://github.com/sainnhe/gruvbox-material/compare/v1.2.3...v1.2.4
 [1.2.3]: https://github.com/sainnhe/gruvbox-material/compare/v1.2.2...v1.2.3
 [1.2.2]: https://github.com/sainnhe/gruvbox-material/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/sainnhe/gruvbox-material/compare/v1.2.0...v1.2.1

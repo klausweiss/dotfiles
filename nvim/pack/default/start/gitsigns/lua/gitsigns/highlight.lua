@@ -1,4 +1,3 @@
-
 local api = vim.api
 
 local nvim = require('gitsigns.nvim')
@@ -20,7 +19,8 @@ local hls = {
 
    { GitSignsAddLn = { 'GitGutterAddLine', 'SignifyLineAdd', 'DiffAdd' } },
    { GitSignsChangeLn = { 'GitGutterChangeLine', 'SignifyLineChange', 'DiffChange' } },
-   { GitSignsDeleteLn = { 'GitGutterDeleteLine', 'SignifyLineDelete', 'DiffDelete' } },
+
+
 
    { GitSignsCurrentLineBlame = { 'NonText' } },
 
@@ -34,7 +34,7 @@ local hls = {
 
    { GitSignsAddLnVirtLn = { 'GitSignsAddLn' } },
    { GitSignsChangeVirtLn = { 'GitSignsChangeLn' } },
-   { GitSignsDeleteVirtLn = { 'GitSignsDeleteLn' } },
+   { GitSignsDeleteVirtLn = { 'GitGutterDeleteLine', 'SignifyLineDelete', 'DiffDelete' } },
 
    { GitSignsAddLnVirtLnInLine = { 'GitSignsAddLnInline' } },
    { GitSignsChangeVirtLnInLine = { 'GitSignsChangeLnInline' } },

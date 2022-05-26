@@ -13,6 +13,9 @@ return {
   asm_lsp = {
     filetypes = { "asm", "vmasm" }
   },
+  astro = {
+    filetypes = { "astro" }
+  },
   awk_ls = {
     filetypes = { "awk" }
   },
@@ -20,7 +23,7 @@ return {
     filetypes = { "sh" }
   },
   beancount = {
-    filetypes = { "beancount" }
+    filetypes = { "beancount", "bean" }
   },
   bicep = {
     filetypes = { "bicep" }
@@ -33,6 +36,9 @@ return {
   },
   clangd = {
     filetypes = { "c", "cpp", "objc", "objcpp" }
+  },
+  clarity_lsp = {
+    filetypes = { "clar", "clarity" }
   },
   clojure_lsp = {
     filetypes = { "clojure", "edn" }
@@ -80,7 +86,7 @@ return {
     filetypes = {}
   },
   elixirls = {
-    filetypes = { "elixir", "eelixir" }
+    filetypes = { "elixir", "eelixir", "heex" }
   },
   elmls = {
     filetypes = { "elm" }
@@ -133,6 +139,9 @@ return {
   hls = {
     filetypes = { "haskell", "lhaskell" }
   },
+  hoon_ls = {
+    filetypes = { "hoon" }
+  },
   html = {
     filetypes = { "html" }
   },
@@ -179,7 +188,7 @@ return {
     filetypes = { "ocaml", "reason" }
   },
   ocamllsp = {
-    filetypes = { "ocaml", "ocaml.menhir", "ocaml.interface", "ocaml.ocamllex", "reason" }
+    filetypes = { "ocaml", "ocaml.menhir", "ocaml.interface", "ocaml.ocamllex", "reason", "dune" }
   },
   omnisharp = {
     filetypes = { "cs", "vb" }
@@ -235,6 +244,9 @@ return {
   rnix = {
     filetypes = { "nix" }
   },
+  robotframework_ls = {
+    filetypes = { "robot" }
+  },
   rome = {
     filetypes = { "javascript", "javascriptreact", "json", "typescript", "typescript.tsx", "typescriptreact" }
   },
@@ -273,9 +285,6 @@ return {
   },
   sourcery = {
     filetypes = { "python" }
-  },
-  spectral = {
-    filetypes = { "yaml", "json", "yml" }
   },
   sqlls = {
     filetypes = { "sql", "mysql" }
@@ -325,6 +334,9 @@ return {
   vimls = {
     filetypes = { "vim" }
   },
+  vls = {
+    filetypes = { "vlang" }
+  },
   volar = {
     filetypes = { "vue" }
   },
@@ -333,9 +345,6 @@ return {
   },
   yamlls = {
     filetypes = { "yaml", "yaml.docker-compose" }
-  },
-  zeta_note = {
-    filetypes = { "markdown" }
   },
   zk = {
     filetypes = { "markdown" }

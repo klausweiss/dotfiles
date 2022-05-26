@@ -15,7 +15,7 @@ require('nvim-autopairs').setup{}
 local disable_filetype = { "TelescopePrompt" }
 local disable_in_macro = false  -- disable when recording or executing a macro
 local disable_in_visualblock = false -- disable when insert after visual block mode
-local ignored_next_char = string.gsub([[ [%w%%%'%[%"%.] ]],"%s+", "")
+local ignored_next_char = [=[[%w%%%'%[%"%.]]=]
 local enable_moveright = true
 local enable_afterquote = true  -- add bracket pairs after quote
 local enable_check_bracket_line = true  --- check bracket in same line
@@ -216,6 +216,7 @@ You can use treesitter to check for a pair.
 
 ```lua
 local npairs = require("nvim-autopairs")
+local Rule = require('nvim-autopairs.rule')
 
 npairs.setup({
     check_ts = true,
@@ -300,8 +301,7 @@ npairs.setup({
     fast_wrap = {
       map = '<M-e>',
       chars = { '{', '[', '(', '"', "'" },
-      pattern = string.gsub([[ [%'%"%)%>%]%)%}%,] ]], '%s+', ''),
-      offset = -1, -- Offset from pattern match
+      pattern = [=[[%'%"%)%>%]%)%}%,]]=],
       end_key = '$',
       keys = 'qwertyuiopzxcvbnmasdfghjkl',
       check_comma = true,

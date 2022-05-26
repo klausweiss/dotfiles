@@ -7,6 +7,7 @@ local highlight = require('lualine.highlight')
 
 local default_options = {
   show_filename_only = true,
+  hide_filename_extension = false,
   show_modified_status = true,
   mode = 0,
   max_length = 0,
@@ -20,6 +21,11 @@ local default_options = {
   buffers_color = {
     active = nil,
     inactive = nil,
+  },
+  symbols = {
+    modified = ' ●',
+    alternate_file = '#',
+    directory = '',
   },
 }
 
@@ -50,27 +56,18 @@ function M:init(options)
   self.options = vim.tbl_deep_extend('keep', self.options or {}, default_options)
   if self.options.component_name == 'buffers' then
     self.highlights = {
-      active = highlight.create_component_highlight_group(
-        self.options.buffers_color.active,
-        'buffers_active',
-        self.options,
-        false
-      ),
-      inactive = highlight.create_component_highlight_group(
-        self.options.buffers_color.inactive,
-        'buffers_inactive',
-        self.options,
-        false
-      ),
+      active = self:create_hl(self.options.buffers_color.active, 'active'),
+      inactive = self:create_hl(self.options.buffers_color.inactive, 'inactive'),
     }
   end
 end
 
-function M:new_buffer(bufnr)
+function M:new_buffer(bufnr, buf_index)
   bufnr = bufnr or vim.api.nvim_get_current_buf()
-
+  buf_index = buf_index or ''
   return Buffer:new {
     bufnr = bufnr,
+    buf_index = buf_index,
     options = self.options,
     highlights = self.highlights,
   }
@@ -78,9 +75,11 @@ end
 
 function M:buffers()
   local buffers = {}
+  M.bufpos2nr = {}
   for b = 1, vim.fn.bufnr('$') do
     if vim.fn.buflisted(b) ~= 0 and vim.api.nvim_buf_get_option(b, 'buftype') ~= 'quickfix' then
-      buffers[#buffers + 1] = self:new_buffer(b)
+      buffers[#buffers + 1] = self:new_buffer(b, #buffers + 1)
+      M.bufpos2nr[#buffers] = b
     end
   end
 
@@ -212,10 +211,24 @@ function M:draw()
   return self.status
 end
 
+function M.buffer_jump(buf_pos)
+  if buf_pos == '$' then
+    buf_pos = #M.bufpos2nr
+  else
+    buf_pos = tonumber(buf_pos)
+  end
+  if buf_pos < 1 or buf_pos > #M.bufpos2nr then
+    error('Error: Unable to jump buffer position out of range')
+  end
+  vim.api.nvim_set_current_buf(M.bufpos2nr[buf_pos])
+end
+
 vim.cmd([[
   function! LualineSwitchBuffer(bufnr, mouseclicks, mousebutton, modifiers)
     execute ":buffer " . a:bufnr
   endfunction
+
+  command! -nargs=1 LualineBuffersJump call v:lua.require'lualine.components.buffers'.buffer_jump(<f-args>)
 ]])
 
 return M

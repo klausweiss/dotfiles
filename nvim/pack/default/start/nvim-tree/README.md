@@ -4,7 +4,7 @@
 
 ## Notice
 
-This plugin requires [neovim >=0.6.0](https://github.com/neovim/neovim/wiki/Installing-Neovim).
+This plugin requires [neovim >=0.7.0](https://github.com/neovim/neovim/wiki/Installing-Neovim).
 
 If you have issues since the recent setup migration, check out [this guide](https://github.com/kyazdani42/nvim-tree.lua/issues/674)
 
@@ -26,7 +26,7 @@ use {
     requires = {
       'kyazdani42/nvim-web-devicons', -- optional, for file icon
     },
-    config = function() require'nvim-tree'.setup {} end
+    tag = 'nightly' -- optional, updated every week. (see issue #1193)
 }
 ```
 
@@ -38,7 +38,6 @@ Note that options under the `g:` command should be set **BEFORE** running the se
 These are being migrated to the setup function incrementally, check [this issue](https://github.com/kyazdani42/nvim-tree.lua/issues/674) if you encounter any problems related to configs not working after update.
 ```vim
 " vimrc
-let g:nvim_tree_indent_markers = 1 "0 by default, this option shows indent markers when folders are open
 let g:nvim_tree_git_hl = 1 "0 by default, will enable file highlight for git attributes (can be used without the icons).
 let g:nvim_tree_highlight_opened_files = 1 "0 by default, will enable folder and file icon highlight for opened files/directories.
 let g:nvim_tree_root_folder_modifier = ':~' "This is the default. See :help filename-modifiers for more options
@@ -59,13 +58,13 @@ let g:nvim_tree_show_icons = {
 "1 by default, notice that if 'files' is 1, it will only display
 "if nvim-web-devicons is installed and on your runtimepath.
 "if folder is 1, you can also tell folder_arrows 1 to show small arrows next to the folder icons.
-"but this will not work when you set indent_markers (because of UI conflict)
+"but this will not work when you set renderer.indent_markers.enable (because of UI conflict)
 
 " default will show icon by default if no icon is provided
 " default shows no icon by default
 let g:nvim_tree_icons = {
-    \ 'default': "",
-    \ 'symlink': "",
+    \ 'default': "",
+    \ 'symlink': "",
     \ 'git': {
     \   'unstaged': "✗",
     \   'staged': "✓",
@@ -116,10 +115,10 @@ require'nvim-tree'.setup {
 
 -- setup with all defaults
 -- each of these are documented in `:help nvim-tree.OPTION_NAME`
+-- nested options are documented by accessing them with `.` (eg: `:help nvim-tree.view.mappings.list`).
 require'nvim-tree'.setup { -- BEGIN_DEFAULT_OPTS
   auto_reload_on_write = true,
   disable_netrw = false,
-  hide_root_folder = false,
   hijack_cursor = false,
   hijack_netrw = true,
   hijack_unnamed_buffer_when_opening = false,
@@ -129,9 +128,11 @@ require'nvim-tree'.setup { -- BEGIN_DEFAULT_OPTS
   open_on_tab = false,
   sort_by = "name",
   update_cwd = false,
+  reload_on_bufenter = false,
   view = {
     width = 30,
     height = 30,
+    hide_root_folder = false,
     side = "left",
     preserve_window_proportions = false,
     number = false,
@@ -142,6 +143,20 @@ require'nvim-tree'.setup { -- BEGIN_DEFAULT_OPTS
       list = {
         -- user mappings go here
       },
+    },
+  },
+  renderer = {
+    indent_markers = {
+      enable = false,
+      icons = {
+        corner = "└ ",
+        edge = "│ ",
+        none = "  ",
+      },
+    },
+    icons = {
+      webdev_colors = true,
+      git_placement = "before",
     },
   },
   hijack_directories = {
@@ -155,7 +170,7 @@ require'nvim-tree'.setup { -- BEGIN_DEFAULT_OPTS
   },
   ignore_ft_on_setup = {},
   system_open = {
-    cmd = nil,
+    cmd = "",
     args = {},
   },
   diagnostics = {
@@ -179,13 +194,15 @@ require'nvim-tree'.setup { -- BEGIN_DEFAULT_OPTS
     timeout = 400,
   },
   actions = {
+    use_system_clipboard = true,
     change_dir = {
       enable = true,
       global = false,
+      restrict_above_cwd = false,
     },
     open_file = {
       quit_on_open = false,
-      resize_window = false,
+      resize_window = true,
       window_picker = {
         enable = true,
         chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890",
@@ -200,6 +217,10 @@ require'nvim-tree'.setup { -- BEGIN_DEFAULT_OPTS
     cmd = "trash",
     require_confirm = true,
   },
+  live_filter = {
+    prefix = "[FILTER]: ",
+    always_show_folders = true,
+  },
   log = {
     enable = false,
     truncate = false,
@@ -207,6 +228,7 @@ require'nvim-tree'.setup { -- BEGIN_DEFAULT_OPTS
       all = false,
       config = false,
       copy_paste = false,
+      diagnostics = false,
       git = false,
       profile = false,
     },
@@ -214,7 +236,7 @@ require'nvim-tree'.setup { -- BEGIN_DEFAULT_OPTS
 } -- END_DEFAULT_OPTS
 ```
 
-## KeyBindings
+## Key Bindings
 
 ### Default actions
 
@@ -252,6 +274,7 @@ require'nvim-tree'.setup { -- BEGIN_DEFAULT_OPTS
 - `S` will prompt the user to enter a path and then expands the tree to match the path
 - `.` will enter vim command mode with the file the cursor is on
 - `C-k` will toggle a popup with file infos about the file under the cursor
+- `f` will allow you to filter nodes dynamically based on regex matching.
 
 ### Settings
 
@@ -313,6 +336,8 @@ local list = {
   { key = "]c",                           action = "next_git_item" },
   { key = "-",                            action = "dir_up" },
   { key = "s",                            action = "system_open" },
+  { key = "f",                            action = "live_filter" },
+  { key = "F",                            action = "clear_live_filter" },
   { key = "q",                            action = "close" },
   { key = "g?",                           action = "toggle_help" },
   { key = "W",                            action = "collapse_all" },
@@ -338,9 +363,7 @@ autocmd BufEnter * ++nested if winnr('$') == 1 && bufname() == 'NvimTree_' . tab
 
 ## Diagnostic Logging
 
-You may enable diagnostic logging and a file `nvim-tree.log` will be created in `$XDG_CACHE_HOME/nvim`, usually `~/.cache/nvim`, containing logs from that nvim session. See `:help nvim-tree.log`.
-
-The files may become large and numerous, so it is advised to turn on logging to diagnose an issue or while reporting a bug, then turn it off.
+You may enable diagnostic logging to `$XDG_CACHE_HOME/nvim/nvim-tree.log`. See `:help nvim-tree.log`.
 
 ## Performance Issues
 
@@ -361,7 +384,7 @@ Please attach `$XDG_CACHE_HOME/nvim/nvim-tree.log` if you raise an issue.
 
 *Performance Tips:*
 
-* If you are using fish as an editor shell (which might be fixed in the future), try set `shell=/bin/bash` in your vim config.
+* If you are using fish as an editor shell (which might be fixed in the future), try set `shell=/bin/bash` in your vim config. Alternatively, you can [prevent fish from loading interactive configuration in a non-interactive shell](https://github.com/kyazdani42/nvim-tree.lua/issues/549#issuecomment-1127394585).
 
 * Try manually running the git command (see the logs) in your shell e.g. `git --no-optional-locks status --porcelain=v1 --ignored=matching -u`.
 

@@ -14,6 +14,7 @@ M.default_config = {
   init_options = vim.empty_dict(),
   handlers = {},
   autostart = true,
+  capabilities = lsp.protocol.make_client_capabilities(),
 }
 
 -- global on_setup hook
@@ -206,6 +207,8 @@ M.path = (function()
     return dir == root
   end
 
+  local path_separator = is_windows and ';' or ':'
+
   return {
     is_dir = is_dir,
     is_file = is_file,
@@ -217,6 +220,7 @@ M.path = (function()
     traverse_parents = traverse_parents,
     iterate_parents = iterate_parents,
     is_descendant = is_descendant,
+    path_separator = path_separator,
   }
 end)()
 

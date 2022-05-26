@@ -1,4 +1,5 @@
 ---@tag telescope.actions.set
+---@config { ["module"] = "telescope.actions.set" }
 
 ---@brief [[
 --- Telescope action sets are used to provide an interface for managing
@@ -130,10 +131,22 @@ action_set.edit = function(prompt_bufnr, command)
   local entry_bufnr = entry.bufnr
 
   local picker = action_state.get_current_picker(prompt_bufnr)
-  require("telescope.actions").close(prompt_bufnr)
+  require("telescope.pickers").on_close_prompt(prompt_bufnr)
+  pcall(vim.api.nvim_set_current_win, picker.original_win_id)
+  local win_id = picker.get_selection_window(picker, entry)
 
   if picker.push_cursor_on_edit then
     vim.cmd "normal! m'"
+  end
+
+  if picker.push_tagstack_on_edit then
+    local from = { vim.fn.bufnr "%", vim.fn.line ".", vim.fn.col ".", 0 }
+    local items = { { tagname = vim.fn.expand "<cword>", from = from } }
+    vim.fn.settagstack(vim.fn.win_getid(), { items = items }, "t")
+  end
+
+  if win_id ~= 0 and a.nvim_get_current_win() ~= win_id then
+    vim.api.nvim_set_current_win(win_id)
   end
 
   if entry_bufnr then

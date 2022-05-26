@@ -224,6 +224,7 @@
 ] @keyword.return
 (yield "from" @keyword.return)
 
+(future_import_statement "from" @include "__future__" @constant.builtin)
 (import_from_statement "from" @include)
 "import" @include
 
@@ -239,6 +240,8 @@
   "raise"
   "finally"
 ] @exception
+
+(raise_statement "from" @exception)
 
 (try_statement
   (else_clause

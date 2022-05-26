@@ -57,8 +57,18 @@ local function indent(text, indentstring)
 	return text
 end
 
--- in-place expand tabs in leading whitespace.
-local function expand_tabs(text, tabwidth)
+--- In-place expands tabs in `text`.
+--- Difficulties:
+--- we cannot simply replace tabs with a given number of spaces, the tabs align
+--- text at multiples of `tabwidth`. This is also the reason we need the number
+--- of columns the text is already indented by (otherwise we can only start a 0).
+---@param text string[], multiline string.
+---@param tabwidth number, displaycolumns one tab should shift following text
+--- by.
+---@param parent_indent_displaycolumns number, displaycolumn this text is
+--- already at.
+---@return string[], `text` (only for simple nesting).
+local function expand_tabs(text, tabwidth, parent_indent_displaycolumns)
 	for i, line in ipairs(text) do
 		local new_line = ""
 		local start_indx = 1
@@ -69,7 +79,14 @@ local function expand_tabs(text, tabwidth)
 			if tab_indx then
 				-- #new_line is index of this tab in new_line.
 				new_line = new_line
-					.. string.rep(" ", tabwidth - #new_line % tabwidth)
+					.. string.rep(
+						" ",
+						tabwidth
+							- (
+								(parent_indent_displaycolumns + #new_line)
+								% tabwidth
+							)
+					)
 			else
 				-- reached end of string.
 				break
@@ -125,7 +142,8 @@ local function cursor_set_keys(pos, before)
 			pos[1] = pos[1] - 1
 			-- pos2 is set to last columnt of previous line.
 			-- # counts bytes, but win_set_cursor expects bytes, so all's good.
-			pos[2] = #vim.api.nvim_buf_get_lines(
+			pos[2] =
+				#vim.api.nvim_buf_get_lines(
 					0,
 					pos[1],
 					pos[1] + 1,
@@ -163,7 +181,7 @@ local function any_select(b, e)
 			cursor_set_keys(e) or
 			-- set before
 			cursor_set_keys(e, true))
-		.. "o<C-G>" )
+		.. "o<C-G><C-r>_" )
 end
 
 local function normal_move_on_insert(new_cur_pos)
@@ -435,19 +453,23 @@ local function find_outer_snippet(node)
 	return node
 end
 
--- filetype: string formatted like `'filetype'`.
+local function redirect_filetypes(fts)
+	local snippet_fts = {}
+
+	for _, ft in ipairs(fts) do
+		vim.list_extend(snippet_fts, session.ft_redirect[ft])
+	end
+
+	return snippet_fts
+end
+
 local function get_snippet_filetypes()
 	local config = require("luasnip.session").config
 	local fts = config.ft_func()
 	-- add all last.
 	table.insert(fts, "all")
 
-	local snippet_fts = {}
-	for _, ft in ipairs(fts) do
-		vim.list_extend(snippet_fts, session.ft_redirect[ft])
-	end
-
-	return snippet_fts
+	return redirect_filetypes(fts)
 end
 
 local function deduplicate(list)
@@ -551,6 +573,7 @@ return {
 	string_wrap = string_wrap,
 	to_line_table = to_line_table,
 	find_outer_snippet = find_outer_snippet,
+	redirect_filetypes = redirect_filetypes,
 	get_snippet_filetypes = get_snippet_filetypes,
 	json_encode = json_encode,
 	json_decode = json_decode,

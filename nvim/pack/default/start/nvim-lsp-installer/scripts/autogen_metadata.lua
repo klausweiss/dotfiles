@@ -1,16 +1,9 @@
-local uv = vim.loop
 local a = require "nvim-lsp-installer.core.async"
-local Path = require "nvim-lsp-installer.path"
+local Path = require "nvim-lsp-installer.core.path"
 local fetch = require "nvim-lsp-installer.core.fetch"
-local Data = require "nvim-lsp-installer.data"
-
-local async_fetch = a.promisify(fetch, true)
-
-local coalesce = Data.coalesce
-
-package.loaded["nvim-lsp-installer.servers"] = nil
-package.loaded["nvim-lsp-installer.fs"] = nil
+local _ = require "nvim-lsp-installer.core.functional"
 local servers = require "nvim-lsp-installer.servers"
+local fs = require "nvim-lsp-installer.core.fs"
 
 local generated_dir = Path.concat { vim.fn.getcwd(), "lua", "nvim-lsp-installer", "_generated" }
 local schemas_dir = Path.concat { generated_dir, "schemas" }
@@ -31,28 +24,20 @@ for _, file in ipairs(vim.fn.glob(Path.concat { schemas_dir, "*" }, 1, 1)) do
     vim.fn.delete(file)
 end
 
+---@async
 ---@param path string
----@param txt string
----@param flag string|number
-local function write_file(path, txt, flag)
-    uv.fs_open(path, flag, 438, function(open_err, fd)
-        assert(not open_err, open_err)
-        uv.fs_write(
-            fd,
-            table.concat({
-                "-- THIS FILE IS GENERATED. DO NOT EDIT MANUALLY.",
-                "-- stylua: ignore start",
-                txt,
-            }, "\n"),
-            -1,
-            function(write_err)
-                assert(not write_err, write_err)
-                uv.fs_close(fd, function(close_err)
-                    assert(not close_err, close_err)
-                end)
-            end
-        )
-    end)
+---@param contents string
+---@param flags string
+local function write_file(path, contents, flags)
+    fs.async.write_file(
+        path,
+        table.concat({
+            "-- THIS FILE IS GENERATED. DO NOT EDIT MANUALLY.",
+            "-- stylua: ignore start",
+            contents,
+        }, "\n"),
+        flags
+    )
 end
 
 local function get_lspconfig(name)
@@ -61,13 +46,9 @@ end
 
 ---@param server Server
 local function get_supported_filetypes(server)
-    if server.name == "awk_ls" then
-        -- awk_ls only supports 0.7 and returns nothing on lower versions
-        return { "awk" }
-    end
     local config = get_lspconfig(server.name)
     local default_options = server:get_default_options()
-    local filetypes = coalesce(
+    local filetypes = _.coalesce(
         -- nvim-lsp-installer options has precedence
         default_options and default_options.filetypes,
         config.default_config.filetypes,
@@ -112,9 +93,7 @@ local function create_autocomplete_map()
 
     local autocomplete_candidates = {}
     for language, language_servers in pairs(language_map) do
-        local non_deprecated_servers = vim.tbl_filter(function(server)
-            return server.deprecated == nil
-        end, language_servers)
+        local non_deprecated_servers = _.filter(_.prop_eq("deprecated", nil), language_servers)
         local is_candidate = #non_deprecated_servers > 0
 
         if #non_deprecated_servers == 1 then
@@ -123,9 +102,7 @@ local function create_autocomplete_map()
         end
 
         if is_candidate then
-            autocomplete_candidates[language] = vim.tbl_map(function(server)
-                return server.name
-            end, non_deprecated_servers)
+            autocomplete_candidates[language] = _.map(_.prop "name", non_deprecated_servers)
             table.sort(autocomplete_candidates[language])
         end
     end
@@ -157,15 +134,16 @@ end
 ---@async
 local function create_setting_schema_files()
     local available_servers = servers.get_available_servers()
-    local gist_data =
-        async_fetch "https://gist.githubusercontent.com/williamboman/a01c3ce1884d4b57cc93422e7eae7702/raw/lsp-packages.json"
+    local gist_data = fetch(
+        "https://gist.githubusercontent.com/williamboman/a01c3ce1884d4b57cc93422e7eae7702/raw/lsp-packages.json"
+    ):get_or_throw()
     local package_json_mappings = vim.json.decode(gist_data)
 
     for _, server in pairs(available_servers) do
         local package_json_url = package_json_mappings[server.name]
         if package_json_url then
             print(("Fetching %q..."):format(package_json_url))
-            local response = async_fetch(package_json_url)
+            local response = fetch(package_json_url):get_or_throw()
             local schema = vim.json.decode(response)
             if schema.contributes and schema.contributes.configuration then
                 schema = schema.contributes.configuration

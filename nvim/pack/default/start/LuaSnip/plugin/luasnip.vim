@@ -42,3 +42,13 @@ function! luasnip#choice_active()
 endfunction
 
 lua require('luasnip.config')._setup()
+
+" register these during startup so lazy_load will also load filetypes whose
+" events fired only before lazy_load is actually called.
+" (BufWinEnter -> lazy_load() wouldn't load any files without these).
+augroup _luasnip_lazy_load
+	au!
+	au BufWinEnter,FileType * lua require('luasnip.loaders.from_lua')._load_lazy_loaded(tonumber(vim.fn.expand("<abuf>")))
+	au BufWinEnter,FileType * lua require("luasnip.loaders.from_snipmate")._load_lazy_loaded(tonumber(vim.fn.expand("<abuf>")))
+	au BufWinEnter,FileType * lua require('luasnip.loaders.from_vscode')._load_lazy_loaded(tonumber(vim.fn.expand("<abuf>")))
+augroup END

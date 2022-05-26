@@ -69,7 +69,7 @@ local record M
 
     command            : function(Repo, {string}, GJobSpec): {string}, string
     files_changed      : function(Repo): {string}
-    get_show_text      : function(Repo, string): {string}, string
+    get_show_text      : function(Repo, string, string): {string}, string
     update_abbrev_head : function(Repo)
     new                : function(string): Repo
   end
@@ -94,6 +94,7 @@ local record M
     has_conflicts : boolean
     i_crlf        : boolean  -- Object has crlf
     w_crlf        : boolean  -- Working copy has crlf
+    encoding      : string
 
     command              : function(Obj, {string}, GJobSpec): {string}, string
     update_file_info     : function(Obj, boolean): boolean
@@ -105,7 +106,7 @@ local record M
     stage_hunks          : function(Obj, {Hunk}, boolean)
     stage_lines          : function(Obj, {string})
     has_moved            : function(Obj): string
-    new                  : function(string): Obj
+    new                  : function(string, string): Obj
   end
 
 end
@@ -157,7 +158,8 @@ local type JobSpec = subprocess.JobSpec
 M.command = wrap(function(args: {string}, spec: GJobSpec, callback: function({string}, string))
   spec = spec or {}
   spec.command = spec.command or 'git'
-  spec.args = spec.command == 'git' and {'--no-pager', unpack(args) } or args
+  spec.args = spec.command == 'git' and
+    { '--no-pager', '--literal-pathspecs', unpack(args) } or args
   subprocess.run_job(spec as JobSpec, function(_: integer, _: integer, stdout: string, stderr: string)
     if not spec.supress_stderr then
       if stderr then
@@ -284,8 +286,20 @@ Repo.files_changed = function(self: Repo): {string}
 end
 
 --- Get version of file in the index, return array lines
-Repo.get_show_text = function(self: Repo, object: string): {string}, string
-  return self:command({'show', object}, {supress_stderr = true})
+Repo.get_show_text = function(self: Repo, object: string, encoding: string): {string}, string
+  local stdout, stderr = self:command({'show', object}, {supress_stderr = true})
+
+  if encoding ~= 'utf-8' then
+    scheduler()
+    for i, l in ipairs(stdout) do
+      -- TODO(lewis6991): How should we handle blob types?
+      if vim.fn.type(l) == vim.v.t_string then
+        stdout[i] = vim.fn.iconv(l, encoding, 'utf-8')
+      end
+    end
+  end
+
+  return stdout, stderr
 end
 
 Repo.update_abbrev_head = function(self: Repo)
@@ -382,7 +396,7 @@ Obj.get_show_text = function(self: Obj, revision: string): {string}, string
     return {}
   end
 
-  local stdout, stderr =  self.repo:get_show_text(revision..':'..self.relpath)
+  local stdout, stderr =  self.repo:get_show_text(revision..':'..self.relpath, self.encoding)
 
   if not self.i_crlf and self.w_crlf then
     -- Add cr
@@ -410,16 +424,25 @@ Obj.run_blame = function(self: Obj, lines: {string}, lnum: number, ignore_whites
       ['committer-mail'] = '<not.committed.yet>',
     }
   end
-  local results = self:command({
-      'blame',
-      '--contents', '-',
-      '-L', lnum..',+1',
-      '--line-porcelain',
-      self.file,
-      ignore_whitespace and '-w' or nil,
-    }, {
-    writer = lines,
-  })
+
+  local args = {
+    'blame',
+    '--contents', '-',
+    '-L', lnum..',+1',
+    '--line-porcelain',
+    self.file
+  }
+
+  if ignore_whitespace then
+    args[#args+1] = '-w'
+  end
+
+  local ignore_file = self.repo.toplevel ..'/.git-blame-ignore-revs'
+  if uv.fs_stat(ignore_file) then
+    vim.list_extend(args, {'--ignore-revs-file', ignore_file})
+  end
+
+  local results = self:command(args, { writer = lines })
   if #results == 0 then
     return
   end
@@ -498,7 +521,7 @@ Obj.has_moved = function(self: Obj): string
   end
 end
 
-Obj.new = function(file: string): Obj
+Obj.new = function(file: string, encoding: string): Obj
   if in_git_dir(file) then
       dprint('In git dir')
       return nil
@@ -506,6 +529,7 @@ Obj.new = function(file: string): Obj
   local self = setmetatable({} as Obj, {__index = Obj})
 
   self.file = file
+  self.encoding = encoding
   self.repo = Repo.new(util.dirname(file))
 
   if not self.repo.gitdir then
