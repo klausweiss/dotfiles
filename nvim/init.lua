@@ -2,18 +2,18 @@ local cmd = vim.cmd
 
 -- stdlib
 function table_merge(t1, t2)
-    for k,v in pairs(t2) do
-        if type(v) == "table" then
-            if type(t1[k] or false) == "table" then
-                table_merge(t1[k] or {}, t2[k] or {})
-            else
-                t1[k] = v
-            end
-        else
-            t1[k] = v
-        end
+  for k, v in pairs(t2) do
+    if type(v) == "table" then
+      if type(t1[k] or false) == "table" then
+        table_merge(t1[k] or {}, t2[k] or {})
+      else
+        t1[k] = v
+      end
+    else
+      t1[k] = v
     end
-    return t1
+  end
+  return t1
 end
 
 local is_gnvim = (vim.g.gnvim == 1)
@@ -34,12 +34,12 @@ cmd 'set mouse=a'
 cmd 'set hidden'
 
 -- lualine
-require('lualine').setup{
-  options = {theme = 'gruvbox'}
+require('lualine').setup {
+  options = { theme = 'gruvbox' }
 }
 
 -- telescope
-require('telescope').setup{
+require('telescope').setup {
   pickers = {
     lsp_code_actions = {
       theme = "cursor",
@@ -53,7 +53,7 @@ vim.g.mapleader = ' '
 -- snippets
 local luasnip = require('luasnip')
 local t = function(str)
-    return vim.api.nvim_replace_termcodes(str, true, true, true)
+  return vim.api.nvim_replace_termcodes(str, true, true, true)
 end
 
 -- completion
@@ -64,7 +64,7 @@ local has_words_before = function()
   return col ~= 0 and vim.api.nvim_buf_get_lines(0, line - 1, line, true)[1]:sub(col, col):match("%s") == nil
 end
 
-local cmp = require'cmp'
+local cmp = require 'cmp'
 cmp.setup({
   snippet = {
     -- REQUIRED - you must specify a snippet engine
@@ -116,7 +116,7 @@ cmp.setup({
     { name = 'buffer' },
   }),
   experimental = {
-    native_menu = is_gnvim,  -- only use native_menu in gnvim
+    native_menu = is_gnvim, -- only use native_menu in gnvim
   },
 })
 
@@ -138,7 +138,7 @@ cmp.setup.cmdline(':', {
 
 -- cmp + autoopairs
 local cmp_autopairs = require('nvim-autopairs.completion.cmp')
-cmp.event:on( 'confirm_done', cmp_autopairs.on_confirm_done({  map_char = { tex = '' } }))
+cmp.event:on('confirm_done', cmp_autopairs.on_confirm_done({ map_char = { tex = '' } }))
 
 -- Setup lspconfig.
 local cmp_lsp_capabilities = require('cmp_nvim_lsp').update_capabilities(vim.lsp.protocol.make_client_capabilities())
@@ -146,13 +146,13 @@ local cmp_lsp_capabilities = require('cmp_nvim_lsp').update_capabilities(vim.lsp
 cmd 'highlight link CompeDocumentation NormalFloat'
 
 -- autopairs
-require('nvim-autopairs').setup{}
+require('nvim-autopairs').setup {}
 
 -- commenting
 require('Comment').setup()
 
 -- hop
-require'hop'.setup()
+require 'hop'.setup()
 
 -- undotree
 vim.g.undotree_SetFocusWhenToggle = 1
@@ -160,14 +160,14 @@ vim.g.undotree_SetFocusWhenToggle = 1
 -- nvim tree
 -- vim.g.nvim_tree_update_cwd = 1 -- TODO: upstream issue: https://github.com/kyazdani42/nvim-tree.lua/issues/441
 vim.g.nvim_tree_show_icons = {
-  git= 1,
-  files= 1,
-  folders= 1,
-  folder_arrows= 1
+  git = 1,
+  files = 1,
+  folders = 1,
+  folder_arrows = 1
 }
 -- automatically close nvim when nvim-tree is the last open window
 cmd "autocmd BufEnter * ++nested if winnr('$') == 1 && bufname() == 'NvimTree_' . tabpagenr() | quit | endif"
-require'nvim-tree'.setup {
+require 'nvim-tree'.setup {
   update_focused_file = {
     enable      = true,
     -- update the root directory of the tree to the one of the folder containing the file if the file is not under the current root directory
@@ -194,7 +194,7 @@ require'nvim-tree'.setup {
 local auto_session_config = {
   log_level = 'info',
   auto_session_enable_last_session = false,
-  auto_session_root_dir = vim.fn.stdpath('data').."/sessions/",
+  auto_session_root_dir = vim.fn.stdpath('data') .. "/sessions/",
   auto_session_enabled = true,
   auto_save_enabled = true,
   auto_restore_enabled = true,
@@ -210,13 +210,13 @@ local neogit = require('neogit')
 neogit.setup {}
 
 -- gitsigns
-require('gitsigns').setup{
+require('gitsigns').setup {
   keymaps = {
     noremap = true,
     buffer = true,
 
-    ['n ]c'] = { expr = true, "&diff ? ']c' : '<cmd>lua require\"gitsigns.actions\".next_hunk()<CR>'"},
-    ['n [c'] = { expr = true, "&diff ? '[c' : '<cmd>lua require\"gitsigns.actions\".prev_hunk()<CR>'"},
+    ['n ]c'] = { expr = true, "&diff ? ']c' : '<cmd>lua require\"gitsigns.actions\".next_hunk()<CR>'" },
+    ['n [c'] = { expr = true, "&diff ? '[c' : '<cmd>lua require\"gitsigns.actions\".prev_hunk()<CR>'" },
 
     ['n <leader>gs'] = '<cmd>lua require"gitsigns".stage_hunk()<CR>',
     ['v <leader>gs'] = '<cmd>lua require"gitsigns".stage_hunk({vim.fn.line("."), vim.fn.line("v")})<CR>',
@@ -244,13 +244,14 @@ local nvim_lsp = require('lspconfig')
 -- after the language server attaches to the current buffer
 local on_attach = function(client, bufnr)
   local function buf_set_keymap(...) vim.api.nvim_buf_set_keymap(bufnr, ...) end
+
   local function buf_set_option(...) vim.api.nvim_buf_set_option(bufnr, ...) end
 
   --Enable completion triggered by <c-x><c-o>
   buf_set_option('omnifunc', 'v:lua.vim.lsp.omnifunc')
 
   -- Mappings.
-  local opts = { noremap=true, silent=true }
+  local opts = { noremap = true, silent = true }
 
   -- See `:help vim.lsp.*` for documentation on any of the below functions
   buf_set_keymap('n', 'gD', '<Cmd>lua vim.lsp.buf.declaration()<CR>', opts)
@@ -278,24 +279,24 @@ local on_attach = function(client, bufnr)
   -- lsp signature
   cfg = {
     bind = true, -- This is mandatory, otherwise border config won't get registered.
-                 -- If you want to hook lspsaga or other signature handler, pls set to false
+    -- If you want to hook lspsaga or other signature handler, pls set to false
     doc_lines = 2, -- will show two lines of comment/doc(if there are more than two lines in doc, will be truncated);
-                   -- set to 0 if you DO NOT want any API comments be shown
-                   -- This setting only take effect in insert mode, it does not affect signature help in normal
-                   -- mode, 10 by default
+    -- set to 0 if you DO NOT want any API comments be shown
+    -- This setting only take effect in insert mode, it does not affect signature help in normal
+    -- mode, 10 by default
 
     floating_window = true, -- show hint in a floating window, set to false for virtual text only mode
-    fix_pos = false,  -- set to true, the floating window will not auto-close until finish all parameters
+    fix_pos = false, -- set to true, the floating window will not auto-close until finish all parameters
     hint_enable = false, -- virtual hint enable
-    hint_prefix = "🐼 ",  -- Panda for parameter
+    hint_prefix = "🐼 ", -- Panda for parameter
     hint_scheme = "String",
-    use_lspsaga = false,  -- set to true if you want to use lspsaga popup
+    use_lspsaga = false, -- set to true if you want to use lspsaga popup
     hi_parameter = "Search", -- how your parameter will be highlight
     max_height = 12, -- max height of signature floating_window, if content is more than max_height, you can scroll down
-                     -- to view the hiding contents
+    -- to view the hiding contents
     max_width = 120, -- max_width of signature floating_window, line will be wrapped if exceed max_width
     handler_opts = {
-      border = "single"   -- double, single, shadow, none
+      border = "single" -- double, single, shadow, none
     },
     extra_trigger_chars = {} -- Array of extra characters that will trigger signature completion, e.g., {"(", ","}
   }
@@ -306,25 +307,25 @@ end
 local lsp_installer = require("nvim-lsp-installer")
 
 local default_lsp_options = {
-		on_attach = on_attach,
-		flags = {
-			debounce_text_changes = 150,
-		},
-    capabilities = {
-      textDocument = {
-        completion = {
-          completionItem = {
-            snippetSupport = true,
-          },
+  on_attach = on_attach,
+  flags = {
+    debounce_text_changes = 150,
+  },
+  capabilities = {
+    textDocument = {
+      completion = {
+        completionItem = {
+          snippetSupport = true,
         },
       },
     },
-	}
+  },
+}
 
 function setup_lsp(server, options)
-	local options = table_merge(options, default_lsp_options)
+  local options = table_merge(options, default_lsp_options)
   options.capabilities = table_merge(options.capabilities, cmp_lsp_capabilities)
-	require'lspconfig'[server].setup(options)
+  require 'lspconfig'[server].setup(options)
 end
 
 local lsp_installer = require("nvim-lsp-installer")
@@ -332,11 +333,11 @@ local lsp_installer = require("nvim-lsp-installer")
 -- Register a handler that will be called for all installed servers.
 -- Alternatively, you may also register handlers on specific server instances instead (see example below).
 lsp_installer.on_server_ready(function(server)
-    server:setup(default_lsp_options)
+  server:setup(default_lsp_options)
 end)
 
 -- lsp event handlers
-local telescope_builtin = require'telescope.builtin'
+local telescope_builtin = require 'telescope.builtin'
 vim.lsp.handlers['textDocument/references'] = telescope_builtin.lsp_references
 vim.lsp.handlers['textDocument/definition'] = telescope_builtin.lsp_definitions
 vim.lsp.handlers['textDocument/implementation'] = telescope_builtin.lsp_implementations
@@ -362,31 +363,36 @@ setup_lsp('hls', {
 setup_lsp('purescriptls', {})
 
 -- keymap
-local remap = {noremap = false, silent = true}
-local noremap = {noremap = true, silent = true}
+local remap = { noremap = false, silent = true }
+local noremap = { noremap = true, silent = true }
 local function ikeycmd(k, cmd)
   vim.api.nvim_set_keymap('i', k, '<cmd>' .. cmd .. '<CR>', noremap)
 end
+
 local function nkeycmd(k, cmd)
   vim.api.nvim_set_keymap('n', k, '<cmd>' .. cmd .. '<CR>', noremap)
 end
+
 local function keycmd(k, cmd)
   ikeycmd(k, cmd)
   vim.api.nvim_set_keymap('', k, '<cmd>' .. cmd .. '<CR>', noremap)
 end
+
 local function leader_shortcut(k, cmd)
   vim.api.nvim_set_keymap('', '<leader>' .. k, '<cmd>' .. cmd .. '<CR>', noremap)
 end
+
 local function mk_prefix(p)
-  return function (k, ...) return leader_shortcut(p .. k, ...) end
+  return function(k, ...) return leader_shortcut(p .. k, ...) end
 end
+
 local command_key = mk_prefix('c')
-local file_key =  mk_prefix('f')
-local git_key =  mk_prefix('g')
-local lsp_key =  mk_prefix('l')
-local project_key =  mk_prefix('p')
-local tab_key =  mk_prefix('b')
-local window_key =  mk_prefix('w')
+local file_key = mk_prefix('f')
+local git_key = mk_prefix('g')
+local lsp_key = mk_prefix('l')
+local project_key = mk_prefix('p')
+local tab_key = mk_prefix('b')
+local window_key = mk_prefix('w')
 
 keycmd('<F1>', 'NvimTreeToggle')
 keycmd('<F4>', 'TroubleToggle')
@@ -394,14 +400,14 @@ nkeycmd('U', 'UndotreeToggle')
 
 command_key('a', 'Telescope commands')
 
-local telescope_find_file =  'Telescope find_files disable_devicons=false'
+local telescope_find_file = 'Telescope find_files disable_devicons=false'
 local window_select_top = 'wincmd k'
 local window_select_right = 'wincmd l'
 local window_select_down = 'wincmd j'
 local window_select_left = 'wincmd h'
 file_key('o', telescope_find_file)
-file_key('h', ' split <bar> '  .. window_select_down  .. ' <bar> ' .. telescope_find_file)
-file_key('v', 'vsplit <bar> '  .. window_select_right .. ' <bar> ' .. telescope_find_file)
+file_key('h', ' split <bar> ' .. window_select_down .. ' <bar> ' .. telescope_find_file)
+file_key('v', 'vsplit <bar> ' .. window_select_right .. ' <bar> ' .. telescope_find_file)
 file_key('s', 'write')
 
 -- see gitsigns for more shortcuts
