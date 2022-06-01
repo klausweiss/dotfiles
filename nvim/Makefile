@@ -171,6 +171,11 @@ update-telescope: \
 
 	$(call download-from-repo, https://github.com/nvim-telescope/telescope.nvim)
 
+update-telescope-ui-select: \
+	update-telescope \
+
+	$(call download-from-repo, https://github.com/nvim-telescope/telescope-ui-select.nvim)
+
 update-undotree:
 	$(call download-from-repo, https://github.com/mbbill/undotree)
 
