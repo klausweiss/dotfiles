@@ -94,4 +94,32 @@ describe("functional: list", function()
     it("should concat strings", function()
         assert.equals("FooBar", _.concat("Foo", "Bar"))
     end)
+
+    it("should zip list into table", function()
+        local fnkey = function() end
+        assert.same({
+            a = "a",
+            [fnkey] = 1,
+        }, _.zip_table({ "a", fnkey }, { "a", 1 }))
+    end)
+
+    it("should get nth item", function()
+        assert.equals("first", _.nth(1, { "first", "middle", "last" }))
+        assert.equals("last", _.nth(-1, { "first", "middle", "last" }))
+        assert.equals("middle", _.nth(-2, { "first", "middle", "last" }))
+        assert.equals("a", _.nth(1, "abc"))
+        assert.equals("c", _.nth(-1, "abc"))
+        assert.equals("b", _.nth(-2, "abc"))
+        assert.is_nil(_.nth(0, { "value" }))
+        assert.equals("", _.nth(0, "abc"))
+    end)
+
+    it("should get length", function()
+        assert.equals(0, _.length {})
+        assert.equals(0, _.length { nil })
+        assert.equals(0, _.length { obj = "doesnt count" })
+        assert.equals(0, _.length "")
+        assert.equals(1, _.length { "" })
+        assert.equals(4, _.length "fire")
+    end)
 end)

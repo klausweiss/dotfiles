@@ -7,6 +7,9 @@ return {
   ansiblels = {
     filetypes = { "yaml.ansible" }
   },
+  apex_ls = {
+    filetypes = { "apexcode" }
+  },
   arduino_language_server = {
     filetypes = { "arduino" }
   },
@@ -35,7 +38,7 @@ return {
     filetypes = { "c", "cpp", "objc", "objcpp" }
   },
   clangd = {
-    filetypes = { "c", "cpp", "objc", "objcpp" }
+    filetypes = { "c", "cpp", "objc", "objcpp", "cuda" }
   },
   clarity_lsp = {
     filetypes = { "clar", "clarity" }
@@ -175,6 +178,9 @@ return {
   ltex = {
     filetypes = { "bib", "gitcommit", "markdown", "org", "plaintex", "rst", "rnoweb", "tex" }
   },
+  marksman = {
+    filetypes = { "markdown" }
+  },
   mm0_ls = {
     filetypes = { "metamath-zero" }
   },
@@ -301,6 +307,9 @@ return {
   svelte = {
     filetypes = { "svelte" }
   },
+  svlangserver = {
+    filetypes = { "verilog", "systemverilog" }
+  },
   svls = {
     filetypes = { "verilog", "systemverilog" }
   },
@@ -309,6 +318,9 @@ return {
   },
   taplo = {
     filetypes = { "toml" }
+  },
+  teal_ls = {
+    filetypes = { "teal" }
   },
   terraformls = {
     filetypes = { "terraform" }
@@ -334,6 +346,9 @@ return {
   vimls = {
     filetypes = { "vim" }
   },
+  visualforce_ls = {
+    filetypes = { "visualforce" }
+  },
   vls = {
     filetypes = { "vlang" }
   },
@@ -342,6 +357,9 @@ return {
   },
   vuels = {
     filetypes = { "vue" }
+  },
+  wgsl_analyzer = {
+    filetypes = { "wgsl" }
   },
   yamlls = {
     filetypes = { "yaml", "yaml.docker-compose" }

@@ -166,13 +166,6 @@ require 'hop'.setup()
 vim.g.undotree_SetFocusWhenToggle = 1
 
 -- nvim tree
--- vim.g.nvim_tree_update_cwd = 1 -- TODO: upstream issue: https://github.com/kyazdani42/nvim-tree.lua/issues/441
-vim.g.nvim_tree_show_icons = {
-  git = 1,
-  files = 1,
-  folders = 1,
-  folder_arrows = 1
-}
 -- automatically close nvim when nvim-tree is the last open window
 cmd "autocmd BufEnter * ++nested if winnr('$') == 1 && bufname() == 'NvimTree_' . tabpagenr() | quit | endif"
 require 'nvim-tree'.setup {
@@ -195,7 +188,17 @@ require 'nvim-tree'.setup {
         }
       }
     }
-  }
+  },
+  renderer = {
+    icons = {
+      show = {
+        file = true,
+        folder = true,
+        folder_arrow = true,
+      },
+    },
+    highlight_git = true,
+  },
 }
 
 -- session

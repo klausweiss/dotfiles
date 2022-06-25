@@ -81,10 +81,27 @@
 ] @conceal
 (#set! conceal ""))
 
-(inline_link 
-  ["]"] @conceal
-  (#set! conceal " "))
 
-(inline_link 
-  "["  @conceal
+; Conceal inline links
+(inline_link
+  [
+    "["
+    "]"
+    "("
+   (link_destination)
+    ")"
+] @conceal
+(#set! conceal ""))
+
+
+; Conceal image links
+(image
+  [
+    "!"
+    "["
+    "]"
+    "("
+   (link_destination)
+    ")"
+] @conceal
   (#set! conceal ""))

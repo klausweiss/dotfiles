@@ -5,6 +5,7 @@ local view = require "nvim-tree.view"
 
 local _padding = require "nvim-tree.renderer.components.padding"
 local icon_component = require "nvim-tree.renderer.components.icons"
+local full_name = require "nvim-tree.renderer.components.full-name"
 local help = require "nvim-tree.renderer.help"
 local git = require "nvim-tree.renderer.components.git"
 local Builder = require "nvim-tree.renderer.builder"
@@ -39,9 +40,7 @@ function M.render_hl(bufnr, hl)
 end
 
 local function should_show_arrows()
-  return not M.config.indent_markers.enable
-    and icon_component.configs.show_folder_icon
-    and icon_component.configs.show_folder_arrows
+  return not M.config.indent_markers.enable and M.config.icons.show.folder and M.config.icons.show.folder_arrow
 end
 
 local picture_map = {
@@ -50,16 +49,6 @@ local picture_map = {
   png = true,
   gif = true,
 }
-
-local function get_special_files_map()
-  return vim.g.nvim_tree_special_files
-    or {
-      ["Cargo.toml"] = true,
-      Makefile = true,
-      ["README.md"] = true,
-      ["readme.md"] = true,
-    }
-end
 
 function M.draw()
   local bufnr = view.get_bufnr()
@@ -71,8 +60,7 @@ function M.draw()
 
   local cursor = api.nvim_win_get_cursor(view.get_winnr())
   _padding.reload_padding_function()
-  icon_component.reset_config(M.config.icons.webdev_colors)
-  git.reload()
+  icon_component.reset_config()
 
   local lines, hl
   local signs = {}
@@ -81,12 +69,12 @@ function M.draw()
   else
     lines, hl, signs = Builder.new(core.get_cwd())
       :configure_initial_depth(should_show_arrows())
-      :configure_root_modifier(vim.g.nvim_tree_root_folder_modifier)
-      :configure_trailing_slash(vim.g.nvim_tree_add_trailing == 1)
-      :configure_special_map(get_special_files_map())
+      :configure_root_modifier(M.config.root_folder_modifier)
+      :configure_trailing_slash(M.config.add_trailing)
+      :configure_special_files(M.config.special_files)
       :configure_picture_map(picture_map)
-      :configure_opened_file_highlighting(vim.g.nvim_tree_highlight_opened_files)
-      :configure_git_icons_padding(vim.g.nvim_tree_icon_padding)
+      :configure_opened_file_highlighting(M.config.highlight_opened_files)
+      :configure_git_icons_padding(M.config.icons.padding)
       :configure_git_icons_placement(M.config.icons.git_placement)
       :configure_filter(live_filter.filter, live_filter.prefix)
       :build_header(view.is_root_folder_visible(core.get_cwd()))
@@ -108,17 +96,18 @@ function M.draw()
     diagnostics.update()
   end
 
+  view.grow_from_content()
+
   log.profile_end(ps, "draw")
 end
 
 function M.setup(opts)
-  M.config = {
-    indent_markers = opts.renderer.indent_markers,
-    icons = opts.renderer.icons,
-  }
+  M.config = opts.renderer
 
   _padding.setup(opts)
-  git.setup_signs()
+  full_name.setup(opts)
+  git.setup(opts)
+  icon_component.setup(opts)
 end
 
 return M

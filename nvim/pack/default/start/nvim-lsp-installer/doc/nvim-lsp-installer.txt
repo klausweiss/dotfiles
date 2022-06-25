@@ -7,44 +7,57 @@ Author: William Boman
 ==============================================================================
 INTRODUCTION                                *nvim-lsp-installer-introduction*
 
-Neovim plugin that allows you to seamlessly install LSP servers locally (inside `:echo stdpath("data")`).
+Neovim plugin that allow you to manage LSP servers (servers are installed
+inside `stdpath("data")` by default). It works in tandem with
+nvim-lspconfig[1] by registering a hook that enhances the `PATH` environment
+variable, allowing neovim's LSP client to locate the server executable
+installed by nvim-lsp-installer.[2]
 
-On top of just providing commands for installing & uninstalling LSP servers,
-it:
+On top of just providing commands for installing & uninstalling LSP servers, it:
 
 -   provides a graphical UI
--   is optimized for blazing fast startup times
--   provides the ability to check for new server versions
--   supports installing custom versions of LSP servers (for example
-    `:LspInstall rust_analyzer@nightly`)
--   relaxes the minimum requirements by attempting multiple different
-    utilities (for example, only one of `wget`, `curl`, or `Invoke-WebRequest`
-    is required for HTTP requests)
+-   provides the ability to check for, and upgrade to, new server versions through a single interface
+-   supports installing custom versions of LSP servers (for example `:LspInstall rust_analyzer@nightly`)
+-   relaxes the minimum requirements by attempting multiple different utilities (for example, only one of `wget`, `curl`, or `Invoke-WebRequest` is required for HTTP requests)
 -   hosts a suite of system tests for all supported servers
 -   has full support for Windows
 
-Requires neovim `>= 0.7.0` and nvim-lspconfig. The _full requirements_ to
-install _all_ servers are:
+[1] https://github.com/neovim/nvim-lspconfig
+    While lspconfig is the main target, this plugin may also be used for other
+    use cases.
+[2] Some servers don't provide an executable, in which case the full command
+    to spawn the server is provided instead.
+
+==============================================================================
+REQUIREMENTS                                *nvim-lsp-installer-requirements*
+
+Requires neovim `>= 0.7.0` and [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig).
+
+                                    *nvim-lsp-installer-requirements-minimum*
+The minimum recommended requirements are:
 
 -   For Unix systems: git(1), curl(1) or wget(1), unzip(1), tar(1), gzip(1)
--   For Windows systems: powershell, git, tar, and 7zip or peazip or archiver
-    or winzip or WinRAR
+-   For Windows systems: powershell, git, tar, and 7zip or peazip or archiver or winzip or WinRAR
+
+                                 *nvim-lsp-installer-requirements-additional*
+Additional requirements to install & run all servers are (depending on usage):
+
 -   Node.js (LTS) & npm
 -   Python3 & pip3
 -   go >= 1.17
--   JDK
+-   cargo
 -   Ruby & gem
 -   PHP & Composer
--   dotnet
--   pwsh
+-   JDK
 -   Julia
--   valac (and meson & ninja)
--   rebar3
--   cargo
+-   dotnet
 -   ghcup
-
-To write a custom server installer, please refer to the docs at
-https://github.com/williamboman/nvim-lsp-installer/blob/main/CUSTOM_SERVERS.md.
+-   luarocks
+-   meson
+-   ninja
+-   pwsh
+-   rebar3
+-   valac
 
 ==============================================================================
 QUICK START                                   *nvim-lsp-installer-quickstart*
@@ -55,8 +68,7 @@ to call the `setup()` function _before_ you set up any servers:
     require("nvim-lsp-installer").setup {}
 
 
-Next, in your initialization files |init.lua|, setup the servers you want to use.
-Refer to |lspconfig| for more information! For example:
+Next, in your initialization files |init.lua|, setup the servers you want to use. In this example, |lspconfig| is used to set up servers.
 
     require("nvim-lsp-installer").setup {}
     local lspconfig = require("lspconfig")
@@ -191,6 +203,9 @@ The following settings are applied by default.
             -- Whether to automatically check for outdated servers when opening the UI window.
             check_outdated_servers_on_open = true,
 
+            -- The border to use for the UI window. Accepts same border values as |nvim_open_win()|.
+            border = "none",
+
             icons = {
                 -- The list icon to use for installed servers.
                 server_installed = "◍",
@@ -268,6 +283,23 @@ GITHUB MIRROR                     *nvim-lsp-installer-download-mirror-github*
         },
     }
 
+
+==============================================================================
+INSTALLATION ERRORS                               *nvim-lsp-installer-errors*
+
+                                       *nvim-lsp-installer-errors-github-api*
+For some installers, the GitHub API is used to fetch information about
+releases. This API imposes a rate limit that may be triggered, causing
+installations to fail. The reasons why a rate limit is triggered are many, for
+example being behind a public API, or using other software that also send
+requests to the GitHub API.
+
+To circumvent this, nvim-lsp-installer will utilize the GitHub CLI when
+available, leading to API requests being subject to a much higher rate limit
+threshold when authenticated. Should you run into errors with communicating
+with GitHub's API, it's recommended to install, and authenticate, the GitHub
+CLI: https://cli.github.com/.
+
 ==============================================================================
 DEBUGGING                                      *nvim-lsp-installer-debugging*
 
@@ -279,7 +311,9 @@ sure to set nvim-lsp-installer's log level to DEBUG or TRACE, like so:
     }
 
 You may find the logs by entering the command `:LspInstallLog`. Providing the
-contents of this file when reporting an issue will help tremendously.
+contents of this file when reporting an issue will help tremendously. Remember
+to redo whatever is failing after changing the log level in order to capture
+new log entries.
 
 ==============================================================================
 Lua module: nvim-lsp-installer
@@ -309,24 +343,6 @@ uninstall({server_name})
         Parameters: ~
             {server_name} (string) The server to uninstall.
 
-                                       *nvim-lsp-installer.on_server_ready()*
-on_server_ready({cb})
-        DEPRECATED - setup servers directly via lspconfig instead
-
-        Registers a callback to be executed each time a server is ready to be
-        initiated.
-
-        When called, all currently installed servers will be considered ready
-        to be initiated and will each individually be invoked on {cb}.
-
-        Parameters: ~
-            {cb} (function) Function to be invoked when a server is ready to
-            be initiated.
-
-        Return: ~
-            Returns a function which when called will de-register the {cb}
-            from any future dispatches.
-
                                       *nvim-lsp-installer.info_window.open()*
 info_window.open()
     Opens the `:LspInstallInfo` UI window.
@@ -334,9 +350,6 @@ info_window.open()
                                       *nvim-lsp-installer.info_window.close()*
 info_window.close()
     Closes the `:LspInstallInfo` UI window.
-
-==============================================================================
-Lua module: nvim-lsp-installer.servers           *nvim-lsp-installer.servers*
 
                                  *nvim-lsp-installer.get_available_servers()*
 get_available_servers()
@@ -387,35 +400,6 @@ class: Server
         servers.
 
         Methods: ~
-            - setup({opts})
-                    DEPRECATED - setup servers directly via lspconfig instead
-
-                    Sets up the language server and attaches all open buffers.
-
-                    See:
-                        - setup_lsp({opts})
-                        - attach_buffers()
-
-                    Parameters: ~
-                        {opts} (table) The lspconfig server configuration.
-                        See https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md
-
-            - setup_lsp({opts})
-                    DEPRECATED - setup servers directly via lspconfig instead
-
-                    Sets up the language server via lspconfig.
-                    This function has the same signature as the setup function
-                    in nvim-lspconfig.
-
-                    Parameters: ~
-                        {opts} (table) The lspconfig server configuration.
-                        See https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md
-
-            - attach_buffers()
-                    DEPRECATED - setup servers directly via lspconfig instead
-
-                    Attaches this server to all current open buffers with a
-                    'filetype' that matches the server's configured filetypes.
 
             - get_default_options()
                     Returns a deep copy of the default options provided to
@@ -425,8 +409,6 @@ class: Server
                     by lspconfig.
 
             - on_ready({handler})
-                    DEPRECATED - setup servers directly via lspconfig instead
-
                     Registers the provided {handler} to be called when the
                     server is ready to be setup.
 

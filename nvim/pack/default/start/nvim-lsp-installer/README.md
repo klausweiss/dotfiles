@@ -4,21 +4,24 @@
 
 -   [About](#about)
 -   [Screenshots](#screenshots)
+-   [Requirements](#requirements)
+    -   [Minimum requirements](#minimum-requirements)
+    -   [Additional requirements](#additional-requirements)
 -   [Installation](#installation)
 -   [Usage](#usage)
     -   [Setup](#setup)
     -   [Commands](#commands)
     -   [Configuration](#configuration)
 -   [Available LSPs](#available-lsps)
--   [Custom servers](#custom-servers)
 -   [Logo](#logo)
 -   [Default configuration](#default-configuration)
 
 ## About
 
-Neovim plugin that allows you to manage LSP servers (servers are installed inside `:echo stdpath("data")` by default).
+Neovim plugin that allow you to manage LSP servers (servers are installed inside `:echo stdpath("data")` by default).
 It works in tandem with [`lspconfig`](https://github.com/neovim/nvim-lspconfig)<sup>1</sup> by registering a hook that
-enhances the `PATH` environment variable, allowing neovim's LSP client to locate the installed server executable.<sup>2</sup>
+enhances the `PATH` environment variable, allowing neovim's LSP client to locate the server executable installed by
+nvim-lsp-installer.<sup>2</sup>
 
 On top of just providing commands for installing & uninstalling LSP servers, it:
 
@@ -40,32 +43,45 @@ On top of just providing commands for installing & uninstalling LSP servers, it:
 | <img src="https://user-images.githubusercontent.com/6705160/150685720-782e33ba-172c-44b6-8558-fb4e98495294.png" /> | <img src="https://user-images.githubusercontent.com/6705160/150685404-2cd34b25-166e-4c84-b9dd-1d5580dc2bdd.png" /> | <img src="https://user-images.githubusercontent.com/6705160/150685322-a537f021-5850-4bbc-8be2-1ece5678d205.png" /> |
 | <img src="https://user-images.githubusercontent.com/6705160/150685324-1310ae7d-67bf-4053-872c-d27e8a4c4b80.png" /> | <img src="https://user-images.githubusercontent.com/6705160/150686052-fd5c4d54-b4da-4cb3-bb82-a094526ee5b5.png" /> | <img src="https://user-images.githubusercontent.com/6705160/150686059-f1be8131-1274-4f62-9aa8-345599cbd8bc.png" /> |
 
-## Installation
+## Requirements
 
-Requires neovim `>= 0.7.0` and [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig). The _full requirements_ to
-install _all_ servers are:
+Requires neovim `>= 0.7.0` and [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig).
+
+### Minimum requirements
+
+The minimum recommended requirements are:
 
 -   For Unix systems: git(1), curl(1) or wget(1), unzip(1), tar(1), gzip(1)
 -   For Windows systems: powershell, git, tar, and [7zip][7zip] or [peazip][peazip] or [archiver][archiver] or [winzip][winzip] or [WinRAR][winrar]
+
+### Additional requirements
+
+Additional requirements to install & run all servers are (depending on usage):
+
 -   Node.js (LTS) & npm
 -   Python3 & pip3
 -   go >= 1.17
--   JDK
+-   cargo
 -   Ruby & gem
 -   PHP & Composer
--   dotnet
--   pwsh
+-   JDK
 -   Julia
--   valac (and meson & ninja)
--   rebar3
--   cargo
+-   dotnet
 -   ghcup
+-   luarocks
+-   meson
+-   ninja
+-   pwsh
+-   rebar3
+-   valac
 
 [7zip]: https://www.7-zip.org/
 [archiver]: https://github.com/mholt/archiver
 [peazip]: https://peazip.github.io/
 [winzip]: https://www.winzip.com/
 [winrar]: https://www.win-rar.com/
+
+## Installation
 
 ### [Packer](https://github.com/wbthomason/packer.nvim)
 
@@ -85,63 +101,18 @@ Plug "neovim/nvim-lspconfig"
 
 ## Usage
 
+nvim-lsp-installer will only make sure that Neovim can find your installed servers, it does not set up any servers for
+you automatically. You will have to set up your servers yourself (for example via
+[lspconfig](https://github.com/neovim/nvim-lspconfig)).
+
 ### Setup
 
-In order for nvim-lsp-installer to register the necessary hooks at the right moment, **make sure you call the `.setup()`
-function before you set up any servers with `lspconfig`**!
+In order for nvim-lsp-installer to register the necessary hooks at the right moment, **make sure you call the
+`require("nvim-lsp-installer").setup()` function before you set up any servers**!
 
 ```lua
 require("nvim-lsp-installer").setup {}
 ```
-
-<details>
-<summary>
-Important if you use packer.nvim! (click to expand)
-</summary>
-
-<br />
-
-> Do not separate the nvim-lsp-installer setup from lspconfig, for example via the `config` hook.
-> Make sure to colocate the nvim-lsp-installer setup with the lspconfig setup. This is because load order of plugins is
-> not guaranteed, leading to nvim-lsp-installer's `config` function potentially executing after lspconfig's.
->
-> ❌ Do not do this:
-
-```lua
-use {
-    {
-        "williamboman/nvim-lsp-installer",
-        config = function()
-            require("nvim-lsp-installer").setup {}
-        end
-    },
-    {
-        "neovim/nvim-lspconfig",
-        config = function()
-            local lspconfig = require("lspconfig")
-            lspconfig.sumneko_lua.setup {}
-        end
-    },
-}
-```
-
-> ✅ Instead, do this:
-
-```lua
-use {
-    "williamboman/nvim-lsp-installer",
-    {
-        "neovim/nvim-lspconfig",
-        config = function()
-            require("nvim-lsp-installer").setup {}
-            local lspconfig = require("lspconfig")
-            lspconfig.sumneko_lua.setup {}
-        end
-    }
-}
-```
-
-</details>
 
 Refer to the [Configuration](#configuration) section for information about which settings are available.
 
@@ -182,6 +153,7 @@ require("nvim-lsp-installer").setup({
 | AWK                                 | `awk_ls`                   |
 | Angular                             | `angularls`                |
 | Ansible                             | `ansiblels`                |
+| Apex                                | `apex_ls`                  |
 | Arduino [(docs!!!)][arduino]        | `arduino_language_server`  |
 | Assembly (GAS/NASM, GO)             | `asm_lsp`                  |
 | Astro                               | `astro`                    |
@@ -231,22 +203,24 @@ require("nvim-lsp-installer").setup({
 | Haxe                                | `haxe_language_server`     |
 | Hoon                                | `hoon_ls`                  |
 | JSON                                | `jsonls`                   |
-| Java                                | `jdtls`                    |
+| Java [(docs)][jdtls]                | `jdtls`                    |
 | JavaScript                          | `quick_lint_js`            |
 | JavaScript                          | `tsserver`                 |
 | Jsonnet                             | `jsonnet_ls`               |
-| Julia                               | `julials`                  |
+| Julia [(docs)][julials]             | `julials`                  |
 | Kotlin                              | `kotlin_language_server`   |
 | LaTeX                               | `ltex`                     |
 | LaTeX                               | `texlab`                   |
 | Lelwel                              | `lelwel_ls`                |
 | Lua                                 | `sumneko_lua`              |
+| Markdown                            | `marksman`                 |
 | Markdown                            | `prosemd_lsp`              |
 | Markdown                            | `remark_ls`                |
 | Markdown                            | `zk`                       |
 | Metamath Zero                       | `mm0_ls`                   |
 | Nickel                              | `nickel_ls`                |
 | Nim                                 | `nimls`                    |
+| Nix                                 | `rnix`                     |
 | OCaml                               | `ocamlls`                  |
 | OCaml                               | `ocamllsp`                 |
 | Objective C                         | `ccls`                     |
@@ -284,16 +258,19 @@ require("nvim-lsp-installer").setup({
 | Stylelint                           | `stylelint_lsp`            |
 | Svelte                              | `svelte`                   |
 | Swift                               | `sourcekit`                |
+| SystemVerilog                       | `svlangserver`             |
 | SystemVerilog                       | `svls`                     |
 | SystemVerilog                       | `verible`                  |
 | TOML                                | `taplo`                    |
 | Tailwind CSS                        | `tailwindcss`              |
+| Teal                                | `teal_ls`                  |
 | Terraform                           | `terraformls`              |
 | Terraform [(docs)][tflint]          | `tflint`                   |
 | TypeScript                          | `tsserver`                 |
 | V                                   | `vls`                      |
 | Vala                                | `vala_ls`                  |
 | VimL                                | `vimls`                    |
+| Visualforce                         | `visualforce`              |
 | Vue                                 | `volar`                    |
 | Vue                                 | `vuels`                    |
 | XML                                 | `lemminx`                  |
@@ -302,14 +279,11 @@ require("nvim-lsp-installer").setup({
 
 [arduino]: ./lua/nvim-lsp-installer/servers/arduino_language_server/README.md
 [eslint]: ./lua/nvim-lsp-installer/servers/eslint/README.md
+[jdtls]: ./lua/nvim-lsp-installer/servers/jdtls/README.md
+[julials]: ./lua/nvim-lsp-installer/servers/julials/README.md
 [omnisharp]: ./lua/nvim-lsp-installer/servers/omnisharp/README.md
 [pylsp]: ./lua/nvim-lsp-installer/servers/pylsp/README.md
 [tflint]: ./lua/nvim-lsp-installer/servers/tflint/README.md
-
-## Custom servers
-
-You can create your own installers by using the same APIs nvim-lsp-installer itself uses. Refer to
-[CUSTOM_SERVERS.md](./CUSTOM_SERVERS.md) for more information.
 
 ## Logo
 
@@ -335,6 +309,9 @@ local DEFAULT_SETTINGS = {
     ui = {
         -- Whether to automatically check for outdated servers when opening the UI window.
         check_outdated_servers_on_open = true,
+
+        -- The border to use for the UI window. Accepts same border values as |nvim_open_win()|.
+        border = "none",
 
         icons = {
             -- The list icon to use for installed servers.

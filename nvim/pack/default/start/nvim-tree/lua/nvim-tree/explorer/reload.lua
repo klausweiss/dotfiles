@@ -20,7 +20,7 @@ local function update_status(nodes_by_path, node_ignored, status)
 end
 
 function M.reload(node, status)
-  local cwd = node.cwd or node.link_to or node.absolute_path
+  local cwd = node.link_to or node.absolute_path
   local handle = uv.fs_scandir(cwd)
   if type(handle) == "string" then
     api.nvim_err_writeln(handle)
@@ -37,8 +37,8 @@ function M.reload(node, status)
   local node_ignored = node.git_status == "!!"
   local nodes_by_path = utils.key_by(node.nodes, "absolute_path")
   while true do
-    local name, t = uv.fs_scandir_next(handle)
-    if not name then
+    local ok, name, t = pcall(uv.fs_scandir_next, handle)
+    if not ok or not name then
       break
     end
 
@@ -48,12 +48,17 @@ function M.reload(node, status)
       child_names[abs] = true
       if not nodes_by_path[abs] then
         if t == "directory" and uv.fs_access(abs, "R") then
-          table.insert(node.nodes, builders.folder(node, abs, name, status, node_ignored))
+          local folder = builders.folder(node, abs, name)
+          nodes_by_path[abs] = folder
+          table.insert(node.nodes, folder)
         elseif t == "file" then
-          table.insert(node.nodes, builders.file(node, abs, name, status, node_ignored))
+          local file = builders.file(node, abs, name)
+          nodes_by_path[abs] = file
+          table.insert(node.nodes, file)
         elseif t == "link" then
-          local link = builders.link(node, abs, name, status, node_ignored)
+          local link = builders.link(node, abs, name)
           if link.link_to ~= nil then
+            nodes_by_path[abs] = link
             table.insert(node.nodes, link)
           end
         end
@@ -68,9 +73,9 @@ function M.reload(node, status)
     end, node.nodes)
   )
 
-  local is_root = node.cwd ~= nil
+  local is_root = not node.parent
   local child_folder_only = common.has_one_child_folder(node) and node.nodes[1]
-  if vim.g.nvim_tree_group_empty == 1 and not is_root and child_folder_only then
+  if M.config.group_empty and not is_root and child_folder_only then
     node.group_next = child_folder_only
     local ns = M.reload(child_folder_only, status)
     node.nodes = ns or {}
@@ -80,6 +85,10 @@ function M.reload(node, status)
   sorters.merge_sort(node.nodes, sorters.node_comparator)
   live_filter.apply_filter(node)
   return node.nodes
+end
+
+function M.setup(opts)
+  M.config = opts.renderer
 end
 
 return M

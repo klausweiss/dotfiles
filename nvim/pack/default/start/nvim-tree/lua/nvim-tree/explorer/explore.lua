@@ -32,11 +32,11 @@ local function populate_children(handle, cwd, node, status)
     then
       local child = nil
       if t == "directory" and uv.fs_access(abs, "R") then
-        child = builders.folder(node, abs, name, status, node_ignored)
+        child = builders.folder(node, abs, name)
       elseif t == "file" then
-        child = builders.file(node, abs, name, status, node_ignored)
+        child = builders.file(node, abs, name)
       elseif t == "link" then
-        local link = builders.link(node, abs, name, status, node_ignored)
+        local link = builders.link(node, abs, name)
         if link.link_to ~= nil then
           child = link
         end
@@ -59,7 +59,7 @@ local function get_dir_handle(cwd)
 end
 
 function M.explore(node, status)
-  local cwd = node.cwd or node.link_to or node.absolute_path
+  local cwd = node.link_to or node.absolute_path
   local handle = get_dir_handle(cwd)
   if not handle then
     return
@@ -67,9 +67,9 @@ function M.explore(node, status)
 
   populate_children(handle, cwd, node, status)
 
-  local is_root = node.cwd ~= nil
+  local is_root = not node.parent
   local child_folder_only = common.has_one_child_folder(node) and node.nodes[1]
-  if vim.g.nvim_tree_group_empty == 1 and not is_root and child_folder_only then
+  if M.config.group_empty and not is_root and child_folder_only then
     node.group_next = child_folder_only
     local ns = M.explore(child_folder_only, status)
     node.nodes = ns or {}
@@ -79,6 +79,10 @@ function M.explore(node, status)
   sorters.merge_sort(node.nodes, sorters.node_comparator)
   live_filter.apply_filter(node)
   return node.nodes
+end
+
+function M.setup(opts)
+  M.config = opts.renderer
 end
 
 return M

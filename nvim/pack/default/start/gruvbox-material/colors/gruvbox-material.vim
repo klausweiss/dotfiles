@@ -10,7 +10,7 @@
 let s:configuration = gruvbox_material#get_configuration()
 let s:palette = gruvbox_material#get_palette(s:configuration.background, s:configuration.foreground, s:configuration.colors_override)
 let s:path = expand('<sfile>:p') " the path of this script
-let s:last_modified = 'Thu May 26 04:33:29 UTC 2022'
+let s:last_modified = 'Sun Jun 12 10:58:49 UTC 2022'
 let g:gruvbox_material_loaded_file_types = []
 
 if !(exists('g:colors_name') && g:colors_name ==# 'gruvbox-material' && s:configuration.better_performance)
@@ -54,7 +54,7 @@ else
   endif
   call gruvbox_material#highlight('Folded', s:palette.grey1, s:palette.bg2)
   call gruvbox_material#highlight('ToolbarLine', s:palette.fg1, s:palette.bg3)
-  if s:configuration.sign_column_background ==# 'default'
+  if s:configuration.sign_column_background ==# 'grey'
     call gruvbox_material#highlight('SignColumn', s:palette.fg0, s:palette.bg2)
     call gruvbox_material#highlight('FoldColumn', s:palette.grey1, s:palette.bg2)
   else
@@ -93,7 +93,7 @@ endif
 call gruvbox_material#highlight('LineNr', s:palette.bg5, s:palette.none)
 if &diff
   call gruvbox_material#highlight('CursorLineNr', s:palette.grey1, s:palette.none, 'underline')
-elseif (&relativenumber == 1 && &cursorline == 0) || s:configuration.sign_column_background !=# 'default'
+elseif (&relativenumber == 1 && &cursorline == 0) || s:configuration.sign_column_background ==# 'none'
   call gruvbox_material#highlight('CursorLineNr', s:palette.grey1, s:palette.none)
 else
   call gruvbox_material#highlight('CursorLineNr', s:palette.grey1, s:palette.bg1)
@@ -108,7 +108,7 @@ if s:configuration.ui_contrast ==# 'low'
   call gruvbox_material#highlight('LineNr', s:palette.bg5, s:palette.none)
   if &diff
     call gruvbox_material#highlight('CursorLineNr', s:palette.grey1, s:palette.none, 'underline')
-  elseif (&relativenumber == 1 && &cursorline == 0) || s:configuration.sign_column_background !=# 'default'
+  elseif (&relativenumber == 1 && &cursorline == 0) || s:configuration.sign_column_background ==# 'none'
     call gruvbox_material#highlight('CursorLineNr', s:palette.grey1, s:palette.none)
   else
     call gruvbox_material#highlight('CursorLineNr', s:palette.grey1, s:palette.bg1)
@@ -117,7 +117,7 @@ else
   call gruvbox_material#highlight('LineNr', s:palette.grey0, s:palette.none)
   if &diff
     call gruvbox_material#highlight('CursorLineNr', s:palette.grey2, s:palette.none, 'underline')
-  elseif (&relativenumber == 1 && &cursorline == 0) || s:configuration.sign_column_background !=# 'default'
+  elseif (&relativenumber == 1 && &cursorline == 0) || s:configuration.sign_column_background ==# 'none'
     call gruvbox_material#highlight('CursorLineNr', s:palette.grey2, s:palette.none)
   else
     call gruvbox_material#highlight('CursorLineNr', s:palette.grey2, s:palette.bg1)
@@ -390,7 +390,7 @@ else
   call gruvbox_material#highlight('BlueBold', s:palette.blue, s:palette.none)
   call gruvbox_material#highlight('PurpleBold', s:palette.purple, s:palette.none)
 endif
-if s:configuration.transparent_background || s:configuration.sign_column_background !=# 'default'
+if s:configuration.transparent_background || s:configuration.sign_column_background ==# 'none'
   call gruvbox_material#highlight('RedSign', s:palette.red, s:palette.none)
   call gruvbox_material#highlight('OrangeSign', s:palette.orange, s:palette.none)
   call gruvbox_material#highlight('YellowSign', s:palette.yellow, s:palette.none)
@@ -533,6 +533,7 @@ highlight! link TSPunctBracket Fg
 highlight! link TSPunctDelimiter Grey
 highlight! link TSPunctSpecial Blue
 highlight! link TSRepeat Red
+highlight! link TSStorageClass Orange
 highlight! link TSString Aqua
 highlight! link TSStringEscape Green
 highlight! link TSStringRegex Green
@@ -812,10 +813,11 @@ highlight! link multiple_cursors_cursor Cursor
 highlight! link multiple_cursors_visual Visual
 " }}}
 " mg979/vim-visual-multi {{{
-let g:VM_Mono_hl = 'Cursor'
+call gruvbox_material#highlight('VMCursor', s:palette.blue, s:palette.bg5)
+let g:VM_Mono_hl = 'VMCursor'
 let g:VM_Extend_hl = 'Visual'
-let g:VM_Cursor_hl = 'Cursor'
-let g:VM_Insert_hl = 'Cursor'
+let g:VM_Cursor_hl = 'VMCursor'
+let g:VM_Insert_hl = 'VMCursor'
 " }}}
 " dominikduda/vim_current_word {{{
 highlight! link CurrentWordTwins CurrentWord

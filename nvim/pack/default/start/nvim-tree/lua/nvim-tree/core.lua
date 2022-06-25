@@ -9,6 +9,9 @@ TreeExplorer = nil
 local first_init_done = false
 
 function M.init(foldername)
+  if TreeExplorer then
+    TreeExplorer:_clear_watchers()
+  end
   TreeExplorer = explorer.Explorer.new(foldername)
   if not first_init_done then
     events._dispatch_ready()
@@ -21,7 +24,7 @@ function M.get_explorer()
 end
 
 function M.get_cwd()
-  return TreeExplorer.cwd
+  return TreeExplorer.absolute_path
 end
 
 function M.get_nodes_starting_line()

@@ -205,7 +205,7 @@ internal.planets = function(opts)
     end
   end
 
-  pickers.new({
+  pickers.new(opts, {
     prompt_title = "Planets",
     finder = finders.new_table {
       results = acceptable_files,
@@ -349,7 +349,7 @@ internal.commands = function(opts)
           vim.cmd(cmd)
         else
           vim.cmd [[stopinsert]]
-          vim.fn.feedkeys(cmd)
+          vim.fn.feedkeys(cmd, "n")
         end
       end)
 

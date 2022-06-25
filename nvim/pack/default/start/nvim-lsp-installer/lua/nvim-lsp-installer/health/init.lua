@@ -1,15 +1,9 @@
-local health = require "health"
-local process = require "nvim-lsp-installer.core.process"
+local health = vim.health or require "health"
 local a = require "nvim-lsp-installer.core.async"
 local platform = require "nvim-lsp-installer.core.platform"
 local github_client = require "nvim-lsp-installer.core.managers.github.client"
-local functional = require "nvim-lsp-installer.core.functional"
-
-local when = functional.when
-
-local gem_cmd = platform.is_win and "gem.cmd" or "gem"
-local composer_cmd = platform.is_win and "composer.bat" or "composer"
-local npm_cmd = platform.is_win and "npm.cmd" or "npm"
+local _ = require "nvim-lsp-installer.core.functional"
+local spawn = require "nvim-lsp-installer.core.spawn"
 
 local M = {}
 
@@ -45,7 +39,7 @@ function HealthCheck:get_health_report_level()
     return ({
         ["success"] = "report_ok",
         ["parse-error"] = "report_warn",
-        ["version-mismatch"] = "report_error",
+        ["version-mismatch"] = self.relaxed and "report_warn" or "report_error",
         ["not-available"] = self.relaxed and "report_warn" or "report_error",
     })[self.result]
 end
@@ -66,61 +60,58 @@ end
 local function mk_healthcheck(callback)
     ---@param opts {cmd:string, args:string[], name: string, use_stderr:boolean}
     return function(opts)
-        return function()
-            local stdio = process.in_memory_sink()
-            local _, stdio_pipes = process.spawn(opts.cmd, {
-                args = opts.args,
-                stdio_sink = stdio.sink,
-            }, function(success)
-                if success then
-                    local version = vim.split(
-                        table.concat(opts.use_stderr and stdio.buffers.stderr or stdio.buffers.stdout, ""),
-                        "\n"
-                    )[1]
+        local parse_version = _.compose(
+            _.head,
+            _.split "\n",
+            _.if_else(_.always(opts.use_stderr), _.prop "stderr", _.prop "stdout")
+        )
 
+        ---@async
+        return function()
+            local healthcheck_result = spawn[opts.cmd]({
+                opts.args,
+                on_spawn = function(_, stdio)
+                    local stdin = stdio[1]
+                    stdin:close() -- some processes (`sh` for example) will endlessly read from stdin, so we close it immediately
+                end,
+            })
+                :map(parse_version)
+                :map(function(version)
                     if opts.version_check then
                         local ok, version_check = pcall(opts.version_check, version)
                         if ok and version_check then
-                            callback(HealthCheck.new {
+                            return HealthCheck.new {
                                 result = "version-mismatch",
                                 reason = version_check,
                                 version = version,
                                 name = opts.name,
                                 relaxed = opts.relaxed,
-                            })
-                            return
+                            }
                         elseif not ok then
-                            callback(HealthCheck.new {
+                            return HealthCheck.new {
                                 result = "parse-error",
                                 version = "N/A",
                                 name = opts.name,
                                 relaxed = opts.relaxed,
-                            })
-                            return
+                            }
                         end
                     end
 
-                    callback(HealthCheck.new {
+                    return HealthCheck.new {
                         result = "success",
                         version = version,
                         name = opts.name,
                         relaxed = opts.relaxed,
-                    })
-                else
-                    callback(HealthCheck.new {
-                        result = "not-available",
-                        version = nil,
-                        name = opts.name,
-                        relaxed = opts.relaxed,
-                    })
-                end
-            end)
+                    }
+                end)
+                :get_or_else(HealthCheck.new {
+                    result = "not-available",
+                    version = nil,
+                    name = opts.name,
+                    relaxed = opts.relaxed,
+                })
 
-            if stdio_pipes then
-                -- Immediately close stdin to avoid leaving the process waiting for input.
-                local stdin = stdio_pipes[1]
-                stdin:close()
-            end
+            callback(healthcheck_result)
         end
     end
 end
@@ -143,7 +134,7 @@ function M.check()
         end
     ))
 
-    local checks = functional.list_not_nil(
+    local checks = {
         check {
             cmd = "go",
             args = { "version" },
@@ -158,13 +149,37 @@ function M.check()
                 end
             end,
         },
-        check { cmd = "cargo", args = { "--version" }, name = "cargo", relaxed = true },
+        check {
+            cmd = "cargo",
+            args = { "--version" },
+            name = "cargo",
+            relaxed = true,
+            version_check = function(version)
+                local _, _, major, minor = version:find "(%d+)%.(%d+)%.(%d+)"
+                if (tonumber(major) <= 1) and (tonumber(minor) < 60) then
+                    return "Some cargo installations require Rust >= 1.60.0."
+                end
+            end,
+        },
+        check {
+            cmd = "luarocks",
+            args = { "--version" },
+            name = "luarocks",
+            relaxed = true,
+            version_check = function(version)
+                local _, _, major = version:find "(%d+)%.(%d)%.(%d)"
+                if not (tonumber(major) >= 3) then
+                    -- Because of usage of "--dev" flag
+                    return "Luarocks version must be >= 3.0.0."
+                end
+            end,
+        },
         check { cmd = "ruby", args = { "--version" }, name = "Ruby", relaxed = true },
-        check { cmd = gem_cmd, args = { "--version" }, name = "RubyGem", relaxed = true },
-        check { cmd = composer_cmd, args = { "--version" }, name = "Composer", relaxed = true },
+        check { cmd = "gem", args = { "--version" }, name = "RubyGem", relaxed = true },
+        check { cmd = "composer", args = { "--version" }, name = "Composer", relaxed = true },
         check { cmd = "php", args = { "--version" }, name = "PHP", relaxed = true },
         check {
-            cmd = npm_cmd,
+            cmd = "npm",
             args = { "--version" },
             name = "npm",
             version_check = function(version)
@@ -188,18 +203,10 @@ function M.check()
                 end
             end,
         },
-        when(
-            platform.is_win,
-            check { cmd = "python", use_stderr = true, args = { "--version" }, name = "python", relaxed = true }
-        ),
-        when(
-            platform.is_win,
-            check { cmd = "python", args = { "-m", "pip", "--version" }, name = "pip", relaxed = true }
-        ),
         check { cmd = "python3", args = { "--version" }, name = "python3", relaxed = true },
         check { cmd = "python3", args = { "-m", "pip", "--version" }, name = "pip3", relaxed = true },
         check { cmd = "javac", args = { "-version" }, name = "javac", relaxed = true },
-        check { cmd = "java", args = { "-version" }, name = "java", relaxed = true },
+        check { cmd = "java", args = { "-version" }, name = "java", use_stderr = true, relaxed = true },
         check { cmd = "julia", args = { "--version" }, name = "julia", relaxed = true },
         check { cmd = "wget", args = { "--version" }, name = "wget" },
         -- wget is used interchangeably with curl, but with higher priority, so we mark curl as relaxed
@@ -211,25 +218,51 @@ function M.check()
             use_stderr = platform.is_mac, -- Apple gzip prints version string to stderr
         },
         check { cmd = "tar", args = { "--version" }, name = "tar" },
-        when(
-            vim.g.python3_host_prog,
-            check { cmd = vim.g.python3_host_prog, args = { "--version" }, name = "python3_host_prog", relaxed = true }
-        ),
-        when(platform.is_unix, check { cmd = "bash", args = { "--version" }, name = "bash" }),
-        when(platform.is_unix, check { cmd = "sh", name = "sh" })
         -- when(platform.is_win, check { cmd = "powershell.exe", args = { "-Version" }, name = "PowerShell" }), -- TODO fix me
         -- when(platform.is_win, check { cmd = "cmd.exe", args = { "-Version" }, name = "cmd" }) -- TODO fix me
-    )
+    }
 
-    for _, c in ipairs(checks) do
-        c()
+    if platform.is.unix then
+        table.insert(checks, check { cmd = "bash", args = { "--version" }, name = "bash" })
+        table.insert(checks, check { cmd = "sh", name = "sh" })
     end
 
-    vim.wait(5000, function()
-        return completed >= #checks
-    end, 50)
+    if platform.is.win then
+        table.insert(
+            checks,
+            check { cmd = "python", use_stderr = true, args = { "--version" }, name = "python", relaxed = true }
+        )
+        table.insert(
+            checks,
+            check { cmd = "python", args = { "-m", "pip", "--version" }, name = "pip", relaxed = true }
+        )
+    end
+
+    if vim.g.python3_host_prog then
+        table.insert(
+            checks,
+            check { cmd = vim.g.python3_host_prog, args = { "--version" }, name = "python3_host_prog", relaxed = true }
+        )
+    end
+
+    if vim.env.JAVA_HOME then
+        table.insert(
+            checks,
+            check {
+                cmd = ("%s/bin/java"):format(vim.env.JAVA_HOME),
+                args = { "-version" },
+                name = "JAVA_HOME",
+                use_stderr = true,
+                relaxed = true,
+            }
+        )
+    end
 
     a.run_blocking(function()
+        for _, c in ipairs(checks) do
+            c()
+        end
+
         github_client.fetch_rate_limit()
             :map(
                 ---@param rate_limit GitHubRateLimitResponse

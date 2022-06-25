@@ -1,5 +1,4 @@
 local api = vim.api
-local icons = require "nvim-tree.renderer.icon-config"
 
 local M = {}
 
@@ -75,6 +74,7 @@ local function get_links()
     FileMerge = "NvimTreeGitMerge",
     FileStaged = "NvimTreeGitStaged",
     FileDeleted = "NvimTreeGitDeleted",
+    FileIgnored = "NvimTreeGitIgnored",
     Popup = "Normal",
     GitIgnored = "Comment",
     StatusLine = "StatusLine",
@@ -84,9 +84,6 @@ local function get_links()
 end
 
 function M.setup()
-  if icons.get_config().show_file_icon and icons.get_config().has_devicons then
-    require("nvim-web-devicons").setup()
-  end
   local higlight_groups = get_hl_groups()
   for k, d in pairs(higlight_groups) do
     local gui = d.gui and " gui=" .. d.gui or ""

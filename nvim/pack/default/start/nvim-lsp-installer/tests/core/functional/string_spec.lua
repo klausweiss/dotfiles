@@ -14,4 +14,13 @@ describe("functional: string", function()
         assert.equals("Hello World!", _.format("%s", "Hello World!"))
         assert.equals("special manouvers", _.format("%s manouvers", "special"))
     end)
+
+    it("should split strings", function()
+        assert.same({ "This", "is", "a", "sentence" }, _.split("%s", "This is a sentence"))
+        assert.same({ "This", "is", "a", "sentence" }, _.split("|", "This|is|a|sentence"))
+    end)
+
+    it("should gsub strings", function()
+        assert.same("predator", _.gsub("^apex%s*", "", "apex predator"))
+    end)
 end)

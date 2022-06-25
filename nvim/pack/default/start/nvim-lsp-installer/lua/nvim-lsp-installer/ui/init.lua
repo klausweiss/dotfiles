@@ -262,7 +262,7 @@ local function ServerMetadata(server)
                 { server.metadata.filetypes, "" },
             }),
             _.when(server.is_installed, {
-                { "path", "LspInstallerMuted" },
+                { "install dir", "LspInstallerMuted" },
                 { server.metadata.install_dir, "String" },
             }),
             {
@@ -732,7 +732,7 @@ local function init(all_servers)
             state.servers[server.name].installer.is_running = true
         end)
 
-        log.fmt_info("Starting install server_name=%s, requested_version=%s", server.name, requested_version or "")
+        log.fmt_debug("Starting install server_name=%s, requested_version=%s", server.name, requested_version or "")
 
         server:install_attached({
             requested_server_version = requested_version,
@@ -968,6 +968,7 @@ local function init(all_servers)
         end
 
         window.open {
+            border = settings.current.ui.border,
             highlight_groups = {
                 "hi def LspInstallerHeader gui=bold guifg=#222222 guibg=#DCA561",
                 "hi def LspInstallerHeaderHelp gui=bold guifg=#222222 guibg=#56B6C2",

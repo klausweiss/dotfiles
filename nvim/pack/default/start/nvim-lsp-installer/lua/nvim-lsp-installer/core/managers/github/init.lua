@@ -43,7 +43,7 @@ function M.release_file(opts)
     local release = _.coalesce(opts.version, ctx.requested_version):or_else_get(function()
         return client.fetch_latest_release(opts.repo)
             :map(_.prop "tag_name")
-            :get_or_throw "Failed to fetch latest release from GitHub API."
+            :get_or_throw "Failed to fetch latest release from GitHub API. Refer to :h nvim-lsp-installer-errors-github-api for more information."
     end)
     ---@type string
     local asset_file
@@ -109,6 +109,14 @@ end)
 M.untargz_release_file = release_file_processor("archive.tar.gz", function()
     std.untar "archive.tar.gz"
 end)
+
+---@async
+---@param opts {repo: string, out_file:string, asset_file: string|fun(release: string):string}
+function M.download_release_file(opts)
+    local release_file_source = M.release_file(opts)
+    std.download_file(release_file_source.download_url, assert(opts.out_file, "out_file is required"))
+    return release_file_source
+end
 
 ---@async
 ---@param opts {repo: string, out_file:string, asset_file: string|fun(release: string):string}

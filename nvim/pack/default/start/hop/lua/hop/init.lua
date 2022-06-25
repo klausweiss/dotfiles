@@ -18,6 +18,9 @@ local function check_opts(opts)
   if opts.multi_windows and opts.current_line_only then
     vim.notify('Cannot use current_line_only across multiple windows', 3)
   end
+  if vim.api.nvim_get_mode().mode ~= 'n' then
+    opts.multi_windows = false
+  end
 end
 
 -- Allows to override global options with user local overrides.
@@ -33,18 +36,54 @@ local function eprintln(msg, teasing)
   end
 end
 
--- A hack to prevent #57 by deleting twice the namespace (it’s super weird).
-local function clear_namespace(buf_handle, hl_ns)
-  vim.api.nvim_buf_clear_namespace(buf_handle, hl_ns, 0, -1)
-  vim.api.nvim_buf_clear_namespace(buf_handle, hl_ns, 0, -1)
+-- Create hint state
+--
+-- {
+--  all_ctxs: All windows's context
+--  buf_list: All buffers displayed in all windows
+--  <xxx>_ns: Required namespaces
+-- }
+local function create_hint_state(opts)
+  local hint_state = {}
+
+  -- get all window's context and buffer list
+  hint_state.all_ctxs = window.get_window_context(opts.multi_windows)
+  hint_state.buf_list = {}
+  for _, bctx in ipairs(hint_state.all_ctxs) do
+    hint_state.buf_list[#hint_state.buf_list + 1] = bctx.hbuf
+    for _, wctx in ipairs(bctx.contexts) do
+      window.clip_window_context(wctx, opts.direction)
+    end
+  end
+
+  -- create the highlight groups; the highlight groups will allow us to clean everything at once when Hop quits
+  hint_state.hl_ns = vim.api.nvim_create_namespace('hop_hl')
+  hint_state.dim_ns = vim.api.nvim_create_namespace('hop_dim')
+
+  -- backup namespaces of diagnostic
+  if vim.fn.has("nvim-0.6") == 1 then
+    hint_state.diag_ns = vim.diagnostic.get_namespaces()
+  end
+
+  return hint_state
 end
 
--- Dim everything out to prepare the Hop session.
+-- A hack to prevent #57 by deleting twice the namespace (it’s super weird).
+local function clear_namespace(buf_list, hl_ns)
+  for _, buf in ipairs(buf_list) do
+    if vim.api.nvim_buf_is_valid(buf) then
+      vim.api.nvim_buf_clear_namespace(buf, hl_ns, 0, -1)
+      vim.api.nvim_buf_clear_namespace(buf, hl_ns, 0, -1)
+    end
+  end
+end
+
+-- Set the highlight of unmatched lines of the buffer.
 --
 -- - hl_ns is the highlight namespace.
 -- - top_line is the top line in the buffer to start highlighting at
 -- - bottom_line is the bottom line in the buffer to stop highlighting at
-local function apply_dimming(buf_handle, hl_ns, top_line, bottom_line, cursor_pos, direction, current_line_only)
+local function set_unmatched_lines(buf_handle, hl_ns, top_line, bottom_line, cursor_pos, direction, current_line_only)
   local start_line = top_line
   local end_line = bottom_line
   local start_col = 0
@@ -53,9 +92,8 @@ local function apply_dimming(buf_handle, hl_ns, top_line, bottom_line, cursor_po
   if direction == hint.HintDirection.AFTER_CURSOR then
     start_col = cursor_pos[2]
   elseif direction == hint.HintDirection.BEFORE_CURSOR then
-    if cursor_pos[2] ~= 0 then
-      end_col = cursor_pos[2] + 1
-    end
+    end_line = bottom_line - 1
+    if cursor_pos[2] ~= 0 then end_col = cursor_pos[2] + 1 end
   end
 
   if current_line_only then
@@ -68,13 +106,43 @@ local function apply_dimming(buf_handle, hl_ns, top_line, bottom_line, cursor_po
     end
   end
 
-  vim.api.nvim_buf_set_extmark(buf_handle, hl_ns, start_line, start_col, {
+  local extmark_options = {
     end_line = end_line,
-    end_col = end_col,
     hl_group = 'HopUnmatched',
     hl_eol = true,
     priority = prio.DIM_PRIO
-  })
+  }
+
+  if end_col then
+    local current_line = vim.api.nvim_buf_get_lines(buf_handle, cursor_pos[1] - 1, cursor_pos[1], true)[1]
+    local current_width = vim.fn.strdisplaywidth(current_line)
+
+    if end_col > current_width then
+      end_col = current_width - 1
+    end
+
+    extmark_options.end_col = end_col
+  end
+
+  vim.api.nvim_buf_set_extmark(buf_handle, hl_ns, start_line, start_col,
+                               extmark_options)
+end
+
+-- Dim everything out to prepare the Hop session for all windows.
+local function apply_dimming(hint_state, opts)
+  for _, bctx in ipairs(hint_state.all_ctxs) do
+    for _, wctx in ipairs(bctx.contexts) do
+      window.clip_window_context(wctx, opts.direction)
+      -- dim everything out, add the virtual cursor and hide diagnostics
+      set_unmatched_lines(bctx.hbuf, hint_state.dim_ns, wctx.top_line, wctx.bot_line, wctx.cursor_pos, opts.direction, opts.current_line_only)
+    end
+
+    if vim.fn.has("nvim-0.6") == 1 then
+      for ns in pairs(hint_state.diag_ns) do
+        vim.diagnostic.show(ns, bctx.hbuf, nil, { virtual_text = false })
+      end
+    end
+  end
 end
 
 -- Add the virtual cursor, taking care to handle the cases where:
@@ -114,27 +182,101 @@ local function add_virt_cur(ns)
   end
 end
 
+-- Get pattern from input for hint and preview
+local function get_input_pattern(prompt, maxchar, opts)
+  local hs = {}
+  if opts then
+    hs = create_hint_state(opts)
+    hs.preview_ns = vim.api.nvim_create_namespace('hop_preview')
+    apply_dimming(hs, opts)
+    add_virt_cur(hs.hl_ns)
+  end
+
+  local K_Esc = vim.api.nvim_replace_termcodes('<Esc>', true, false, true)
+  local K_BS = vim.api.nvim_replace_termcodes('<BS>', true, false, true)
+  local K_CR = vim.api.nvim_replace_termcodes('<CR>', true, false, true)
+  local pat_keys = {}
+  local pat = ''
+
+  while (true) do
+    pat = vim.fn.join(pat_keys, '')
+    if opts then
+      clear_namespace(hs.buf_list, hs.preview_ns)
+      if #pat > 0 then
+        local ok, re = pcall(jump_target.regex_by_case_searching, pat, false, opts)
+        if ok then
+            local jump_target_gtr = jump_target.jump_targets_by_scanning_lines(re)
+            local generated = jump_target_gtr(opts)
+            hint.set_hint_preview(hs.preview_ns, generated.jump_targets)
+        end
+      end
+    end
+    vim.api.nvim_echo({}, false, {})
+    vim.cmd('redraw')
+    vim.api.nvim_echo({{prompt, 'Question'}, {pat}}, false, {})
+
+    local ok, key = pcall(vim.fn.getchar)
+    if not ok then break end -- Interrupted by <C-c>
+
+    if type(key) == 'number' then
+      key = vim.fn.nr2char(key)
+    elseif key:byte() == 128 then
+      -- It's a special key in string
+    end
+
+    if key == K_Esc then
+      pat = nil
+      break
+    elseif key == K_CR then
+      break
+    elseif key == K_BS then
+      pat_keys[#pat_keys] = nil
+    else
+      pat_keys[#pat_keys + 1] = key
+    end
+
+    if maxchar and #pat_keys >= maxchar then
+      pat = vim.fn.join(pat_keys, '')
+      break
+    end
+  end
+
+  if opts then
+    clear_namespace(hs.buf_list, hs.preview_ns)
+    -- quit only when got nothin for pattern to avoid blink of highlight
+    if not pat then M.quit(hs) end
+  end
+  vim.api.nvim_echo({}, false, {})
+  vim.cmd('redraw')
+  return pat
+end
+
 -- Move the cursor at a given location.
 --
--- If inclusive is `true`, the jump target will be incremented visually by 1, so that operator-pending motions can
--- correctly take into account the right offset. This is the main difference between motions such as `f` (inclusive)
--- and `t` (exclusive).
+-- Add option to shift cursor by column offset
 --
 -- This function will update the jump list.
-function M.move_cursor_to(w, line, column, inclusive)
-  -- If we do not ask for inclusive jump, we don’t have to retreive any additional lines because we will jump to the
-  -- actual jump target. If we do want an inclusive jump, we need to retreive the line the jump target lies in so that
-  -- we can compute the offset correctly. This is linked to the fact that currently, Neovim doesn’s have an API to «
-  -- offset something by 1 visual column. »
-  if inclusive then
+function M.move_cursor_to(w, line, column, hint_offset)
+  -- If we do not ask for an offset jump, we don’t have to retrieve any additional lines because we will jump to the
+  -- actual jump target. If we do want a jump with an offset, we need to retrieve the line the jump target lies in so
+  -- that we can compute the offset correctly. This is linked to the fact that currently, Neovim doesn’s have an API to
+  -- « offset something by N visual columns. »
+  if hint_offset ~= nil and not (hint_offset == 0) then
+    column = column + hint_offset
     local buf_line = vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(w), line - 1, line, false)[1]
-    column = vim.fn.byteidx(buf_line, column + 1)
+
+    -- If it is pending for operator shift column to the right by 1
+    if vim.api.nvim_get_mode().mode == 'no' then
+      column = column + 1
+    end
+
+    column = vim.fn.byteidx(buf_line, column)
   end
 
   -- update the jump list
   vim.cmd("normal! m'")
   vim.api.nvim_set_current_win(w)
-  vim.api.nvim_win_set_cursor(w, { line, column})
+  vim.api.nvim_win_set_cursor(w, { line, column })
 end
 
 function M.hint_with(jump_target_gtr, opts)
@@ -143,7 +285,7 @@ function M.hint_with(jump_target_gtr, opts)
   end
 
   M.hint_with_callback(jump_target_gtr, opts, function(jt)
-    M.move_cursor_to(jt.window, jt.line + 1, jt.column - 1, opts.inclusive_jump)
+    M.move_cursor_to(jt.window, jt.line + 1, jt.column - 1, opts.hint_offset)
   end)
 end
 
@@ -157,11 +299,8 @@ function M.hint_with_callback(jump_target_gtr, opts, callback)
     return
   end
 
-  local all_ctxs = window.get_window_context(opts.multi_windows)
-
-  -- create the highlight groups; the highlight groups will allow us to clean everything at once when Hop quits
-  local hl_ns = vim.api.nvim_create_namespace('hop_hl')
-  local dim_ns = vim.api.nvim_create_namespace('')
+  -- create hint state
+  local hs = create_hint_state(opts)
 
   -- create jump targets
   local generated = jump_target_gtr(opts)
@@ -170,51 +309,31 @@ function M.hint_with_callback(jump_target_gtr, opts, callback)
   local h = nil
   if jump_target_count == 0 then
     eprintln(' -> there’s no such thing we can see…', opts.teasing)
-    clear_namespace(0, hl_ns)
-    clear_namespace(0, dim_ns)
+    clear_namespace(hs.buf_list, hs.hl_ns)
+    clear_namespace(hs.buf_list, hs.dim_ns)
     return
   elseif jump_target_count == 1 and opts.jump_on_sole_occurrence then
     local jt = generated.jump_targets[1]
     callback(jt)
 
-    clear_namespace(0, hl_ns)
-    clear_namespace(0, dim_ns)
+    clear_namespace(hs.buf_list, hs.hl_ns)
+    clear_namespace(hs.buf_list, hs.dim_ns)
     return
   end
 
   -- we have at least two targets, so generate hints to display
-  local hints = hint.create_hints(generated.jump_targets, generated.indirect_jump_targets, opts)
+  hs.hints = hint.create_hints(generated.jump_targets, generated.indirect_jump_targets, opts)
 
-  local hint_state = {
-    hints = hints,
-    hl_ns = hl_ns,
-    dim_ns = dim_ns,
-  }
-
-  local buf_list = {}
-  for _, bctx in ipairs(all_ctxs) do
-    buf_list[#buf_list + 1] = bctx.hbuf
-    for _, wctx in ipairs(bctx.contexts) do
-      window.clip_window_context(wctx, opts.direction)
-      -- dim everything out, add the virtual cursor and hide diagnostics
-      apply_dimming(bctx.hbuf, dim_ns, wctx.top_line, wctx.bot_line, wctx.cursor_pos, opts.direction, opts.current_line_only)
-    end
-  end
-
-  add_virt_cur(hl_ns)
-  if vim.fn.has("nvim-0.6") == 1 then
-    hint_state.diag_ns = vim.diagnostic.get_namespaces()
-    for ns in pairs(hint_state.diag_ns) do vim.diagnostic.show(ns, 0, nil, { virtual_text = false }) end
-  end
-  hint.set_hint_extmarks(hl_ns, hints, opts)
+  -- dim everything out, add the virtual cursor and hide diagnostics
+  apply_dimming(hs, opts)
+  add_virt_cur(hs.hl_ns)
+  hint.set_hint_extmarks(hs.hl_ns, hs.hints, opts)
   vim.cmd('redraw')
 
   while h == nil do
     local ok, key = pcall(vim.fn.getchar)
     if not ok then
-      for _, buf in ipairs(buf_list) do
-        M.quit(buf, hint_state)
-      end
+      M.quit(hs)
       break
     end
     local not_special_key = true
@@ -232,13 +351,11 @@ function M.hint_with_callback(jump_target_gtr, opts, callback)
 
     if not_special_key and opts.keys:find(key, 1, true) then
       -- If this is a key used in Hop (via opts.keys), deal with it in Hop
-      h = M.refine_hints(buf_list, key, hint_state, callback, opts)
+      h = M.refine_hints(key, hs, callback, opts)
       vim.cmd('redraw')
     else
       -- If it's not, quit Hop
-      for _, buf in ipairs(buf_list) do
-        M.quit(buf, hint_state)
-      end
+      M.quit(hs)
       -- If the key captured via getchar() is not the quit_key, pass it through
       -- to nvim to be handled normally (including mappings)
       if key ~= vim.api.nvim_replace_termcodes(opts.quit_key, true, false, true) then
@@ -253,7 +370,7 @@ end
 --
 -- Refining hints allows to advance the state machine by one step. If a terminal step is reached, this function jumps to
 -- the location. Otherwise, it stores the new state machine.
-function M.refine_hints(buf_list, key, hint_state, callback, opts)
+function M.refine_hints(key, hint_state, callback, opts)
   local h, hints = hint.reduce_hints(hint_state.hints, key)
 
   if h == nil then
@@ -264,15 +381,10 @@ function M.refine_hints(buf_list, key, hint_state, callback, opts)
 
     hint_state.hints = hints
 
-    for _, buf in ipairs(buf_list) do
-      clear_namespace(buf, hint_state.hl_ns)
-    end
+    clear_namespace(hint_state.buf_list, hint_state.hl_ns)
     hint.set_hint_extmarks(hint_state.hl_ns, hints, opts)
-    vim.cmd('redraw')
   else
-    for _, buf in ipairs(buf_list) do
-      M.quit(buf, hint_state)
-    end
+    M.quit(hint_state)
 
     -- prior to jump, register the current position into the jump list
     vim.cmd("normal! m'")
@@ -283,12 +395,14 @@ function M.refine_hints(buf_list, key, hint_state, callback, opts)
 end
 
 -- Quit Hop and delete its resources.
-function M.quit(buf_handle, hint_state)
-  clear_namespace(buf_handle, hint_state.hl_ns)
-  clear_namespace(buf_handle, hint_state.dim_ns)
+function M.quit(hint_state)
+  clear_namespace(hint_state.buf_list, hint_state.hl_ns)
+  clear_namespace(hint_state.buf_list, hint_state.dim_ns)
 
-  if vim.fn.has("nvim-0.6") == 1 then
-    for ns in pairs(hint_state.diag_ns) do vim.diagnostic.show(ns, buf_handle) end
+  for _, buf in ipairs(hint_state.buf_list) do
+    if vim.fn.has("nvim-0.6") == 1 then
+      for ns in pairs(hint_state.diag_ns) do vim.diagnostic.show(ns, buf) end
+    end
   end
 end
 
@@ -313,16 +427,20 @@ function M.hint_patterns(opts, pattern)
 
   -- The pattern to search is either retrieved from the (optional) argument
   -- or directly from user input.
-  if pattern == nil then
+  local pat
+  if pattern then
+    pat = pattern
+  else
+    vim.cmd('redraw')
     vim.fn.inputsave()
-
-    local ok
-    ok, pattern = pcall(vim.fn.input, 'Search: ')
+    pat = get_input_pattern('Hop pattern: ', nil, opts)
     vim.fn.inputrestore()
+    if not pat then return end
+  end
 
-    if not ok then
-      return
-    end
+  if #pat == 0 then
+    eprintln('-> empty pattern', opts.teasing)
+    return
   end
 
   local generator
@@ -333,7 +451,7 @@ function M.hint_patterns(opts, pattern)
   end
 
   M.hint_with(
-    generator(jump_target.regex_by_case_searching(pattern, false, opts)),
+    generator(jump_target.regex_by_case_searching(pat, false, opts)),
     opts
   )
 end
@@ -341,8 +459,8 @@ end
 function M.hint_char1(opts)
   opts = override_opts(opts)
 
-  local ok, c = pcall(vim.fn.getchar)
-  if not ok then
+  local c = get_input_pattern('Hop 1 char: ', 1)
+  if not c then
     return
   end
 
@@ -354,7 +472,7 @@ function M.hint_char1(opts)
   end
 
   M.hint_with(
-    generator(jump_target.regex_by_case_searching(vim.fn.nr2char(c), true, opts)),
+    generator(jump_target.regex_by_case_searching(c, true, opts)),
     opts
   )
 end
@@ -362,22 +480,9 @@ end
 function M.hint_char2(opts)
   opts = override_opts(opts)
 
-  local ok, a = pcall(vim.fn.getchar)
-  if not ok then
+  local c = get_input_pattern('Hop 2 char: ', 2)
+  if not c then
     return
-  end
-
-  local ok2, b = pcall(vim.fn.getchar)
-  if not ok2 then
-    return
-  end
-
-  local pattern = vim.fn.nr2char(a)
-
-  -- if we have a fallback key defined in the opts, if the second character is that key, we then fallback to the same
-  -- behavior as hint_char1()
-  if opts.char2_fallback_key == nil or b ~= vim.fn.char2nr(vim.api.nvim_replace_termcodes(opts.char2_fallback_key, true, false, true)) then
-    pattern = pattern .. vim.fn.nr2char(b)
   end
 
   local generator
@@ -388,7 +493,7 @@ function M.hint_char2(opts)
   end
 
   M.hint_with(
-    generator(jump_target.regex_by_case_searching(pattern, true, opts)),
+    generator(jump_target.regex_by_case_searching(c, true, opts)),
     opts
   )
 end

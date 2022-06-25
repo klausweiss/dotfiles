@@ -5,6 +5,8 @@ local M = {}
 local events = require "nvim-tree.events"
 
 M.View = {
+  adaptive_size = false,
+  centralize_selection = false,
   tabpages = {},
   cursors = {},
   hide_root_folder = false,
@@ -128,16 +130,28 @@ local function open_window()
   set_window_options_and_buffer()
 end
 
-local function get_existing_buffers()
-  return vim.tbl_filter(function(buf)
-    return a.nvim_buf_is_valid(buf) and vim.fn.buflisted(buf) == 1
-  end, a.nvim_list_bufs())
+local function is_buf_displayed(buf)
+  return a.nvim_buf_is_valid(buf) and vim.fn.buflisted(buf) == 1
+end
+
+local function get_alt_or_next_buf()
+  local alt_buf = vim.fn.bufnr "#"
+  if is_buf_displayed(alt_buf) then
+    return alt_buf
+  end
+
+  for _, buf in ipairs(a.nvim_list_bufs()) do
+    if is_buf_displayed(buf) then
+      return buf
+    end
+  end
 end
 
 local function switch_buf_if_last_buf()
   if #a.nvim_list_wins() == 1 then
-    if #get_existing_buffers() > 0 then
-      vim.cmd "sbnext"
+    local buf = get_alt_or_next_buf()
+    if buf then
+      vim.cmd("sb" .. buf)
     else
       vim.cmd "new"
     end
@@ -185,6 +199,25 @@ function M.open(options)
     vim.cmd "wincmd p"
   end
   events._dispatch_on_tree_open()
+end
+
+local function grow()
+  local starts_at = M.is_root_folder_visible(require("nvim-tree.core").get_cwd()) and 1 or 0
+  local lines = vim.api.nvim_buf_get_lines(M.get_bufnr(), starts_at, -1, false)
+  local max_length = M.View.initial_width
+  for _, l in pairs(lines) do
+    if max_length < #l then
+      max_length = #l
+    end
+  end
+  M.resize(max_length)
+end
+
+function M.grow_from_content()
+  local is_left_or_right = M.View.side == "left" or M.View.side == "right"
+  if M.View.adaptive_size and is_left_or_right then
+    grow()
+  end
 end
 
 function M.resize(size)
@@ -249,6 +282,11 @@ function M.abandon_current_window()
   local tab = a.nvim_get_current_tabpage()
   BUFNR_PER_TAB[tab] = nil
   M.View.tabpages[tab].winnr = nil
+end
+
+function M.quit_on_open()
+  M._prevent_buffer_override()
+  M.abandon_current_window()
 end
 
 function M.is_visible(opts)
@@ -373,9 +411,12 @@ end
 
 function M.setup(opts)
   local options = opts.view or {}
+  M.View.adaptive_size = options.adaptive_size
+  M.View.centralize_selection = options.centralize_selection
   M.View.side = options.side
   M.View.width = options.width
   M.View.height = options.height
+  M.View.initial_width = get_size()
   M.View.hide_root_folder = options.hide_root_folder
   M.View.preserve_window_proportions = options.preserve_window_proportions
   M.View.winopts.number = options.number

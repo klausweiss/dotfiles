@@ -17,6 +17,7 @@ local filetype_to_parsername = {
   OpenFOAM = "foam",
   pandoc = "markdown",
   rmd = "markdown",
+  cs = "c_sharp",
 }
 
 local list = setmetatable({}, {
@@ -397,7 +398,7 @@ list.ocaml = {
   install_info = {
     url = "https://github.com/tree-sitter/tree-sitter-ocaml",
     files = { "src/parser.c", "src/scanner.cc" },
-    location = "tree-sitter-ocaml/ocaml",
+    location = "ocaml",
   },
   maintainers = { "@undu" },
 }
@@ -406,7 +407,7 @@ list.ocaml_interface = {
   install_info = {
     url = "https://github.com/tree-sitter/tree-sitter-ocaml",
     files = { "src/parser.c", "src/scanner.cc" },
-    location = "tree-sitter-ocaml_interface/interface",
+    location = "interface",
   },
   maintainers = { "@undu" },
   filetype = "ocamlinterface",
@@ -435,6 +436,7 @@ list.swift = {
     branch = "with-generated-files",
     files = { "src/parser.c", "src/scanner.c" },
   },
+  maintainers = { "@alex-pinkus" },
 }
 
 list.c_sharp = {
@@ -461,7 +463,7 @@ list.typescript = {
   install_info = {
     url = "https://github.com/tree-sitter/tree-sitter-typescript",
     files = { "src/parser.c", "src/scanner.c" },
-    location = "tree-sitter-typescript/typescript",
+    location = "typescript",
     generate_requires_npm = true,
   },
   maintainers = { "@steelsojka" },
@@ -471,7 +473,7 @@ list.tsx = {
   install_info = {
     url = "https://github.com/tree-sitter/tree-sitter-typescript",
     files = { "src/parser.c", "src/scanner.c" },
-    location = "tree-sitter-tsx/tsx",
+    location = "tsx",
     generate_requires_npm = true,
   },
   filetype = "typescriptreact",
@@ -796,7 +798,7 @@ list.svelte = {
 list.r = {
   install_info = {
     url = "https://github.com/r-lib/tree-sitter-r",
-    files = { "src/parser.c" },
+    files = { "src/parser.c", "src/scanner.cc" },
   },
   maintainers = { "@jimhester" },
 }
@@ -808,6 +810,15 @@ list.beancount = {
     branch = "master",
   },
   maintainers = { "@polarmutex" },
+}
+
+list.rnoweb = {
+  install_info = {
+    url = "https://github.com/bamonroe/tree-sitter-rnoweb",
+    files = { "src/parser.c", "src/scanner.c" },
+  },
+  filetype = "rnoweb",
+  maintainers = { "@bamonroe" },
 }
 
 list.latex = {
@@ -1072,12 +1083,24 @@ list.v = {
   install_info = {
     url = "https://github.com/vlang/vls",
     files = { "src/parser.c", "src/scanner.c" },
-    location = "tree-sitter-v/tree_sitter_v",
+    location = "tree_sitter_v",
     generate_requires_npm = false,
     requires_generate_from_grammar = false,
   },
   filetype = "vlang",
   maintainers = { "@tami5" },
+}
+
+list.tiger = {
+  install_info = {
+    url = "https://github.com/ambroisie/tree-sitter-tiger",
+    files = { "src/parser.c", "src/scanner.c" },
+    branch = "main",
+    generate_requires_npm = false,
+    requires_generate_from_grammar = false,
+  },
+  filetype = "tiger",
+  maintainers = { "@ambroisie" },
 }
 
 local M = {

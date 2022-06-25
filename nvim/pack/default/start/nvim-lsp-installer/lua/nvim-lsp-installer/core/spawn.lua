@@ -3,6 +3,7 @@ local Result = require "nvim-lsp-installer.core.result"
 local process = require "nvim-lsp-installer.core.process"
 local platform = require "nvim-lsp-installer.core.platform"
 local functional = require "nvim-lsp-installer.core.functional"
+local log = require "nvim-lsp-installer.log"
 
 ---@alias JobSpawn table<string, async fun(opts: JobSpawnOpts): Result>
 ---@type JobSpawn
@@ -12,6 +13,8 @@ local spawn = {
         gem = platform.is_win and "gem.cmd" or "gem",
         composer = platform.is_win and "composer.bat" or "composer",
         gradlew = platform.is_win and "gradlew.bat" or "gradlew",
+        -- for hererocks installations
+        luarocks = (platform.is_win and vim.fn.executable "luarocks.bat" == 1) and "luarocks.bat" or "luarocks",
     },
 }
 
@@ -85,7 +88,8 @@ setmetatable(spawn, {
 
             local cmd = self._aliases[normalized_cmd] or normalized_cmd
 
-            if args.with_paths == nil and args.check_executable ~= false and not is_executable(cmd) then
+            if (env and env.PATH) == nil and args.check_executable ~= false and not is_executable(cmd) then
+                log.fmt_debug("%s is not executable", cmd)
                 return Failure({
                     stderr = ("%s is not executable"):format(cmd),
                 }, cmd)
