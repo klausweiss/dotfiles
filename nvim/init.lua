@@ -199,6 +199,7 @@ require 'nvim-tree'.setup {
     },
     highlight_git = true,
   },
+  update_cwd = true,
 }
 
 -- session
