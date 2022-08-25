@@ -117,6 +117,9 @@ update-hop:
 update-koka:
 	$(call download-from-git-subdirectory, https://github.com/koka-lang/koka, support/vim)
 
+update-lazygit:
+	$(call download-from-repo, https://github.com/kdheepak/lazygit.nvim)
+
 update-lsp_signature:
 	$(call download-from-repo, https://github.com/ray-x/lsp_signature.nvim)
 

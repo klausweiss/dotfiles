@@ -428,6 +428,7 @@ file_key('s', 'write')
 
 -- see gitsigns for more shortcuts
 git_key('g', 'Neogit')
+git_key('l', 'LazyGit')
 
 project_key('s', 'Telescope session-lens search_session')
 project_key('w', 'SaveSession')
