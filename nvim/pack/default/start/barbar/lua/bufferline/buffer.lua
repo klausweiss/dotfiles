@@ -11,6 +11,7 @@ local table_concat = table.concat
 
 local buf_get_name = vim.api.nvim_buf_get_name
 local buf_is_valid = vim.api.nvim_buf_is_valid
+local buf_get_option = vim.api.nvim_buf_get_option
 local bufwinnr = vim.fn.bufwinnr
 local get_current_buf = vim.api.nvim_get_current_buf
 local matchlist = vim.fn.matchlist
@@ -39,26 +40,17 @@ local function get_activity(number)
 end
 
 local function get_name(opts, number)
-  local name =
-    buf_is_valid(number) and
-      buf_get_name(number) or
-      ('[invalid ' .. number .. ']')
+  --- @type nil|string
+  local name = buf_is_valid(number) and buf_get_name(number) or nil
 
-  if name == '' then
-    if opts.no_name_title ~= nil and
-       opts.no_name_title ~= vim.NIL
-    then
-      name = opts.no_name_title
-    else
-      name = '[buffer ' .. number .. ']'
-    end
-  else
-    local buftype = vim.bo[number].buftype
-    if buftype == 'terminal' then
-      name = terminalname(name)
-    else
-      name = utils.basename(name)
-    end
+  if name then
+    name = buf_get_option(number, 'buftype') == 'terminal' and terminalname(name) or utils.basename(name)
+  elseif opts.no_name_title ~= nil and opts.no_name_title ~= vim.NIL then
+    name = opts.no_name_title
+  end
+
+  if name == '' or not name then
+    name = '[buffer ' .. number .. ']'
   end
 
   local ellipsis = '…'

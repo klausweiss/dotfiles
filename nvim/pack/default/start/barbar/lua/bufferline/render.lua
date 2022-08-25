@@ -9,6 +9,7 @@ local string_rep = string.rep
 local table_insert = table.insert
 
 local get_current_buf = vim.api.nvim_get_current_buf
+local buf_get_option = vim.api.nvim_buf_get_option
 local has = vim.fn.has
 local strcharpart = vim.fn.strcharpart
 local strwidth = vim.api.nvim_strwidth
@@ -172,7 +173,11 @@ end
 
 -- Rendering
 
-local function render(update_names)
+--- Generate a valid `&tabline` given the current state of Neovim.
+--- @param refocus nil|boolean if `true`, the bufferline will be refocused on the current buffer (default: `true`)
+--- @param update_names nil|boolean whether to refresh the names of the buffers (default: `false`)
+--- @return nil|string syntax
+local function render(update_names, refocus)
   local opts = vim.g.bufferline
   local buffer_numbers = state.get_updated_buffers(update_names)
 
@@ -191,7 +196,7 @@ local function render(update_names)
   local current = get_current_buf()
 
   -- Store current buffer to open new ones next to this one
-  if vim.bo[current].buflisted then
+  if buf_get_option(current, 'buflisted') then
     if vim.b.empty_buffer then
       state.last_current_buffer = nil
     else
@@ -224,7 +229,7 @@ local function render(update_names)
     local is_inactive = activity == 0
     -- local is_visible = activity == 1
     local is_current = activity == 2
-    local is_modified = vim.bo[buffer_number].modified
+    local is_modified = buf_get_option(buffer_number, 'modified')
     -- local is_closing = buffer_data.closing
     local is_pinned = state.is_pinned(buffer_number)
 
@@ -275,7 +280,7 @@ local function render(update_names)
     else
 
       if has_icons then
-        local iconChar, iconHl = icons.get_icon(buffer_name, vim.bo[buffer_number].filetype, status)
+        local iconChar, iconHl = icons.get_icon(buffer_name, buf_get_option(buffer_number, 'filetype'), status)
         local hlName = is_inactive and 'BufferInactive' or iconHl
         iconPrefix = has_icon_custom_colors and hl_tabline('Buffer' .. status .. 'Icon') or hlName and hl_tabline(hlName) or namePrefix
         icon = iconChar .. ' '
@@ -327,7 +332,7 @@ local function render(update_names)
       }
     }
 
-    if is_current then
+    if is_current and refocus ~= false then
       current_buffer_index = i
       current_buffer_position = buffer_data.real_position
 
@@ -352,8 +357,10 @@ local function render(update_names)
   if state.offset and state.offset > 0 then
     local offset_available_width = state.offset - 2
     local groups = {
-      {hl_tabline('BufferOffset'), ' '},
-      {'',                 state.offset_text},
+      {
+        hl_tabline(state.offset_hl or 'BufferOffset'),
+        ' ' .. state.offset_text
+      },
     }
     result = result .. groups_to_string(slice_groups_right(groups, offset_available_width))
     result = result .. string_rep(' ', offset_available_width - #state.offset_text)
@@ -408,14 +415,6 @@ local function render(update_names)
   return result
 end
 
-local function render_safe(update_names)
-  local ok, result = xpcall(render, debug.traceback, update_names)
-  return {ok, tostring(result)}
-end
-
 -- print(render(state.buffers))
 
-return {
-  render = render,
-  render_safe = render_safe,
-}
+return { render = render }

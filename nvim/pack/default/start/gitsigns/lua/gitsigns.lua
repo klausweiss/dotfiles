@@ -1,3 +1,4 @@
+local async = require('gitsigns.async')
 local void = require('gitsigns.async').void
 local scheduler = require('gitsigns.async').scheduler
 
@@ -153,6 +154,37 @@ local function on_detach(_, bufnr)
    M.detach(bufnr, true)
 end
 
+local function on_attach_pre(bufnr)
+   local gitdir, toplevel
+   if config._on_attach_pre then
+      local res = async.wrap(config._on_attach_pre, 2)(bufnr)
+      dprintf('ran on_attach_pre with result %s', vim.inspect(res))
+      if type(res) == "table" then
+         if type(res.gitdir) == 'string' then
+            gitdir = res.gitdir
+         end
+         if type(res.toplevel) == 'string' then
+            toplevel = res.toplevel
+         end
+      end
+   end
+   return gitdir, toplevel
+end
+
+local function try_worktrees(_bufnr, file, encoding)
+   if not config.worktrees then
+      return
+   end
+
+   for _, wt in ipairs(config.worktrees) do
+      local git_obj = git.Obj.new(file, encoding, wt.gitdir, wt.toplevel)
+      if git_obj and git_obj.object_name then
+         dprintf('Using worktree %s', vim.inspect(wt))
+         return git_obj
+      end
+   end
+end
+
 
 
 
@@ -190,6 +222,7 @@ local attach_throttled = throttle_by_id(function(cbuf, aucmd)
    end
 
    local file, commit = get_buf_path(cbuf)
+   local encoding = vim.bo[cbuf].fileencoding
 
    local file_dir = util.dirname(file)
 
@@ -198,7 +231,14 @@ local attach_throttled = throttle_by_id(function(cbuf, aucmd)
       return
    end
 
-   local git_obj = git.Obj.new(file, vim.bo[cbuf].fileencoding)
+   local gitdir_oap, toplevel_oap = on_attach_pre(cbuf)
+   local git_obj = git.Obj.new(file, encoding, gitdir_oap, toplevel_oap)
+
+   if not git_obj then
+      git_obj = try_worktrees(cbuf, file, encoding)
+      scheduler()
+   end
+
    if not git_obj then
       dprint('Empty git obj')
       return
@@ -315,10 +355,15 @@ local function parse_to_lua(a)
    return a
 end
 
-local function run_cmd_func(params)
+local run_cmd_func = void(function(params)
    local pos_args_raw, named_args_raw = require('gitsigns.argparse').parse_args(params.args)
 
    local func = pos_args_raw[1]
+
+   if not func then
+      func = async.wrap(vim.ui.select, 3)(complete('', 'Gitsigns '), {})
+   end
+
    local pos_args = vim.tbl_map(parse_to_lua, vim.list_slice(pos_args_raw, 2))
    local named_args = vim.tbl_map(parse_to_lua, named_args_raw)
 
@@ -345,11 +390,11 @@ local function run_cmd_func(params)
    end
 
    error(string.format('%s is not a valid function or action', func))
-end
+end)
 
 local function setup_command()
    nvim.command('Gitsigns', run_cmd_func,
-   { force = true, nargs = '+', range = true, complete = complete })
+   { force = true, nargs = '*', range = true, complete = complete })
 end
 
 local function wrap_func(fn, ...)

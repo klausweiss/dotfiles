@@ -11,6 +11,7 @@ function M.folder(parent, absolute_path, name)
   local has_children = handle and uv.fs_scandir_next(handle) ~= nil
 
   return {
+    type = "directory",
     absolute_path = absolute_path,
     fs_stat = uv.fs_stat(absolute_path),
     group_next = nil, -- If node is grouped, this points to the next child dir/link node
@@ -23,7 +24,7 @@ function M.folder(parent, absolute_path, name)
   }
 end
 
-local function is_executable(absolute_path, ext)
+function M.is_executable(absolute_path, ext)
   if M.is_windows then
     return utils.is_windows_exe(ext)
   end
@@ -34,8 +35,9 @@ function M.file(parent, absolute_path, name)
   local ext = string.match(name, ".?[^.]+%.(.*)") or ""
 
   return {
+    type = "file",
     absolute_path = absolute_path,
-    executable = is_executable(absolute_path, ext),
+    executable = M.is_executable(absolute_path, ext),
     extension = ext,
     fs_stat = uv.fs_stat(absolute_path),
     name = name,
@@ -49,7 +51,7 @@ end
 -- when it has no real reason to. Maybe there is a reason, but errno is definitely wrong.
 -- So we need to check for link_to ~= nil when adding new links to the main tree
 function M.link(parent, absolute_path, name)
-  --- I dont know if this is needed, because in my understanding, there isnt hard links in windows, but just to be sure i changed it.
+  --- I dont know if this is needed, because in my understanding, there isn't hard links in windows, but just to be sure i changed it.
   local link_to = uv.fs_realpath(absolute_path)
   local open, nodes, has_children, watcher
   if (link_to ~= nil) and uv.fs_stat(link_to).type == "directory" then
@@ -61,6 +63,7 @@ function M.link(parent, absolute_path, name)
   end
 
   return {
+    type = "link",
     absolute_path = absolute_path,
     fs_stat = uv.fs_stat(absolute_path),
     group_next = nil, -- If node is grouped, this points to the next child dir/link node

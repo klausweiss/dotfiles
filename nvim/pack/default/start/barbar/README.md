@@ -468,11 +468,19 @@ You can add the following functions and then use `nvim-tree` mappings:
 local nvim_tree_events = require('nvim-tree.events')
 local bufferline_state = require('bufferline.state')
 
-nvim_tree_events.on_tree_open(function ()
-  bufferline_state.set_offset(31, "File Tree")
+local function get_tree_size()
+  return require'nvim-tree.view'.View.width
+end
+
+nvim_tree_events.subscribe('TreeOpen', function()
+  bufferline_state.set_offset(get_tree_size())
 end)
 
-nvim_tree_events.on_tree_close(function ()
+nvim_tree_events.subscribe('Resize', function()
+  bufferline_state.set_offset(get_tree_size())
+end)
+
+nvim_tree_events.subscribe('TreeClose', function()
   bufferline_state.set_offset(0)
 end)
 ```

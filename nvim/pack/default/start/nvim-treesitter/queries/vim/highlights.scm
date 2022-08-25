@@ -25,6 +25,8 @@
   "in"
   "while"
   "endwhile"
+  "break"
+  "continue"
 ] @repeat
 
 [
@@ -70,6 +72,7 @@
   "perl"
   "python"
   "highlight"
+  "command"
   "delcommand"
   "comclear"
   "colorscheme"
@@ -78,12 +81,20 @@
   "global"
   "runtime"
   "wincmd"
+  "cnext"
+  "cprevious"
+  "cNext"
+  "vertical"
+  "leftabove"
+  "aboveleft"
+  "rightbelow"
+  "belowright"
+  "topleft"
+  "botright"
+  (unknown_command_name)
 ] @keyword
 (map_statement cmd: _ @keyword)
-[ 
-  (command_name)
-  (unknown_command_name)
-]@function.macro
+(command_name) @function.macro
 
 ;; Syntax command
 
@@ -132,6 +143,13 @@
   "clear"
 ] @keyword)
 
+;; Command command
+
+(command_attribute name: _ @property)
+(command_attribute
+  val: (behavior
+    (identifier)? @function) @constant)
+
 ;; Runtime command
 
 (runtime_statement (where) @keyword.operator)
@@ -149,6 +167,8 @@
 (pattern) @string.special
 (pattern_multi) @string.regex
 (filename) @string
+(heredoc (body) @string)
+((heredoc (parameter) @keyword))
 ((scoped_identifier
   (scope) @_scope . (identifier) @boolean)
  (#eq? @_scope "v:")

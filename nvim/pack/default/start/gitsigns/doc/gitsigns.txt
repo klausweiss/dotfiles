@@ -61,7 +61,7 @@ of the default settings:
       sign_priority = 6,
       update_debounce = 100,
       status_formatter = nil, -- Use default
-      max_file_length = 40000,
+      max_file_length = 40000, -- Disable if file is longer than this (in lines)
       preview_config = {
         -- Options passed to nvim_open_win
         border = 'single',
@@ -518,6 +518,24 @@ keymaps                                              *gitsigns-config-keymaps*
       to `{}`, and |gitsigns-config-on_attach| can instead be used to define
       mappings.
 
+worktrees                                          *gitsigns-config-worktrees*
+      Type: `table`, Default: `nil`
+
+      Detached working trees.
+
+      Array of tables with the keys `gitdir` and `toplevel`.
+
+      If normal attaching fails, then each entry in the table is attempted
+      with the work tree details set.
+
+      Example: >
+        worktrees = {
+          {
+            toplevel = vim.env.HOME,
+            gitdir = vim.env.HOME .. '/projects/dotfiles/.git'
+          }
+        }
+
 on_attach                                          *gitsigns-config-on_attach*
       Type: `function`, Default: `nil`
 
@@ -541,9 +559,10 @@ on_attach                                          *gitsigns-config-on_attach*
 <
 
 watch_gitdir                                    *gitsigns-config-watch_gitdir*
-      Type: `table`
+      Type: `table[extended]`
       Default: >
         {
+          enable = true,
           interval = 1000,
           follow_files = true
         }
@@ -553,6 +572,9 @@ watch_gitdir                                    *gitsigns-config-watch_gitdir*
       update signs.
 
       Fields: ~
+        • `enable`:
+            Whether the watcher is enabled.
+
         • `interval`:
             Interval the watcher waits between polls of the gitdir in milliseconds.
 
@@ -668,7 +690,7 @@ status_formatter                            *gitsigns-config-status_formatter*
 max_file_length                              *gitsigns-config-max_file_length*
       Type: `number`, Default: `40000`
 
-      Max file length to attach to.
+      Max file length (in lines) to attach to.
 
 preview_config                                *gitsigns-config-preview_config*
       Type: `table[extended]`

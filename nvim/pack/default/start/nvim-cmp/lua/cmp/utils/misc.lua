@@ -32,7 +32,7 @@ end
 ---Repeat values
 ---@generic T
 ---@param str_or_tbl T
----@param count number
+---@param count integer
 ---@return T
 misc.rep = function(str_or_tbl, count)
   if type(str_or_tbl) == 'string' then
@@ -124,8 +124,9 @@ misc.id = setmetatable({
 })
 
 ---Check the value is nil or not.
----@param v boolean
----@return boolean
+---@generic T|nil|vim.NIL
+---@param v T
+---@return T|nil
 misc.safe = function(v)
   if v == nil or v == vim.NIL then
     return nil
@@ -184,8 +185,8 @@ end
 
 ---Safe version of vim.str_utfindex
 ---@param text string
----@param vimindex number|nil
----@return number
+---@param vimindex integer|nil
+---@return integer
 misc.to_utfindex = function(text, vimindex)
   vimindex = vimindex or #text + 1
   return vim.str_utfindex(text, math.max(0, math.min(vimindex - 1, #text)))
@@ -193,8 +194,8 @@ end
 
 ---Safe version of vim.str_byteindex
 ---@param text string
----@param utfindex number
----@return number
+---@param utfindex integer
+---@return integer
 misc.to_vimindex = function(text, utfindex)
   utfindex = utfindex or #text
   for i = utfindex, 1, -1 do
@@ -224,7 +225,8 @@ end
 misc.redraw = setmetatable({
   doing = false,
   force = false,
-  termcode = vim.api.nvim_replace_termcodes('<C-r><Esc>', true, true, true),
+  -- We use `<Up><Down>` to redraw the screen. (Previously, We use <C-r><ESC>. it will remove the unmatches search history.)
+  termcode = vim.api.nvim_replace_termcodes('<Up><Down>', true, true, true),
 }, {
   __call = function(self, force)
     if vim.tbl_contains({ '/', '?' }, vim.fn.getcmdtype()) then

@@ -28,7 +28,8 @@ Neovim >= 0.5 (extmarks)
 
 # Setup
 ## Install 
-Ie. With [vim-plug](https://github.com/junegunn/vim-plug)
+* With your preferred plugin manager i.e. [vim-plug](https://github.com/junegunn/vim-plug) or [packer](https://github.com/wbthomason/packer.nvim) (recommended).
+  
 ## Keymaps
 ```vim
 " press <Tab> to expand or jump in a snippet. These can also be mapped separately
@@ -89,6 +90,8 @@ There's also a repository collecting snippets for various languages, [molleweide
 Check [`DOC.md`](https://github.com/L3MON4D3/LuaSnip/blob/master/DOC.md) (or `:help luasnip`) for a short overview and in-depth explanations of the different nodes and available API.  
 I highly recommend looking into (or better yet, `:luafile`ing) [`Examples/snippets.lua`](https://github.com/L3MON4D3/LuaSnip/blob/master/Examples/snippets.lua) before writing snippets in lua.  
 The [Wiki](https://github.com/L3MON4D3/LuaSnip/wiki) contains some pretty useful extensions to Luasnip.
+
+【中文版】DOC in Chinese is [here](https://zjp-cn.github.io/neovim0.6-blogs/nvim/luasnip/doc1.html). 
 
 # Config
 - `history`: If true, Snippets that were exited can still be jumped back into. As Snippets are not removed when their text is deleted, they have to be removed manually via `LuasnipUnlinkCurrent` if `delete_check_events` is not enabled (set to eg. `'TextChanged'`).

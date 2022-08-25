@@ -559,7 +559,7 @@ underline for some grammatical reasons.
 
 How to enable cursive italic keywords?~
 
-1. Install a font that supports cursive italics, for example https://www.sainnhe.dev/post/patch-fonts-with-cursive-italic-styles/
+1. Install a font that supports cursive italics, for example https://aka.sainnhe.dev/fonts
 
 2. Enable italic keywords in this color scheme: `let g:gruvbox_material_enable_italic = 1`
 
@@ -571,6 +571,12 @@ The comment color looks weird.~
 
 Some terminal emulators don't support italics, which may cause the comment
 color looks weird. See https://github.com/sainnhe/gruvbox-material/issues/5#issuecomment-729586348
+
+A temporary solution is to disable italic comments via
+|g:gruvbox_material_disable_italic_comment|.
+
+If you are using tmux, you may also need to override default true colors of
+tmux: https://github.com/tmux/tmux/issues/1246
 
 ------------------------------------------------------------------------------
 
@@ -610,13 +616,13 @@ Note: Make sure to define the `augroup` before declare the `colorscheme`.
 
 What's your status line configuration?~
 
-See this [article](https://www.sainnhe.dev/post/status-line-config/).
+See this post: https://aka.sainnhe.dev/statusline
 
 ------------------------------------------------------------------------------
 
 What's the font used here?~
 
-See https://www.sainnhe.dev/post/patch-fonts-with-cursive-italic-styles/
+See this post: https://aka.sainnhe.dev/fonts
 
 ==============================================================================
 vim:tw=78:nosta:noet:ts=8:sts=0:ft=help:et:sw=4:fen:fdm=marker:fmr={{{,}}}:

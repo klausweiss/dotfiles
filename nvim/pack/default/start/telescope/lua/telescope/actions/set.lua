@@ -1,5 +1,5 @@
 ---@tag telescope.actions.set
----@config { ["module"] = "telescope.actions.set" }
+---@config { ["module"] = "telescope.actions.set", ["name"] = "ACTIONS_SET" }
 
 ---@brief [[
 --- Telescope action sets are used to provide an interface for managing
@@ -67,6 +67,7 @@ end
 local edit_buffer
 do
   local map = {
+    drop = "drop",
     edit = "buffer",
     new = "sbuffer",
     vnew = "vert sbuffer",
@@ -78,7 +79,11 @@ do
     if command == nil then
       error "There was no associated buffer command"
     end
-    vim.cmd(string.format("%s %d", command, bufnr))
+    if command ~= "drop" then
+      vim.cmd(string.format("%s %d", command, bufnr))
+    else
+      vim.cmd(string.format("%s %s", command, vim.api.nvim_buf_get_name(bufnr)))
+    end
   end
 end
 
@@ -104,7 +109,7 @@ action_set.edit = function(prompt_bufnr, command)
 
     -- TODO: Check for off-by-one
     row = entry.row or entry.lnum
-    col = entry.col
+    col = vim.F.if_nil(entry.col, 1)
   elseif not entry.bufnr then
     -- TODO: Might want to remove this and force people
     -- to put stuff into `filename`

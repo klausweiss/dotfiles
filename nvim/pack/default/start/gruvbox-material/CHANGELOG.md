@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Optimize `b0o/incline.nvim`.
+- Optimize winbar.
+- Optimize `echasnovski/mini.nvim`.
+- Support coc popup menu.
+- Optimize `ggandor/lightspeed.nvim`.
+- Optimize `pwntester/octo.nvim`.
+- Optimize `simrat39/symbols-outline.nvim`.
+- Support for YCM semantic highlighting and inlayHints.
+- Optimize `MattesGroeger/vim-bookmarks`.
+- Support for vim-lsp semantic highlighting and inlayHints.
+
 ### Changed
 
 - Change default value of `g:gruvbox_material_sign_column_background` to `'none'`.

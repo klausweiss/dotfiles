@@ -1,4 +1,6 @@
 local helper = {}
+local api = vim.api
+local fn = vim.fn
 
 -- local lua_magic = [[^$()%.[]*+-?]]
 
@@ -26,7 +28,7 @@ helper.log = function(...)
 
   if _LSP_SIG_CFG.verbose == true then
     local info = debug.getinfo(2, "Sl")
-    lineinfo = info.short_src .. ":" .. info.currentline
+    local lineinfo = info.short_src .. ":" .. info.currentline
     str = str .. lineinfo
   end
 
@@ -83,8 +85,8 @@ local function findwholeword(input, word)
 end
 
 helper.fallback = function(trigger_chars)
-  local r = vim.api.nvim_win_get_cursor(0)
-  local line = vim.api.nvim_get_current_line()
+  local r = api.nvim_win_get_cursor(0)
+  local line = api.nvim_get_current_line()
   line = line:sub(1, r[2])
   local activeParameter = 0
   if not vim.tbl_contains(trigger_chars, "(") then
@@ -291,8 +293,8 @@ helper.check_closer_char = function(line_to_cursor, trigger_chars)
 end
 
 helper.is_new_line = function()
-  local line = vim.api.nvim_get_current_line()
-  local r = vim.api.nvim_win_get_cursor(0)
+  local line = api.nvim_get_current_line()
+  local r = api.nvim_win_get_cursor(0)
   local line_to_cursor = line:sub(1, r[2])
   line_to_cursor = string.gsub(line_to_cursor, "%s+", "")
   if #line_to_cursor < 1 then
@@ -304,9 +306,9 @@ end
 
 helper.close_float_win = function(close_float_win)
   close_float_win = close_float_win or false
-  if _LSP_SIG_CFG.winnr and vim.api.nvim_win_is_valid(_LSP_SIG_CFG.winnr) and close_float_win then
+  if _LSP_SIG_CFG.winnr and api.nvim_win_is_valid(_LSP_SIG_CFG.winnr) and close_float_win then
     log("closing winnr", _LSP_SIG_CFG.winnr)
-    vim.api.nvim_win_close(_LSP_SIG_CFG.winnr, true)
+    api.nvim_win_close(_LSP_SIG_CFG.winnr, true)
     _LSP_SIG_CFG.winnr = nil
   end
 end
@@ -314,19 +316,20 @@ end
 helper.cleanup = function(close_float_win)
   -- vim.schedule(function()
 
+  _LSP_SIG_VT_NS = _LSP_SIG_VT_NS or vim.api.nvim_create_namespace("lsp_signature_vt")
   log("cleanup vt", _LSP_SIG_VT_NS)
-  vim.api.nvim_buf_clear_namespace(0, _LSP_SIG_VT_NS, 0, -1)
+  api.nvim_buf_clear_namespace(0, _LSP_SIG_VT_NS, 0, -1)
   close_float_win = close_float_win or false
-  if _LSP_SIG_CFG.ns and _LSP_SIG_CFG.bufnr and vim.api.nvim_buf_is_valid(_LSP_SIG_CFG.bufnr) then
+  if _LSP_SIG_CFG.ns and _LSP_SIG_CFG.bufnr and api.nvim_buf_is_valid(_LSP_SIG_CFG.bufnr) then
     log("bufnr, ns", _LSP_SIG_CFG.bufnr, _LSP_SIG_CFG.ns)
-    vim.api.nvim_buf_clear_namespace(_LSP_SIG_CFG.bufnr, _LSP_SIG_CFG.ns, 0, -1)
+    api.nvim_buf_clear_namespace(_LSP_SIG_CFG.bufnr, _LSP_SIG_CFG.ns, 0, -1)
   end
   _LSP_SIG_CFG.markid = nil
   _LSP_SIG_CFG.ns = nil
-
-  if _LSP_SIG_CFG.winnr and vim.api.nvim_win_is_valid(_LSP_SIG_CFG.winnr) and close_float_win then
+  local winnr = _LSP_SIG_CFG.winnr
+  if winnr and winnr ~= 0 and api.nvim_win_is_valid(winnr) and close_float_win then
     log("closing winnr", _LSP_SIG_CFG.winnr)
-    vim.api.nvim_win_close(_LSP_SIG_CFG.winnr, true)
+    api.nvim_win_close(_LSP_SIG_CFG.winnr, true)
     _LSP_SIG_CFG.winnr = nil
     _LSP_SIG_CFG.bufnr = nil
   end
@@ -337,7 +340,7 @@ helper.cleanup_async = function(close_float_win, delay, force)
   log(debug.traceback())
   vim.validate({ delay = { delay, "number" } })
   vim.defer_fn(function()
-    local mode = vim.api.nvim_get_mode().mode
+    local mode = api.nvim_get_mode().mode
     if not force and (mode == "i" or mode == "s") then
       log("async cleanup insert leave ignored")
       -- still in insert mode debounce
@@ -378,41 +381,49 @@ local function get_border_height(opts)
 end
 
 helper.cal_pos = function(contents, opts)
-  local lnum = vim.fn.line(".") - vim.fn.line("w0") + 1
-  if not _LSP_SIG_CFG.floating_window_above_cur_line or lnum < 2 then
+  local lnum = fn.line(".") - fn.line("w0") + 1
+
+  local lines_above = fn.winline() - 1
+  local lines_below = fn.winheight(0) - fn.winline() -- not counting current
+  -- wont fit if move floating above current line
+  if not _LSP_SIG_CFG.floating_window_above_cur_line or lnum <= 2 then
     return {}, 0
   end
   local lines
   local border_height
-  if lnum < 5 then
-    opts.border = nil
-    border_height = 0
-    lines = vim.list_slice(contents, 1, lnum)
-    contents = vim.fn.copy(lines)
-  end
   local util = vim.lsp.util
   contents = util._trim(contents, opts)
   util.try_trim_markdown_code_blocks(contents)
   log(vim.inspect(contents))
 
   local width, height = util._make_floating_popup_size(contents, opts)
-  log("popup size:", width, height)
   local float_option = util.make_floating_popup_options(width, height, opts)
+
+  log("popup size:", width, height, float_option)
   local off_y = 0
-  local lines_above = lnum - 1
+  local max_height = float_option.height or _LSP_SIG_CFG.max_height
   border_height = border_height or get_border_height(float_option)
+  -- shift win above current line
   if float_option.anchor == "NW" or float_option.anchor == "NE" then
     -- note: the floating widnows will be under current line
-    -- local lines_below = vim.fn.winheight(0) - lines_above
     if lines_above >= float_option.height + border_height + 1 then
       off_y = -(float_option.height + border_height + 1)
-      log(float_option, off_y, lines_above)
+      max_height = math.min(max_height, math.max(lines_above - border_height - 1, border_height + 1))
+    else
+      -- below
+      max_height = math.min(max_height, math.max(lines_below - border_height - 1, border_height + 1))
     end
+  else
+    -- above
+    max_height = math.min(max_height, math.max(lines_above - border_height - 1, border_height + 1))
   end
+
+  log(float_option, off_y, lines_above, max_height)
   if not float_option.height or float_option.height < 1 then
     float_option.height = 1
   end
-  return float_option, off_y, lines
+  float_option.max_height = max_height
+  return float_option, off_y, lines, max_height
 end
 
 local nvim_0_6
@@ -420,19 +431,21 @@ function helper.nvim_0_6()
   if nvim_0_6 ~= nil then
     return nvim_0_6
   end
-  if debug.getinfo(vim.lsp.handlers.signature_help).nparams == 4 then
+  -- if debug.getinfo(vim.lsp.handlers.signature_help).nparams == 4 then
+  if vim.fn.has("nvim-0.6.1") == 1 then
     nvim_0_6 = true
   else
+    vim.notify("nvim-0.6.1 is required for this plugin", { timeout = 5000 })
     nvim_0_6 = false
   end
   return nvim_0_6
 end
 
-function helper.mk_handler(fn)
+function helper.mk_handler(func)
   return function(...)
     local is_new = helper.nvim_0_6()
     if is_new then
-      return fn(...)
+      return func(...)
     else
       local err = select(1, ...)
       local method = select(2, ...)
@@ -474,7 +487,7 @@ end
 
 function helper.truncate_doc(lines, num_sigs)
   local doc_num = 2 + _LSP_SIG_CFG.doc_lines -- 3: markdown code signature
-  local vmode = vim.api.nvim_get_mode().mode
+  local vmode = api.nvim_get_mode().mode
   -- truncate doc if in insert/replace mode
   if
     vmode == "i"
@@ -523,6 +536,11 @@ function helper.update_config(config)
   if config.border == "rounded" then
     config.border = rounded
   end
+  if _LSP_SIG_CFG.wrap then
+    config.wrap_at = config.max_width
+    config.wrap = true
+  end
+  return config
 end
 
 function helper.check_lsp_cap(clients, line_to_cursor)
@@ -544,7 +562,7 @@ function helper.check_lsp_cap(clients, line_to_cursor)
         vim.notify("LSP: lsp-signature requires neovim 0.6.1 or later", vim.log.levels.WARN)
         return
       end
-      if vim.fn.empty(sig_provider) == 0 then
+      if fn.empty(sig_provider) == 0 then
         signature_cap = true
         total_lsp = total_lsp + 1
 
@@ -565,7 +583,7 @@ function helper.check_lsp_cap(clients, line_to_cursor)
           if sig_provider.retriggerCharacters ~= nil then
             vim.list_extend(triggered_chars, sig_provider.retriggerCharacters)
             table.sort(triggered_chars)
-            triggered_chars = vim.fn.uniq(triggered_chars)
+            triggered_chars = fn.uniq(triggered_chars)
           end
           if _LSP_SIG_CFG.extra_trigger_chars ~= nil then
             triggered_chars = tbl_combine(triggered_chars, _LSP_SIG_CFG.extra_trigger_chars)
@@ -597,11 +615,10 @@ end
 
 helper.highlight_parameter = function(s, l)
   -- Not sure why this not working
-  -- api.nvim_command("autocmd User SigComplete".." <buffer> ++once lua pcall(vim.api.nvim_win_close, "..winnr..", true)")
-  _LSP_SIG_CFG.ns = vim.api.nvim_create_namespace("lsp_signature_hi_parameter")
+  -- api.nvim_command("autocmd User SigComplete".." <buffer> ++once lua pcall(api.nvim_win_close, "..winnr..", true)")
+  _LSP_SIG_CFG.ns = api.nvim_create_namespace("lsp_signature_hi_parameter")
   local hi = _LSP_SIG_CFG.hi_parameter
   log("extmark", _LSP_SIG_CFG.bufnr, s, l, #_LSP_SIG_CFG.padding, hi)
-  log("info", vim.api.nvim_buf_get_lines(_LSP_SIG_CFG.bufnr, 0, 5, false))
   if s and l and s > 0 then
     if _LSP_SIG_CFG.padding == "" then
       s = s - 1
@@ -610,9 +627,9 @@ helper.highlight_parameter = function(s, l)
       l = l + #_LSP_SIG_CFG.padding
     end
 
-    if _LSP_SIG_CFG.bufnr and vim.api.nvim_buf_is_valid(_LSP_SIG_CFG.bufnr) then
+    if _LSP_SIG_CFG.bufnr and api.nvim_buf_is_valid(_LSP_SIG_CFG.bufnr) then
       log("extmark", _LSP_SIG_CFG.bufnr, s, l, #_LSP_SIG_CFG.padding)
-      _LSP_SIG_CFG.markid = vim.api.nvim_buf_set_extmark(
+      _LSP_SIG_CFG.markid = api.nvim_buf_set_extmark(
         _LSP_SIG_CFG.bufnr,
         _LSP_SIG_CFG.ns,
         0,
@@ -658,7 +675,29 @@ helper.completion_visible = function()
     return cmp.visible()
   end
 
-  return vim.fn.pumvisible() ~= 0
+  return fn.pumvisible() ~= 0
+end
+
+local function jump_to_win(wr)
+  if wr and api.nvim_win_is_valid(wr) then
+    return api.nvim_set_current_win(wr)
+  end
+end
+
+helper.change_focus = function()
+  helper.log("move focus", _LSP_SIG_CFG.winnr, _LSP_SIG_CFG.mainwin)
+  local winnr = api.nvim_get_current_win()
+  if winnr == _LSP_SIG_CFG.winnr then --need to change back to main
+    return jump_to_win(_LSP_SIG_CFG.mainwin)
+  else -- jump to floating
+    _LSP_SIG_CFG.mainwin = winnr --need to change back to main
+    winnr = _LSP_SIG_CFG.winnr
+    if winnr and winnr ~= 0 and api.nvim_win_is_valid(winnr) then
+      return jump_to_win(winnr)
+    end
+  end
+
+  -- vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes(_LSP_SIG_CFG.move_cursor_key, true, true, true), "i", true)
 end
 
 return helper

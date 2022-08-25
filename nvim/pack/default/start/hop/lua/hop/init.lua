@@ -93,7 +93,7 @@ local function set_unmatched_lines(buf_handle, hl_ns, top_line, bottom_line, cur
     start_col = cursor_pos[2]
   elseif direction == hint.HintDirection.BEFORE_CURSOR then
     end_line = bottom_line - 1
-    if cursor_pos[2] ~= 0 then end_col = cursor_pos[2] + 1 end
+    if cursor_pos[2] ~= 0 then end_col = cursor_pos[2] end
   end
 
   if current_line_only then
@@ -194,7 +194,9 @@ local function get_input_pattern(prompt, maxchar, opts)
 
   local K_Esc = vim.api.nvim_replace_termcodes('<Esc>', true, false, true)
   local K_BS = vim.api.nvim_replace_termcodes('<BS>', true, false, true)
+  local K_C_H = vim.api.nvim_replace_termcodes('<C-H>', true, false, true)
   local K_CR = vim.api.nvim_replace_termcodes('<CR>', true, false, true)
+  local K_NL = vim.api.nvim_replace_termcodes('<NL>', true, false, true)
   local pat_keys = {}
   local pat = ''
 
@@ -216,7 +218,10 @@ local function get_input_pattern(prompt, maxchar, opts)
     vim.api.nvim_echo({{prompt, 'Question'}, {pat}}, false, {})
 
     local ok, key = pcall(vim.fn.getchar)
-    if not ok then break end -- Interrupted by <C-c>
+    if not ok then -- Interrupted by <C-c>
+      pat = nil
+      break
+    end
 
     if type(key) == 'number' then
       key = vim.fn.nr2char(key)
@@ -227,9 +232,9 @@ local function get_input_pattern(prompt, maxchar, opts)
     if key == K_Esc then
       pat = nil
       break
-    elseif key == K_CR then
+    elseif key == K_CR or key == K_NL then
       break
-    elseif key == K_BS then
+    elseif key == K_BS or key == K_C_H then
       pat_keys[#pat_keys] = nil
     else
       pat_keys[#pat_keys + 1] = key
@@ -256,20 +261,20 @@ end
 -- Add option to shift cursor by column offset
 --
 -- This function will update the jump list.
-function M.move_cursor_to(w, line, column, hint_offset)
+function M.move_cursor_to(w, line, column, hint_offset, direction)
   -- If we do not ask for an offset jump, we don’t have to retrieve any additional lines because we will jump to the
   -- actual jump target. If we do want a jump with an offset, we need to retrieve the line the jump target lies in so
   -- that we can compute the offset correctly. This is linked to the fact that currently, Neovim doesn’s have an API to
   -- « offset something by N visual columns. »
+
+  -- If it is pending for operator shift column to the right by 1
+  if vim.api.nvim_get_mode().mode == 'no' and direction ~= 1 then
+    column = column + 1
+  end
+
   if hint_offset ~= nil and not (hint_offset == 0) then
     column = column + hint_offset
     local buf_line = vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(w), line - 1, line, false)[1]
-
-    -- If it is pending for operator shift column to the right by 1
-    if vim.api.nvim_get_mode().mode == 'no' then
-      column = column + 1
-    end
-
     column = vim.fn.byteidx(buf_line, column)
   end
 
@@ -285,7 +290,7 @@ function M.hint_with(jump_target_gtr, opts)
   end
 
   M.hint_with_callback(jump_target_gtr, opts, function(jt)
-    M.move_cursor_to(jt.window, jt.line + 1, jt.column - 1, opts.hint_offset)
+    M.move_cursor_to(jt.window, jt.line + 1, jt.column - 1, opts.hint_offset, opts.direction)
   end)
 end
 
@@ -513,6 +518,26 @@ function M.hint_lines(opts)
     opts
   )
 end
+
+function M.hint_vertical(opts)
+  opts = override_opts(opts)
+  -- only makes sense as end position given movement goal.
+  opts.hint_position = require'hop.hint'.HintPosition.END
+
+  local generator
+  if opts.current_line_only then
+    generator = jump_target.jump_targets_for_current_line
+  else
+    generator = jump_target.jump_targets_by_scanning_lines
+  end
+
+  -- FIXME: need to exclude current and include empty lines.
+  M.hint_with(
+    generator(jump_target.regex_by_vertical()),
+    opts
+  )
+end
+
 
 function M.hint_lines_skip_whitespace(opts)
   opts = override_opts(opts)

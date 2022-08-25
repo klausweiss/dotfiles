@@ -9,7 +9,7 @@
 (method_declaration
   name: (identifier) @method)
 (method_invocation
-  name: (identifier) @method)
+  name: (identifier) @method.call)
 
 (super) @function.builtin
 
@@ -178,11 +178,14 @@
 "open"
 "opens"
 "package"
+"permits"
 "private"
 "protected"
 "provides"
 "public"
 "requires"
+"sealed"
+"non-sealed"
 "static"
 "strictfp"
 "synchronized"

@@ -22,9 +22,8 @@ local function parse_snipmate(buffer, filename)
 	local function _parse(snippet_type, snipmate_opts)
 		local line = lines[i]
 		-- "snippet" or "autosnippet"
-		local prefix, description = line:match(
-			"^" .. snippet_type .. [[%s+(%S+)%s*(.*)]]
-		)
+		local prefix, description =
+			line:match("^" .. snippet_type .. [[%s+(%S+)%s*(.*)]])
 		local body = {}
 
 		i = i + 1
@@ -98,6 +97,7 @@ local function load_snippet_files(add_ft, paths, collection_files, add_opts)
 			snippet = vim.deepcopy(cache.path_snippets[path].snippet)
 			autosnippet = vim.deepcopy(cache.path_snippets[path].autosnippet)
 			extends = cache.path_snippets[path].extends
+			cache.path_snippets[path].fts[add_ft] = true
 		else
 			local buffer = Path.read_file(path)
 			snippet, autosnippet, extends = parse_snipmate(buffer, path)
@@ -107,22 +107,9 @@ local function load_snippet_files(add_ft, paths, collection_files, add_opts)
 				extends = extends,
 				-- store for reload.
 				add_opts = add_opts,
+				fts = { [add_ft] = true },
 			}
 		end
-
-		-- ++once: the autocommand will be re-added because this file will run again.
-		vim.cmd(string.format(
-			[[
-				augroup luasnip_watch_reload
-				autocmd BufWritePost %s ++once lua require("luasnip.loaders.from_snipmate").reload_file("%s", "%s")
-				augroup END
-			]],
-			-- escape for autocmd-pattern.
-			str_util.aupatescape(path),
-			-- args for reload.
-			add_ft,
-			path
-		))
 
 		ls.add_snippets(
 			add_ft,
@@ -165,11 +152,8 @@ function M.load(opts)
 
 	-- we need all paths available in the collection for `extends`.
 	-- only load_paths is influenced by in/exclude.
-	local collections_load_paths = loader_util.get_load_paths_snipmate_like(
-		opts,
-		"snippets",
-		"snippets"
-	)
+	local collections_load_paths =
+		loader_util.get_load_paths_snipmate_like(opts, "snippets", "snippets")
 
 	for _, collection in ipairs(collections_load_paths) do
 		local load_paths = collection.load_paths
@@ -215,11 +199,8 @@ function M.lazy_load(opts)
 
 	local add_opts = loader_util.add_opts(opts)
 
-	local collections_load_paths = loader_util.get_load_paths_snipmate_like(
-		opts,
-		"snippets",
-		"snippets"
-	)
+	local collections_load_paths =
+		loader_util.get_load_paths_snipmate_like(opts, "snippets", "snippets")
 
 	for _, collection in ipairs(collections_load_paths) do
 		local load_paths = collection.load_paths
@@ -249,16 +230,20 @@ function M.edit_snippet_files()
 	loader_util.edit_snippet_files(cache.ft_paths)
 end
 
-function M.reload_file(ft, file)
-	local file_cache = cache.path_snippets[file]
+-- Make sure filename is normalized.
+function M._reload_file(filename)
+	local cached_data = cache.path_snippets[filename]
+	if not cached_data then
+		return
+	end
 
-	if file_cache then
-		local add_opts = file_cache.add_opts
-		cache.path_snippets[file] = nil
+	local add_opts = cached_data.add_opts
+	cache.path_snippets[filename] = nil
 
+	for ft, _ in pairs(cached_data.fts) do
 		-- we can safely set collection to empty, the `extends` are already
-		-- "set up", eg have their own autocommands for reloading.
-		load_snippet_files(ft, { file }, {}, add_opts)
+		-- "set up", eg are included via cached_data.fts.
+		load_snippet_files(ft, { filename }, {}, add_opts)
 
 		ls.clean_invalidated({ inv_limit = 100 })
 	end

@@ -10,18 +10,13 @@ Builder.__index = Builder
 function Builder.new(root_cwd)
   return setmetatable({
     index = 0,
-    depth = nil,
+    depth = 0,
     highlights = {},
     lines = {},
     markers = {},
     signs = {},
     root_cwd = root_cwd,
   }, Builder)
-end
-
-function Builder:configure_initial_depth(show_arrows)
-  self.depth = show_arrows and 2 or 0
-  return self
 end
 
 function Builder:configure_root_modifier(root_folder_modifier)
@@ -70,6 +65,11 @@ function Builder:configure_git_icons_placement(where)
   return self
 end
 
+function Builder:configure_symlink_destination(show)
+  self.symlink_destination = show
+  return self
+end
+
 function Builder:_insert_highlight(group, start, end_)
   table.insert(self.highlights, { group, self.index, start, end_ or -1 })
 end
@@ -112,6 +112,11 @@ function Builder:_build_folder(node, padding, git_hl, git_icons_tbl)
   local icon = icons.get_folder_icon(node.open, node.link_to ~= nil, has_children)
 
   local foldername = name .. self.trailing_slash
+  if node.link_to and self.symlink_destination then
+    local arrow = icons.i.symlink_arrow
+    foldername = foldername .. arrow .. node.link_to
+  end
+
   local git_icons = self:_unwrap_git_data(git_icons_tbl, offset + #icon + (self.is_git_after and #foldername + 1 or 0))
   local fname_starts_at = offset + #icon + (self.is_git_after and 0 or #git_icons)
   local line = self:_format_line(padding .. icon, foldername, git_icons)
@@ -153,7 +158,10 @@ function Builder:_build_symlink(node, padding, git_highlight, git_icons_tbl)
 
   local icon = icons.i.symlink
   local arrow = icons.i.symlink_arrow
-  local symlink_formatted = node.name .. arrow .. node.link_to
+  local symlink_formatted = node.name
+  if self.symlink_destination then
+    symlink_formatted = symlink_formatted .. arrow .. node.link_to
+  end
 
   local link_highlight = git_highlight or "NvimTreeSymlink"
 
@@ -224,7 +232,7 @@ end
 function Builder:_build_line(node, idx, num_children)
   local padding = pad.get_padding(self.depth, idx, num_children, node, self.markers)
 
-  if self.depth > 0 then
+  if string.len(padding) > 0 then
     self:_insert_highlight("NvimTreeIndentMarker", 0, string.len(padding))
   end
 

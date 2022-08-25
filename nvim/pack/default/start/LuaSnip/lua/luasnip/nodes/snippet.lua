@@ -126,9 +126,8 @@ local function init_snippetNode_opts(opts)
 
 	opts = opts or {}
 
-	in_node.child_ext_opts = ext_util.child_complete(
-		vim.deepcopy(opts.child_ext_opts or {})
-	)
+	in_node.child_ext_opts =
+		ext_util.child_complete(vim.deepcopy(opts.child_ext_opts or {}))
 
 	if opts.merge_child_ext_opts == nil then
 		in_node.merge_child_ext_opts = true
@@ -181,13 +180,10 @@ local function init_snippet_context(context)
 	context.name = context.name or context.trigger
 
 	-- context.dscr could be nil, string or table.
-	context.dscr = util.to_line_table(
-		util.wrap_value(context.dscr or context.trigger)
-	)
+	context.dscr = util.to_line_table(context.dscr or context.trigger)
 
-	-- -1 for no prio, we cannot use nil because accessing a nil-value in a
-	-- snippetProxy will cause instantiation.
-	context.priority = context.priority or -1
+	-- might be nil, but whitelisted in snippetProxy.
+	context.priority = context.priority
 
 	-- maybe do this in a better way when we have more parameters, but this is
 	-- fine for now.
@@ -691,12 +687,7 @@ function Snippet:fake_expand(opts)
 	if opts.env then
 		self.env = opts.env
 	else
-		self.env = {}
-		setmetatable(self.env, {
-			__index = function(_, key)
-				return Environ.is_table(key) and { "$" .. key } or "$" .. key
-			end,
-		})
+		self.env = Environ.fake()
 	end
 
 	self.captures = {}

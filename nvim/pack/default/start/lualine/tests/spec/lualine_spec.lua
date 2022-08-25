@@ -15,9 +15,18 @@ describe('Lualine', function()
         theme = 'gruvbox',
         component_separators = { left = '', right = '' },
         section_separators = { left = '', right = '' },
-        disabled_filetypes = {},
+        disabled_filetypes = {
+          statusline = {},
+          winbar = {},
+        },
+        ignore_focus = {},
         always_divide_middle = true,
         globalstatus = false,
+        refresh = {
+          statusline = 1000,
+          tabline = 1000,
+          winbar = 1000,
+        }
       },
       sections = {
         lualine_a = { 'mode' },
@@ -48,6 +57,8 @@ describe('Lualine', function()
         lualine_z = {},
       },
       tabline = {},
+      winbar = {},
+      inactive_winbar = {},
       extensions = {},
     }
 
@@ -71,12 +82,12 @@ describe('Lualine', function()
     {3:  master }
     {4:}
     {5: [No Name] }
-    {5:                                                                      }
+    {5:                                                                       }
     {5:  }
     {4:}
-    {3: 100% }
+    {3: Top }
     {2:}
-    {1:   0:1  }|
+    {1:   1:1  }|
     ]===])
   end)
 
@@ -87,7 +98,7 @@ describe('Lualine', function()
     }
     |{1: [No Name] }
     {1:                                                                                                     }
-    {1:   0:1  }|
+    {1:   1:1  }|
     ]===])
   end)
 
@@ -110,12 +121,12 @@ describe('Lualine', function()
     |{1:  master }
     {2:}
     {3: [No Name] }
-    {3:                                                                               }
+    {3:                                                                                }
     {3:  }
     {2:}
-    {1: 100% }
+    {1: Top }
     {4:}
-    {5:   0:1  }|
+    {5:   1:1  }|
     ]===])
   end)
 
@@ -131,10 +142,10 @@ describe('Lualine', function()
     |{1: NORMAL }
     {2:  master }
     {3: [No Name] }
-    {3:                                                                          }
+    {3:                                                                           }
     {3:  }
-    {2: 100% }
-    {1:   0:1  }|
+    {2: Top }
+    {1:   1:1  }|
     ]===])
   end)
 
@@ -161,12 +172,12 @@ describe('Lualine', function()
     {3:  master }
     {4:}
     {5: [No Name] }
-    {5:                                            }
+    {5:                                             }
     {5:  }
     {4:}
-    {3: 100% }
+    {3: Top }
     {2:}
-    {1:   0:1  }
+    {1:   1:1  }
     {1: test_comp2 }|
     ]===])
 
@@ -186,12 +197,12 @@ describe('Lualine', function()
     {3:  master }
     {4:}
     {5: [No Name] }
-    {5:                                              }
+    {5:                                               }
     {5:  }
     {4:}
-    {3: 100% }
+    {3: Top }
     {2:}
-    {1:   0:1  }
+    {1:   1:1  }
     {1: test_comp2 }|
     ]===])
   end)
@@ -231,10 +242,10 @@ describe('Lualine', function()
     |{1: NORMAL }
     {2: master }
     {3: [No Name] }
-    {3:                                                                         }
+    {3:                                                                          }
     {3: unix }
-    {2: 100% }
-    {1:   0:1  }|
+    {2: Top }
+    {1:   1:1  }|
     ]===])
   end)
 
@@ -243,12 +254,7 @@ describe('Lualine', function()
     require('lualine').setup(config)
     local old_ft = vim.bo.ft
     vim.bo.ft = 'test_ft'
-    statusline:expect([===[
-    highlights = {
-        1: StatusLine = { bold = true, reverse = true }
-    }
-    ||
-    ]===])
+    statusline:expect(nil)
     vim.bo.ft = old_ft
   end)
 
@@ -317,14 +323,13 @@ describe('Lualine', function()
     {3:  master }
     {4:}
     {5: [No Name] }
-    {5:                                                                      }
+    {5:                                                                       }
     {5:  }
     {4:}
-    {3: 100% }
+    {3: Top }
     {2:}
-    {1:   0:1  }|
+    {1:   1:1  }|
     ]===])
-
     vim.bo.ft = 'test_ft2'
     statusline:expect([===[
     highlights = {
@@ -383,7 +388,7 @@ describe('Lualine', function()
       conf.inactive_sections = {}
       require('lualine').setup(conf)
       require('lualine').statusline()
-      eq('', vim.go.statusline)
+      eq('%#Normal#', vim.go.statusline)
 
       tabline:expect([===[
       highlights = {
@@ -398,12 +403,12 @@ describe('Lualine', function()
       {3:  master }
       {4:}
       {5: [No Name] }
-      {5:                                                                      }
+      {5:                                                                       }
       {5:  }
       {4:}
-      {3: 100% }
+      {3: Top }
       {2:}
-      {1:   0:1  }|
+      {1:   1:1  }|
       ]===])
     end)
     describe('tabs component', function()

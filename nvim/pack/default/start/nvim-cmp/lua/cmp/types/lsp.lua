@@ -6,7 +6,7 @@ local lsp = {}
 
 lsp.Position = {
   ---Convert lsp.Position to vim.Position
-  ---@param buf number|string
+  ---@param buf integer
   ---@param position lsp.Position
   ---@return vim.Position
   to_vim = function(buf, position)
@@ -26,7 +26,7 @@ lsp.Position = {
     }
   end,
   ---Convert vim.Position to lsp.Position
-  ---@param buf number|string
+  ---@param buf integer
   ---@param position vim.Position
   ---@return lsp.Position
   to_lsp = function(buf, position)
@@ -49,7 +49,7 @@ lsp.Position = {
 
 lsp.Range = {
   ---Convert lsp.Range to vim.Range
-  ---@param buf number|string
+  ---@param buf integer|string
   ---@param range lsp.Range
   ---@return vim.Range
   to_vim = function(buf, range)
@@ -60,7 +60,7 @@ lsp.Range = {
   end,
 
   ---Convert vim.Range to lsp.Range
-  ---@param buf number|string
+  ---@param buf integer|string
   ---@param range vim.Range
   ---@return lsp.Range
   to_lsp = function(buf, range)
@@ -145,8 +145,8 @@ lsp.CompletionItemKind = vim.tbl_add_reverse_lookup(lsp.CompletionItemKind)
 ---@field public value string
 
 ---@class lsp.Position
----@field public line number
----@field public character number
+---@field public line integer
+---@field public character integer
 
 ---@class lsp.Range
 ---@field public start lsp.Position
@@ -161,14 +161,23 @@ lsp.CompletionItemKind = vim.tbl_add_reverse_lookup(lsp.CompletionItemKind)
 ---@field public range lsp.Range|nil
 ---@field public newText string
 
----@class lsp.InsertReplaceTextEdit
----@field public insert lsp.Range|nil
----@field public replace lsp.Range|nil
+---@alias lsp.InsertReplaceTextEdit lsp.internal.InsertTextEdit|lsp.internal.ReplaceTextEdit
+
+---@class lsp.internal.InsertTextEdit
+---@field public insert lsp.Range
+---@field public newText string
+
+---@class lsp.internal.ReplaceTextEdit
+---@field public insert lsp.Range
 ---@field public newText string
 
 ---@class lsp.CompletionItemLabelDetails
 ---@field public detail string|nil
 ---@field public description string|nil
+
+---@class lsp.Cmp
+---@field public kind_text string
+---@field public kind_hl_group string
 
 ---@class lsp.CompletionItem
 ---@field public label string
@@ -189,6 +198,7 @@ lsp.CompletionItemKind = vim.tbl_add_reverse_lookup(lsp.CompletionItemKind)
 ---@field public commitCharacters string[]|nil
 ---@field public command lsp.Command|nil
 ---@field public data any|nil
+---@field public cmp lsp.Cmp|nil
 ---
 ---TODO: Should send the issue for upstream?
 ---@field public word string|nil

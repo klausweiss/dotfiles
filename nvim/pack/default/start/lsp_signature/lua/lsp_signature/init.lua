@@ -17,20 +17,21 @@ local path_sep = vim.loop.os_uname().sysname == "Windows" and "\\" or "/"
 local function path_join(...)
   return table.concat(vim.tbl_flatten({ ... }), path_sep)
 end
-
 _LSP_SIG_CFG = {
   bind = true, -- This is mandatory, otherwise border config won't get registered.
   doc_lines = 10, -- how many lines to show in doc, set to 0 if you only want the signature
   max_height = 12, -- max height of signature floating_window
   max_width = 80, -- max_width of signature floating_window
+  wrap = true, -- allow doc/signature wrap inside floating_window, useful if your lsp doc/sig is too long
 
   floating_window = true, -- show hint in a floating window
   floating_window_above_cur_line = true, -- try to place the floating above the current line
 
   floating_window_off_x = 1, -- adjust float windows x position.
-  floating_window_off_y = 0, -- adjust float windows y position.
+  floating_window_off_y = 0, -- adjust float windows y position. e.g. set to -2 can make floating window move up 2 lines
   close_timeout = 4000, -- close floating window after ms when laster parameter is entered
   fix_pos = function(signatures, client) -- first arg: second argument is the client
+    _, _ = signatures, client
     return true -- can be expression like : return signatures[1].activeParameter >= 0 and signatures[1].parameters > 1
   end,
   -- also can be bool value fix floating_window position
@@ -50,7 +51,6 @@ _LSP_SIG_CFG = {
   log_path = path_join(vim.fn.stdpath("cache"), "lsp_signature.log"), -- log dir when debug is no
   verbose = false, -- debug show code line number
   extra_trigger_chars = {}, -- Array of extra characters that will trigger signature completion, e.g., {"(", ","}
-  -- decorator = {"`", "`"} -- set to nil if using guihua.lua
   zindex = 200,
   transparency = nil, -- disabled by default
   shadow_blend = 36, -- if you using shadow as border use this set the opacity
@@ -59,9 +59,13 @@ _LSP_SIG_CFG = {
   toggle_key = nil, -- toggle signature on and off in insert mode,  e.g. '<M-x>'
   -- set this key also helps if you want see signature in newline
   select_signature_key = nil, -- cycle to next signature, e.g. '<M-n>' function overloading
-  check_3rd_handler = nil, -- provide you own handler
-
   -- internal vars, init here to suppress linter warings
+  move_cursor_key = nil, -- use nvim_set_current_win
+
+  --- private vars
+  winnr = nil,
+  bufnr = 0,
+  mainwin = 0,
 }
 
 local log = helper.log
@@ -258,7 +262,11 @@ local signature_handler = function(err, result, ctx, config)
 
   local mode = vim.api.nvim_get_mode().mode
   local insert_mode = (mode == "niI" or mode == "i")
-  local floating_window_on = (_LSP_SIG_CFG.winnr and api.nvim_win_is_valid(_LSP_SIG_CFG.winnr))
+  local floating_window_on = (
+    _LSP_SIG_CFG.winnr ~= nil
+    and _LSP_SIG_CFG.winnr ~= 0
+    and api.nvim_win_is_valid(_LSP_SIG_CFG.winnr)
+  )
   if config.trigger_from_cursor_hold and not floating_window_on and not insert_mode then
     log("trigger from cursor hold, no need to update floating window")
     return
@@ -277,13 +285,13 @@ local signature_handler = function(err, result, ctx, config)
     helper.cleanup(false) -- cleanup extmark
   end
   -- I do not need a floating win
-  if
-    _LSP_SIG_CFG.floating_window == false and config.toggle ~= true and config.trigger_from_lsp_sig
-    or config.trigger_from_cursor_hold
-  then
+  if _LSP_SIG_CFG.floating_window == false and config.toggle ~= true and config.trigger_from_lsp_sig then
     return {}, s, l
   end
 
+  if _LSP_SIG_CFG.floating_window == false and config.trigger_from_cursor_hold then
+    return {}, s, l
+  end
   local lines = {}
   local off_y = 0
   local ft = vim.api.nvim_buf_get_option(bufnr, "ft")
@@ -425,6 +433,7 @@ local signature_handler = function(err, result, ctx, config)
 
   local display_opts = {}
   local cnts
+
   display_opts, off_y, cnts = helper.cal_pos(lines, config)
   if cnts then
     lines = cnts
@@ -432,7 +441,7 @@ local signature_handler = function(err, result, ctx, config)
 
   config.offset_y = off_y + config.offset_y
   config.focusable = true -- allow focus
-  config.max_height = display_opts.height
+  config.max_height = display_opts.max_height
   config.noautocmd = true
 
   -- try not to overlap with pum autocomplete menu
@@ -556,6 +565,7 @@ local signature = function(opts)
       params,
       vim.lsp.with(signature_handler, {
         trigger_from_cursor_hold = true,
+        border = _LSP_SIG_CFG.handler_opts.border,
         line_to_cursor = line_to_cursor:sub(1, trigger_position),
         triggered_chars = trigger_chars,
       })
@@ -800,11 +810,8 @@ M.on_attach = function(cfg, bufnr)
     vim.lsp.handlers["textDocument/signatureHelp"] = vim.lsp.with(signature_handler, _LSP_SIG_CFG.handler_opts)
   end
 
-  local shadow_cmd = string.format(
-    "hi default FloatShadow blend=%i guibg=%s",
-    _LSP_SIG_CFG.shadow_blend,
-    _LSP_SIG_CFG.shadow_guibg
-  )
+  local shadow_cmd =
+    string.format("hi default FloatShadow blend=%i guibg=%s", _LSP_SIG_CFG.shadow_blend, _LSP_SIG_CFG.shadow_guibg)
   vim.cmd(shadow_cmd)
 
   shadow_cmd = string.format(
@@ -820,7 +827,7 @@ M.on_attach = function(cfg, bufnr)
       "i",
       _LSP_SIG_CFG.toggle_key,
       [[<cmd>lua require('lsp_signature').toggle_float_win()<CR>]],
-      { silent = true, noremap = true }
+      { silent = true, noremap = true, desc = "toggle signature" }
     )
   end
   if _LSP_SIG_CFG.select_signature_key then
@@ -829,7 +836,15 @@ M.on_attach = function(cfg, bufnr)
       "i",
       _LSP_SIG_CFG.select_signature_key,
       [[<cmd>lua require('lsp_signature').signature({trigger="NextSignature"})<CR>]],
-      { silent = true, noremap = true }
+      { silent = true, noremap = true, desc = "select signature" }
+    )
+  end
+  if _LSP_SIG_CFG.move_cursor_key then
+    vim.api.nvim_set_keymap(
+      "i",
+      _LSP_SIG_CFG.move_cursor_key,
+      [[<cmd>lua require('lsp_signature.helper').change_focus()<CR>]],
+      { silent = true, noremap = true, desc = "change cursor focus" }
     )
   end
   _LSP_SIG_VT_NS = api.nvim_create_namespace("lsp_signature_vt")
@@ -918,6 +933,8 @@ M.status_line = function(size)
 end
 
 M.toggle_float_win = function()
+  _LSP_SIG_CFG.floating_window = not _LSP_SIG_CFG.floating_window
+
   if _LSP_SIG_CFG.winnr and _LSP_SIG_CFG.winnr > 0 and vim.api.nvim_win_is_valid(_LSP_SIG_CFG.winnr) then
     vim.api.nvim_win_close(_LSP_SIG_CFG.winnr, true)
     _LSP_SIG_CFG.winnr = nil

@@ -425,6 +425,18 @@ local function install(options)
   end
 end
 
+function M.setup_auto_install()
+  vim.api.nvim_create_autocmd("FileType", {
+    pattern = { "*" },
+    callback = function()
+      local lang = parsers.get_buf_lang()
+      if parsers.get_parser_configs()[lang] and not is_installed(lang) then
+        install() { lang }
+      end
+    end,
+  })
+end
+
 function M.update(options)
   options = options or {}
   return function(...)

@@ -12,6 +12,7 @@ Function                                                          |cmp-function|
 Mapping                                                            |cmp-mapping|
 Command                                                            |cmp-command|
 Highlight                                                        |cmp-highlight|
+FileType                                                          |cmp-filetype|
 Autocmd                                                            |cmp-autocmd|
 Config                                                              |cmp-config|
 Config Helper                                                |cmp-config-helper|
@@ -312,6 +313,8 @@ There are also builtin mapping helper functions you can use:
 Built-in mapping helpers are only available as a configuration option.
 If you want to call nvim-cmp features directly, please use |cmp-function| instead.
 
+
+
 ==============================================================================
 Command                                                            *cmp-command*
 
@@ -320,6 +323,8 @@ Command                                                            *cmp-command*
   Sometimes `unknown` will be printed - this is expected.
   For example, `cmp-nvim-lsp` registers itself on InsertEnter autocommand
   so the status will be shown as `unknown` when running the command.
+
+
 
 ==============================================================================
 Highlight                                                        *cmp-highlight*
@@ -352,6 +357,15 @@ NOTE: `kind` is a symbol after each completion option.
   The menu field's highlight group.
 
 ==============================================================================
+FileType                                                          *cmp-filetype*
+
+*cmp_menu*
+  The completion menu buffer's filetype.
+
+*cmp_docs*
+  The documentation window buffer's filetype.
+
+==============================================================================
 Autocmd                                                            *cmp-autocmd*
 
 You can create custom autocommands for certain nvim-cmp events by defining
@@ -382,6 +396,12 @@ performance.throttle~
   `number`
   Sets throttle time
   This is used to delay filtering and displaying completions.
+
+                                        *cmp-config.performance.fetching_timeout*
+  performance.fetching_timeout~
+    `number`
+    Sets the timeout of candidate fetching process.
+    The nvim-cmp will wait to display the most prioritized source.
 
                                                           *cmp-config.preselect*
 preselect~
@@ -800,6 +820,12 @@ How to disable the documentation window?~
     }
   })
 <
+
+I'm using clangd. The menu items are mis-indented.~
+
+  It's caused by clangd. You can specify `--header-insertion-decorators` for
+  clangd's command-line arguments. See #999.
+
 
 How to integrate with copilot.vim?~
 

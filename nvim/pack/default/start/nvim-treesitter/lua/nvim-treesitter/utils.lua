@@ -69,12 +69,8 @@ M.join_space = M.generate_join " "
 function M.setup_commands(mod, commands)
   for command_name, def in pairs(commands) do
     local f_args = def.f_args or "<f-args>"
-    local call_fn = string.format(
-      "lua require'nvim-treesitter.%s'.commands.%s['run<bang>'](%s)",
-      mod,
-      command_name,
-      f_args
-    )
+    local call_fn =
+      string.format("lua require'nvim-treesitter.%s'.commands.%s['run<bang>'](%s)", mod, command_name, f_args)
     local parts = vim.tbl_flatten {
       "command!",
       "-bar",
@@ -86,7 +82,7 @@ function M.setup_commands(mod, commands)
   end
 end
 
-function M.create_or_resue_writable_dir(dir, create_err, writeable_err)
+function M.create_or_reuse_writable_dir(dir, create_err, writeable_err)
   create_err = create_err or M.join_space("Could not create dir '", dir, "': ")
   writeable_err = writeable_err or M.join_space("Invalid rights, '", dir, "' should be read/write")
   -- Try creating and using parser_dir if it doesn't exist

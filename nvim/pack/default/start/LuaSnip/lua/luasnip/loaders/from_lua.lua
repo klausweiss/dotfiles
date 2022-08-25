@@ -47,21 +47,6 @@ local function load_files(ft, files, add_opts)
 			ft = ft,
 		}
 
-		-- Use lua autocommands here as soon as they're stable.
-		-- ++once: the autocommand will be re-registered in the reload_file-call.
-		-- All autocommands in the augroup will be cleaned on ls.cleanup.
-		-- stylua: ignore
-		vim.cmd(string.format(
-			[[
-				augroup luasnip_watch_reload
-				autocmd BufWritePost %s ++once lua require("luasnip.loaders.from_lua").reload_file("%s")
-				augroup END
-			]],
-			-- escape for autocmd-pattern.
-			str_util.aupatescape(file),
-			file
-		))
-
 		ls.add_snippets(
 			ft,
 			file_snippets,
@@ -109,11 +94,8 @@ function M.load(opts)
 
 	local add_opts = loader_util.add_opts(opts)
 
-	local collections = loader_util.get_load_paths_snipmate_like(
-		opts,
-		"luasnippets",
-		"lua"
-	)
+	local collections =
+		loader_util.get_load_paths_snipmate_like(opts, "luasnippets", "lua")
 	for _, collection in ipairs(collections) do
 		local load_paths = collection.load_paths
 
@@ -132,11 +114,8 @@ function M.lazy_load(opts)
 
 	local add_opts = loader_util.add_opts(opts)
 
-	local collections = loader_util.get_load_paths_snipmate_like(
-		opts,
-		"luasnippets",
-		"lua"
-	)
+	local collections =
+		loader_util.get_load_paths_snipmate_like(opts, "luasnippets", "lua")
 	for _, collection in ipairs(collections) do
 		local load_paths = collection.load_paths
 
@@ -160,7 +139,8 @@ function M.lazy_load(opts)
 	M._load_lazy_loaded(vim.api.nvim_get_current_buf())
 end
 
-function M.reload_file(filename)
+-- Make sure filename is normalized
+function M._reload_file(filename)
 	local file_cache = cache.path_snippets[filename]
 	-- only clear and load(!!! snippets may not actually be loaded, lazy_load)
 	-- if the snippets were really loaded.

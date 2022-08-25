@@ -44,6 +44,35 @@ local list = setmetatable({}, {
   end,
 })
 
+list.agda = {
+  install_info = {
+    url = "https://github.com/AusCyberman/tree-sitter-agda",
+    branch = "master",
+    files = { "src/parser.c", "src/scanner.cc" },
+    generate_requires_npm = true,
+  },
+  filetype = "agda",
+  maintainers = { "@Decodetalkers" },
+}
+list.qmljs = {
+  install_info = {
+    url = "https://github.com/yuja/tree-sitter-qmljs",
+    branch = "master",
+    files = { "src/parser.c", "src/scanner.c" },
+  },
+  filetype = "qmljs",
+  maintainers = { "@yuja" },
+}
+
+list.racket = {
+  install_info = {
+    url = "https://github.com/6cdh/tree-sitter-racket",
+    branch = "main",
+    files = { "src/parser.c", "src/scanner.cc" },
+  },
+  maintainers = { "@6cdh" },
+}
+
 list.scheme = {
   install_info = {
     url = "https://github.com/6cdh/tree-sitter-scheme",
@@ -137,6 +166,15 @@ list.glsl = {
   install_info = {
     url = "https://github.com/theHamsta/tree-sitter-glsl",
     files = { "src/parser.c" },
+    generate_requires_npm = true,
+  },
+  maintainers = { "@theHamsta" },
+}
+
+list.hlsl = {
+  install_info = {
+    url = "https://github.com/theHamsta/tree-sitter-hlsl",
+    files = { "src/parser.c", "src/scanner.cc" },
     generate_requires_npm = true,
   },
   maintainers = { "@theHamsta" },
@@ -433,8 +471,9 @@ list.org = {
 list.swift = {
   install_info = {
     url = "https://github.com/alex-pinkus/tree-sitter-swift",
-    branch = "with-generated-files",
+    branch = "main",
     files = { "src/parser.c", "src/scanner.c" },
+    requires_generate_from_grammar = true,
   },
   maintainers = { "@alex-pinkus" },
 }
@@ -528,9 +567,24 @@ list.hcl = {
 list.markdown = {
   install_info = {
     url = "https://github.com/MDeiml/tree-sitter-markdown",
+    location = "tree-sitter-markdown",
     files = { "src/parser.c", "src/scanner.cc" },
-    branch = "main",
+    branch = "split_parser",
+    readme_name = "markdown (basic highlighting)",
   },
+  maintainers = { "@MDeiml" },
+  experimental = true,
+}
+
+list.markdown_inline = {
+  install_info = {
+    url = "https://github.com/MDeiml/tree-sitter-markdown",
+    location = "tree-sitter-markdown-inline",
+    files = { "src/parser.c", "src/scanner.cc" },
+    branch = "split_parser",
+    readme_name = "markdown_inline (needs to be installed for full markdown highlighting)",
+  },
+  maintainers = { "@MDeiml" },
   experimental = true,
 }
 
@@ -746,6 +800,14 @@ list.sparql = {
   maintainers = { "@bonabeavis" },
 }
 
+list.sql = {
+  install_info = {
+    url = "https://github.com/derekstride/tree-sitter-sql",
+    files = { "src/parser.c" },
+  },
+  maintainers = { "@derekstride" },
+}
+
 list.gdscript = {
   install_info = {
     url = "https://github.com/PrestonKnopp/tree-sitter-gdscript",
@@ -806,7 +868,7 @@ list.r = {
 list.beancount = {
   install_info = {
     url = "https://github.com/polarmutex/tree-sitter-beancount",
-    files = { "src/parser.c" },
+    files = { "src/parser.c", "src/scanner.cc" },
     branch = "master",
   },
   maintainers = { "@polarmutex" },
@@ -930,7 +992,7 @@ list.llvm = {
 
 list.http = {
   install_info = {
-    url = "https://github.com/NTBBloodbath/tree-sitter-http",
+    url = "https://github.com/rest-nvim/tree-sitter-http",
     branch = "main",
     files = { "src/parser.c" },
     generate_requires_npm = true,
@@ -999,11 +1061,11 @@ list.norg = {
 
 list.vala = {
   install_info = {
-    url = "https://github.com/matbme/tree-sitter-vala",
-    branch = "main",
-    files = { "src/parser.c", "src/scanner.cc" },
+    url = "https://github.com/vala-lang/tree-sitter-vala",
+    branch = "master",
+    files = { "src/parser.c" },
   },
-  maintainers = { "@matbme" },
+  maintainers = { "@Prince781", "@vala-lang" },
 }
 
 list.lalrpop = {
@@ -1101,6 +1163,16 @@ list.tiger = {
   },
   filetype = "tiger",
   maintainers = { "@ambroisie" },
+}
+
+list.gitignore = {
+  install_info = {
+    url = "https://github.com/shunsambongi/tree-sitter-gitignore",
+    files = { "src/parser.c" },
+    branch = "main",
+    requires_generate_from_grammar = true,
+  },
+  maintainers = { "@theHamsta" },
 }
 
 local M = {

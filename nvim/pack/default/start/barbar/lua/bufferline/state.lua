@@ -13,9 +13,11 @@ local table_sort = table.sort
 local buf_delete = vim.api.nvim_buf_delete
 local buf_get_lines = vim.api.nvim_buf_get_lines
 local buf_get_name = vim.api.nvim_buf_get_name
+local buf_get_option = vim.api.nvim_buf_get_option
 local buf_get_var = vim.api.nvim_buf_get_var
 local buf_is_valid = vim.api.nvim_buf_is_valid
 local buf_line_count = vim.api.nvim_buf_line_count
+local buf_set_var = vim.api.nvim_buf_set_var
 local bufadd = vim.fn.bufadd
 local bufwinnr = vim.fn.bufwinnr
 local command = vim.api.nvim_command
@@ -32,8 +34,11 @@ local set_current_win = vim.api.nvim_set_current_win
 local tabpage_list_wins = vim.api.nvim_tabpage_list_wins
 local tbl_contains = vim.tbl_contains
 local tbl_filter = vim.tbl_filter
-local timer_start = vim.fn.timer_start
+local defer_fn = vim.defer_fn
 local win_get_buf = vim.api.nvim_win_get_buf
+
+-- TODO: remove `vim.fs and` after 0.8 release
+local normalize = vim.fs and vim.fs.normalize
 
 local animate = require'bufferline.animate'
 local bbye = require'bufferline.bbye'
@@ -62,6 +67,7 @@ local M = {
   buffers_by_id = {},
   offset = 0,
   offset_text = '',
+  offset_hl = nil,
 }
 
 function M.new_buffer_data()
@@ -84,10 +90,6 @@ function M.get_buffer_data(id)
   M.buffers_by_id[id] = M.new_buffer_data()
 
   return M.buffers_by_id[id]
-end
-
-function M.update()
-  bufferline.update()
 end
 
 
@@ -113,9 +115,9 @@ end
 
 function M.toggle_pin(bufnr)
   bufnr = bufnr or 0
-  vim.b[bufnr][PIN] = not M.is_pinned(bufnr)
+  buf_set_var(bufnr, PIN, not M.is_pinned(bufnr))
   sort_pins_to_left()
-  M.update()
+  bufferline.update()
 end
 
 -- Scrolling
@@ -127,7 +129,7 @@ local function set_scroll_tick(new_scroll, animation)
   if animation.running == false then
     scroll_animation = nil
   end
-  M.update()
+  bufferline.update(nil, false)
 end
 
 function M.set_scroll(target)
@@ -152,7 +154,7 @@ local function open_buffer_animated_tick(buffer_number, new_width, animation)
   else
     buffer_data.width = nil
   end
-  M.update()
+  bufferline.update()
 end
 
 local function open_buffer_start_animation(layout, buffer_number)
@@ -164,13 +166,14 @@ local function open_buffer_start_animation(layout, buffer_number)
 
   buffer_data.width = 1
 
-  timer_start(ANIMATION_OPEN_DELAY, function()
+  defer_fn(function()
     animate.start(
       ANIMATION_OPEN_DURATION, 1, target_width, vim.v.t_number,
       function(new_width, animation)
         open_buffer_animated_tick(buffer_number, new_width, animation)
       end)
-  end)
+  end, ANIMATION_OPEN_DELAY)
+
 end
 
 local function open_buffers(new_buffers)
@@ -239,20 +242,20 @@ end
 
 local function set_current_win_listed_buffer()
   local current = get_current_buf()
-  local is_listed = vim.bo[current].buflisted
+  local is_listed = buf_get_option(current, 'buflisted')
 
   -- Check previous window first
   if not is_listed then
     command('wincmd p')
     current = get_current_buf()
-    is_listed = vim.bo[current].buflisted
+    is_listed = buf_get_option(current, 'buflisted')
   end
   -- Check all windows now
   if not is_listed then
     local wins = list_wins()
     for _, win in ipairs(wins) do
       current = win_get_buf(win)
-      is_listed = vim.bo[current].buflisted
+      is_listed = buf_get_option(current, 'buflisted')
       if is_listed then
         set_current_win(win)
         break
@@ -277,14 +280,14 @@ function M.close_buffer(buffer_number, should_update_names)
   if should_update_names then
     M.update_names()
   end
-  M.update()
+  bufferline.update()
 end
 
 local function close_buffer_animated_tick(buffer_number, new_width, animation)
   if new_width > 0 and M.buffers_by_id[buffer_number] ~= nil then
     local buffer_data = M.get_buffer_data(buffer_number)
     buffer_data.width = new_width
-    M.update()
+    bufferline.update()
     return
   end
   animate.stop(animation)
@@ -316,17 +319,18 @@ local function get_buffer_list()
   local buffers = list_bufs()
   local result = {}
 
+  --- @type nil|table
   local exclude_ft   = opts.exclude_ft
   local exclude_name = opts.exclude_name
 
   for _, buffer in ipairs(buffers) do
 
-    if not vim.bo[buffer].buflisted then
+    if not buf_get_option(buffer, 'buflisted') then
       goto continue
     end
 
     if not utils.is_nil(exclude_ft) then
-      local ft = vim.bo[buffer].filetype
+      local ft = buf_get_option(buffer, 'filetype')
       if utils.has(exclude_ft, ft) then
         goto continue
       end
@@ -421,15 +425,35 @@ function M.get_updated_buffers(update_names)
   return M.buffers
 end
 
-function M.set_offset(offset, offset_text)
+function M.set_offset(offset, offset_text, offset_hl)
   local offset_number = tonumber(offset)
   if offset_number then
       M.offset = offset_number
       M.offset_text = offset_text or ''
-      M.update()
+      M.offset_hl = offset_hl
+      bufferline.update()
   end
 end
 
+
+-- Read state
+
+-- Return the bufnr of the buffer to the right of `buffer_number`
+-- @param buffer_number int
+-- @return int|nil
+function M.find_next_buffer(buffer_number)
+  local index = utils.index_of(M.buffers, buffer_number)
+  if index == nil then return nil end
+  if index + 1 > #M.buffers then
+    index = index - 1
+    if index <= 0 then
+      return nil
+    end
+  else
+    index = index + 1
+  end
+  return M.buffers[index]
+end
 
 -- Movement & tab manipulation
 
@@ -454,7 +478,7 @@ local function move_buffer_animated_tick(ratio, current_animation)
     end
   end
 
-  M.update()
+  bufferline.update()
 
   if current_animation.running == false then
     move_animation = nil
@@ -510,7 +534,7 @@ local function move_buffer_animated(from_idx, to_idx)
     animate.start(ANIMATION_MOVE_DURATION, 0, 1, vim.v.t_float,
       function(ratio, current_animation) move_buffer_animated_tick(ratio, current_animation) end)
 
-  M.update()
+  bufferline.update()
 end
 
 local function move_buffer_direct(from_idx, to_idx)
@@ -519,7 +543,7 @@ local function move_buffer_direct(from_idx, to_idx)
   table_insert(M.buffers, to_idx, buffer_number)
   sort_pins_to_left()
 
-  M.update()
+  bufferline.update()
 end
 
 local function move_buffer(from_idx, to_idx)
@@ -598,20 +622,20 @@ function M.close_all_but_current()
   local buffers = M.buffers
   for _, number in ipairs(buffers) do
     if number ~= current then
-      bbye.delete('bdelete', false, number, nil)
+      bbye.bdelete(false, number)
     end
   end
-  M.update()
+  bufferline.update()
 end
 
 function M.close_all_but_pinned()
   local buffers = M.buffers
   for _, number in ipairs(buffers) do
     if not M.is_pinned(number) then
-      bbye.delete('bdelete', false, number, nil)
+      bbye.bdelete(false, number)
     end
   end
-  M.update()
+  bufferline.update()
 end
 
 function M.close_all_but_current_or_pinned()
@@ -619,10 +643,10 @@ function M.close_all_but_current_or_pinned()
   local current = get_current_buf()
   for _, number in ipairs(buffers) do
     if not M.is_pinned(number) and number ~= current then
-      bbye.delete('bdelete', false, number, nil)
+      bbye.bdelete(false, number)
     end
   end
-  M.update()
+  bufferline.update()
 end
 
 function M.close_buffers_left()
@@ -631,9 +655,9 @@ function M.close_buffers_left()
     return
   end
   for i = idx, 1, -1 do
-    bbye.delete('bdelete', false, M.buffers[i], nil)
+    bbye.bdelete(false, M.buffers[i])
   end
-  M.update()
+  bufferline.update()
 end
 
 function M.close_buffers_right()
@@ -642,9 +666,9 @@ function M.close_buffers_right()
     return
   end
   for i = #M.buffers, idx, -1 do
-    bbye.delete('bdelete', false, M.buffers[i], nil)
+    bbye.bdelete(false, M.buffers[i])
   end
-  M.update()
+  bufferline.update()
 end
 
 
@@ -672,51 +696,58 @@ function M.order_by_buffer_number()
   table_sort(M.buffers, function(a, b)
     return a < b
   end)
-  M.update()
+  bufferline.update()
 end
 
 function M.order_by_directory()
   table_sort(
     M.buffers,
     with_pin_order(function(a, b)
-      local na = buf_get_name(a)
-      local nb = buf_get_name(b)
-      local ra = is_relative_path(na)
-      local rb = is_relative_path(nb)
-      if ra and not rb then
-        return true
+      local name_of_a = buf_get_name(a)
+      local name_of_b = buf_get_name(b)
+      local a_less_than_b = name_of_b < name_of_a
+
+      -- TODO: remove this block after 0.8 releases
+      if not normalize then
+        local a_is_relative = is_relative_path(name_of_a)
+        if a_is_relative and is_relative_path(name_of_b) then
+          return a_less_than_b
+        end
+
+        return a_is_relative
       end
-      if not ra and rb then
-        return false
+
+      local level_of_a = #vim.split(normalize(name_of_a), '/')
+      local level_of_b = #vim.split(normalize(name_of_b), '/')
+
+      if level_of_a ~= level_of_b then
+        return level_of_a < level_of_b
       end
-      return na < nb
+
+      return a_less_than_b
     end)
   )
-  M.update()
+  bufferline.update()
 end
 
 function M.order_by_language()
   table_sort(
     M.buffers,
     with_pin_order(function(a, b)
-      local na = fnamemodify(buf_get_name(a), ':e')
-      local nb = fnamemodify(buf_get_name(b), ':e')
-      return na < nb
+      return fnamemodify(buf_get_name(a), ':e') < fnamemodify(buf_get_name(b), ':e')
     end)
   )
-  M.update()
+  bufferline.update()
 end
 
 function M.order_by_window_number()
   table_sort(
     M.buffers,
     with_pin_order(function(a, b)
-      local na = bufwinnr(buf_get_name(a))
-      local nb = bufwinnr(buf_get_name(b))
-      return na < nb
+      return bufwinnr(buf_get_name(a)) < bufwinnr(buf_get_name(b))
     end)
   )
-  M.update()
+  bufferline.update()
 end
 
 -- vim-session integration
@@ -761,7 +792,7 @@ function M.restore_buffers(bufnames)
   -- and create useless empty buffers.
   for _,bufnr in ipairs(list_bufs()) do
     if buf_get_name(bufnr) == ''
-      and vim.bo[bufnr].buftype == ''
+      and buf_get_option(bufnr, 'buftype') == ''
       and buf_line_count(bufnr) == 1
       and buf_get_lines(bufnr, 0, 1, true)[1] == '' then
         buf_delete(bufnr, {})
@@ -773,7 +804,7 @@ function M.restore_buffers(bufnames)
     local bufnr = bufadd(name)
     table_insert(M.buffers, bufnr)
   end
-  M.update()
+  bufferline.update()
 end
 
 -- Exports

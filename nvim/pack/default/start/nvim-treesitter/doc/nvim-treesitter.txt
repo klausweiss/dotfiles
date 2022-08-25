@@ -51,6 +51,9 @@ To enable supported features, put this in your `init.lua` file:
     -- Install parsers synchronously (only applied to `ensure_installed`)
     sync_install = false,
 
+    -- Automatically install missing parsers when entering buffer
+    auto_install = false,
+
     -- List of parsers to ignore installing (for "all")
     ignore_install = { "javascript" },
 
@@ -548,7 +551,11 @@ Floating-point number literals.
 
 							       *hl-TSFunction*
 `TSFunction`
-Function calls and definitions.
+Function definitions.
+
+							   *hl-TSFunctionCall*
+`TSFunctionCall`
+Function calls.
 
 							    *hl-TSFuncBuiltin*
 `TSFuncBuiltin`
@@ -588,7 +595,11 @@ GOTO labels: `label:` in C, and `::label::` in Lua.
 
 								 *hl-TSMethod*
 `TSMethod`
-Method calls and definitions.
+Method definitions.
+
+							     *hl-TSMethodCall*
+`TSMethodCall`
+Method calls.
 
 							      *hl-TSNamespace*
 `TSNamespace`
@@ -596,7 +607,7 @@ Identifiers referring to modules and namespaces.
 
 								     *hl-None*
 `TSNone`
-No highlighting (sets all highlight arguments to `NONE`). this group is used
+No highlighting (sets all highlight arguments to `NONE`). This group is used
 to clear certain ranges, for example, string interpolations. Don't change the
 values of this highlight group.
 
@@ -711,7 +722,7 @@ URIs like hyperlinks or email addresses.
 
 								   *hl-TSMath*
 `TSMath`
-Math environments like LaTeX's `$ ... $`
+Math environments like LaTeX's `$ ... $`.
 
 							  *hl-TSTextReference*
 `TSTextReference`

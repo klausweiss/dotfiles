@@ -11,34 +11,8 @@ local Lib = {
   ROOT_DIR = nil,
 }
 
--- Setup ======================================================
 function Lib.setup(config)
-  Lib.conf = Config.normalize(config)
-end
-
-function Config.normalize(config, existing)
-  local conf = existing or {}
-  if Lib.is_empty_table(config) then
-    return conf
-  end
-
-  for k, v in pairs(config) do
-    conf[k] = v
-  end
-
-  return conf
-end
--- ====================================================
-
--- Helper functions ===============================================================
-local function has_value(tab, val)
-  for _, value in ipairs(tab) do
-    if value == val then
-      return true
-    end
-  end
-
-  return false
+  Lib.conf = vim.tbl_deep_extend("force", Lib.conf, config or {})
 end
 
 function Lib.get_file_name(url)
@@ -83,7 +57,7 @@ function Lib.append_slash(str)
 end
 
 function Lib.validate_root_dir(root_dir)
-  if Lib.is_empty(root_dir) or vim.fn.expand(root_dir) == vim.fn.expand(Lib.ROOT_DIR) then
+  if Lib.is_empty(root_dir) or Lib.expand(root_dir) == Lib.expand(Lib.ROOT_DIR) then
     return Lib.ROOT_DIR
   end
 
@@ -91,7 +65,7 @@ function Lib.validate_root_dir(root_dir)
     root_dir = root_dir .. "/"
   end
 
-  if vim.fn.isdirectory(vim.fn.expand(root_dir)) == Lib._VIM_FALSE then
+  if vim.fn.isdirectory(Lib.expand(root_dir)) == Lib._VIM_FALSE then
     vim.cmd(
       "echoerr 'Invalid g:auto_session_root_dir. "
         .. "Path does not exist or is not a directory. "
@@ -105,7 +79,7 @@ function Lib.validate_root_dir(root_dir)
 end
 
 function Lib.init_dir(dir)
-  if vim.fn.isdirectory(vim.fn.expand(dir)) == Lib._VIM_FALSE then
+  if vim.fn.isdirectory(Lib.expand(dir)) == Lib._VIM_FALSE then
     vim.fn.mkdir(dir, "p")
   end
 end
@@ -170,29 +144,35 @@ function Lib.is_readable(file_path)
   local path, _ = file_path:gsub("\\%%", "%%")
   local readable = vim.fn.filereadable(path) == Lib._VIM_TRUE
 
-  Lib.logger.debug("==== is_readable", readable)
+  Lib.logger.debug("==== is_readable ", readable)
 
   return readable
 end
--- ===================================================================================
 
--- Logger =========================================================
+function Lib.expand(file_or_dir)
+  local saved_wildignore = vim.api.nvim_get_option "wildignore"
+  vim.api.nvim_set_option("wildignore", "")
+  ---@diagnostic disable-next-line: param-type-mismatch
+  local ret = vim.fn.expand(file_or_dir, nil, nil)
+  vim.api.nvim_set_option("wildignore", saved_wildignore)
+  return ret
+end
+
 function Lib.logger.debug(...)
   if Lib.conf.log_level == "debug" then
-    print('debug', ...)
+    vim.notify(vim.fn.join({ "debug: ", tostring(...) }, " "), vim.log.levels.DEBUG)
   end
 end
 
 function Lib.logger.info(...)
   local valid_values = { "info", "debug" }
-  if has_value(valid_values, Lib.conf.log_level) then
-    print('info', ...)
+  if vim.tbl_contains(valid_values, Lib.conf.log_level) then
+    vim.notify(vim.fn.join({ "info: ", tostring(...) }, " "), vim.log.levels.INFO)
   end
 end
 
 function Lib.logger.error(...)
-  error(...)
+  vim.notify(vim.fn.join({ "error: ", tostring(...) }, " "), vim.log.levels.ERROR)
 end
--- =========================================================
 
 return Lib

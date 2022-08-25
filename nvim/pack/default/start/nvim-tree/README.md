@@ -15,7 +15,7 @@
    (Live) filtering
 
    Cut, copy, paste, rename, delete, create
-   
+
    Highly customisable
 
 <br clear="left"/>
@@ -23,10 +23,13 @@
 
 [Join us on matrix](https://matrix.to/#/#nvim-tree:matrix.org)
 
+## Requirements
+
+[neovim >=0.7.0](https://github.com/neovim/neovim/wiki/Installing-Neovim)
+
+[nvim-web-devicons](https://github.com/kyazdani42/nvim-web-devicons) is optional and used to display file icons. It requires a [patched font](https://www.nerdfonts.com/).
 
 ## Install
-
-This plugin requires [neovim >=0.7.0](https://github.com/neovim/neovim/wiki/Installing-Neovim).
 
 Install with [vim-plug](https://github.com/junegunn/vim-plug):
 
@@ -50,8 +53,6 @@ use {
 ## Setup
 
 Setup should be run in a lua file or in a lua heredoc [:help lua-heredoc](https://neovim.io/doc/user/lua.html) if using in a vim file.
-
-Setup may only be run once; subsequent calls will result in a warning.
 
 ```lua
 -- examples for your init.lua
@@ -79,7 +80,7 @@ require("nvim-tree").setup({
 })
 ```
 
-For complete list of available configuration options see [:help nvim-tree.setup](doc/nvim-tree-lua.txt)
+For complete list of available configuration options see [:help nvim-tree-setup](doc/nvim-tree-lua.txt)
 
 Each option is documented in `:help nvim-tree.OPTION_NAME`. Nested options can be accessed by appending `.`, for example [:help nvim-tree.view.mappings](doc/nvim-tree-lua.txt)
 
@@ -97,6 +98,10 @@ Basic commands:
 
 `:NvimTreeCollapse` Collapses the nvim-tree recursively.
 
+## Api
+
+nvim-tree exposes a public api; see [:help nvim-tree-api](doc/nvim-tree-lua.txt). This is a stable non breaking api.
+
 ## Mappings
 
 nvim-tree comes with number of mappings; for default mappings please see [:help nvim-tree-default-mappings](doc/nvim-tree-lua.txt), for way of configuring mappings see [:help nvim-tree-mappings](doc/nvim-tree-lua.txt)
@@ -110,7 +115,9 @@ nvim-tree comes with number of mappings; for default mappings please see [:help 
 * `toggle` has a second parameter which allows to toggle without focusing the explorer (`require"nvim-tree".toggle(false, true)`).
 * You can allow nvim-tree to behave like vinegar, see [:help nvim-tree-vinegar](doc/nvim-tree-lua.txt)
 * If you `:set nosplitright`, the files will open on the left side of the tree, placing the tree window in the right side of the file you opened.
-* You can automatically close the tab/vim when nvim-tree is the last window in the tab: <https://github.com/kyazdani42/nvim-tree.lua/discussions/1115>. WARNING: this can catastrophically fail: <https://github.com/kyazdani42/nvim-tree.lua/issues/1368>. Use with great caution.
+* You can automatically close the tab/vim when nvim-tree is the last window in the tab: <https://github.com/kyazdani42/nvim-tree.lua/discussions/1115>. WARNING: this can catastrophically fail: <https://github.com/kyazdani42/nvim-tree.lua/issues/1368>. This will not be added to nvim-tree and the team will not provide support / assistance with this, due to complexities in vim event timings and side-effects.
+* Hide the `.git` folder: `filters = { custom = { "^.git$" } }`. See [:help nvim-tree.filters.custom](doc/nvim-tree-lua.txt).
+* To disable the display of icons see [:help nvim-tree.renderer.icons.show](doc/nvim-tree-lua.txt).
 
 ## Troubleshooting
 

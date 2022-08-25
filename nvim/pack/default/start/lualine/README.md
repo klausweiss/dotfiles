@@ -121,9 +121,18 @@ require('lualine').setup {
     theme = 'auto',
     component_separators = { left = '', right = ''},
     section_separators = { left = '', right = ''},
-    disabled_filetypes = {},
+    disabled_filetypes = {
+      statusline = {},
+      winbar = {},
+    },
+    ignore_focus = {},
     always_divide_middle = true,
     globalstatus = false,
+    refresh = {
+      statusline = 1000,
+      tabline = 1000,
+      winbar = 1000,
+    }
   },
   sections = {
     lualine_a = {'mode'},
@@ -142,6 +151,8 @@ require('lualine').setup {
     lualine_z = {}
   },
   tabline = {},
+  winbar = {},
+  inactive_winbar = {},
   extensions = {}
 }
 ```
@@ -197,7 +208,7 @@ Theme structure is available [here](https://github.com/nvim-lualine/lualine.nvim
 lualine defines two kinds of separators:
 
 - `section_separators`    - separators between sections
-- `components_separators` - separators between the different components in sections
+- `component_separators` - separators between the different components in sections
 
 **Note**: if viewing this README in a browser, chances are the characters below will not be visible.
 
@@ -327,7 +338,7 @@ Values set here are treated as default for other options
 that work in component level.
 
 For example even though `icons_enabled` is a general component option.
-you can set `icons_enabled` to `false` and icons will be disabled on all
+You can set `icons_enabled` to `false` and icons will be disabled on all
 component. You can still overwrite defaults set in option table by specifying
 the option value in component.
 
@@ -336,13 +347,35 @@ options = {
   theme = 'auto', -- lualine theme
   component_separators = { left = '', right = '' },
   section_separators = { left = '', right = '' },
-  disabled_filetypes = {},     -- Filetypes to disable lualine for.
+  disabled_filetypes = {     -- Filetypes to disable lualine for.
+      statusline = {},       -- only ignores the ft for statusline.
+      winbar = {},           -- only ignores the ft for winbar.
+  },
+
+  ignore_focus = {},         -- If current filetype is in this list it'll
+                             -- always be drawn as inactive statusline
+                             -- and the last window will be drawn as active statusline.
+                             -- for example if you don't want statusline of
+                             -- your file tree / sidebar window to have active
+                             -- statusline you can add their filetypes here.
+
   always_divide_middle = true, -- When set to true, left sections i.e. 'a','b' and 'c'
                                -- can't take over the entire statusline even
                                -- if neither of 'x', 'y' or 'z' are present.
+
   globalstatus = false,        -- enable global statusline (have a single statusline
                                -- at bottom of neovim instead of one for  every window).
                                -- This feature is only available in neovim 0.7 and higher.
+
+  refresh = {                  -- sets how often lualine should refreash it's contents (in ms)
+    statusline = 1000,         -- The refresh option sets minimum time that lualine tries
+    tabline = 1000,            -- to maintain between refresh. It's not guarantied if situation
+    winbar = 1000              -- arises that lualine needs to refresh itself before this time
+                               -- it'll do it.
+
+                               -- Also you can force lualine's refresh by calling refresh function
+                               -- like require('lualine').refresh()
+  }
 }
 ```
 
@@ -418,6 +451,11 @@ sections = {
                    --   padding = { left = left_padding, right = right_padding }
 
       fmt = nil,   -- Format function, formats the component's output.
+      on_click = nil, -- takes a function that is called when component is clicked with mouse.
+                   -- the function receives several arguments
+                   -- - number of clicks incase of multiple clicks
+                   -- - mouse button used (l(left)/r(right)/m(middle)/...)
+                   -- - modifiers pressed (s(shift)/c(ctrl)/a(alt)/m(meta)...)
     }
   }
 }
@@ -442,7 +480,7 @@ sections = {
 
       mode = 0, -- 0: Shows buffer name
                 -- 1: Shows buffer index
-                -- 2: Shows buffer name + buffer index 
+                -- 2: Shows buffer name + buffer index
                 -- 3: Shows buffer number
                 -- 4: Shows buffer name + buffer number
 
@@ -482,7 +520,7 @@ sections = {
       'diagnostics',
 
       -- Table of diagnostic sources, available sources are:
-      --   'nvim_lsp', 'nvim_diagnostic', 'coc', 'ale', 'vim_lsp'.
+      --   'nvim_lsp', 'nvim_diagnostic', 'nvim_workspace_diagnostic', 'coc', 'ale', 'vim_lsp'.
       -- or a function that returns a table as such:
       --   { error=error_cnt, warn=warn_cnt, info=info_cnt, hint=hint_cnt }
       sources = { 'nvim_diagnostic', 'coc' },
@@ -555,6 +593,7 @@ sections = {
     {
       'filename',
       file_status = true,      -- Displays file status (readonly status, modified status)
+      newfile_status = false   -- Display new file status (new file means no write after created)
       path = 0,                -- 0: Just the filename
                                -- 1: Relative path
                                -- 2: Absolute path
@@ -566,6 +605,7 @@ sections = {
         modified = '[+]',      -- Text to show when the file is modified.
         readonly = '[-]',      -- Text to show when the file is non-modifiable or readonly.
         unnamed = '[No Name]', -- Text to show for unnamed buffers.
+        newfile = '[New]',     -- Text to show for new created file before first writting
       }
     }
   }
@@ -684,6 +724,34 @@ tabline = {
 }
 ```
 
+### Winbar
+From neovim-0.8 you can customize your winbar with lualine.
+Winbar configuration is similar to statusline.
+```lua
+winbar = {
+  lualine_a = {},
+  lualine_b = {},
+  lualine_c = {'filename'},
+  lualine_x = {},
+  lualine_y = {},
+  lualine_z = {}
+}
+
+inactive_winbar = {
+  lualine_a = {},
+  lualine_b = {},
+  lualine_c = {'filename'},
+  lualine_x = {},
+  lualine_y = {},
+  lualine_z = {}
+}
+```
+Just like statusline you can separately specify winbar for active and inactive
+windows. Any lualine component can be placed in winbar. All kinds of custom
+components supported in statusline are also suported for winbar too. In general
+You can treat winbar as another lualine statusline that just appears on top
+of windows instead of at bottom.
+
 #### Buffers
 
 Shows currently open buffers. Like bufferline . See
@@ -691,10 +759,14 @@ Shows currently open buffers. Like bufferline . See
 for all builtin behaviors of buffers component.
 You can use `:LualineBuffersJump` to jump to buffer based on index
 of buffer in buffers component.
+Jumping to non-existent buffer indices generates an error. To avoid these errors
+`LualineBuffersJump` provides `<bang>` support, meaning that you can call
+`:LualineBufferJump!` to ignore these errors.
 
 ```vim
   :LualineBuffersJump 2  " Jumps to 2nd buffer in buffers component.
   :LualineBuffersJump $  " Jumps to last buffer in buffers component.
+  :LualineBuffersJump! 3  " Attempts to jump to 3rd buffer, if it exists.
 ```
 
 #### Tabs
@@ -756,9 +828,10 @@ extensions = {'quickfix'}
 - fugitive
 - fzf
 - man
+- mundo
 - neo-tree
 - nerdtree
-- nvim-dap-ui 
+- nvim-dap-ui
 - nvim-tree
 - quickfix
 - symbols-outline
@@ -775,12 +848,53 @@ require('lualine').setup { extensions = { my_extension } }
 
 ---
 
+### Refreshing lualine
+By default lualine refreshes itself based on timer and some events. You can set
+the interval of the timer with refresh option. However you can also force
+lualine to refresh at any time by calling lualine.refresh function.
+```lua
+require('lualine').refresh({
+  scope = 'tabpage',  -- scope of refresh all/tabpage/window
+  place = { 'statusline', 'winbar', 'tabline' },  -- lualine segment ro refresh.
+})
+```
+The arguments shown here are default values. So not passing any of them will be
+treated as if a default value was passed.
+
+So you can simply do
+```lua
+require('lualine').refresh()
+```
+
+Avoid calling lualine.refresh inside components. Since components are evaluated
+during refresh, calling refresh while refreshing can have undesirable effects.
+
 ### Disabling lualine
 
 You can disable lualine for specific filetypes:
 
 ```lua
 options = { disabled_filetypes = {'lua'} }
+```
+
+You can also disable lualine completely.
+```lua
+  require('lualine').hide({
+    place = {'statusline', 'tabline', 'winbar'}, -- The segmentthis change applies to.
+    unhide = false,  -- whether to reenable lualine again/
+  })
+```
+The arguments show for hide above are default values.
+Which means even if the hide function is called without
+arguments it'll work as if these were passed.
+
+So in short to disable lualine completely you can do
+```lua
+require('lualine').hide()
+```
+To enable it again you can do
+```lua
+require('lualine').hide({unhide=true})
 ```
 
 <!-- panvimdoc-ignore-start -->

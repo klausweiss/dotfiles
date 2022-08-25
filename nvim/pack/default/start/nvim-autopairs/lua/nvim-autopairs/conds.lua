@@ -1,5 +1,16 @@
 local utils = require('nvim-autopairs.utils')
 local log = require('nvim-autopairs._log')
+---@class CondOpts
+---@field ts_node table
+---@field text string
+---@field rule table
+---@field bufnr number
+---@field col   number
+---@field char  string
+---@field line  string
+---@field prev_char string
+---@field next_char string
+---@field is_endwise string
 
 local cond = {}
 
@@ -31,6 +42,7 @@ cond.before_regex = function(regex, length)
     if not regex then
         return cond.none()
     end
+    ---@param opts CondOpts
     return function(opts)
         log.debug('before_regex')
         if length < 0 then
@@ -46,6 +58,7 @@ end
 
 cond.before_text = function(text)
     local length = #text
+    ---@param opts CondOpts
     return function(opts)
         log.debug('before_text')
         local str = utils.text_sub_char(opts.line, opts.col - 1, -length)
@@ -58,6 +71,7 @@ end
 
 cond.after_text = function(text)
     local length = #text
+    ---@param opts CondOpts
     return function(opts)
         log.debug('after_text')
         local str = utils.text_sub_char(opts.line, opts.col, length)
@@ -73,6 +87,7 @@ cond.after_regex = function(regex, length)
     if not regex then
         return cond.none()
     end
+    ---@param opts CondOpts
     return function(opts)
         log.debug('after_regex')
         if length < 0 then
@@ -99,6 +114,7 @@ end
 
 cond.not_after_text = function(text)
     local length = #text
+    ---@param opts CondOpts
     return function(opts)
         log.debug('not_after_text')
         local str = utils.text_sub_char(opts.line, opts.col, length)
@@ -113,6 +129,7 @@ cond.not_before_regex = function(regex, length)
     if not regex then
         return cond.none()
     end
+    ---@param opts CondOpts
     return function(opts)
         log.debug('not_before_regex')
         if length < 0 then
@@ -130,6 +147,7 @@ cond.not_after_regex = function(regex, length)
     if not regex then
         return cond.none()
     end
+    ---@param opts CondOpts
     return function(opts)
         log.debug('not_after_regex')
         if length < 0 then
@@ -156,7 +174,29 @@ local function count_bracket_char(line, prev_char, next_char)
     return count_prev_char, count_next_char
 end
 
+-- Checks if bracket chars are balanced around specific postion.
+---@param line string
+---@param open_char string
+---@param close_char string
+---@param col integer position
+local function is_brackets_balanced_around_position(line, open_char, close_char, col)
+    local balance = 0
+    for i = 1, #line, 1 do
+        local c = line:sub(i, i)
+        if c == open_char then
+            balance = balance + 1
+        elseif balance > 0 and c == close_char then
+            balance = balance - 1
+            if col <= i and balance == 0 then
+                break
+            end
+        end
+    end
+    return balance == 0
+end
+
 cond.is_bracket_line = function()
+    ---@param opts CondOpts
     return function(opts)
         log.debug('is_bracket_line')
         if utils.is_bracket(opts.char) and opts.next_char == opts.rule.end_pair then
@@ -175,26 +215,27 @@ cond.is_bracket_line = function()
 end
 
 cond.is_bracket_line_move = function()
+    ---@param opts CondOpts
     return function(opts)
         log.debug('is_bracket_line_move')
-        if
-            utils.is_close_bracket(opts.char)
+        if utils.is_close_bracket(opts.char)
             and opts.char == opts.rule.end_pair
         then
+            -- ((   many char |)) => move
             -- ((   many char |) => not move
-            local count_prev_char, count_next_char = count_bracket_char(
+            local is_balanced = is_brackets_balanced_around_position(
                 opts.line,
                 opts.rule.start_pair,
-                opts.char
+                opts.char,
+                opts.col
             )
-            if count_prev_char ~= 0 and count_prev_char > count_next_char then
-                return false
-            end
+            return is_balanced
         end
     end
 end
 
 cond.not_inside_quote = function()
+    ---@param opts CondOpts
     return function(opts)
         log.debug('not_inside_quote')
         if utils.is_in_quotes(opts.text, opts.col - 1) then
@@ -204,6 +245,7 @@ cond.not_inside_quote = function()
 end
 
 cond.is_inside_quote = function()
+    ---@param opts CondOpts
     return function(opts)
         log.debug('is_inside_quote')
         if utils.is_in_quotes(opts.text, opts.col - 1) then
@@ -213,10 +255,10 @@ cond.is_inside_quote = function()
 end
 
 cond.not_add_quote_inside_quote = function()
+    ---@param opts CondOpts
     return function(opts)
         log.debug('not_add_quote_inside_quote')
-        if
-            utils.is_quote(opts.char)
+        if utils.is_quote(opts.char)
             and utils.is_in_quotes(opts.text, opts.col - 1)
         then
             return false
@@ -225,6 +267,7 @@ cond.not_add_quote_inside_quote = function()
 end
 
 cond.move_right = function()
+    ---@param opts CondOpts
     return function(opts)
         log.debug('move_right')
         if opts.next_char == opts.char then
@@ -249,6 +292,7 @@ cond.move_right = function()
 end
 
 cond.is_end_line = function()
+    ---@param opts CondOpts
     return function(opts)
         log.debug('is_end_line')
         local end_text = opts.line:sub(opts.col + 1)
@@ -261,10 +305,10 @@ end
 
 --- Check the next char is quote and cursor is inside quote
 cond.is_bracket_in_quote = function()
+    ---@param opts CondOpts
     return function(opts)
         log.debug("is_bracket_in_quote")
-        if
-            utils.is_bracket(opts.char)
+        if utils.is_bracket(opts.char)
             and utils.is_quote(opts.next_char)
             and utils.is_in_quotes(opts.line, opts.col - 1, opts.next_char)
         then
@@ -280,6 +324,22 @@ cond.not_filetypes = function(filetypes)
             if vim.bo.filetype == filetype then
                 return false
             end
+        end
+    end
+end
+
+--- Check the character before the cursor is not equal
+---@param char string character to compare
+---@param index number the position of character before current curosr
+cond.not_before_char = function(char, index)
+    index = index or 1
+    ---@param opts CondOpts
+    return function(opts)
+        log.debug('not_before_char')
+        local match_char = #opts.line > index
+            and opts.line:sub(#opts.line - index, #opts.line - index) or ''
+        if match_char == char and match_char ~= "" then
+            return false
         end
     end
 end

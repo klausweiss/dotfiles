@@ -117,9 +117,8 @@ c = {
 		-- remove unused highlights from default-ext_opts.
 		ext_util.clear_invalid(conf.ext_opts)
 		conf.ext_opts = ext_util.child_complete(conf.ext_opts)
-		user_config.ext_opts = ext_util.child_complete(
-			user_config.ext_opts or {}
-		)
+		user_config.ext_opts =
+			ext_util.child_complete(user_config.ext_opts or {})
 		ext_util.child_extend(user_config.ext_opts, conf.ext_opts)
 
 		-- use value from update_events, then updateevents.
@@ -170,6 +169,8 @@ c = {
 		end
 	end,
 }
+
+-- Keep these two for backward compativility
 c.setup = c.set_config
 
 return c

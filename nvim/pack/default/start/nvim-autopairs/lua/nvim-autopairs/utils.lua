@@ -11,7 +11,8 @@ M.key = {
     join_left = "<c-g>U<left>",
     join_right = "<c-g>U<right>",
     undo_sequence = "<c-g>u",
-    noundo_sequence = "<c-g>U"
+    noundo_sequence = "<c-g>U",
+    abbr = "<c-]>"
 }
 
 M.set_vchar = function(text)
@@ -73,7 +74,7 @@ M.is_in_quotes = function (line, pos, quote_type)
 end
 
 M.is_attached = function(bufnr)
-    local _, check = pcall(api.nvim_buf_get_var, bufnr, "nvim-autopairs")
+    local _, check = pcall(api.nvim_buf_get_var, bufnr or 0, "nvim-autopairs")
     return check == 1
 end
 

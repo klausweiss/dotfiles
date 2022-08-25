@@ -120,6 +120,51 @@ describe("loaders:", function()
 		screen:detach()
 	end)
 
+	local function reload_test(message, load_fn, snippet_file, edit_keys)
+		it(message, function()
+			load_fn()
+
+			-- check unmodified.
+			feed("iall1")
+			exec_lua("ls.expand()")
+
+			screen:expect({
+				grid = [[
+				expands? jumps? ^  !                               |
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{2:-- INSERT --}                                      |]],
+			})
+
+			-- edit snippet-file to ensure hot-reload works.
+			exec(([[
+				edit %s
+			]]):format(os.getenv("LUASNIP_SOURCE") .. snippet_file))
+
+			-- edit snippet-file, and check for reload.
+			feed(edit_keys)
+
+			exec_lua("ls.expand()")
+
+			-- undo changes to snippet-file before checking results.
+			feed("<Esc><C-I>u:w<Cr><C-O>")
+
+			-- re-enter current placeholder
+			exec_lua("ls.jump(-1)")
+			exec_lua("ls.jump(1)")
+
+			screen:expect({
+				grid = [[
+				replaces? jumps? ^  !                              |
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{2:-- INSERT --}                                      |]],
+			})
+		end)
+	end
+
 	for_all_loaders("loads `all`-(autotriggered) snippet", function()
 		-- expand loaded snippet manually.
 		feed("iall1")
@@ -195,14 +240,16 @@ describe("loaders:", function()
 		-- just the filetype the test-snippets are added for.
 		exec("set ft=prio")
 
-		exec_lua(string.format(
-			[[require("luasnip.loaders.from_snipmate").load({
+		exec_lua(
+			string.format(
+				[[require("luasnip.loaders.from_snipmate").load({
 					paths={"%s"},
 					override_priority = 2000
 				})]],
-			os.getenv("LUASNIP_SOURCE")
-				.. "/tests/data/snipmate-snippets/snippets"
-		))
+				os.getenv("LUASNIP_SOURCE")
+					.. "/tests/data/snipmate-snippets/snippets"
+			)
+		)
 
 		feed("iaaaa")
 		exec_lua("ls.expand()")
@@ -234,14 +281,16 @@ describe("loaders:", function()
 			{2:-- INSERT --}                                      |]],
 		})
 
-		exec_lua(string.format(
-			[[require("luasnip.loaders.from_snipmate").load({
+		exec_lua(
+			string.format(
+				[[require("luasnip.loaders.from_snipmate").load({
 					paths={"%s"},
 					override_priority = 4000
 				})]],
-			os.getenv("LUASNIP_SOURCE")
-				.. "/tests/data/snipmate-snippets/snippets"
-		))
+				os.getenv("LUASNIP_SOURCE")
+					.. "/tests/data/snipmate-snippets/snippets"
+			)
+		)
 
 		feed("<Cr>aaaa")
 		exec_lua("ls.expand()")
@@ -254,14 +303,16 @@ describe("loaders:", function()
 			{2:-- INSERT --}                                      |]],
 		})
 
-		exec_lua(string.format(
-			[[require("luasnip.loaders.from_lua").load({
+		exec_lua(
+			string.format(
+				[[require("luasnip.loaders.from_lua").load({
 					paths={"%s"},
 					default_priority = 5000
 				})]],
-			os.getenv("LUASNIP_SOURCE")
-				.. "/tests/data/lua-snippets/luasnippets"
-		))
+				os.getenv("LUASNIP_SOURCE")
+					.. "/tests/data/lua-snippets/luasnippets"
+			)
+		)
 
 		feed("<Cr>aaaa")
 		exec_lua("ls.expand()")
@@ -275,14 +326,16 @@ describe("loaders:", function()
 		})
 
 		-- make sure that not just the last loaded snippet is triggered.
-		exec_lua(string.format(
-			[[require("luasnip.loaders.from_snipmate").load({
+		exec_lua(
+			string.format(
+				[[require("luasnip.loaders.from_snipmate").load({
 					paths={"%s"},
 					default_priority = 4999
 				})]],
-			os.getenv("LUASNIP_SOURCE")
-				.. "/tests/data/snipmate-snippets/snippets"
-		))
+				os.getenv("LUASNIP_SOURCE")
+					.. "/tests/data/snipmate-snippets/snippets"
+			)
+		)
 
 		feed("<Cr>aaaa")
 		exec_lua("ls.expand()")
@@ -346,14 +399,16 @@ describe("loaders:", function()
 			{2:-- INSERT --}                                      |]],
 		})
 
-		exec_lua(string.format(
-			[[require("luasnip.loaders.from_snipmate").load({
+		exec_lua(
+			string.format(
+				[[require("luasnip.loaders.from_snipmate").load({
 					paths={"%s"},
 					default_priority = 2002
 				})]],
-			os.getenv("LUASNIP_SOURCE")
-				.. "/tests/data/snipmate-snippets/snippets"
-		))
+				os.getenv("LUASNIP_SOURCE")
+					.. "/tests/data/snipmate-snippets/snippets"
+			)
+		)
 
 		feed("<Cr>bbbb")
 		exec_lua("ls.expand()")
@@ -366,4 +421,114 @@ describe("loaders:", function()
 			{2:-- INSERT --}                                      |]],
 		})
 	end)
+
+	reload_test(
+		"snipmate-reload works",
+		loaders["snipmate(rtp)"],
+		"/tests/data/snipmate-snippets/snippets/all.snippets",
+		"<Esc>2jwcereplaces<Esc>:w<Cr><C-O>ccall1"
+	)
+
+	reload_test(
+		"vscode-reload works",
+		loaders["vscode(rtp)"],
+		"/tests/data/vscode-snippets/snippets/all.json",
+		"<Esc>4jwlcereplaces<Esc>:w<Cr><C-O>ccall1"
+	)
+
+	reload_test(
+		"lua-reload works",
+		loaders["lua(rtp)"],
+		"/tests/data/lua-snippets/luasnippets/all.lua",
+		"<Esc>jfecereplaces<Esc>:w<Cr><C-O>ccall1"
+	)
+
+	reload_test(
+		"snipmate-reload: load symlinked and edit real",
+		function()
+			exec_lua(
+				string.format(
+					[[require("luasnip.loaders.from_snipmate").lazy_load({paths="%s"})]],
+					os.getenv("LUASNIP_SOURCE")
+						.. "/tests/symlinked_data/snipmate-snippets/snippets"
+				)
+			)
+		end,
+		"/tests/data/snipmate-snippets/snippets/all.snippets",
+		"<Esc>2jwcereplaces<Esc>:w<Cr><C-O>ccall1"
+	)
+
+	reload_test(
+		"vscode-reload: load symlinked and edit real",
+		function()
+			exec_lua(
+				string.format(
+					[[require("luasnip.loaders.from_vscode").lazy_load({paths="%s"})]],
+					os.getenv("LUASNIP_SOURCE")
+						.. "/tests/symlinked_data/vscode-snippets"
+				)
+			)
+		end,
+		"/tests/data/vscode-snippets/snippets/all.json",
+		"<Esc>4jwlcereplaces<Esc>:w<Cr><C-O>ccall1"
+	)
+
+	reload_test(
+		"lua-reload: load symlinked and edit real",
+		function()
+			exec_lua(
+				string.format(
+					[[require("luasnip.loaders.from_lua").lazy_load({paths="%s"})]],
+					os.getenv("LUASNIP_SOURCE")
+						.. "/tests/symlinked_data/lua-snippets/luasnippets"
+				)
+			)
+		end,
+		"/tests/data/lua-snippets/luasnippets/all.lua",
+		"<Esc>jfecereplaces<Esc>:w<Cr><C-O>ccall1"
+	)
+
+	reload_test(
+		"snipmate-reload: load real and edit symlinked",
+		function()
+			exec_lua(
+				string.format(
+					[[require("luasnip.loaders.from_snipmate").lazy_load({paths="%s"})]],
+					os.getenv("LUASNIP_SOURCE")
+						.. "/tests/data/snipmate-snippets/snippets"
+				)
+			)
+		end,
+		"/tests/symlinked_data/snipmate-snippets/snippets/all.snippets",
+		"<Esc>2jwcereplaces<Esc>:w<Cr><C-O>ccall1"
+	)
+
+	reload_test(
+		"vscode-reload: load real and edit symlinked",
+		function()
+			exec_lua(
+				string.format(
+					[[require("luasnip.loaders.from_vscode").lazy_load({paths="%s"})]],
+					os.getenv("LUASNIP_SOURCE") .. "/tests/data/vscode-snippets"
+				)
+			)
+		end,
+		"/tests/symlinked_data/vscode-snippets/snippets/all.json",
+		"<Esc>4jwlcereplaces<Esc>:w<Cr><C-O>ccall1"
+	)
+
+	reload_test(
+		"lua-reload: load real and edit symlinked",
+		function()
+			exec_lua(
+				string.format(
+					[[require("luasnip.loaders.from_lua").lazy_load({paths="%s"})]],
+					os.getenv("LUASNIP_SOURCE")
+						.. "/tests/data/lua-snippets/luasnippets"
+				)
+			)
+		end,
+		"/tests/symlinked_data/lua-snippets/luasnippets/all.lua",
+		"<Esc>jfecereplaces<Esc>:w<Cr><C-O>ccall1"
+	)
 end)

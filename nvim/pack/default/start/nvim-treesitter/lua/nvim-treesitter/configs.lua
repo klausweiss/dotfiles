@@ -13,6 +13,7 @@ local config = {
   modules = {},
   sync_install = false,
   ensure_installed = {},
+  auto_install = false,
   ignore_install = {},
   update_strategy = "lockfile",
   parser_install_dir = nil,
@@ -386,6 +387,11 @@ function M.setup(user_data)
     config.parser_install_dir = vim.fn.expand(config.parser_install_dir, ":p")
   end
 
+  config.auto_install = user_data.auto_install or false
+  if config.auto_install then
+    require("nvim-treesitter.install").setup_auto_install()
+  end
+
   local ensure_installed = user_data.ensure_installed or {}
   if #ensure_installed > 0 then
     if user_data.sync_install then
@@ -544,7 +550,7 @@ function M.get_parser_install_dir(folder_name)
 
   if config.parser_install_dir then
     local parser_dir = utils.join_path(config.parser_install_dir, folder_name)
-    return utils.create_or_resue_writable_dir(
+    return utils.create_or_reuse_writable_dir(
       parser_dir,
       utils.join_space("Could not create parser dir '", parser_dir, "': "),
       utils.join_space("Parser dir '", parser_dir, "' should be read/write.")
@@ -562,7 +568,7 @@ function M.get_parser_install_dir(folder_name)
   local site_dir = utils.get_site_dir()
   local parser_dir = utils.join_path(site_dir, folder_name)
 
-  return utils.create_or_resue_writable_dir(
+  return utils.create_or_reuse_writable_dir(
     parser_dir,
     nil,
     utils.join_space("Invalid rights,", package_path, "or", parser_dir, "should be read/write")

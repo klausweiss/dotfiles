@@ -1,4 +1,3 @@
-local api = vim.api
 local uv = vim.loop
 
 local utils = require "nvim-tree.utils"
@@ -23,7 +22,7 @@ function M.reload(node, status)
   local cwd = node.link_to or node.absolute_path
   local handle = uv.fs_scandir(cwd)
   if type(handle) == "string" then
-    api.nvim_err_writeln(handle)
+    utils.notify.error(handle)
     return
   end
 
@@ -42,10 +41,32 @@ function M.reload(node, status)
       break
     end
 
+    local stat
+    local function fs_stat_cached(path)
+      if stat ~= nil then
+        return stat
+      end
+
+      stat = uv.fs_stat(path)
+      return stat
+    end
+
     local abs = utils.path_join { cwd, name }
-    t = t or (uv.fs_stat(abs) or {}).type
+    t = t or (fs_stat_cached(abs) or {}).type
     if not filters.should_ignore(abs) and not filters.should_ignore_git(abs, status.files) then
       child_names[abs] = true
+
+      -- Recreate node if type changes.
+      if nodes_by_path[abs] then
+        local n = nodes_by_path[abs]
+
+        if n.type ~= t then
+          utils.array_remove(node.nodes, n)
+          common.node_destroy(n)
+          nodes_by_path[abs] = nil
+        end
+      end
+
       if not nodes_by_path[abs] then
         if t == "directory" and uv.fs_access(abs, "R") then
           local folder = builders.folder(node, abs, name)
@@ -62,6 +83,12 @@ function M.reload(node, status)
             table.insert(node.nodes, link)
           end
         end
+      else
+        local n = nodes_by_path[abs]
+        if n then
+          n.executable = builders.is_executable(abs, n.extension or "")
+          n.fs_stat = fs_stat_cached(abs)
+        end
       end
     end
   end
@@ -69,7 +96,12 @@ function M.reload(node, status)
   node.nodes = vim.tbl_map(
     update_status(nodes_by_path, node_ignored, status),
     vim.tbl_filter(function(n)
-      return child_names[n.absolute_path]
+      if child_names[n.absolute_path] then
+        return child_names[n.absolute_path]
+      else
+        common.node_destroy(n)
+        return nil
+      end
     end, node.nodes)
   )
 

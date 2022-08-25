@@ -91,7 +91,7 @@ local function mark_jump_targets_line(buf_handle, win_handle, regex, line_contex
     if b == nil or (b == 0 and e == 0) then
       break
     end
-    -- Preview need a length to highlight the matched string. Zero means nothingh to highlight.
+    -- Preview need a length to highlight the matched string. Zero means nothing to highlight.
     local matched_length = e - b
     -- As the make for jump target must be placed at a cell (but some pattern like '^' is
     -- placed between cells), we should make sure e > b
@@ -389,6 +389,18 @@ function M.regex_by_line_start()
     oneshot = true,
     match = function(_)
       return 0, 1, false
+    end
+  }
+end
+
+-- Line regex at cursor position.
+function M.regex_by_vertical()
+  local position = vim.api.nvim_win_get_cursor(0)[2]
+  local pattern = vim.regex(string.format("^.\\{0,%d\\}\\(.\\|$\\)", position))
+  return {
+    oneshot = true,
+    match = function(s)
+      return pattern:match_str(s)
     end
   }
 end

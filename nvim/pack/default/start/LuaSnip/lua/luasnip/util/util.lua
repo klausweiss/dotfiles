@@ -143,12 +143,7 @@ local function cursor_set_keys(pos, before)
 			-- pos2 is set to last columnt of previous line.
 			-- # counts bytes, but win_set_cursor expects bytes, so all's good.
 			pos[2] =
-				#vim.api.nvim_buf_get_lines(
-					0,
-					pos[1],
-					pos[1] + 1,
-					false
-				)[1]
+				#vim.api.nvim_buf_get_lines(0, pos[1], pos[1] + 1, false)[1]
 		else
 			pos[2] = pos[2] - 1
 		end
@@ -238,12 +233,21 @@ local function put(text, pos)
 	pos[2] = (#text > 1 and 0 or pos[2]) + #text[#text]
 end
 
--- Wrap a value in a table if it isn't one already
-local function wrap_value(value)
-	if not value or type(value) == "table" then
-		return value
+--[[ Wraps the value in a table if it's not one, makes
+  the first element an empty str if the table is empty]]
+local function to_string_table(value)
+	if not value then
+		return { "" }
 	end
-	return { value }
+	if type(value) == "string" then
+		return { value }
+	end
+	-- at this point it's a table
+	if #value == 0 then
+		return { "" }
+	end
+	-- non empty table
+	return value
 end
 
 -- Wrap node in a table if it is not one
@@ -369,10 +373,8 @@ local function store_selection()
 		if #min_indent > end_col then
 			select_dedent[#select_dedent] = ""
 		else
-			select_dedent[#select_dedent] = select_dedent[#select_dedent]:gsub(
-				"^" .. min_indent,
-				""
-			)
+			select_dedent[#select_dedent] =
+				select_dedent[#select_dedent]:gsub("^" .. min_indent, "")
 		end
 	else
 		-- in block: if indent is in block, remove the part of it that is inside
@@ -432,7 +434,7 @@ local function buffer_comment_chars()
 end
 
 local function to_line_table(table_or_string)
-	local tbl = wrap_value(table_or_string)
+	local tbl = to_string_table(table_or_string)
 
 	-- split entries at \n.
 	local line_table = {}
@@ -559,7 +561,7 @@ return {
 	multiline_equal = multiline_equal,
 	word_under_cursor = word_under_cursor,
 	put = put,
-	wrap_value = wrap_value,
+	to_string_table = to_string_table,
 	wrap_nodes = wrap_nodes,
 	store_selection = store_selection,
 	get_selection = get_selection,

@@ -111,11 +111,7 @@ local function jump(dir)
 	local current = session.current_nodes[vim.api.nvim_get_current_buf()]
 	if current then
 		session.current_nodes[vim.api.nvim_get_current_buf()] =
-			util.no_region_check_wrap(
-				safe_jump,
-				current,
-				dir
-			)
+			util.no_region_check_wrap(safe_jump, current, dir)
 		return true
 	else
 		return false
@@ -128,15 +124,27 @@ local function jumpable(dir)
 end
 
 local function expandable()
-	next_expand, next_expand_params = match_snippet(
-		util.get_current_line_to_cursor(),
-		"snippets"
-	)
+	next_expand, next_expand_params =
+		match_snippet(util.get_current_line_to_cursor(), "snippets")
 	return next_expand ~= nil
 end
 
 local function expand_or_jumpable()
 	return expandable() or jumpable(1)
+end
+
+local function unlink_current()
+	local node = session.current_nodes[vim.api.nvim_get_current_buf()]
+	if not node then
+		print("No active Snippet")
+		return
+	end
+	local snippet = node.parent.snippet
+
+	snippet:remove_from_jumplist()
+	-- prefer setting previous/outer insertNode as current node.
+	session.current_nodes[vim.api.nvim_get_current_buf()] = snippet.prev.prev
+		or snippet.next.next
 end
 
 local function in_snippet()
@@ -146,7 +154,15 @@ local function in_snippet()
 		return false
 	end
 	local snippet = node.parent.snippet
-	local snip_begin_pos, snip_end_pos = snippet.mark:pos_begin_end()
+	local ok, snip_begin_pos, snip_end_pos =
+		pcall(snippet.mark.pos_begin_end, snippet.mark)
+	if not ok then
+		-- if there was an error getting the position, the snippets text was
+		-- most likely removed, resulting in messed up extmarks -> error.
+		-- remove the snippet.
+		unlink_current()
+		return
+	end
 	local pos = vim.api.nvim_win_get_cursor(0)
 	if pos[1] - 1 >= snip_begin_pos[1] and pos[1] - 1 <= snip_end_pos[1] then
 		return true -- cursor not on row inside snippet
@@ -224,9 +240,8 @@ local function snip_expand(snippet, opts)
 	end
 
 	-- jump_into-callback returns new active node.
-	session.current_nodes[vim.api.nvim_get_current_buf()] = opts.jump_into_func(
-		snip
-	)
+	session.current_nodes[vim.api.nvim_get_current_buf()] =
+		opts.jump_into_func(snip)
 
 	-- stores original snippet, it doesn't contain any data from expansion.
 	session.last_expand_snip = snippet
@@ -250,10 +265,8 @@ local function expand()
 		next_expand = nil
 		next_expand_params = nil
 	else
-		snip, expand_params = match_snippet(
-			util.get_current_line_to_cursor(),
-			"snippets"
-		)
+		snip, expand_params =
+			match_snippet(util.get_current_line_to_cursor(), "snippets")
 	end
 	if snip then
 		local cursor = util.get_cursor_0ind()
@@ -275,10 +288,8 @@ local function expand()
 end
 
 local function expand_auto()
-	local snip, expand_params = match_snippet(
-		util.get_current_line_to_cursor(),
-		"autosnippets"
-	)
+	local snip, expand_params =
+		match_snippet(util.get_current_line_to_cursor(), "autosnippets")
 	if snip then
 		local cursor = util.get_cursor_0ind()
 		snip = snip_expand(snip, {
@@ -356,24 +367,6 @@ local function get_current_choices()
 	end
 
 	return choice_lines
-end
-
-local function unlink_current()
-	local node = session.current_nodes[vim.api.nvim_get_current_buf()]
-	if not node then
-		print("No active Snippet")
-		return
-	end
-	local user_expanded_snip = node.parent
-	-- find 'outer' snippet.
-	while user_expanded_snip.parent do
-		user_expanded_snip = user_expanded_snip.parent
-	end
-
-	user_expanded_snip:remove_from_jumplist()
-	-- prefer setting previous/outer insertNode as current node.
-	session.current_nodes[vim.api.nvim_get_current_buf()] = user_expanded_snip.prev.prev
-		or user_expanded_snip.next.next
 end
 
 local function active_update_dependents()
@@ -492,10 +485,8 @@ local function unlink_current_if_deleted()
 		return
 	end
 	local snippet = node.parent.snippet
-	local ok, snip_begin_pos, snip_end_pos = pcall(
-		snippet.mark.pos_begin_end_raw,
-		snippet.mark
-	)
+	local ok, snip_begin_pos, snip_end_pos =
+		pcall(snippet.mark.pos_begin_end_raw, snippet.mark)
 	-- stylua: ignore
 	-- leave snippet if empty:
 	if not ok or
@@ -521,10 +512,8 @@ local function exit_out_of_region(node)
 
 	local pos = util.get_cursor_0ind()
 	local snippet = node.parent.snippet
-	local ok, snip_begin_pos, snip_end_pos = pcall(
-		snippet.mark.pos_begin_end,
-		snippet.mark
-	)
+	local ok, snip_begin_pos, snip_end_pos =
+		pcall(snippet.mark.pos_begin_end, snippet.mark)
 	-- stylua: ignore
 	-- leave if curser before or behind snippet
 	if not ok or
@@ -690,6 +679,8 @@ ls = {
 	session = session,
 	cleanup = cleanup,
 	refresh_notify = refresh_notify,
+	env_namespace = Environ.env_namespace,
+	setup = require("luasnip.config").setup,
 }
 
 return ls

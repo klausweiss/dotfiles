@@ -50,6 +50,13 @@ local data = {
         before = [[""| ]],
         after  = [["""|""" ]]
     },
+    {
+        name = "don't repeat python quote" ,
+        filetype = "python",
+        key    = [["]],
+        before = [[a"""|""" ]],
+        after  = [[a""""|"" ]]
+    },
 
     {
         name = "add markdown quote" ,
@@ -235,6 +242,43 @@ local data = {
             "a[",
             "|",
             "]"
+        }
+    },
+    {
+        name = "move ) inside nested function call" ,
+        filetype="javascript",
+        key    = [[)]],
+        before = {
+          "fn(fn(|))",
+        },
+        after  = {
+          "fn(fn()|)",
+        }
+    },
+    {
+        name = "move } inside singleline function's params" ,
+        filetype="javascript",
+        key    = [[}]],
+        before = {
+          "({|}) => {}",
+        },
+        after  = {
+          "({}|) => {}",
+        }
+    },
+    {
+        name = "move } inside multiline function's params" ,
+        filetype="javascript",
+        key    = [[}]],
+        before = {
+          "({|}) => {",
+          "",
+          "}",
+        },
+        after  = {
+          "({}|) => {",
+          "",
+          "}",
         }
     },
     {
