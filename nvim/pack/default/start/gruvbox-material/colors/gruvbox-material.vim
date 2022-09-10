@@ -10,7 +10,7 @@
 let s:configuration = gruvbox_material#get_configuration()
 let s:palette = gruvbox_material#get_palette(s:configuration.background, s:configuration.foreground, s:configuration.colors_override)
 let s:path = expand('<sfile>:p') " the path of this script
-let s:last_modified = 'Thu Aug 25 10:43:01 UTC 2022'
+let s:last_modified = 'Fri Sep  9 13:37:36 UTC 2022'
 let g:gruvbox_material_loaded_file_types = []
 
 if !(exists('g:colors_name') && g:colors_name ==# 'gruvbox-material' && s:configuration.better_performance)
@@ -211,6 +211,7 @@ else
   endif
 endif
 call gruvbox_material#highlight('VertSplit', s:palette.bg5, s:palette.none)
+highlight! link WinSeparator VertSplit
 if s:configuration.visual ==# 'grey background'
   call gruvbox_material#highlight('Visual', s:palette.none, s:palette.bg3)
   call gruvbox_material#highlight('VisualNOS', s:palette.none, s:palette.bg3)
@@ -254,27 +255,27 @@ if has('nvim')
   highlight! link DiagnosticSignError RedSign
   highlight! link DiagnosticSignWarn YellowSign
   highlight! link DiagnosticSignInfo BlueSign
-  highlight! link DiagnosticSignHint AquaSign
-  highlight! link LspDiagnosticsFloatingError ErrorFloat
-  highlight! link LspDiagnosticsFloatingWarning WarningFloat
-  highlight! link LspDiagnosticsFloatingInformation InfoFloat
-  highlight! link LspDiagnosticsFloatingHint HintFloat
-  highlight! link LspDiagnosticsDefaultError ErrorText
-  highlight! link LspDiagnosticsDefaultWarning WarningText
-  highlight! link LspDiagnosticsDefaultInformation InfoText
-  highlight! link LspDiagnosticsDefaultHint HintText
-  highlight! link LspDiagnosticsVirtualTextError VirtualTextError
-  highlight! link LspDiagnosticsVirtualTextWarning VirtualTextWarning
-  highlight! link LspDiagnosticsVirtualTextInformation VirtualTextInfo
-  highlight! link LspDiagnosticsVirtualTextHint VirtualTextHint
-  highlight! link LspDiagnosticsUnderlineError ErrorText
-  highlight! link LspDiagnosticsUnderlineWarning WarningText
-  highlight! link LspDiagnosticsUnderlineInformation InfoText
-  highlight! link LspDiagnosticsUnderlineHint HintText
-  highlight! link LspDiagnosticsSignError RedSign
-  highlight! link LspDiagnosticsSignWarning YellowSign
-  highlight! link LspDiagnosticsSignInformation BlueSign
-  highlight! link LspDiagnosticsSignHint AquaSign
+  highlight! link DiagnosticSignHint GreenSign
+  highlight! link LspDiagnosticsFloatingError DiagnosticFloatingError
+  highlight! link LspDiagnosticsFloatingWarning DiagnosticFloatingWarn
+  highlight! link LspDiagnosticsFloatingInformation DiagnosticFloatingInfo
+  highlight! link LspDiagnosticsFloatingHint DiagnosticFloatingHint
+  highlight! link LspDiagnosticsDefaultError DiagnosticError
+  highlight! link LspDiagnosticsDefaultWarning DiagnosticWarn
+  highlight! link LspDiagnosticsDefaultInformation DiagnosticInfo
+  highlight! link LspDiagnosticsDefaultHint DiagnosticHint
+  highlight! link LspDiagnosticsVirtualTextError DiagnosticVirtualTextError
+  highlight! link LspDiagnosticsVirtualTextWarning DiagnosticVirtualTextWarn
+  highlight! link LspDiagnosticsVirtualTextInformation DiagnosticVirtualTextInfo
+  highlight! link LspDiagnosticsVirtualTextHint DiagnosticVirtualTextHint
+  highlight! link LspDiagnosticsUnderlineError DiagnosticUnderlineError
+  highlight! link LspDiagnosticsUnderlineWarning DiagnosticUnderlineWarn
+  highlight! link LspDiagnosticsUnderlineInformation DiagnosticUnderlineInfo
+  highlight! link LspDiagnosticsUnderlineHint DiagnosticUnderlineHint
+  highlight! link LspDiagnosticsSignError DiagnosticSignError
+  highlight! link LspDiagnosticsSignWarning DiagnosticSignWarn
+  highlight! link LspDiagnosticsSignInformation DiagnosticSignInfo
+  highlight! link LspDiagnosticsSignHint DiagnosticSignHint
   highlight! link LspReferenceText CurrentWord
   highlight! link LspReferenceRead CurrentWord
   highlight! link LspReferenceWrite CurrentWord
@@ -538,7 +539,6 @@ highlight! link TSStorageClass Orange
 highlight! link TSString Aqua
 highlight! link TSStringEscape Green
 highlight! link TSStringRegex Green
-highlight! link TSStructure BlueItalic
 highlight! link TSSymbol Fg
 highlight! link TSTag Orange
 highlight! link TSTagDelimiter Green
@@ -550,6 +550,56 @@ highlight! link TSTypeBuiltin YellowItalic
 highlight! link TSURI markdownUrl
 highlight! link TSVariable Fg
 highlight! link TSVariableBuiltin BlueItalic
+if has('nvim-0.8.0')
+  highlight! link @annotation TSAnnotation
+  highlight! link @attribute TSAttribute
+  highlight! link @boolean TSBoolean
+  highlight! link @character TSCharacter
+  highlight! link @comment TSComment
+  highlight! link @conditional TSConditional
+  highlight! link @constant TSConstant
+  highlight! link @constant.builtin TSConstBuiltin
+  highlight! link @constant.macro TSConstMacro
+  highlight! link @constructor TSConstructor
+  highlight! link @exception TSException
+  highlight! link @field TSField
+  highlight! link @float TSFloat
+  highlight! link @function TSFunction
+  highlight! link @function.builtin TSFuncBuiltin
+  highlight! link @function.macro TSFuncMacro
+  highlight! link @include TSInclude
+  highlight! link @keyword TSKeyword
+  highlight! link @keyword.function TSKeywordFunction
+  highlight! link @keyword.operator TSKeywordOperator
+  highlight! link @label TSLabel
+  highlight! link @method TSMethod
+  highlight! link @namespace TSNamespace
+  highlight! link @none TSNone
+  highlight! link @number TSNumber
+  highlight! link @operator TSOperator
+  highlight! link @parameter TSParameter
+  highlight! link @parameter.reference TSParameterReference
+  highlight! link @property TSProperty
+  highlight! link @punctuation.bracket TSPunctBracket
+  highlight! link @punctuation.delimiter TSPunctDelimiter
+  highlight! link @punctuation.special TSPunctSpecial
+  highlight! link @repeat TSRepeat
+  highlight! link @storageclass TSStorageClass
+  highlight! link @string TSString
+  highlight! link @string.escape TSStringEscape
+  highlight! link @string.regex TSStringRegex
+  highlight! link @symbol TSSymbol
+  highlight! link @tag TSTag
+  highlight! link @tag.delimiter TSTagDelimiter
+  highlight! link @text TSText
+  highlight! link @strike TSStrike
+  highlight! link @math TSMath
+  highlight! link @type TSType
+  highlight! link @type.builtin TSTypeBuiltin
+  highlight! link @uri TSURI
+  highlight! link @variable TSVariable
+  highlight! link @variable.builtin TSVariableBuiltin
+endif
 " }}}
 " neoclide/coc.nvim {{{
 call gruvbox_material#highlight('CocHoverRange', s:palette.none, s:palette.none, 'bold,underline')
@@ -590,7 +640,7 @@ highlight! link CocHoverRange CurrentWord
 highlight! link CocErrorSign RedSign
 highlight! link CocWarningSign YellowSign
 highlight! link CocInfoSign BlueSign
-highlight! link CocHintSign AquaSign
+highlight! link CocHintSign GreenSign
 highlight! link CocWarningVirtualText VirtualTextWarning
 highlight! link CocErrorVirtualText VirtualTextError
 highlight! link CocInfoVirtualText VirtualTextInfo
@@ -990,7 +1040,7 @@ if has('nvim')
 call gruvbox_material#highlight('CmpItemAbbrMatch', s:palette.green, s:palette.none, 'bold')
 call gruvbox_material#highlight('CmpItemAbbrMatchFuzzy', s:palette.green, s:palette.none, 'bold')
 highlight! link CmpItemAbbr Fg
-highlight! link CmpItemAbbrDeprecated Fg
+highlight! link CmpItemAbbrDeprecated Grey
 highlight! link CmpItemMenu Fg
 highlight! link CmpItemKind Yellow
 highlight! link CmpItemKindText Fg
@@ -1121,8 +1171,16 @@ call gruvbox_material#highlight('LspFloatWinBorder', s:palette.bg0, s:palette.bg
 call gruvbox_material#highlight('LspSagaDiagnosticHeader', s:palette.orange, s:palette.none, 'bold')
 call gruvbox_material#highlight('LspSagaCodeActionTitle', s:palette.purple, s:palette.none, 'bold')
 call gruvbox_material#highlight('DefinitionPreviewTitle', s:palette.blue, s:palette.none, 'bold')
+highlight! link LspSagaDiagnosticError Red
+highlight! link LspSagaDiagnosticWarn Yellow
+highlight! link LspSagaDiagnosticInfo Blue
+highlight! link LspSagaDiagnosticHint Green
+highlight! link LspSagaErrorTrunCateLine LspSagaDiagnosticError
+highlight! link LspSagaWarnTrunCateLine LspSagaDiagnosticWarn
+highlight! link LspSagaInfoTrunCateLine LspSagaDiagnosticInfo
+highlight! link LspSagaHintTrunCateLine LspSagaDiagnosticHint
+highlight! link LspSagaDiagnosticSource Orange
 highlight! link LspSagaDiagnosticBorder Orange
-highlight! link LspSagaDiagnosticTruncateLine Orange
 highlight! link LspSagaRenameBorder Purple
 highlight! link LspSagaRenamePromptPrefix Blue
 highlight! link LspSagaCodeActionBorder Purple
@@ -2183,7 +2241,7 @@ highlight! link AutoType TSType
 " vim-lsp-cxx-highlight https://github.com/jackguo380/vim-lsp-cxx-highlight {{{
 highlight! link LspCxxHlSkippedRegion Grey
 highlight! link LspCxxHlSkippedRegionBeginEnd TSKeyword
-highlight! link LspCxxHlGroupEnumConstant TSStructure
+highlight! link LspCxxHlGroupEnumConstant BlueItalic
 highlight! link LspCxxHlGroupNamespace TSNamespace
 highlight! link LspCxxHlGroupMemberVariable TSVariable
 " }}}

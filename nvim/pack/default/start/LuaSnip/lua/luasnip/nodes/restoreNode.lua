@@ -8,6 +8,7 @@ local types = require("luasnip.util.types")
 local events = require("luasnip.util.events")
 local util = require("luasnip.util.util")
 local mark = require("luasnip.util.mark").mark
+local extend_decorator = require("luasnip.util.extend_decorator")
 
 local function R(pos, key, nodes, opts)
 	-- don't create nested snippetNodes, unnecessary.
@@ -24,6 +25,7 @@ local function R(pos, key, nodes, opts)
 		active = false,
 	}, opts)
 end
+extend_decorator.register(R, { arg_indx = 4 })
 
 function RestoreNode:exit()
 	self.visible = false
@@ -39,6 +41,7 @@ end
 
 function RestoreNode:input_enter()
 	self.active = true
+	self.visited = true
 	self.mark:update_opts(self.ext_opts.active)
 
 	self:event(events.enter)
@@ -49,7 +52,8 @@ function RestoreNode:input_leave()
 
 	self:update_dependents()
 	self.active = false
-	self.mark:update_opts(self.ext_opts.passive)
+
+	self.mark:update_opts(self:get_passive_ext_opts())
 end
 
 -- set snippetNode for this key here.
@@ -109,7 +113,7 @@ function RestoreNode:put_initial(pos)
 	local mark_opts = vim.tbl_extend("keep", {
 		right_gravity = false,
 		end_right_gravity = false,
-	}, tmp.ext_opts.passive)
+	}, tmp:get_passive_ext_opts())
 
 	local old_pos = vim.deepcopy(pos)
 	tmp:put_initial(pos)
@@ -137,7 +141,8 @@ function RestoreNode:jump_into(dir, no_move)
 end
 
 function RestoreNode:set_ext_opts(name)
-	self.mark:update_opts(self.ext_opts[name])
+	Node.set_ext_opts(self, name)
+
 	self.snip:set_ext_opts(name)
 end
 
@@ -252,6 +257,12 @@ end
 function RestoreNode:resolve_position(position)
 	-- position must be 0, there are no other options.
 	return self.snip
+end
+
+function RestoreNode:is_interactive()
+	-- shouldn't be called, but revisit this once is_interactive is used in
+	-- places other than lsp-snippets.
+	return true
 end
 
 return {

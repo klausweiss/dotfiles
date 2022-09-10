@@ -1230,10 +1230,82 @@ Contains some utility-functions that can be passed to the `ft_func` or
   })
   ```
 
+# EXTEND_DECORATOR
+
+Most of luasnip's functions have some arguments to control their behaviour.  
+Examples include `s`, where `wordTrig`, `regTrig`, ... can be set in the first
+argument to the function, or `fmt`, where the delimiter can be set in the third
+argument.  
+This is all good and well, but if these functions are often used with
+non-default settings, it can become cumbersome to always explicitly set them.
+
+This is where the `extend_decorator` comes in:  
+It can be used to create decorated functions which always extend the arguments
+passed directly with other, previously defined ones.  
+An example:
+```lua
+local fmt = require("luasnip.extras.fmt").fmt
+
+fmt("{}", {i(1)}) -- -> list of nodes, containing just the i(1).
+
+-- when authoring snippets for some filetype where `{` and `}` are common, they
+-- would always have to be escaped in the format-string. It might be preferable
+-- to use other delimiters, like `<` and `>`.
+
+fmt("<>", {i(1)}, {delimiters = "<>"}) -- -> same as above.
+
+-- but it's quite annoying to always pass the `{delimiters = "<>"}`.
+
+-- with extend_decorator:
+local fmt_angle = ls.extend_decorator.apply(fmt, {delimiters = "<>"})
+fmt_angle("<>", {i(1)}) -- -> same as above.
+
+-- the same also works with other functions provided by luasnip, for example all
+-- node/snippet-constructors and `parse_snippet`.
+```
+
+`extend_decorator.apply(fn, ...)` requires that `fn` is previously registered
+via `extend_decorator.register`.  
+(This is not limited to luasnip's functions!)  
+(although, for usage outside of luasnip, best copy the source-file
+`/lua/luasnip/util/extend_decorator.lua`).
+
+`register(fn, ...)`:
+* `fn`: the function.
+* `...`: any number of tables. Each specifies how to extend an argument of `fn`.
+  The tables accept:
+  * arg_indx, `number` (required): the position of the parameter to override.
+  * extend, `fn(arg, extend_value) -> effective_arg` (optional): this function
+    is used to extend the args passed to the decorated function.
+    It defaults to a function which just extends the the arg-table with the
+    extend-table (accepts `nil`).
+    This extend-behaviour is adaptable to accomodate `s`, where the first
+    argument may be string or table.
+
+`apply(fn, ...) -> decorated_fn`:
+* `fn`: the function to decorate.
+* `...`: The values to extend with. These should match the descriptions passed
+  in `register` (the argument first passed to `register` will be extended with
+  the first value passed here).
+
+One more example for registering a new function:
+```lua
+local function somefn(arg1, arg2, opts1, opts2)
+	... -- not important
+end
+
+-- note the reversed arg_indx!!
+extend_decorator.register(somefn, {arg_indx=4}, {arg_indx=3})
+local extended = extend_decorator.apply(somefn,
+	{key = "opts2 is extended with this"},
+	{key = "and opts1 with this"})
+extended(...)
+```
+
 # LSP-SNIPPETS
 
 Luasnip is capable of parsing lsp-style snippets using
-`ls.parser.parse_snippet(context, snippet_string)`:
+`ls.parser.parse_snippet(context, snippet_string, opts)`:
 ```lua
 ls.parser.parse_snippet({trig = "lsp"}, "$1 is ${2|hard,easy,challenging|}")
 ```
@@ -1244,10 +1316,18 @@ ls.parser.parse_snippet({trig = "lsp"}, "$1 is ${2|hard,easy,challenging|}")
 
 <!-- panvimdoc-ignore-end -->
 
+`context` can be:
+  - `string|table`: treated like the first argument to `ls.s`, `parse_snippet`
+    returns a snippet.
+  - `number`: `parse_snippet` returns a snippetNode, with the position
+    `context`.
+  - `nil`: `parse_snippet` returns a flat table of nodes. This can be used
+    like `fmt`.
+
 Nested placeholders(`"${1:this is ${2:nested}}"`) will be turned into
 choiceNode's with:
-	- the given snippet(`"this is ${1:nested}"`) and
-	- an empty insertNode
+  - the given snippet(`"this is ${1:nested}"`) and
+  - an empty insertNode
 
 <!-- panvimdoc-ignore-start -->
 
@@ -1255,13 +1335,77 @@ choiceNode's with:
 
 <!-- panvimdoc-ignore-end -->
 
+This behaviour can be modified by changing `parser_nested_assembler` in
+`ls.setup()`.
+
+
+Luasnip will also modify some snippets it's incapable of representing
+accurately:
+  - if the `$0` is a placeholder with something other than just text inside
+  - if the `$0` is a choice
+  - if the `$0` is not an immediate child of the snippet (it could be inside a
+    placeholder: `"${1: $0 }"`)
+
+To remedy those incompatibilities, the invalid `$0` will be replaced with a
+tabstop/placeholder/choice which will be visited just before the new `$0`. This
+new `$0` will be inserted at the (textually) earliest valid position behind the
+invalid `$0`.
+
+`opts` can contain the following keys:
+  - `trim_empty`: boolean, remove empty lines from the snippet. Default true.
+  - `dedent`: boolean, remove common indent from the snippet's lines.
+    Default true.
+
+Both `trim_emtpy` and `dedent` will be disabled for snippets parsed via
+`ls.lsp_expand`: it might prevent correct expansion of snippets sent by lsp.
+
+## Snipmate Parser
+
+It is furthermore possible to parse snipmate-snippets (this includes support for
+vimscript-evaluation!!)  
+Snipmate-snippets have to be parsed with a different function,
+`ls.parser.parse_snipmate`:
+```lua
+ls.parser.parse_snipmate("year", "The year is `strftime('%Y')`")
+```
+
+`parse_snipmate` accepts the same arguments as `parse_snippet`, only the
+snippet-body is parsed differently.
+
+## Transformations
+
+To apply
+[Variable/Placeholder-transformations](https://code.visualstudio.com/docs/editor/userdefinedsnippets#_variable-transforms),
+luasnip needs to apply ECMAScrip-regexes.  
+This is implemented by relying on [`jsregexp`](https://github.com/kmarius/jsregexp).  
+The easiest, but potentially error-prone way to install it is by calling `make
+install_jsregexp` in the repo-root.
+This process can be automated by `packer.nvim`:
+```lua
+use { "L3MON4D3/LuaSnip", run = "make install_jsregexp" }
+```
+If this fails, first open an issue :P, and then try installing the
+`jsregexp`-luarock. This is also possible via 
+`packer.nvim`, although actual usage may require a small workaround, see
+[here](https://github.com/wbthomason/packer.nvim/issues/593) or
+[here](https://github.com/wbthomason/packer.nvim/issues/358).  
+
+Alternatively, `jsregexp` can be cloned locally, `make`d, and the resulting
+`jsregexp.so` placed in some place where nvim can find it (probably
+`~/.config/nvim/lua/`).
+
+If `jsregexp` is not available, transformation are replaced by a simple copy.
+
 # VARIABLES
 
 All `TM_something`-variables are supported with two additions:
-`SELECT_RAW` and `SELECT_DEDENT`. These were introduced because
+`LS_SELECT_RAW` and `LS_SELECT_DEDENT`. These were introduced because
 `TM_SELECTED_TEXT` is designed to be compatible with vscodes' behavior, which
 can be counterintuitive when the snippet can be expanded at places other than
 the point where selection started (or when doing transformations on selected text).
+Besides those we also provide `LS_TRIGGER` which contains the trigger of the snippet,
+and  `LS_CAPTURE_n` (where n is a positive integer) that contains the n-th capture
+when using a regex with capture groups as `trig` in the snippet definition.
 
 All variables can be used outside of lsp-parsed snippets as their values are
 stored in a snippets' `snip.env`-table:
@@ -1269,7 +1413,7 @@ stored in a snippets' `snip.env`-table:
 s("selected_text", f(function(args, snip)
   local res, env = {}, snip.env
   table.insert(res, "Selected Text (current line is " .. env.TM_LINE_NUMBER .. "):")
-  for _, ele in ipairs(env.SELECT_RAW) do table.insert(res, ele) end
+  for _, ele in ipairs(env.LS_SELECT_RAW) do table.insert(res, ele) end
   return res
 end, {}))
 ```
@@ -1295,9 +1439,11 @@ You can also add your own variables by using the `ls.env_namespace(name, opts)` 
     Is a function that receives a string and returns a value for the var with that name
     or a table from var name to a value
     (in this case, if the value is a function it will be executed  lazily once per snippet expansion).
-    * `init`: `fn(pos: pair[int])->map[string, EnvVal]` Takes the 0-based position of the cursor and returns
+    * `init`: `fn(info: table)->map[string, EnvVal]`  Returns
         a table of variables that will set to the environment of the snippet on expansion,
         use this for vars that have to be calculated in that moment or that depend on each other.
+        The `info` table argument contains `pos` (0-based position of the cursor on expansion),
+        the `trigger` of the snippet and the `captures` list.
     * `eager`: `list[string]` names of variables that will be taken from `vars` and appended eagerly (like those in init)
     * `multiline_vars`: `(fn(name:string)->bool)|map[sting, bool]|bool|string[]` Says if certain vars are a table or just a string,
         can be a function that get's the name of the var and returns true if the var is a key,
@@ -1323,7 +1469,7 @@ ls.env_namespace("SYS", {vars=os.getenv, eager={"HOME"}})
 
 -- then you can use  $SYS_HOME which was eagerly initialized but also $SYS_USER (or any other system environment var) in your snippets
 
-lsp.env_namespace("POS", {init=function(pos) return {"VAL": vim.inspect(pos)}} end)
+lsp.env_namespace("POS", {init=function(info) return {"VAL": vim.inspect(info.pos)}} end)
 
 -- then you can use  $POS_VAL in your snippets
 
@@ -1344,6 +1490,28 @@ end, {}))
 ![custom_variable](https://user-images.githubusercontent.com/25300418/184359382-2b2a357b-37a6-4cc4-9c8f-930f26457888.gif)
 
 <!-- panvimdoc-ignore-end -->
+
+## LSP-Variables
+
+All variables, even ones added via `env_namespace`, can be accessed in
+lsp-snippets as `$VAR_NAME`.
+
+The lsp-spec states:
+
+----
+
+With `$name` or `${name:default}` you can insert the value of a variable.  
+When a variable isn’t set, its default or the empty string is inserted.
+When a variable is unknown (that is, its name isn’t defined) the name of the variable is inserted and it is transformed into a placeholder.
+
+----
+
+The above necessiates a differentiation between `unknown` and `unset` variables:
+
+For Luasnip, a variable `VARNAME` is `unknown` when `env.VARNAME` returns `nil` and `unset`
+if it returns an empty string.
+
+Consider this when adding env-variables which might be used in lsp-snippets.
 
 # LOADERS
 
@@ -1665,6 +1833,13 @@ local sp = require("luasnip.nodes.snippetProxy")
 sp("trig", "a snippet $1")
 ```
 
+`sp(context, body, opts) -> snippetProxy`
+  - `context`: exactly the same as the first argument passed to `ls.s`.
+  - `body`: the snippet-body.
+  - `opts`: accepts the same `opts` as `ls.s`, with some additions:
+    - `parse_fn`: the function for parsing the snippet. Defaults to
+	  `ls.parser.parse_snippet` (the parser for lsp-snippets), an alternative is
+	  the parser for snipmate-snippets (`ls.parser.parse_snipmate`).
 
 # EXT\_OPTS
 
@@ -1691,6 +1866,13 @@ local ext_opts = {
 		-- add virtual text on the line of the node, behind all text.
 		virt_text = {{"virtual text!!", "GruvboxBlue"}}
 	},
+	-- visited or unvisited are applied when a node was/was not jumped into.
+	visited = {
+		hl_group = "GruvboxBlue"
+	},
+	unvisited = {
+		hl_group = "GruvboxGreen"
+	},
 	-- and these are applied when both the node and the snippet are inactive.
 	snippet_passive = {}
 }
@@ -1713,17 +1895,32 @@ s("trig", {
 
 <!-- panvimdoc-ignore-end -->
 
-In the above example the text inside the insertNodes is higlighted in red while
-inside them, and the virtual text "virtual text!!" is visible as long as the
-snippet is active.
+In the above example the text inside the insertNodes is higlighted in green if
+they were not yet visited, in blue once they were, and red while they are.  
+The virtual text "virtual text!!" is visible as long as the snippet is active.
 
-It's important to note that `snippet_passive` applies to the states
-`snippet_passive`, `passive`, and `active`, `passive` to `passive` and `active`,
-and `active` only to `active`.
+To make defining `ext_opts` less verbose, more specific states inherit from less
+specific ones:
 
-To disable a key from a "lower" state, it has to be explicitly set to its
+- `passive` inherits from `snippet_passive`
+- `visited` and `unvisited` from `passive`
+- `active` from `visited`
+
+<!-- panvimdoc-ignore-start -->
+
+```mermaid
+flowchart TD
+	visited --> active
+	passive --> visited
+	passive --> unvisited
+	snippet_passive --> passive
+```
+
+<!-- panvimdoc-ignore-end -->
+
+To disable a key from a less specific state, it has to be explicitly set to its
 default, e.g. to disable highlighting inherited from `passive` when the node is
-`active`, `hl_group` could be set to `None` in `active`.
+`active`, `hl_group` should be set to `None`.
 
 ---
 
@@ -1738,11 +1935,13 @@ ls.setup({
 	ext_opts = {
 		[types.insertNode] = {
 			active = {...},
+			visited = {...},
 			passive = {...},
 			snippet_passive = {...}
 		},
 		[types.choiceNode] = {
-			active = {...}
+			active = {...},
+			unvisited = {...}
 		},
 		[types.snippet] = {
 			passive = {...}
@@ -1774,8 +1973,8 @@ snippet.
 
 By default, the `ext_opts` actually used for a node are created by extending the
 `node_ext_opts` with the `effective_child_ext_opts[node.type]` of the parent,
-which are in turn the `child_ext_opts` of the parent extended with the global
-`ext_opts` set in the config.
+which are in turn the parent's `child_ext_opts` extended with the global
+`ext_opts` (those set `ls.setup`).
 
 It's possible to prevent both of these merges by passing
 `merge_node/child_ext_opts=false` to the snippet/node-opts:
@@ -1797,7 +1996,9 @@ s("trig", {
 			active = {...}
 		},
 		merge_node_ext_opts = false
-	}), i(2, "text2") }, {
+	}),
+	i(2, "text2")
+}, {
 	child_ext_opts = {
 		[types.insertNode] = {
 			passive = {...}
@@ -1816,7 +2017,7 @@ highlight-groups:
 vim.cmd("hi link LuasnipInsertNodePassive GruvboxRed")
 vim.cmd("hi link LuasnipSnippetPassive GruvboxBlue")
 
--- needs to be called for resolving the actual ext_opts.
+-- needs to be called for resolving the effective ext_opts.
 ls.setup({})
 ```
 The names for the used highlight groups are
@@ -1826,11 +2027,13 @@ node in PascalCase (or "Snippet").
 ---
 
 One problem that might arise when nested nodes are highlighted, is that the
-highlight of inner nodes should be visible above that of nodes they are nested inside.
+highlight of inner nodes should be visible, eg. above that of nodes they are
+nested inside.
 
-This can be controlled using the `priority`-key in `ext_opts`. Normally, that
-value is an absolute value, but here it is relative to some base-priority, which
-is increased for each nesting level of snippets.
+This can be controlled using the `priority`-key in `ext_opts`. In
+`nvim_buf_set_extmark`, that value is an absolute value, but here it is relative
+to some base-priority, which is increased for each nesting level of
+snippet(Nodes)s.
 
 Both the initial base-priority and its' increase and can be controlled using
 `ext_base_prio` and `ext_prio_increase`:
@@ -2060,13 +2263,19 @@ the lazy_load.
 
 - `expandable()`: true if a snippet can be expanded at the current cursor position.
 
-- `expand()`: expands the snippet at(before) the cursor.
+- `expand(opts)`: expands the snippet at(before) the cursor.
+  `opts` may contain:
+  - `jump_into_func` passed through to `ls.snip_expand`, check its' doc for a
+  	description.
 
 - `expand_or_jumpable()`: returns `expandable() or jumpable(1)` (exists only
   because commonly, one key is used to both jump forward and expand).
 
 - `expand_or_locally_jumpable()`: same as `expand_or_jumpable()` except jumpable
   is ignored if the cursor is not inside the current snippet.
+
+- `locally_jumpable(direction)`: same as `jumpable()` except it is ignored if the cursor
+  is not inside the current snippet.
 
 - `expand_or_jump()`: returns true if jump/expand was succesful.
 

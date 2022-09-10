@@ -26,11 +26,6 @@
 --- </code>
 ---@brief ]]
 
-if 1 ~= vim.fn.has "nvim-0.7.0" then
-  vim.api.nvim_err_writeln "Telescope.nvim requires at least nvim-0.7.0. See `:h telescope.changelog-1851`"
-  return
-end
-
 local builtin = {}
 
 -- Ref: https://github.com/tjdevries/lazy.nvim
@@ -50,7 +45,7 @@ end
 --
 --
 
---- Search for a string and get results live as you type (respecting .gitignore)
+--- Search for a string and get results live as you type, respects .gitignore
 ---@param opts table: options to pass to the picker
 ---@field cwd string: root dir to search from (default: cwd, use utils.buffer_dir() to search relative to open buffer)
 ---@field grep_open_files boolean: if true, restrict search to open files only, mutually exclusive with `search_dirs`
@@ -128,8 +123,8 @@ builtin.current_buffer_tags = require_on_exported_call("telescope.builtin.__file
 --
 --
 
---- Fuzzy search for files tracked by Git. This command lists the output of the `git ls-files` command, respects
---- .gitignore, and optionally ignores untracked files
+--- Fuzzy search for files tracked by Git. This command lists the output of the `git ls-files` command,
+--- respects .gitignore
 --- - Default keymaps:
 ---   - `<cr>`: opens the currently selected file
 ---@param opts table: options to pass to the picker

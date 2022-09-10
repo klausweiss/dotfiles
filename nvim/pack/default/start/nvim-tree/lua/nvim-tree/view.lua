@@ -246,6 +246,12 @@ function M.grow_from_content()
 end
 
 function M.resize(size)
+  if M.View.float.enable and not M.View.adaptive_size then
+    -- if the floating windows's adaptive size is not desired, then the
+    -- float size should be defined in view.float.open_win_config
+    return
+  end
+
   if type(size) == "string" then
     size = vim.trim(size)
     local first_char = size:sub(1, 1)

@@ -3,6 +3,7 @@ local util = require("luasnip.util.util")
 local session = require("luasnip.session")
 local snippet_collection = require("luasnip.session.snippet_collection")
 local Environ = require("luasnip.util.environ")
+local extend_decorator = require("luasnip.util.extend_decorator")
 
 local loader = require("luasnip.loaders")
 
@@ -173,6 +174,10 @@ local function expand_or_locally_jumpable()
 	return expandable() or (in_snippet() and jumpable())
 end
 
+local function locally_jumpable(dir)
+	return in_snippet() and jumpable(dir)
+end
+
 local function _jump_into_default(snippet)
 	return util.no_region_check_wrap(snippet.jump_into, snippet, 1)
 end
@@ -190,7 +195,9 @@ local function snip_expand(snippet, opts)
 	snip.trigger = opts.expand_params.trigger or snip.trigger
 	snip.captures = opts.expand_params.captures or {}
 
-	local env = Environ:new(opts.pos)
+	local info =
+		{ trigger = snip.trigger, captures = snip.captures, pos = opts.pos }
+	local env = Environ:new(info)
 
 	local pos_id = vim.api.nvim_buf_set_extmark(
 		0,
@@ -255,13 +262,18 @@ local function snip_expand(snippet, opts)
 	return snip
 end
 
-local function expand()
+---Find a snippet matching the current cursor-position.
+---@param opts table: may contain:
+--- - `jump_into_func`: passed through to `snip_expand`.
+---@return boolean: whether a snippet was expanded.
+local function expand(opts)
 	local expand_params
 	local snip
 	-- find snip via next_expand (set from previous expandable()) or manual matching.
 	if next_expand ~= nil then
 		snip = next_expand
 		expand_params = next_expand_params
+
 		next_expand = nil
 		next_expand_params = nil
 	else
@@ -269,6 +281,8 @@ local function expand()
 			match_snippet(util.get_current_line_to_cursor(), "snippets")
 	end
 	if snip then
+		local jump_into_func = opts and opts.jump_into_func
+
 		local cursor = util.get_cursor_0ind()
 		-- override snip with expanded copy.
 		snip = snip_expand(snip, {
@@ -281,6 +295,7 @@ local function expand()
 				},
 				to = cursor,
 			},
+			jump_into_func = jump_into_func,
 		})
 		return true
 	end
@@ -326,7 +341,15 @@ local function expand_or_jump()
 end
 
 local function lsp_expand(body, opts)
-	snip_expand(ls.parser.parse_snippet("", body), opts)
+	-- expand snippet as-is.
+	snip_expand(
+		ls.parser.parse_snippet(
+			"",
+			body,
+			{ trim_empty = false, dedent = false }
+		),
+		opts
+	)
 end
 
 local function choice_active()
@@ -549,11 +572,12 @@ end
 -- ft string, extend_ft table of strings.
 local function filetype_extend(ft, extend_ft)
 	vim.list_extend(session.ft_redirect[ft], extend_ft)
+	session.ft_redirect[ft] = util.deduplicate(session.ft_redirect[ft])
 end
 
 -- ft string, fts table of strings.
 local function filetype_set(ft, fts)
-	session.ft_redirect[ft] = fts
+	session.ft_redirect[ft] = util.deduplicate(fts)
 end
 
 local function cleanup()
@@ -626,6 +650,7 @@ end
 ls = {
 	expand_or_jumpable = expand_or_jumpable,
 	expand_or_locally_jumpable = expand_or_locally_jumpable,
+	locally_jumpable = locally_jumpable,
 	jumpable = jumpable,
 	expandable = expandable,
 	in_snippet = in_snippet,
@@ -681,6 +706,7 @@ ls = {
 	refresh_notify = refresh_notify,
 	env_namespace = Environ.env_namespace,
 	setup = require("luasnip.config").setup,
+	extend_decorator = extend_decorator,
 }
 
 return ls

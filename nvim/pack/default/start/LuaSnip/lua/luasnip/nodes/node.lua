@@ -17,6 +17,7 @@ function Node:new(o, opts)
 	o.visible = false
 	o.static_visible = false
 	o.old_text = {}
+	o.visited = false
 	-- override existing keys, might be necessary due to double-init from
 	-- snippetProxy, but shouldn't hurt.
 	o = vim.tbl_extend("force", o, node_util.init_node_opts(opts or {}))
@@ -65,6 +66,7 @@ function Node:put_initial(pos)
 end
 
 function Node:input_enter(_)
+	self.visited = true
 	self.mark:update_opts(self.ext_opts.active)
 
 	self:event(events.enter)
@@ -138,25 +140,42 @@ function Node:exit()
 	self.mark:clear()
 end
 
+function Node:get_passive_ext_opts()
+	if self.visited then
+		return self.ext_opts.visited
+	else
+		return self.ext_opts.unvisited
+	end
+end
+
 function Node:input_leave()
 	self:event(events.leave)
 
-	self.mark:update_opts(self.ext_opts.passive)
+	self.mark:update_opts(self:get_passive_ext_opts())
 end
 
-local function find_dependents(position_self, dict)
+local function find_dependents(self, position_self, dict)
+	local nodes = {}
+
 	position_self[#position_self + 1] = "dependents"
-	local nodes = dict:find_all(position_self, "dependent")
+	vim.list_extend(nodes, dict:find_all(position_self, "dependent") or {})
 	position_self[#position_self] = nil
+
+	vim.list_extend(
+		nodes,
+		dict:find_all({ self, "dependents" }, "dependent") or {}
+	)
+
 	return nodes
 end
 
 function Node:_update_dependents()
 	local dependent_nodes = find_dependents(
+		self,
 		self.absolute_insert_position,
 		self.parent.snippet.dependents_dict
 	)
-	if not dependent_nodes then
+	if #dependent_nodes == 0 then
 		return
 	end
 	for _, node in ipairs(dependent_nodes) do
@@ -179,10 +198,11 @@ Node.update_all_dependents = Node._update_dependents
 
 function Node:_update_dependents_static()
 	local dependent_nodes = find_dependents(
+		self,
 		self.absolute_insert_position,
 		self.parent.snippet.dependents_dict
 	)
-	if not dependent_nodes then
+	if #dependent_nodes == 0 then
 		return
 	end
 	for _, node in ipairs(dependent_nodes) do
@@ -237,9 +257,20 @@ local function get_args(node, get_text_func_name)
 	local args = {}
 
 	-- Insp(node.parent.snippet.dependents_dict)
-	for _, arg in ipairs(node.args_absolute) do
-		-- Insp(arg)
-		local arg_node = node.parent.snippet.dependents_dict:get(arg).node
+	for _, arg in pairs(node.args_absolute) do
+		-- since arg may be a node, it may not be initialized in the snippet
+		-- and therefore not have an absolute_insert_position. Check for that.
+		if not arg.absolute_insert_position then
+			-- the node is not (yet, maybe) visible.
+			return nil
+		end
+		local arg_table = node.parent.snippet.dependents_dict:get(
+			arg.absolute_insert_position
+		)
+		if not arg_table then
+			return nil
+		end
+		local arg_node = arg_table.node
 		-- maybe the node is part of a dynamicNode and not yet generated.
 		if not arg_node then
 			return nil
@@ -265,7 +296,12 @@ function Node:get_static_args()
 end
 
 function Node:set_ext_opts(name)
-	self.mark:update_opts(self.ext_opts[name])
+	-- differentiate, either visited or unvisited needs to be set.
+	if name == "passive" then
+		self.mark:update_opts(self:get_passive_ext_opts())
+	else
+		self.mark:update_opts(self.ext_opts[name])
+	end
 end
 
 -- for insert,functionNode.
@@ -291,11 +327,11 @@ function Node:set_dependents() end
 
 function Node:set_argnodes(dict)
 	if self.absolute_insert_position then
-		local value = dict:get(self.absolute_insert_position)
-
-		if value and value.dependents then
-			value.node = self
-		end
+		-- append+remove "node" from absolute_insert_position to quickly create
+		-- key for dict.
+		table.insert(self.absolute_insert_position, "node")
+		dict:set(self.absolute_insert_position, self)
+		self.absolute_insert_position[#self.absolute_insert_position] = nil
 	end
 end
 
@@ -333,6 +369,11 @@ function Node:resolve_node_ext_opts(base_prio, parent_ext_opts)
 		(base_prio or self.parent.ext_opts.base_prio)
 			+ session.config.ext_prio_increase
 	)
+end
+
+function Node:is_interactive()
+	-- safe default.
+	return true
 end
 
 return {

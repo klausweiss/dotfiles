@@ -765,8 +765,7 @@ options you want to use. Here's an example with the live_grep picker:
 <
 
 builtin.live_grep({opts})                      *telescope.builtin.live_grep()*
-    Search for a string and get results live as you type (respecting
-    .gitignore)
+    Search for a string and get results live as you type, respects .gitignore
 
 
     Parameters: ~
@@ -938,8 +937,7 @@ builtin.current_buffer_tags({opts})  *telescope.builtin.current_buffer_tags()*
 
 builtin.git_files({opts})                      *telescope.builtin.git_files()*
     Fuzzy search for files tracked by Git. This command lists the output of the
-    `git ls-files` command, respects .gitignore, and optionally ignores
-    untracked files
+    `git ls-files` command, respects .gitignore
     - Default keymaps:
       - `<cr>`: opens the currently selected file
 
@@ -2462,6 +2460,28 @@ actions.select_vertical({prompt_bufnr})  *telescope.actions.select_vertical()*
 actions.select_tab({prompt_bufnr})            *telescope.actions.select_tab()*
     Perform 'tab' action on selection, usually something like
     `:tabedit <selection>`
+
+    i.e. open the selection in a new tab
+
+
+    Parameters: ~
+        {prompt_bufnr} (number)  The prompt bufnr
+
+
+actions.select_drop({prompt_bufnr})          *telescope.actions.select_drop()*
+    Perform 'drop' action on selection, usually something like
+    `:drop <selection>`
+
+    i.e. open the selection in a window
+
+
+    Parameters: ~
+        {prompt_bufnr} (number)  The prompt bufnr
+
+
+actions.select_tab_drop({prompt_bufnr})  *telescope.actions.select_tab_drop()*
+    Perform 'tab drop' action on selection, usually something like
+    `:tab drop <selection>`
 
     i.e. open the selection in a new tab
 

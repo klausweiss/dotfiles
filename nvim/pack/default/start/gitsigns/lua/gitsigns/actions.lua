@@ -20,12 +20,6 @@ local Hunk_Public = gs_hunks.Hunk_Public
 local api = vim.api
 local current_buf = api.nvim_get_current_buf
 
-local DiffthisOpts = {}
-
-
-
-
-local NavHunkOpts = {}
 
 
 
@@ -33,7 +27,13 @@ local NavHunkOpts = {}
 
 
 
-local BlameOpts = {}
+
+
+
+
+
+
+
 
 
 
@@ -83,7 +83,7 @@ local M = {QFListOpts = {}, }
 
 
 
-local CmdFunc = {}
+
 
 
 local C = {}
@@ -563,13 +563,13 @@ local function hlmarks_for_hunk(hunk, hl)
    end
 
    hls[#hls + 1] = {
-      hl_group = 'GitSignsDeleteLn',
+      hl_group = 'GitSignsDeletePreview',
       start_row = 0,
       end_row = removed.count,
    }
 
    hls[#hls + 1] = {
-      hl_group = 'GitSignsAddLn',
+      hl_group = 'GitSignsAddPreview',
       start_row = removed.count,
       end_row = removed.count + added.count,
    }

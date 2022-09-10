@@ -51,7 +51,7 @@ latest neovim nightly commit is required for `telescope.nvim` to work.
 ### Suggested dependencies
 
 - [BurntSushi/ripgrep](https://github.com/BurntSushi/ripgrep) is required for
-  `live_grep` and `grep_string`
+  `live_grep` and `grep_string` and is the first priority for `find_files`.
 
 We also suggest you install one native telescope sorter to significantly improve
 sorting performance. Take a look at either
@@ -270,9 +270,9 @@ Built-in functions. Ready to be bound to any key you like.
 | Functions                           | Description                                                                                                                       |
 |-------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------|
 | `builtin.find_files`                | Lists files in your current working directory, respects .gitignore                                                                |
-| `builtin.git_files`                 | Fuzzy search through the output of `git ls-files` command, respects .gitignore, optionally ignores untracked files                |
+| `builtin.git_files`                 | Fuzzy search through the output of `git ls-files` command, respects .gitignore                                                    |
 | `builtin.grep_string`               | Searches for the string under your cursor in your current working directory                                                       |
-| `builtin.live_grep`                 | Search for a string in your current working directory and get results live as you type (respecting .gitignore)                    |
+| `builtin.live_grep`                 | Search for a string in your current working directory and get results live as you type, respects .gitignore                       |
 
 ### Vim Pickers
 

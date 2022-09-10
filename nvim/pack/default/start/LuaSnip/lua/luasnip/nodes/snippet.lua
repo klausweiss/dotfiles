@@ -12,6 +12,7 @@ local session = require("luasnip.session")
 local pattern_tokenizer = require("luasnip.util.pattern_tokenizer")
 local dict = require("luasnip.util.dict")
 local snippet_collection = require("luasnip.session.snippet_collection")
+local extend_decorator = require("luasnip.util.extend_decorator")
 
 local true_func = function()
 	return true
@@ -259,6 +260,11 @@ local function S(context, nodes, opts)
 
 	return _S(snip, nodes, opts)
 end
+extend_decorator.register(
+	S,
+	{ arg_indx = 1, extend = node_util.snippet_extend_context },
+	{ arg_indx = 3 }
+)
 
 function SN(pos, nodes, opts)
 	local snip = Snippet:new(
@@ -278,6 +284,7 @@ function SN(pos, nodes, opts)
 
 	return snip
 end
+extend_decorator.register(SN, { arg_indx = 3 })
 
 local function ISN(pos, nodes, indent_text, opts)
 	local snip = SN(pos, nodes, opts)
@@ -321,6 +328,7 @@ local function ISN(pos, nodes, indent_text, opts)
 
 	return snip
 end
+extend_decorator.register(ISN, { arg_indx = 4 })
 
 function Snippet:remove_from_jumplist()
 	-- prev is i(-1)(startNode), prev of that is the outer/previous snippet.
@@ -476,7 +484,7 @@ function Snippet:trigger_expand(current_node, pos_id, env)
 	local mark_opts = vim.tbl_extend("keep", {
 		right_gravity = false,
 		end_right_gravity = true,
-	}, self.ext_opts.passive)
+	}, self:get_passive_ext_opts())
 	self.mark = mark(old_pos, pos, mark_opts)
 
 	self:update()
@@ -632,18 +640,11 @@ function Snippet:del_marks()
 	end
 end
 
-function Snippet:is_interactive()
+function Snippet:is_interactive(info)
 	for _, node in ipairs(self.nodes) do
 		-- return true if any node depends on another node or is an insertNode.
-		if
-			node.type == types.insertNode
-			or ((node.type == types.functionNode or node.type == types.dynamicNode) and #node.args ~= 0)
-			or node.type == types.choiceNode
-		then
+		if node:is_interactive(info) then
 			return true
-			-- node is snippet, recurse.
-		elseif node.type == types.snippetNode then
-			return node:is_interactive()
 		end
 	end
 	return false
@@ -670,7 +671,7 @@ function Snippet:put_initial(pos)
 		local mark_opts = vim.tbl_extend("keep", {
 			right_gravity = false,
 			end_right_gravity = false,
-		}, node.ext_opts.passive)
+		}, node:get_passive_ext_opts())
 		node.mark = mark(old_pos, pos, mark_opts)
 	end
 	self.visible = true
@@ -852,10 +853,11 @@ function Snippet:make_args_absolute()
 end
 
 function Snippet:input_enter()
+	self.visited = true
 	self.active = true
 
 	if self.type == types.snippet then
-		-- set snippet-passive -> passive for all children.
+		-- set snippet-passive -> visited/unvisited for all children.
 		self:set_ext_opts("passive")
 	end
 	self.mark:update_opts(self.ext_opts.active)

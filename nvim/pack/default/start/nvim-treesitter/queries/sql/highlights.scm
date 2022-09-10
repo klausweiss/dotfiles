@@ -6,11 +6,10 @@
   name: (identifier) @function.call
   parameter: [(field)]? @parameter)
 
-(table_expression
+(table_reference
   name: (identifier) @type)
 
-(table_expression
-  name: (identifier) @type
+(relation
   table_alias: (identifier) @variable)
 
 (field
@@ -19,6 +18,7 @@
 
 (literal) @string
 (comment) @comment
+(marginalia) @comment
 
 ((literal) @number
  (lua-match? @number "^%d+$"))
@@ -50,8 +50,10 @@
   (keyword_join)
   (keyword_on)
   (keyword_where)
-  (keyword_order_by)
-  (keyword_group_by)
+  (keyword_order)
+  (keyword_group)
+  (keyword_partition)
+  (keyword_by)
   (keyword_having)
   (keyword_desc)
   (keyword_asc)
@@ -88,6 +90,8 @@
   (keyword_is)
   (keyword_using)
   (keyword_cascade)
+  (keyword_between)
+  (keyword_window)
   (double)
   (keyword_with)
   (keyword_no)
@@ -138,6 +142,7 @@
   (keyword_geography)
   (keyword_box2d)
   (keyword_box3d)
+  (keyword_only)
 ] @keyword
 
 [

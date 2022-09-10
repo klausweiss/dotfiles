@@ -103,6 +103,11 @@ update-cmp:
 	$(call download-from-repo, https://github.com/hrsh7th/cmp-cmdline)
 	$(call download-from-repo, https://github.com/saadparwaiz1/cmp_luasnip)
 
+update-flutter-tools: \
+	update-plenary \
+
+	$(call download-from-repo, https://github.com/akinsho/flutter-tools.nvim)
+
 update-gitsigns: \
 	update-plenary \
 

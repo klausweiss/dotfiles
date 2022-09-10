@@ -18,6 +18,22 @@ end)
 describe('lspconfig', function()
   describe('util', function()
     describe('path', function()
+      describe('escape_wildcards', function()
+        it('doesnt escape if not needed', function()
+          ok(exec_lua [[
+            local lspconfig = require("lspconfig")
+
+            return lspconfig.util.path.escape_wildcards('/usr/local/test/fname.lua') == '/usr/local/test/fname.lua'
+          ]])
+        end)
+        it('escapes if needed', function()
+          ok(exec_lua [[
+            local lspconfig = require("lspconfig")
+
+            return lspconfig.util.path.escape_wildcards('/usr/local/test/[sq brackets] fname?*.lua') == '/usr/local/test/\\[sq brackets\\] fname\\?\\*.lua'
+          ]])
+        end)
+      end)
       describe('exists', function()
         it('is present directory', function()
           ok(exec_lua [[
@@ -322,6 +338,24 @@ describe('lspconfig', function()
         return require("lspconfig.util").available_servers()
       ]],
         { 'rust_analyzer' }
+      )
+    end)
+
+    it('provides user_config to the on_setup hook', function()
+      eq(
+        exec_lua [[
+        local lspconfig = require "lspconfig"
+        local util = require "lspconfig.util"
+        local user_config
+        util.on_setup = function (_, _user_config)
+          user_config = _user_config
+        end
+        lspconfig.rust_analyzer.setup { custom_user_config = "custom" }
+        return user_config
+      ]],
+        {
+          custom_user_config = 'custom',
+        }
       )
     end)
   end)

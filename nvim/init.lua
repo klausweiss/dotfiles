@@ -378,6 +378,11 @@ setup_lsp('hls', {
 -- purescript
 setup_lsp('purescriptls', {})
 
+-- flutter
+require("flutter-tools").setup {
+  lsp = default_lsp_options,
+}
+
 -- keymap
 local remap = { noremap = false, silent = true }
 local noremap = { noremap = true, silent = true }

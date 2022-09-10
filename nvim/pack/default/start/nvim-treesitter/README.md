@@ -115,6 +115,9 @@ require'nvim-treesitter.configs'.setup {
   -- List of parsers to ignore installing (for "all")
   ignore_install = { "javascript" },
 
+  ---- If you need to change the installation directory of the parsers (see -> Advanced Setup)
+  -- parser_install_dir = "/some/path/to/store/parsers", -- Remember to run vim.opt.runtimepath:append("/some/path/to/store/parsers")!
+
   highlight = {
     -- `false` will disable the whole extension
     enable = true,
@@ -192,6 +195,7 @@ We are looking for maintainers to add more parsers and to write query files for 
 - [ ] [fortran](https://github.com/stadelmanma/tree-sitter-fortran)
 - [x] [fusion](https://gitlab.com/jirgn/tree-sitter-fusion.git) (maintained by @jirgn)
 - [x] [Godot (gdscript)](https://github.com/PrestonKnopp/tree-sitter-gdscript) (maintained by @Shatur95)
+- [x] [gitattributes](https://github.com/ObserverOfTime/tree-sitter-gitattributes) (experimental, maintained by @ObserverOfTime)
 - [x] [gitignore](https://github.com/shunsambongi/tree-sitter-gitignore) (maintained by @theHamsta)
 - [x] [gleam](https://github.com/J3RN/tree-sitter-gleam) (maintained by @connorlay)
 - [x] [Glimmer and Ember](https://github.com/alexlafroscia/tree-sitter-glimmer) (maintained by @alexlafroscia)
@@ -228,6 +232,8 @@ We are looking for maintainers to add more parsers and to write query files for 
 - [x] [make](https://github.com/alemuller/tree-sitter-make) (maintained by @lewis6991)
 - [x] [markdown](https://github.com/MDeiml/tree-sitter-markdown) (experimental, maintained by @MDeiml)
 - [x] [markdown_inline](https://github.com/MDeiml/tree-sitter-markdown) (experimental, maintained by @MDeiml)
+- [x] [menhir](https://github.com/Kerl13/tree-sitter-menhir) (maintained by @Kerl13)
+- [x] [meson](https://github.com/Decodetalkers/tree-sitter-meson) (maintained by @Decodetalkers)
 - [x] [ninja](https://github.com/alemuller/tree-sitter-ninja) (maintained by @alemuller)
 - [x] [nix](https://github.com/cstrahan/tree-sitter-nix) (maintained by @leo60228)
 - [x] [norg](https://github.com/nvim-neorg/tree-sitter-norg) (maintained by @JoeyGrajciar, @vhyrro, @mrossinek)
@@ -267,6 +273,7 @@ We are looking for maintainers to add more parsers and to write query files for 
 - [x] [surface](https://github.com/connorlay/tree-sitter-surface) (maintained by @connorlay)
 - [x] [svelte](https://github.com/Himujjal/tree-sitter-svelte) (maintained by @elianiva)
 - [x] [swift](https://github.com/alex-pinkus/tree-sitter-swift) (maintained by @alex-pinkus)
+- [x] [sxhkdrc](https://github.com/RaafatTurki/tree-sitter-sxhkdrc) (maintained by @RaafatTurki)
 - [x] [teal](https://github.com/euclidianAce/tree-sitter-teal) (maintained by @euclidianAce)
 - [x] [tiger](https://github.com/ambroisie/tree-sitter-tiger) (maintained by @ambroisie)
 - [x] [tlaplus](https://github.com/tlaplus-community/tree-sitter-tlaplus) (maintained by @ahelwer, @susliko)
@@ -277,7 +284,7 @@ We are looking for maintainers to add more parsers and to write query files for 
 - [x] [typescript](https://github.com/tree-sitter/tree-sitter-typescript) (maintained by @steelsojka)
 - [x] [v](https://github.com/vlang/vls) (maintained by @tami5)
 - [x] [vala](https://github.com/vala-lang/tree-sitter-vala) (maintained by @Prince781, @vala-lang)
-- [x] [verilog](https://github.com/tree-sitter/tree-sitter-verilog) (experimental, maintained by @zegervdv)
+- [x] [verilog](https://github.com/tree-sitter/tree-sitter-verilog) (maintained by @zegervdv)
 - [x] [vim](https://github.com/vigoux/tree-sitter-viml) (maintained by @vigoux)
 - [x] [vue](https://github.com/ikatyang/tree-sitter-vue) (maintained by @WhyNotHugo)
 - [x] [wgsl](https://github.com/szebniok/tree-sitter-wgsl) (maintained by @szebniok)

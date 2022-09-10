@@ -20,6 +20,7 @@ local subprocess        = require('gitsigns.subprocess')
 local util              = require('gitsigns.util')
 local run_diff          = require('gitsigns.diff')
 local git               = require('gitsigns.git')
+local uv                = require('gitsigns.uv')
 
 local gs_hunks          = require("gitsigns.hunks")
 local Hunk              = gs_hunks.Hunk
@@ -27,7 +28,6 @@ local Hunk              = gs_hunks.Hunk
 local config            = require('gitsigns.config').config
 
 local api = vim.api
-local uv = vim.loop
 
 local signs: Signs
 
@@ -35,7 +35,7 @@ local record M
   update           : function(bufnr: integer, CacheEntry)
   update_debounced : function(bufnr: integer, CacheEntry)
   on_lines         : function(buf: integer, first: integer, last_orig: integer, last_new: integer): boolean
-  watch_gitdir     : function(bufnr: integer, gitdir: string): uv.FSPollObj
+  watch_gitdir     : function(bufnr: integer, gitdir: string): vim.loop.FSPollObj
   update_cwd_head  : function()
   detach           : function(bufnr: integer, keep_signs: boolean)
   reset_signs      : function()
@@ -61,10 +61,12 @@ local function apply_win_signs(bufnr: integer, hunks: {Hunk}, top: integer, bot:
   -- added but none of them are visible in the window, then make sure to add at
   -- least one sign. Only do this on the first call after an update when we all
   -- the signs have been cleared.
+  if clear and hunks[1] then
+    signs:add(bufnr, gs_hunks.calc_signs(hunks[1], hunks[1].added.start, hunks[1].added.start))
+  end
 
-  for i, hunk in ipairs(hunks or {}) do
-    if clear and i == 1
-        or top <= hunk.vend and bot >= hunk.added.start then
+  for _, hunk in ipairs(hunks or {}) do
+    if top <= hunk.vend and bot >= hunk.added.start then
       signs:add(bufnr, gs_hunks.calc_signs(hunk, top, bot))
     end
     if hunk.added.start > bot then
@@ -304,13 +306,13 @@ local function handle_moved(bufnr: integer, bcache: CacheEntry, old_relpath: str
 end
 
 
-M.watch_gitdir = function(bufnr: integer, gitdir: string): uv.FSPollObj
+M.watch_gitdir = function(bufnr: integer, gitdir: string): vim.loop.FSPollObj
   if not config.watch_gitdir.enable then
     return
   end
 
   dprintf('Watching git dir')
-  local w = uv.new_fs_poll()
+  local w = uv.new_fs_poll(true) as vim.loop.FSPollObj
   w:start(gitdir, config.watch_gitdir.interval, void(function(err: string)
     local __FUNC__ = 'watcher_cb'
     if err then
@@ -358,7 +360,7 @@ M.watch_gitdir = function(bufnr: integer, gitdir: string): uv.FSPollObj
   return w
 end
 
-local cwd_watcher: uv.FSPollObj
+local cwd_watcher: vim.loop.FSPollObj
 
 local function update_cwd_head_var(head: string)
   if head then
@@ -372,10 +374,10 @@ M.update_cwd_head = void(function()
   if cwd_watcher then
     cwd_watcher:stop()
   else
-    cwd_watcher = uv.new_fs_poll()
+    cwd_watcher = uv.new_fs_poll(true) as vim.loop.FSPollObj
   end
 
-  local cwd = uv.cwd()
+  local cwd = vim.loop.cwd()
   local gitdir, head: string, string
 
   -- Look in the cache first

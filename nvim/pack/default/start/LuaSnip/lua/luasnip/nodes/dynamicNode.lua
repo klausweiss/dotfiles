@@ -6,6 +6,7 @@ local types = require("luasnip.util.types")
 local events = require("luasnip.util.events")
 local FunctionNode = require("luasnip.nodes.functionNode").FunctionNode
 local SnippetNode = require("luasnip.nodes.snippet").SN
+local extend_decorator = require("luasnip.util.extend_decorator")
 
 local function D(pos, fn, args, opts)
 	opts = opts or {}
@@ -21,8 +22,10 @@ local function D(pos, fn, args, opts)
 		active = false,
 	}, opts)
 end
+extend_decorator.register(D, { arg_indx = 4 })
 
 function DynamicNode:input_enter()
+	self.visited = true
 	self.active = true
 	self.mark:update_opts(self.ext_opts.active)
 
@@ -34,18 +37,20 @@ function DynamicNode:input_leave()
 
 	self:update_dependents()
 	self.active = false
-	self.mark:update_opts(self.ext_opts.passive)
+	self.mark:update_opts(self:get_passive_ext_opts())
 end
 
 function DynamicNode:get_static_text()
-	if not self.static_text then
+	if self.snip then
+		return self.snip:get_static_text()
+	else
+		self:update_static()
 		if self.snip then
-			self.static_text = self.snip:get_static_text()
+			return self.snip:get_static_text()
 		else
-			self.static_text = { "" }
+			return { "" }
 		end
 	end
-	return self.static_text
 end
 
 function DynamicNode:get_docstring()
@@ -144,7 +149,8 @@ function DynamicNode:update()
 	tmp:resolve_node_ext_opts()
 	tmp:subsnip_init()
 
-	tmp.mark = self.mark:copy_pos_gravs(vim.deepcopy(tmp.ext_opts.passive))
+	tmp.mark =
+		self.mark:copy_pos_gravs(vim.deepcopy(tmp:get_passive_ext_opts()))
 	tmp.dynamicNode = self
 	tmp.update_dependents = function(node)
 		node:_update_dependents()
@@ -294,7 +300,8 @@ function DynamicNode:exit()
 end
 
 function DynamicNode:set_ext_opts(name)
-	self.mark:update_opts(self.ext_opts[name])
+	Node.set_ext_opts(self, name)
+
 	-- might not have been generated (missing nodes).
 	if self.snip then
 		self.snip:set_ext_opts(name)
@@ -313,7 +320,8 @@ function DynamicNode:update_restore()
 		-- prevent entering the uninitialized snip in enter_node in a few lines.
 		local tmp = self.stored_snip
 
-		tmp.mark = self.mark:copy_pos_gravs(vim.deepcopy(tmp.ext_opts.passive))
+		tmp.mark =
+			self.mark:copy_pos_gravs(vim.deepcopy(tmp:get_passive_ext_opts()))
 
 		-- position might (will probably!!) still have changed, so update it
 		-- here too (as opposed to only in update).

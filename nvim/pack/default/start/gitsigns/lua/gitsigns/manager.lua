@@ -20,6 +20,7 @@ local subprocess = require('gitsigns.subprocess')
 local util = require('gitsigns.util')
 local run_diff = require('gitsigns.diff')
 local git = require('gitsigns.git')
+local uv = require('gitsigns.uv')
 
 local gs_hunks = require("gitsigns.hunks")
 local Hunk = gs_hunks.Hunk
@@ -27,7 +28,6 @@ local Hunk = gs_hunks.Hunk
 local config = require('gitsigns.config').config
 
 local api = vim.api
-local uv = vim.loop
 
 local signs
 
@@ -61,10 +61,12 @@ local function apply_win_signs(bufnr, hunks, top, bot, clear)
 
 
 
+   if clear and hunks[1] then
+      signs:add(bufnr, gs_hunks.calc_signs(hunks[1], hunks[1].added.start, hunks[1].added.start))
+   end
 
-   for i, hunk in ipairs(hunks or {}) do
-      if clear and i == 1 or
-         top <= hunk.vend and bot >= hunk.added.start then
+   for _, hunk in ipairs(hunks or {}) do
+      if top <= hunk.vend and bot >= hunk.added.start then
          signs:add(bufnr, gs_hunks.calc_signs(hunk, top, bot))
       end
       if hunk.added.start > bot then
@@ -310,7 +312,7 @@ M.watch_gitdir = function(bufnr, gitdir)
    end
 
    dprintf('Watching git dir')
-   local w = uv.new_fs_poll()
+   local w = uv.new_fs_poll(true)
    w:start(gitdir, config.watch_gitdir.interval, void(function(err)
       local __FUNC__ = 'watcher_cb'
       if err then
@@ -372,10 +374,10 @@ M.update_cwd_head = void(function()
    if cwd_watcher then
       cwd_watcher:stop()
    else
-      cwd_watcher = uv.new_fs_poll()
+      cwd_watcher = uv.new_fs_poll(true)
    end
 
-   local cwd = uv.cwd()
+   local cwd = vim.loop.cwd()
    local gitdir, head
 
 

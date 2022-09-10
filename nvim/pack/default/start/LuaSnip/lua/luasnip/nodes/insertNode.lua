@@ -4,6 +4,7 @@ local util = require("luasnip.util.util")
 local types = require("luasnip.util.types")
 local events = require("luasnip.util.events")
 local session = require("luasnip.session")
+local extend_decorator = require("luasnip.util.extend_decorator")
 
 local function I(pos, static_text, opts)
 	static_text = util.to_string_table(static_text)
@@ -29,6 +30,7 @@ local function I(pos, static_text, opts)
 		}, opts)
 	end
 end
+extend_decorator.register(I, { arg_indx = 3 })
 
 function ExitNode:input_enter(no_move)
 	-- Don't enter node for -1-node, it isn't in the node-table.
@@ -89,9 +91,14 @@ function ExitNode:update_all_dependents() end
 function ExitNode:_update_dependents_static() end
 function ExitNode:update_dependents_static() end
 function ExitNode:update_all_dependents_static() end
+function ExitNode:is_interactive()
+	return true
+end
 
 function InsertNode:input_enter(no_move)
+	self.visited = true
 	self.mark:update_opts(self.ext_opts.active)
+
 	if not no_move then
 		self.parent:enter_node(self.indx)
 
@@ -187,7 +194,7 @@ function InsertNode:input_leave()
 	self:event(events.leave)
 
 	self:update_dependents()
-	self.mark:update_opts(self.ext_opts.passive)
+	self.mark:update_opts(self:get_passive_ext_opts())
 end
 
 function InsertNode:exit()
@@ -204,6 +211,10 @@ end
 function InsertNode:get_docstring()
 	-- copy as to not in-place-modify static text.
 	return util.string_wrap(self.static_text, rawget(self, "pos"))
+end
+
+function InsertNode:is_interactive()
+	return true
 end
 
 return {

@@ -189,6 +189,7 @@ end
 local function insert_move_on(new_cur_pos)
 	-- maybe feedkeys this too.
 	set_cursor_0ind(new_cur_pos)
+	vim.api.nvim_command("redraw!")
 end
 
 local function multiline_equal(t1, t2)
@@ -465,15 +466,6 @@ local function redirect_filetypes(fts)
 	return snippet_fts
 end
 
-local function get_snippet_filetypes()
-	local config = require("luasnip.session").config
-	local fts = config.ft_func()
-	-- add all last.
-	table.insert(fts, "all")
-
-	return redirect_filetypes(fts)
-end
-
 local function deduplicate(list)
 	vim.validate({ list = { list, "table" } })
 	local ret = {}
@@ -485,6 +477,15 @@ local function deduplicate(list)
 		end
 	end
 	return ret
+end
+
+local function get_snippet_filetypes()
+	local config = require("luasnip.session").config
+	local fts = config.ft_func()
+	-- add all last.
+	table.insert(fts, "all")
+
+	return deduplicate(redirect_filetypes(fts))
 end
 
 local json_decode
@@ -547,6 +548,26 @@ local function no_region_check_wrap(fn, ...)
 	return fn(...)
 end
 
+local function id(a)
+	return a
+end
+
+local function no()
+	return false
+end
+
+local function yes()
+	return false
+end
+
+local function reverse_lookup(t)
+	local rev = {}
+	for k, v in pairs(t) do
+		rev[v] = k
+	end
+	return rev
+end
+
 return {
 	get_cursor_0ind = get_cursor_0ind,
 	set_cursor_0ind = set_cursor_0ind,
@@ -586,4 +607,8 @@ return {
 	pop_front = pop_front,
 	key_sorted_pairs = key_sorted_pairs,
 	no_region_check_wrap = no_region_check_wrap,
+	id = id,
+	no = no,
+	yes = yes,
+	reverse_lookup = reverse_lookup,
 }
