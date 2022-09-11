@@ -170,6 +170,9 @@ update-session-lens:
 update-snippets-flutter:
 	$(call download-from-repo, https://github.com/Nash0x7E2/awesome-flutter-snippets)
 
+update-snippets-friendly-snippets:
+	$(call download-from-repo, https://github.com/rafamadriz/friendly-snippets)
+
 update-symbols-outline:
 	$(call download-from-repo, https://github.com/simrat39/symbols-outline.nvim)
 

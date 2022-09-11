@@ -61,8 +61,12 @@ vim.g.mapleader = ' '
 -- snippets
 local luasnip = require('luasnip')
 require("luasnip.loaders.from_vscode").lazy_load({
-  paths = {"./pack/default/start/awesome-flutter-snippets/"}
+  paths = {
+    "./pack/default/start/awesome-flutter-snippets/",
+    "./pack/default/start/friendly-snippets",
+  }
 })
+-- TODO: what is that t function below? seems unused, investigate
 local t = function(str)
   return vim.api.nvim_replace_termcodes(str, true, true, true)
 end
@@ -227,6 +231,9 @@ require('auto-session').setup(auto_session_config)
 -- neogit
 local neogit = require('neogit')
 neogit.setup {}
+
+-- lazygit
+-- vim.api.nvim_set_var('lazygit_floating_window_use_plenary', '0')
 
 -- gitsigns
 require('gitsigns').setup {
