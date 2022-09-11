@@ -167,6 +167,9 @@ update-popup: \
 update-session-lens:
 	$(call download-from-repo, https://github.com/rmagatti/session-lens)
 
+update-snippets-flutter:
+	$(call download-from-repo, https://github.com/Nash0x7E2/awesome-flutter-snippets)
+
 update-symbols-outline:
 	$(call download-from-repo, https://github.com/simrat39/symbols-outline.nvim)
 
