@@ -1,0 +1,8 @@
+#!/usr/bin/env -S perl ${HOME}/.dotfiles/install --file
+
+[run]
+# Installing packages
+sudo pacman -Sy
+	git-delta
+	neovim
+
