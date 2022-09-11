@@ -1,0 +1,5 @@
+#!/usr/bin/env -S perl ${HOME}/.dotfiles/install --file
+
+[symlink]
+./config.yml: ~/.config/lazygit/config.yml
+
