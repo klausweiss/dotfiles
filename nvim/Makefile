@@ -164,6 +164,9 @@ update-popup: \
 
 	$(call download-from-repo, https://github.com/nvim-lua/popup.nvim)
 
+update-readline.vim:
+	$(call download-from-repo, https://github.com/ryvnf/readline.vim)
+
 update-session-lens:
 	$(call download-from-repo, https://github.com/rmagatti/session-lens)
 
