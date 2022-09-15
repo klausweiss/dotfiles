@@ -261,8 +261,10 @@ require('gitsigns').setup {
 }
 
 -- trouble
-
 require("trouble").setup {}
+
+-- symbols outline
+require("symbols-outline").setup {}
 
 -- tree-sitter
 require 'nvim-treesitter.configs'.setup {
@@ -330,7 +332,8 @@ local on_attach = function(client, bufnr)
   buf_set_keymap('n', ']d', '<cmd>lua vim.diagnostic.goto_next()<CR>', opts)
   buf_set_keymap('', '<F2>', '<cmd>lua vim.diagnostic.goto_next()<CR>', opts)
   buf_set_keymap('', '<S-F2>', '<cmd>lua vim.diagnostic.goto_prev()<CR>', opts)
-  buf_set_keymap('', '<F3>', '<cmd>SymbolsOutline<CR>', opts)
+  buf_set_keymap('', '<F3>', '<cmd>SymbolsOutlineOpen<CR>', opts)
+  buf_set_keymap('', '<S-F3>', '<cmd>SymbolsOutlineClose<CR>', opts)
 
   -- lsp signature
   cfg = {
