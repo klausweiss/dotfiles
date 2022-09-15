@@ -370,6 +370,14 @@ list.json = {
   maintainers = { "@steelsojka" },
 }
 
+list.jsonnet = {
+  install_info = {
+    url = "https://github.com/sourcegraph/tree-sitter-jsonnet",
+    files = { "src/parser.c", "src/scanner.c" },
+  },
+  maintainers = { "@nawordar" },
+}
+
 list.css = {
   install_info = {
     url = "https://github.com/tree-sitter/tree-sitter-css",
@@ -1213,6 +1221,15 @@ list.gitattributes = {
     requires_generate_from_grammar = false,
   },
   maintainers = { "@ObserverOfTime" },
+  experimental = true,
+}
+
+list.blueprint = {
+  install_info = {
+    url = "https://gitlab.com/gabmus/tree-sitter-blueprint.git",
+    files = { "src/parser.c" },
+  },
+  maintainers = { "@gabmus" },
   experimental = true,
 }
 

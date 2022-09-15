@@ -1,5 +1,4 @@
 local api = vim.api
-local configs = require 'lspconfig.configs'
 local windows = require 'lspconfig.ui.windows'
 local util = require 'lspconfig.util'
 
@@ -37,17 +36,26 @@ local function remove_newlines(cmd)
   return cmd
 end
 
+local cmd_type = {
+  ['function'] = function(_)
+    return '<function>', 'NA'
+  end,
+  ['table'] = function(config)
+    local cmd = remove_newlines(config.cmd)
+    if vim.fn.executable(config.cmd[1]) == 1 then
+      return cmd, 'true'
+    end
+    return cmd, error_messages.cmd_not_found
+  end,
+}
+
 local function make_config_info(config, bufnr)
   local config_info = {}
   config_info.name = config.name
   config_info.helptags = {}
+
   if config.cmd then
-    config_info.cmd = remove_newlines(config.cmd)
-    if vim.fn.executable(config.cmd[1]) == 1 then
-      config_info.cmd_is_executable = 'true'
-    else
-      config_info.cmd_is_executable = error_messages.cmd_not_found
-    end
+    config_info.cmd, config_info.cmd_is_executable = cmd_type[type(config.cmd)](config)
   else
     config_info.cmd = 'cmd not defined'
     config_info.cmd_is_executable = 'NA'
@@ -56,7 +64,7 @@ local function make_config_info(config, bufnr)
   local buffer_dir = api.nvim_buf_call(bufnr, function()
     return vim.fn.expand '%:p:h'
   end)
-  local root_dir = config.get_root_dir(buffer_dir)
+  local root_dir = config.get_root_dir and config.get_root_dir(buffer_dir)
   if root_dir then
     config_info.root_dir = root_dir
   else
@@ -105,7 +113,7 @@ end
 local function make_client_info(client)
   local client_info = {}
 
-  client_info.cmd = remove_newlines(client.config.cmd)
+  client_info.cmd = cmd_type[type(client.config.cmd)](client.config)
   if client.workspaceFolders then
     client_info.root_dir = client.workspaceFolders[1].name
   else
@@ -269,17 +277,15 @@ return function()
       .. error_messages.root_dir_not_found
   )
 
-  vim.cmd 'let m=matchadd("string", "true")'
-  vim.cmd 'let m=matchadd("error", "false")'
-  for _, config in pairs(configs) do
-    vim.fn.matchadd('LspInfoTitle', '\\%(Client\\|Config\\):.*\\zs' .. config.name .. '\\ze')
-    vim.fn.matchadd('LspInfoList', 'list:.*\\zs' .. config.name .. '\\ze')
-    if config.filetypes then
-      for _, ft in pairs(config.filetypes) do
-        vim.fn.matchadd('LspInfoFiletype', '\\%(filetypes\\|filetype\\):.*\\zs' .. ft .. '\\ze')
-      end
-    end
-  end
+  vim.cmd [[
+    syn keyword String true
+    syn keyword Error false
+    syn match LspInfoFiletypeList /\<filetypes\?:\s*\zs.*\ze/ contains=LspInfoFiletype
+    syn match LspInfoFiletype /\k\+/ contained
+    syn match LspInfoTitle /^\s*\%(Client\|Config\):\s*\zs\k\+\ze/
+    syn match LspInfoListList /^\s*Configured servers list:\s*\zs.*\ze/ contains=LspInfoList
+    syn match LspInfoList /\k\+/ contained
+  ]]
 
   api.nvim_buf_add_highlight(bufnr, 0, 'LspInfoTip', 0, 0, -1)
 end

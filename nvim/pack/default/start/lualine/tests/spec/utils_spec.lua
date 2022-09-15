@@ -11,17 +11,52 @@ describe('Utils', function()
   local utils = require('lualine.utils.utils')
 
   it('can retrive highlight groups', function()
-    local hl2 = { fg = '#aabbcc', bg = '#889977', reverse = true }
+    local hl2 = { fg = '#aabbcc', bg = '#889977', sp = '#997788', reverse = true, undercurl = true }
     -- handles non existing hl groups
     eq(utils.extract_highlight_colors('hl2'), nil)
     -- create highlight
-    vim.cmd(string.format('hi hl2 guifg=%s guibg=%s gui=reverse', hl2.fg, hl2.bg))
+    vim.cmd(string.format('hi hl2 guifg=%s guibg=%s guisp=%s gui=reverse,undercurl', hl2.fg, hl2.bg, hl2.sp))
     -- Can retrieve entire highlight table
     eq(utils.extract_highlight_colors('hl2'), hl2)
     -- Can retrieve specific parts of highlight
     eq(utils.extract_highlight_colors('hl2', 'fg'), hl2.fg)
     -- clear hl2
     vim.cmd('hi clear hl2')
+  end)
+
+  it('can extract individual highlight color', function()
+    local fg_clr = '#aabbcc'
+    local bg_clr = '#889977'
+    local sp_clr = '#997788'
+    local def_clr = '#ff0000'
+    local hl_std = { fg = fg_clr, bg = bg_clr }
+    local hl_rvs = { fg = fg_clr, bg = bg_clr, reverse = true }
+    local hl_ul = { sp = sp_clr, undercurl = true }
+    local hl_ul_rvs = { fg = fg_clr, bg = bg_clr, sp = sp_clr, reverse = true, undercurl = true }
+    -- create highlights
+    vim.cmd(string.format('hi hl_std guifg=%s guibg=%s', hl_std.fg, hl_std.bg))
+    vim.cmd(string.format('hi hl_rvs guifg=%s guibg=%s gui=reverse', hl_rvs.fg, hl_rvs.bg))
+    vim.cmd(string.format('hi hl_ul guisp=%s gui=undercurl', hl_ul.sp))
+    vim.cmd(string.format('hi hl_ul_rvs guifg=%s guibg=%s guisp=%s gui=reverse,undercurl', hl_ul_rvs.fg, hl_ul_rvs.bg, hl_ul_rvs.sp))
+    -- Can extract color from primary highlight group
+    eq(utils.extract_color_from_hllist('fg', {'hl_std','hl_ul'}, def_clr), fg_clr)
+    -- Can extract color from fallback highlight group
+    eq(utils.extract_color_from_hllist('fg', {'hl_noexist','hl_std'}, def_clr), fg_clr)
+    -- Can fall back to default color on nonexistent color
+    eq(utils.extract_color_from_hllist('fg', {'hl_ul'}, def_clr), def_clr)
+    -- Can fall back to default color on nonexistent highlight group
+    eq(utils.extract_color_from_hllist('fg', {'hl_noexist'}, def_clr), def_clr)
+    -- Can extract fallback color
+    eq(utils.extract_color_from_hllist({'fg','sp'}, {'hl_ul'}, def_clr), sp_clr)
+    -- Can extract reverse color
+    eq(utils.extract_color_from_hllist('fg', {'hl_rvs'}, def_clr), bg_clr)
+    -- Can extract fallback reverse color
+    eq(utils.extract_color_from_hllist({'sp','fg'}, {'hl_rvs'}, def_clr), bg_clr)
+    -- clear highlights
+    vim.cmd('hi clear hl_std')
+    vim.cmd('hi clear hl_rvs')
+    vim.cmd('hi clear hl_ul')
+    vim.cmd('hi clear hl_ul_rvs')
   end)
 
   it('can shrink list with holes', function()
