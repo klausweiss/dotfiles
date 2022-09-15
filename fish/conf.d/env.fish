@@ -1,3 +1,3 @@
 ### ENV
 set TERM screen-256color
-set EDITOR vim
+set EDITOR nvim
