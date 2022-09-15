@@ -3,7 +3,7 @@
     name =
 [core]
     autocrlf = input
-    editor = vim
+    editor = nvim
 [commit]
     gpgSign = true
 [tag]
