@@ -517,14 +517,14 @@ highlight! link TSField Green
 highlight! link TSFloat Purple
 highlight! link TSFuncBuiltin GreenBold
 highlight! link TSFuncMacro GreenBold
-highlight! link TSFunction GreenBold
+highlight! link TSFunction Green
 highlight! link TSInclude Red
 highlight! link TSKeyword Red
 highlight! link TSKeywordFunction Red
 highlight! link TSKeywordOperator Orange
 highlight! link TSLabel Orange
-highlight! link TSMethod GreenBold
-highlight! link TSNamespace YellowItalic
+highlight! link TSMethod Green
+highlight! link TSNamespace Blue
 highlight! link TSNone Fg
 highlight! link TSNumber Purple
 highlight! link TSOperator Orange

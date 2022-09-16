@@ -115,6 +115,7 @@ update-gitsigns: \
 
 update-gruvbox-material:
 	$(call download-from-repo, https://github.com/sainnhe/gruvbox-material)
+	sh after-update/tweak-gruvbox-material.sh
 
 update-hop:
 	$(call download-from-repo, https://github.com/phaazon/hop.nvim)
