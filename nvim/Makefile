@@ -132,6 +132,15 @@ update-lualine:
 update-luasnip:
 	$(call download-from-repo, https://github.com/L3MON4D3/LuaSnip)
 
+update-mason:
+	$(call download-from-repo, https://github.com/williamboman/mason.nvim)
+
+update-mason-lspconfig: \
+	update-mason \
+	update-nvim-lspconfig \
+
+	$(call download-from-repo, https://github.com/williamboman/mason-lspconfig.nvim)
+
 update-neogit: \
 	update-plenary \
 
@@ -140,11 +149,8 @@ update-neogit: \
 update-nvim-autopairs:
 	$(call download-from-repo, https://github.com/windwp/nvim-autopairs)
 
-update-nvim-lsp-config:
+update-nvim-lspconfig:
 	$(call download-from-repo, https://github.com/neovim/nvim-lspconfig)
-
-update-nvim-lsp-installer:
-	$(call download-from-repo, https://github.com/williamboman/nvim-lsp-installer)
 
 update-nvim-tree: \
 	update-nvim-web-devicons \

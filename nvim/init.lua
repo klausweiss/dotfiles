@@ -1,7 +1,7 @@
 local cmd = vim.cmd
 
 -- stdlib
-function table_merge(t1, t2)
+local function table_merge(t1, t2)
   for k, v in pairs(t2) do
     if type(v) == "table" then
       if type(t1[k] or false) == "table" then
@@ -68,10 +68,6 @@ require("luasnip.loaders.from_vscode").lazy_load({
     "./pack/default/start/friendly-snippets",
   }
 })
--- TODO: what is that t function below? seems unused, investigate
-local t = function(str)
-  return vim.api.nvim_replace_termcodes(str, true, true, true)
-end
 
 -- completion
 vim.o.completeopt = "menuone,noselect"
@@ -301,7 +297,7 @@ require 'nvim-treesitter.configs'.setup {
 }
 
 -- lsp
-local nvim_lsp = require('lspconfig')
+require('lspconfig')
 
 -- Use an on_attach function to only map the following keys
 -- after the language server attaches to the current buffer
@@ -332,7 +328,7 @@ local on_attach = function(client, bufnr)
   buf_set_keymap('n', '<leader>la', '<cmd>lua vim.lsp.buf.code_action()<CR>', opts)
   buf_set_keymap('n', '<leader>le', '<cmd>lua vim.lsp.diagnostic.show_line_diagnostics()<CR>', opts)
   buf_set_keymap('n', '<leader>lq', '<cmd>lua vim.lsp.diagnostic.set_loclist()<CR>', opts)
-  buf_set_keymap("n", "<leader>lf", "<cmd>lua vim.lsp.buf.formatting()<CR>", opts)
+  buf_set_keymap('n', '<leader>lf', '<cmd>lua vim.lsp.buf.format{ async = true }<CR>', opts)
   buf_set_keymap('n', '[d', '<cmd>lua vim.diagnostic.goto_prev()<CR>', opts)
   buf_set_keymap('n', ']d', '<cmd>lua vim.diagnostic.goto_next()<CR>', opts)
   buf_set_keymap('', '<F2>', '<cmd>lua vim.diagnostic.goto_next()<CR>', opts)
@@ -341,7 +337,7 @@ local on_attach = function(client, bufnr)
   buf_set_keymap('', '<S-F3>', '<cmd>SymbolsOutlineClose<CR>', opts)
 
   -- lsp signature
-  cfg = {
+  local cfg = {
     bind = true, -- This is mandatory, otherwise border config won't get registered.
     -- If you want to hook lspsaga or other signature handler, pls set to false
     doc_lines = 2, -- will show two lines of comment/doc(if there are more than two lines in doc, will be truncated);
@@ -367,8 +363,6 @@ local on_attach = function(client, bufnr)
   require "lsp_signature".on_attach(cfg)
 end
 
--- lsp installer
-local lsp_installer = require("nvim-lsp-installer")
 
 local default_lsp_options = {
   on_attach = on_attach,
@@ -386,27 +380,14 @@ local default_lsp_options = {
   },
 }
 
-function setup_lsp(server, options)
-  local options = table_merge(options, default_lsp_options)
+local function setup_lsp(server, options_arg)
+  local options = table_merge(options_arg, default_lsp_options)
   options.capabilities = table_merge(options.capabilities, cmp_lsp_capabilities)
   require 'lspconfig'[server].setup(options)
 end
 
-local lsp_installer = require("nvim-lsp-installer")
-
--- Register a handler that will be called for all installed servers.
--- Alternatively, you may also register handlers on specific server instances instead (see example below).
-lsp_installer.on_server_ready(function(server)
-  server:setup(default_lsp_options)
-end)
-
--- lsp event handlers
-local telescope_builtin = require 'telescope.builtin'
-vim.lsp.handlers['textDocument/references'] = telescope_builtin.lsp_references
-vim.lsp.handlers['textDocument/definition'] = telescope_builtin.lsp_definitions
-vim.lsp.handlers['textDocument/implementation'] = telescope_builtin.lsp_implementations
-vim.lsp.handlers['textDocument/documentSymbol'] = telescope_builtin.lsp_document_symbols
-vim.lsp.handlers['workspace/symbol'] = telescope_builtin.lsp_workspace_symbols
+require("mason").setup()
+require("mason-lspconfig").setup()
 
 -- c++
 setup_lsp('clangd', {})
@@ -423,13 +404,26 @@ setup_lsp('hls', {
   },
 })
 
--- purescript
-setup_lsp('purescriptls', {})
+setup_lsp('purescriptls', {
+  settings = {
+    purescript = {
+      formatter = "tidy",
+    }
+  },
+})
 
 -- flutter
 require("flutter-tools").setup {
   lsp = default_lsp_options,
 }
+
+-- lsp event handlers
+local telescope_builtin = require 'telescope.builtin'
+vim.lsp.handlers['textDocument/references'] = telescope_builtin.lsp_references
+vim.lsp.handlers['textDocument/definition'] = telescope_builtin.lsp_definitions
+vim.lsp.handlers['textDocument/implementation'] = telescope_builtin.lsp_implementations
+vim.lsp.handlers['textDocument/documentSymbol'] = telescope_builtin.lsp_document_symbols
+vim.lsp.handlers['workspace/symbol'] = telescope_builtin.lsp_workspace_symbols
 
 -- keymap
 local remap = { noremap = false, silent = true }
@@ -458,7 +452,7 @@ end
 local command_key = mk_prefix('c')
 local file_key = mk_prefix('f')
 local git_key = mk_prefix('g')
-local lsp_key = mk_prefix('l')
+-- local lsp_key = mk_prefix('l')
 local project_key = mk_prefix('p')
 local tab_key = mk_prefix('b')
 local window_key = mk_prefix('w')
