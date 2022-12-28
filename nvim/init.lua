@@ -381,7 +381,7 @@ local default_lsp_options = {
 }
 
 local function setup_lsp(server, options_arg)
-  local options = table_merge(options_arg, default_lsp_options)
+  local options = table_merge(options_arg or {}, default_lsp_options)
   options.capabilities = table_merge(options.capabilities, cmp_lsp_capabilities)
   require 'lspconfig'[server].setup(options)
 end
@@ -390,10 +390,10 @@ require("mason").setup()
 require("mason-lspconfig").setup()
 
 -- c++
-setup_lsp('clangd', {})
+setup_lsp('clangd')
 
 -- elm
-setup_lsp('elmls', {})
+setup_lsp('elmls')
 
 -- haskell
 setup_lsp('hls', {
@@ -404,6 +404,7 @@ setup_lsp('hls', {
   },
 })
 
+-- purescript
 setup_lsp('purescriptls', {
   settings = {
     purescript = {
@@ -411,6 +412,9 @@ setup_lsp('purescriptls', {
     }
   },
 })
+
+-- lua
+setup_lsp('sumneko_lua', {})
 
 -- flutter
 require("flutter-tools").setup {
