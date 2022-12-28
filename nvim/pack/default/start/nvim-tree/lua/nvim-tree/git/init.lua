@@ -1,16 +1,25 @@
-local uv = vim.loop
-
 local log = require "nvim-tree.log"
 local utils = require "nvim-tree.utils"
 local git_utils = require "nvim-tree.git.utils"
 local Runner = require "nvim-tree.git.runner"
 local Watcher = require("nvim-tree.watcher").Watcher
 local Iterator = require "nvim-tree.iterators.node-iterator"
+local explorer_node = require "nvim-tree.explorer.node"
 
 local M = {
   config = {},
   projects = {},
   cwd_to_project_root = {},
+}
+
+-- Files under .git that should result in a reload when changed.
+-- Utilities (like watchman) can also write to this directory (often) and aren't useful for us.
+local WATCHED_FILES = {
+  "FETCH_HEAD", -- remote ref
+  "HEAD", -- local ref
+  "HEAD.lock", -- HEAD will not always be updated e.g. revert
+  "config", -- user config
+  "index", -- staging area
 }
 
 function M.reload()
@@ -74,7 +83,7 @@ function M.get_project_root(cwd)
     return nil
   end
 
-  local stat, _ = uv.fs_stat(cwd)
+  local stat, _ = vim.loop.fs_stat(cwd)
   if not stat or stat.type ~= "directory" then
     return nil
   end
@@ -95,19 +104,13 @@ local function reload_tree_at(project_root)
   end
 
   M.reload_project(project_root)
-  local project = M.get_project(project_root)
-
-  local project_files = project.files and project.files or {}
-  local project_dirs = project.dirs and project.dirs or {}
+  local git_status = M.get_project(project_root)
 
   Iterator.builder(root_node.nodes)
     :hidden()
     :applier(function(node)
-      local parent_ignored = node.parent.git_status == "!!"
-      node.git_status = project_dirs[node.absolute_path] or project_files[node.absolute_path]
-      if not node.git_status and parent_ignored then
-        node.git_status = "!!"
-      end
+      local parent_ignored = explorer_node.is_git_ignored(node.parent)
+      explorer_node.update_git_status(node, parent_ignored, git_status)
     end)
     :recursor(function(node)
       return node.nodes and #node.nodes > 0 and node.nodes
@@ -147,11 +150,14 @@ function M.load_project_status(cwd)
     local callback = function(w)
       log.line("watcher", "git event scheduled '%s'", w.project_root)
       utils.debounce("git:watcher:" .. w.project_root, M.config.filesystem_watchers.debounce_delay, function()
+        if w.destroyed then
+          return
+        end
         reload_tree_at(w.project_root)
       end)
     end
 
-    watcher = Watcher:new(utils.path_join { project_root, ".git" }, callback, {
+    watcher = Watcher:new(utils.path_join { project_root, ".git" }, WATCHED_FILES, callback, {
       project_root = project_root,
     })
   end
@@ -165,6 +171,7 @@ function M.load_project_status(cwd)
 end
 
 function M.purge_state()
+  log.line("git", "purge_state")
   M.projects = {}
   M.cwd_to_project_root = {}
 end

@@ -12,10 +12,10 @@ local Op = {}
 
 ---Vim operator-mode motion enum. Read |:map-operator|
 ---@alias OpMotion
----| 'line' # Vertical motion
----| 'char' # Horizontal motion
----| 'v' # Visual Block motion
----| 'V' # Visual Line motion
+---| '"line"' # Vertical motion
+---| '"char"' # Horizontal motion
+---| '"v"' # Visual Block motion
+---| '"V"' # Visual Line motion
 
 ---Common operatorfunc callback
 ---This function contains the core logic for comment/uncomment
@@ -117,7 +117,8 @@ function Op.count(count, cfg, cmode, ctype)
     U.is_fn(cfg.post_hook, ctx)
 end
 
----@class OpFnParams Operator-mode function parameters
+---Operator-mode function parameters
+---@class OpFnParams
 ---@field cfg CommentConfig
 ---@field cmode integer See |comment.utils.cmode|
 ---@field lines string[] List of lines
@@ -151,9 +152,7 @@ function Op.linewise(param)
                     cmode = U.cmode.comment
                 end
 
-                -- If local `cmode` == comment or the given cmode ~= uncomment, then only calculate min_indent
-                -- As calculating min_indent only makes sense when we actually want to comment the lines
-                if not U.is_empty(line) and (cmode == U.cmode.comment or param.cmode == U.cmode.comment) then
+                if not U.is_empty(line) and param.cmode ~= U.cmode.uncomment then
                     local _, len = string.find(line, '^%s*')
                     if min_indent == -1 or min_indent > len then
                         min_indent, tabbed = len, string.find(line, '^\t') ~= nil
@@ -172,14 +171,14 @@ function Op.linewise(param)
         local uncomment = U.uncommenter(param.lcs, param.rcs, padding)
         for i, line in ipairs(param.lines) do
             if not U.ignore(line, pattern) then
-                param.lines[i] = uncomment(line)
+                param.lines[i] = uncomment(line) --[[@as string]]
             end
         end
     else
         local comment = U.commenter(param.lcs, param.rcs, padding, min_indent, nil, tabbed)
         for i, line in ipairs(param.lines) do
             if not U.ignore(line, pattern) then
-                param.lines[i] = comment(line)
+                param.lines[i] = comment(line) --[[@as string]]
             end
         end
     end

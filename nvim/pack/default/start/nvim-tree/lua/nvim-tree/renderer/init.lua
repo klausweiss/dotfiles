@@ -12,19 +12,17 @@ local Builder = require "nvim-tree.renderer.builder"
 local live_filter = require "nvim-tree.live-filter"
 local marks = require "nvim-tree.marks"
 
-local api = vim.api
-
 local M = {
   last_highlights = {},
 }
 
-local namespace_id = api.nvim_create_namespace "NvimTreeHighlights"
+local namespace_id = vim.api.nvim_create_namespace "NvimTreeHighlights"
 
 local function _draw(bufnr, lines, hl, signs)
-  api.nvim_buf_set_option(bufnr, "modifiable", true)
-  api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
+  vim.api.nvim_buf_set_option(bufnr, "modifiable", true)
+  vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
   M.render_hl(bufnr, hl)
-  api.nvim_buf_set_option(bufnr, "modifiable", false)
+  vim.api.nvim_buf_set_option(bufnr, "modifiable", false)
   vim.fn.sign_unplace(git.SIGN_GROUP)
   for _, sign in pairs(signs) do
     vim.fn.sign_place(0, git.SIGN_GROUP, sign.sign, bufnr, { lnum = sign.lnum, priority = 1 })
@@ -32,12 +30,12 @@ local function _draw(bufnr, lines, hl, signs)
 end
 
 function M.render_hl(bufnr, hl)
-  if not bufnr or not api.nvim_buf_is_loaded(bufnr) then
+  if not bufnr or not vim.api.nvim_buf_is_loaded(bufnr) then
     return
   end
-  api.nvim_buf_clear_namespace(bufnr, namespace_id, 0, -1)
+  vim.api.nvim_buf_clear_namespace(bufnr, namespace_id, 0, -1)
   for _, data in ipairs(hl or M.last_highlights) do
-    api.nvim_buf_add_highlight(bufnr, namespace_id, data[1], data[2], data[3], data[4])
+    vim.api.nvim_buf_add_highlight(bufnr, namespace_id, data[1], data[2], data[3], data[4])
   end
 end
 
@@ -48,15 +46,15 @@ local picture_map = {
   gif = true,
 }
 
-function M.draw()
+function M.draw(unloaded_bufnr)
   local bufnr = view.get_bufnr()
-  if not core.get_explorer() or not bufnr or not api.nvim_buf_is_loaded(bufnr) then
+  if not core.get_explorer() or not bufnr or not vim.api.nvim_buf_is_loaded(bufnr) then
     return
   end
 
   local ps = log.profile_start "draw"
 
-  local cursor = api.nvim_win_get_cursor(view.get_winnr())
+  local cursor = vim.api.nvim_win_get_cursor(view.get_winnr())
   icon_component.reset_config()
 
   local lines, hl
@@ -65,7 +63,7 @@ function M.draw()
     lines, hl = help.compute_lines()
   else
     lines, hl, signs = Builder.new(core.get_cwd())
-      :configure_root_modifier(M.config.root_folder_modifier)
+      :configure_root_label(M.config.root_folder_label)
       :configure_trailing_slash(M.config.add_trailing)
       :configure_special_files(M.config.special_files)
       :configure_picture_map(picture_map)
@@ -75,7 +73,7 @@ function M.draw()
       :configure_symlink_destination(M.config.symlink_destination)
       :configure_filter(live_filter.filter, live_filter.prefix)
       :build_header(view.is_root_folder_visible(core.get_cwd()))
-      :build(core.get_explorer())
+      :build(core.get_explorer(), unloaded_bufnr)
       :unwrap()
   end
 
@@ -84,7 +82,7 @@ function M.draw()
   M.last_highlights = hl
 
   if cursor and #lines >= cursor[1] then
-    api.nvim_win_set_cursor(view.get_winnr(), cursor)
+    vim.api.nvim_win_set_cursor(view.get_winnr(), cursor)
   end
 
   if view.is_help_ui() then

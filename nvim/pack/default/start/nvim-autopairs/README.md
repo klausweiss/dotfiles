@@ -33,7 +33,8 @@ use {
 local disable_filetype = { "TelescopePrompt" }
 local disable_in_macro = false  -- disable when recording or executing a macro
 local disable_in_visualblock = false -- disable when insert after visual block mode
-local ignored_next_char = [=[[%w%%%'%[%"%.]]=]
+local disable_in_replace_mode = true
+local ignored_next_char = [=[[%w%%%'%[%"%.%`%$]]=]
 local enable_moveright = true
 local enable_afterquote = true  -- add bracket pairs after quote
 local enable_check_bracket_line = true  --- check bracket in same line
@@ -339,9 +340,17 @@ Before        Input         After
   require('nvim-autopairs').enable()
   require('nvim-autopairs').remove_rule('(') -- remove rule (
   require('nvim-autopairs').clear_rules() -- clear all rules
-  require('nvim-autopairs').get_rule('"') -- get rule " then modify it
-
+  -- get rule " then modify it. It can return a list of rule or just a rule
+  require('nvim-autopairs').get_rule('"') 
 ```
+
+* Sample
+```lua
+-- remove add single quote on filetype scheme or lisp
+require("nvim-autopairs").get_rule("'")[1].not_filetypes = { "scheme", "lisp" }
+require("nvim-autopairs").get_rule("'")[1]:with_pair(cond.not_after_text("["}))
+```
+
 ### FastWrap
 
 ``` text
@@ -382,3 +391,8 @@ npairs.setup({
 
 ### Custom rules
 [rules](https://github.com/windwp/nvim-autopairs/wiki/Custom-rules)
+
+## Sponsors
+
+Thanks to everyone who sponsors my projects and makes continued development maintenance possible!
+<!-- patreon --><a href="https://github.com/t4t5"><img src="https://github.com/t4t5.png" width="60px" alt="" /></a><!-- patreon-->

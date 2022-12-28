@@ -33,6 +33,8 @@ function M.parse_snippet(context, body, opts)
 		opts.trim_empty = true
 	end
 
+	body = Str.sanitize(body)
+
 	local lines = vim.split(body, "\n")
 	Str.process_multiline(lines, opts)
 	body = table.concat(lines, "\n")
@@ -114,7 +116,7 @@ local function backticks_to_variable(body)
 	end
 
 	-- append remaining characters.
-	var_string = var_string .. body:sub(processed_to, -1)
+	var_string = var_string .. body:sub(processed_to, -1):gsub("\\`", "`")
 
 	return var_map, var_string
 end

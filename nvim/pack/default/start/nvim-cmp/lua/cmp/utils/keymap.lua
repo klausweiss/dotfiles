@@ -26,6 +26,7 @@ keymap.normalize = function(keys)
     end
   end
   vim.api.nvim_buf_del_keymap(normalize_buf, 't', keys)
+  vim.api.nvim_buf_delete(normalize_buf, {})
   return keys
 end
 
@@ -79,6 +80,21 @@ keymap.backspace = function(count)
   end
   local keys = {}
   table.insert(keys, keymap.t(string.rep('<BS>', count)))
+  return table.concat(keys, '')
+end
+
+---Create delete keys.
+---@param count string|integer
+---@return string
+keymap.delete = function(count)
+  if type(count) == 'string' then
+    count = vim.fn.strchars(count, true)
+  end
+  if count <= 0 then
+    return ''
+  end
+  local keys = {}
+  table.insert(keys, keymap.t(string.rep('<Del>', count)))
   return table.concat(keys, '')
 end
 
@@ -136,6 +152,7 @@ keymap.fallback = function(bufnr, mode, map)
         script = map.script,
         nowait = map.nowait,
         silent = map.silent and mode ~= 'c',
+        replace_keycodes = map.replace_keycodes,
       })
       vim.api.nvim_feedkeys(keymap.t(fallback_lhs), 'im', true)
     elseif map.callback then
@@ -170,6 +187,7 @@ keymap.solve = function(bufnr, mode, map)
       script = true,
       nowait = map.nowait,
       silent = map.silent and mode ~= 'c',
+      replace_keycodes = map.replace_keycodes,
     })
     return { keys = keymap.t(recursive) .. string.gsub(rhs, '^' .. vim.pesc(lhs), ''), mode = 'im' }
   end
@@ -195,6 +213,7 @@ keymap.get_map = function(mode, lhs)
         silent = map.silent == 1,
         nowait = map.nowait == 1,
         buffer = true,
+        replace_keycodes = map.replace_keycodes == 1,
       }
     end
   end
@@ -211,6 +230,7 @@ keymap.get_map = function(mode, lhs)
         silent = map.silent == 1,
         nowait = map.nowait == 1,
         buffer = false,
+        replace_keycodes = map.replace_keycodes == 1,
       }
     end
   end
@@ -225,6 +245,7 @@ keymap.get_map = function(mode, lhs)
     silent = true,
     nowait = false,
     buffer = false,
+    replace_keycodes = true,
   }
 end
 
@@ -235,6 +256,10 @@ keymap.set_map = function(bufnr, mode, lhs, rhs, opts)
     rhs = ''
   end
   opts.desc = 'cmp.utils.keymap.set_map'
+
+  if vim.fn.has('nvim-0.8') == 0 then
+    opts.replace_keycodes = nil
+  end
 
   if bufnr == -1 then
     vim.api.nvim_set_keymap(mode, lhs, rhs, opts)

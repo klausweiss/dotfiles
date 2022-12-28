@@ -10,7 +10,7 @@
 let s:configuration = gruvbox_material#get_configuration()
 let s:palette = gruvbox_material#get_palette(s:configuration.background, s:configuration.foreground, s:configuration.colors_override)
 let s:path = expand('<sfile>:p') " the path of this script
-let s:last_modified = 'Fri Sep  9 13:37:36 UTC 2022'
+let s:last_modified = 'Tue Dec 13 04:02:59 UTC 2022'
 let g:gruvbox_material_loaded_file_types = []
 
 if !(exists('g:colors_name') && g:colors_name ==# 'gruvbox-material' && s:configuration.better_performance)
@@ -30,6 +30,7 @@ endif
 " UI: {{{
 if s:configuration.transparent_background >= 1
   call gruvbox_material#highlight('Normal', s:palette.fg0, s:palette.none)
+  call gruvbox_material#highlight('NormalNC', s:palette.fg0, s:palette.none)
   call gruvbox_material#highlight('Terminal', s:palette.fg0, s:palette.none)
   if s:configuration.show_eob
     call gruvbox_material#highlight('EndOfBuffer', s:palette.bg5, s:palette.none)
@@ -46,11 +47,24 @@ if s:configuration.transparent_background >= 1
   call gruvbox_material#highlight('ToolbarLine', s:palette.fg0, s:palette.none)
 else
   call gruvbox_material#highlight('Normal', s:palette.fg0, s:palette.bg0)
+  if s:configuration.dim_inactive_windows
+    call gruvbox_material#highlight('NormalNC', s:palette.fg0, s:palette.bg_dim)
+  else
+    call gruvbox_material#highlight('NormalNC', s:palette.fg0, s:palette.bg0)
+  endif
   call gruvbox_material#highlight('Terminal', s:palette.fg0, s:palette.bg0)
   if s:configuration.show_eob
-    call gruvbox_material#highlight('EndOfBuffer', s:palette.bg5, s:palette.bg0)
+    if s:configuration.dim_inactive_windows
+      call gruvbox_material#highlight('EndOfBuffer', s:palette.bg4, s:palette.bg_dim)
+    else
+      call gruvbox_material#highlight('EndOfBuffer', s:palette.bg5, s:palette.bg0)
+    endif
   else
-    call gruvbox_material#highlight('EndOfBuffer', s:palette.bg0, s:palette.bg0)
+    if s:configuration.dim_inactive_windows
+      call gruvbox_material#highlight('EndOfBuffer', s:palette.bg_dim, s:palette.bg_dim)
+    else
+      call gruvbox_material#highlight('EndOfBuffer', s:palette.bg0, s:palette.bg0)
+    endif
   endif
   call gruvbox_material#highlight('Folded', s:palette.grey1, s:palette.bg2)
   call gruvbox_material#highlight('ToolbarLine', s:palette.fg1, s:palette.bg3)
@@ -210,7 +224,11 @@ else
     call gruvbox_material#highlight('TabLineSel', s:palette.bg0, s:palette.grey2)
   endif
 endif
-call gruvbox_material#highlight('VertSplit', s:palette.bg5, s:palette.none)
+if s:configuration.dim_inactive_windows
+  call gruvbox_material#highlight('VertSplit', s:palette.bg4, s:palette.bg_dim)
+else
+  call gruvbox_material#highlight('VertSplit', s:palette.bg5, s:palette.none)
+endif
 highlight! link WinSeparator VertSplit
 if s:configuration.visual ==# 'grey background'
   call gruvbox_material#highlight('Visual', s:palette.none, s:palette.bg3)
@@ -506,100 +524,175 @@ highlight! link TSAnnotation Purple
 highlight! link TSAttribute Purple
 highlight! link TSBoolean Purple
 highlight! link TSCharacter Aqua
+highlight! link TSCharacterSpecial SpecialChar
 highlight! link TSComment Comment
 highlight! link TSConditional Red
-highlight! link TSConstBuiltin BlueItalic
-highlight! link TSConstMacro BlueItalic
+highlight! link TSConstBuiltin PurpleItalic
+highlight! link TSConstMacro PurpleItalic
 highlight! link TSConstant Fg
 highlight! link TSConstructor GreenBold
+highlight! link TSDebug Debug
+highlight! link TSDefine Define
+highlight! link TSEnvironment Macro
+highlight! link TSEnvironmentName Type
+highlight! link TSError Error
 highlight! link TSException Red
-highlight! link TSField Green
+highlight! link TSField Blue
 highlight! link TSFloat Purple
 highlight! link TSFuncBuiltin GreenBold
 highlight! link TSFuncMacro GreenBold
 highlight! link TSFunction Green
+highlight! link TSFunctionCall GreenBold
 highlight! link TSInclude Red
 highlight! link TSKeyword Red
 highlight! link TSKeywordFunction Red
 highlight! link TSKeywordOperator Orange
+highlight! link TSKeywordReturn Red
 highlight! link TSLabel Orange
+highlight! link TSLiteral String
+highlight! link TSMath Blue
 highlight! link TSMethod Green
+highlight! link TSMethodCall GreenBold
 highlight! link TSNamespace Blue
 highlight! link TSNone Fg
 highlight! link TSNumber Purple
 highlight! link TSOperator Orange
 highlight! link TSParameter Fg
 highlight! link TSParameterReference Fg
-highlight! link TSProperty Fg
+highlight! link TSPreProc PreProc
+highlight! link TSProperty Blue
 highlight! link TSPunctBracket Fg
 highlight! link TSPunctDelimiter Grey
 highlight! link TSPunctSpecial Blue
 highlight! link TSRepeat Red
 highlight! link TSStorageClass Orange
+highlight! link TSStorageClassLifetime Orange
+highlight! link TSStrike Grey
 highlight! link TSString Aqua
 highlight! link TSStringEscape Green
 highlight! link TSStringRegex Green
+highlight! link TSStringSpecial SpecialChar
 highlight! link TSSymbol Fg
 highlight! link TSTag Orange
+highlight! link TSTagAttribute Green
 highlight! link TSTagDelimiter Green
 highlight! link TSText Green
-highlight! link TSStrike Grey
-highlight! link TSMath Blue
+highlight! link TSTextReference Constant
+highlight! link TSTitle Title
+highlight! link TSTodo Todo
 highlight! link TSType Yellow
 highlight! link TSTypeBuiltin YellowItalic
+highlight! link TSTypeDefinition Red
+highlight! link TSTypeQualifier Orange
 highlight! link TSURI markdownUrl
 highlight! link TSVariable Fg
-highlight! link TSVariableBuiltin BlueItalic
+highlight! link TSVariableBuiltin PurpleItalic
 if has('nvim-0.8.0')
   highlight! link @annotation TSAnnotation
   highlight! link @attribute TSAttribute
   highlight! link @boolean TSBoolean
   highlight! link @character TSCharacter
+  highlight! link @character.special TSCharacterSpecial
   highlight! link @comment TSComment
+  highlight! link @conceal Grey
   highlight! link @conditional TSConditional
   highlight! link @constant TSConstant
   highlight! link @constant.builtin TSConstBuiltin
   highlight! link @constant.macro TSConstMacro
   highlight! link @constructor TSConstructor
+  highlight! link @debug TSDebug
+  highlight! link @define TSDefine
+  highlight! link @error TSError
   highlight! link @exception TSException
   highlight! link @field TSField
   highlight! link @float TSFloat
   highlight! link @function TSFunction
   highlight! link @function.builtin TSFuncBuiltin
+  highlight! link @function.call TSFunctionCall
   highlight! link @function.macro TSFuncMacro
   highlight! link @include TSInclude
   highlight! link @keyword TSKeyword
   highlight! link @keyword.function TSKeywordFunction
   highlight! link @keyword.operator TSKeywordOperator
+  highlight! link @keyword.return TSKeywordReturn
   highlight! link @label TSLabel
+  highlight! link @math TSMath
   highlight! link @method TSMethod
+  highlight! link @method.call TSMethodCall
   highlight! link @namespace TSNamespace
   highlight! link @none TSNone
   highlight! link @number TSNumber
   highlight! link @operator TSOperator
   highlight! link @parameter TSParameter
   highlight! link @parameter.reference TSParameterReference
+  highlight! link @preproc TSPreProc
   highlight! link @property TSProperty
   highlight! link @punctuation.bracket TSPunctBracket
   highlight! link @punctuation.delimiter TSPunctDelimiter
   highlight! link @punctuation.special TSPunctSpecial
   highlight! link @repeat TSRepeat
   highlight! link @storageclass TSStorageClass
+  highlight! link @storageclass.lifetime TSStorageClassLifetime
+  highlight! link @strike TSStrike
   highlight! link @string TSString
   highlight! link @string.escape TSStringEscape
   highlight! link @string.regex TSStringRegex
+  highlight! link @string.special TSStringSpecial
   highlight! link @symbol TSSymbol
   highlight! link @tag TSTag
+  highlight! link @tag.attribute TSTagAttribute
   highlight! link @tag.delimiter TSTagDelimiter
   highlight! link @text TSText
-  highlight! link @strike TSStrike
-  highlight! link @math TSMath
+  highlight! link @text.danger TSDanger
+  highlight! link @text.diff.add diffAdded
+  highlight! link @text.diff.delete diffRemoved
+  highlight! link @text.emphasis TSEmphasis
+  highlight! link @text.environment TSEnvironment
+  highlight! link @text.environment.name TSEnvironmentName
+  highlight! link @text.literal TSLiteral
+  highlight! link @text.math TSMath
+  highlight! link @text.note TSNote
+  highlight! link @text.reference TSTextReference
+  highlight! link @text.strike TSStrike
+  highlight! link @text.strong TSStrong
+  highlight! link @text.title TSTitle
+  highlight! link @text.todo TSTodo
+  highlight! link @text.underline TSUnderline
+  highlight! link @text.uri TSURI
+  highlight! link @text.warning TSWarning
+  highlight! link @todo TSTodo
   highlight! link @type TSType
   highlight! link @type.builtin TSTypeBuiltin
+  highlight! link @type.definition TSTypeDefinition
+  highlight! link @type.qualifier TSTypeQualifier
   highlight! link @uri TSURI
   highlight! link @variable TSVariable
   highlight! link @variable.builtin TSVariableBuiltin
 endif
+" }}}
+" neovim/lsp-semantic-tokens {{{
+highlight! link LspNamespace TSNamespace
+highlight! link LspType TSType
+highlight! link LspClass TSType
+highlight! link LspEnum TSType
+highlight! link LspInterface TSType
+highlight! link LspStruct TSType
+highlight! link LspTypeParameter TSType
+highlight! link LspParameter TSParameter
+highlight! link LspVariable TSVariable
+highlight! link LspProperty TSProperty
+highlight! link LspEnumMember TSVariableBuiltin
+highlight! link LspEvent TSLabel
+highlight! link LspFunction TSFunction
+highlight! link LspMethod TSMethod
+highlight! link LspMacro TSMacro
+highlight! link LspKeyword TSKeyword
+highlight! link LspModifier TSOperator
+highlight! link LspComment TSComment
+highlight! link LspString TSString
+highlight! link LspNumber TSNumber
+highlight! link LspRegexp TSStringRegexp
+highlight! link LspOperator TSOperator
 " }}}
 " neoclide/coc.nvim {{{
 call gruvbox_material#highlight('CocHoverRange', s:palette.none, s:palette.none, 'bold,underline')
@@ -623,7 +716,7 @@ highlight! link CocSemInterface TSType
 highlight! link CocSemStruct TSType
 highlight! link CocSemTypeParameter TSType
 highlight! link CocSemVariable TSVariable
-highlight! link CocSemEnumMember TSVariableBuiltin
+highlight! link CocSemEnumMember TSProperty
 highlight! link CocSemEvent TSLabel
 highlight! link CocSemModifier TSOperator
 highlight! link CocErrorFloat ErrorFloat
@@ -685,7 +778,7 @@ highlight! link LspSemanticTypeParameter TSType
 highlight! link LspSemanticParameter TSParameter
 highlight! link LspSemanticVariable TSVariable
 highlight! link LspSemanticProperty TSProperty
-highlight! link LspSemanticEnumMember TSVariableBuiltin
+highlight! link LspSemanticEnumMember TSProperty
 highlight! link LspSemanticEvents TSLabel
 highlight! link LspSemanticFunction TSFunction
 highlight! link LspSemanticMethod TSMethod
@@ -705,6 +798,8 @@ highlight! link YcmWarningLine WarningLine
 highlight! link YcmErrorSection ErrorText
 highlight! link YcmWarningSection WarningText
 highlight! link YcmInlayHint LineNr
+highlight! link YcmErrorText VirtualTextError
+highlight! link YcmWarningText VirtualTextWarning
 if !has('nvim') && has('textprop') && !exists('g:YCM_HIGHLIGHT_GROUP')
   let g:YCM_HIGHLIGHT_GROUP = {
         \ 'typeParameter': 'TSType',
@@ -1099,10 +1194,10 @@ highlight! link HopNextKey2 Green
 highlight! link HopUnmatched Grey
 " }}}
 " lukas-reineke/indent-blankline.nvim {{{
-highlight! link IndentBlanklineContextChar Grey
-highlight! link IndentBlanklineChar LineNr
-highlight! link IndentBlanklineSpaceChar LineNr
-highlight! link IndentBlanklineSpaceCharBlankline LineNr
+call gruvbox_material#highlight('IndentBlanklineContextChar', s:palette.grey1, s:palette.none, 'nocombine')
+call gruvbox_material#highlight('IndentBlanklineChar', s:palette.bg5, s:palette.none, 'nocombine')
+highlight! link IndentBlanklineSpaceChar IndentBlanklineChar
+highlight! link IndentBlanklineSpaceCharBlankline IndentBlanklineChar
 " }}}
 " p00f/nvim-ts-rainbow {{{
 highlight! link rainbowcol1 Red
@@ -1114,23 +1209,23 @@ highlight! link rainbowcol6 Blue
 highlight! link rainbowcol7 Purple
 " }}}
 " romgrk/barbar.nvim {{{
-call gruvbox_material#highlight('BufferCurrent', s:palette.fg1, s:palette.bg5)
-call gruvbox_material#highlight('BufferCurrentIndex', s:palette.fg1, s:palette.bg5)
-call gruvbox_material#highlight('BufferCurrentMod', s:palette.blue, s:palette.bg5)
-call gruvbox_material#highlight('BufferCurrentSign', s:palette.grey2, s:palette.bg5)
-call gruvbox_material#highlight('BufferCurrentTarget', s:palette.red, s:palette.bg5, 'bold')
-call gruvbox_material#highlight('BufferVisible', s:palette.fg1, s:palette.bg3)
-call gruvbox_material#highlight('BufferVisibleIndex', s:palette.fg1, s:palette.bg3)
-call gruvbox_material#highlight('BufferVisibleMod', s:palette.blue, s:palette.bg3)
-call gruvbox_material#highlight('BufferVisibleSign', s:palette.grey2, s:palette.bg3)
-call gruvbox_material#highlight('BufferVisibleTarget', s:palette.yellow, s:palette.bg3, 'bold')
-call gruvbox_material#highlight('BufferInactive', s:palette.grey1, s:palette.bg3)
-call gruvbox_material#highlight('BufferInactiveIndex', s:palette.grey1, s:palette.bg3)
-call gruvbox_material#highlight('BufferInactiveMod', s:palette.grey1, s:palette.bg3)
-call gruvbox_material#highlight('BufferInactiveSign', s:palette.grey0, s:palette.bg3)
-call gruvbox_material#highlight('BufferInactiveTarget', s:palette.yellow, s:palette.bg3, 'bold')
-call gruvbox_material#highlight('BufferTabpages', s:palette.bg0, s:palette.grey2, 'bold')
-call gruvbox_material#highlight('BufferTabpageFill', s:palette.bg0, s:palette.bg0)
+call gruvbox_material#highlight('BufferCurrent', s:palette.fg1, s:palette.bg0)
+call gruvbox_material#highlight('BufferCurrentIndex', s:palette.fg1, s:palette.bg0)
+call gruvbox_material#highlight('BufferCurrentMod', s:palette.blue, s:palette.bg0)
+call gruvbox_material#highlight('BufferCurrentSign', s:palette.grey2, s:palette.bg0)
+call gruvbox_material#highlight('BufferCurrentTarget', s:palette.red, s:palette.bg0, 'bold')
+call gruvbox_material#highlight('BufferVisible', s:palette.fg1, s:palette.bg_dim)
+call gruvbox_material#highlight('BufferVisibleIndex', s:palette.fg1, s:palette.bg_dim)
+call gruvbox_material#highlight('BufferVisibleMod', s:palette.blue, s:palette.bg_dim)
+call gruvbox_material#highlight('BufferVisibleSign', s:palette.grey2, s:palette.bg_dim)
+call gruvbox_material#highlight('BufferVisibleTarget', s:palette.yellow, s:palette.bg_dim, 'bold')
+call gruvbox_material#highlight('BufferInactive', s:palette.grey1, s:palette.bg_dim)
+call gruvbox_material#highlight('BufferInactiveIndex', s:palette.grey1, s:palette.bg_dim)
+call gruvbox_material#highlight('BufferInactiveMod', s:palette.grey1, s:palette.bg_dim)
+call gruvbox_material#highlight('BufferInactiveSign', s:palette.grey0, s:palette.bg_dim)
+call gruvbox_material#highlight('BufferInactiveTarget', s:palette.yellow, s:palette.bg_dim, 'bold')
+call gruvbox_material#highlight('BufferTabpages', s:palette.grey1, s:palette.bg_dim, 'bold')
+call gruvbox_material#highlight('BufferTabpageFill', s:palette.bg_dim, s:palette.bg_dim)
 " }}}
 " rcarriga/nvim-notify {{{
 highlight! link NotifyERRORBorder Red
@@ -1483,6 +1578,12 @@ highlight! link DirvishArg Yellow
 " syn_end }}}
 " syn_begin: NvimTree {{{
 " https://github.com/kyazdani42/nvim-tree.lua
+if !s:configuration.transparent_background
+  call gruvbox_material#highlight('NvimTreeNormal', s:palette.fg0, s:palette.bg_dim)
+  call gruvbox_material#highlight('NvimTreeEndOfBuffer', s:palette.bg_dim, s:palette.bg_dim)
+  call gruvbox_material#highlight('NvimTreeVertSplit', s:palette.bg0, s:palette.bg0)
+  call gruvbox_material#highlight('NvimTreeCursorLine', s:palette.none, s:palette.bg0)
+endif
 highlight! link NvimTreeSymlink Fg
 highlight! link NvimTreeFolderName Green
 highlight! link NvimTreeRootFolder Grey
@@ -1518,6 +1619,27 @@ highlight! link FernBranchSymbol FernBranchText
 highlight! link FernBranchText Green
 highlight! link FernWindowSelectIndicator TabLineSel
 highlight! link FernWindowSelectStatusLine TabLine
+" syn_end }}}
+" syn_begin: neo-tree {{{
+" https://github.com/nvim-neo-tree/neo-tree.nvim
+if !s:configuration.transparent_background
+  call gruvbox_material#highlight('NeoTreeNormal', s:palette.fg0, s:palette.bg_dim)
+  call gruvbox_material#highlight('NeoTreeEndOfBuffer', s:palette.bg_dim, s:palette.bg_dim)
+  call gruvbox_material#highlight('NeoTreeVertSplit', s:palette.bg0, s:palette.bg0)
+endif
+highlight! link NeoTreeGitAdded Green
+highlight! link NeoTreeGitConflict Yellow
+highlight! link NeoTreeGitDeleted Red
+highlight! link NeoTreeGitIgnored Grey
+highlight! link NeoTreeGitModified Blue
+highlight! link NeoTreeGitUnstaged Purple
+highlight! link NeoTreeGitUntracked Fg
+highlight! link NeoTreeGitStaged Purple
+highlight! link NeoTreeDimText Grey
+highlight! link NeoTreeIndentMarker NonText
+highlight! link NeoTreeNormalNC NeoTreeNormal
+highlight! link NeoTreeSignColumn NeoTreeNormal
+highlight! link NeoTreeRootName Title
 " syn_end }}}
 " syn_begin: octo {{{
 " https://github.com/pwntester/octo.nvim

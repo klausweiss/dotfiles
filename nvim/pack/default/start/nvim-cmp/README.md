@@ -8,7 +8,7 @@ Completion sources are installed from external repositories and "sourced".
 Readme!
 ====================
 
-1. There is a Github issue that documents [breaking changes](https://github.com/hrsh7th/nvim-cmp/issues/231) for nvim-cmp. Subscribe to the issue to be notified of upcoming breaking changes.
+1. There is a GitHub issue that documents [breaking changes](https://github.com/hrsh7th/nvim-cmp/issues/231) for nvim-cmp. Subscribe to the issue to be notified of upcoming breaking changes.
 2. This is my hobby project. You can support me via GitHub sponsors.
 3. Bug reports are welcome, but don't expect a fix unless you provide minimal configuration and steps to reproduce your issue.
 
@@ -102,8 +102,8 @@ lua <<EOF
     })
   })
 
-  -- Use buffer source for `/` (if you enabled `native_menu`, this won't work anymore).
-  cmp.setup.cmdline('/', {
+  -- Use buffer source for `/` and `?` (if you enabled `native_menu`, this won't work anymore).
+  cmp.setup.cmdline({ '/', '?' }, {
     mapping = cmp.mapping.preset.cmdline(),
     sources = {
       { name = 'buffer' }
@@ -121,7 +121,7 @@ lua <<EOF
   })
 
   -- Set up lspconfig.
-  local capabilities = require('cmp_nvim_lsp').update_capabilities(vim.lsp.protocol.make_client_capabilities())
+  local capabilities = require('cmp_nvim_lsp').default_capabilities()
   -- Replace <YOUR_LSP_SERVER> with each lsp server you've enabled.
   require('lspconfig')['<YOUR_LSP_SERVER>'].setup {
     capabilities = capabilities

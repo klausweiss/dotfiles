@@ -1,9 +1,3 @@
-local defaults = require'hop.defaults'
-local hint = require'hop.hint'
-local jump_target = require'hop.jump_target'
-local prio = require'hop.priority'
-local window = require'hop.window'
-
 local M = {}
 
 -- Ensure options are sound.
@@ -44,6 +38,8 @@ end
 --  <xxx>_ns: Required namespaces
 -- }
 local function create_hint_state(opts)
+  local window = require'hop.window'
+
   local hint_state = {}
 
   -- get all window's context and buffer list
@@ -65,6 +61,9 @@ local function create_hint_state(opts)
     hint_state.diag_ns = vim.diagnostic.get_namespaces()
   end
 
+  -- Store users cursorline state
+  hint_state.cursorline = vim.api.nvim_win_get_option(vim.api.nvim_get_current_win(), 'cursorline')
+
   return hint_state
 end
 
@@ -84,6 +83,9 @@ end
 -- - top_line is the top line in the buffer to start highlighting at
 -- - bottom_line is the bottom line in the buffer to stop highlighting at
 local function set_unmatched_lines(buf_handle, hl_ns, top_line, bottom_line, cursor_pos, direction, current_line_only)
+  local hint = require'hop.hint'
+  local prio = require'hop.priority'
+
   local start_line = top_line
   local end_line = bottom_line
   local start_col = 0
@@ -130,6 +132,8 @@ end
 
 -- Dim everything out to prepare the Hop session for all windows.
 local function apply_dimming(hint_state, opts)
+  local window = require'hop.window'
+
   for _, bctx in ipairs(hint_state.all_ctxs) do
     for _, wctx in ipairs(bctx.contexts) do
       window.clip_window_context(wctx, opts.direction)
@@ -151,12 +155,20 @@ end
 -- - the current line is empty
 -- - there are multibyte characters on the line
 local function add_virt_cur(ns)
+  local prio = require'hop.priority'
+
   local cur_info = vim.fn.getcurpos()
   local cur_row = cur_info[2] - 1
   local cur_col = cur_info[3] - 1 -- this gives cursor column location, in bytes
   local cur_offset = cur_info[4]
   local virt_col = cur_info[5] - 1
   local cur_line = vim.api.nvim_get_current_line()
+
+  -- toggle cursorline off if currently set
+  local cursorline_info = vim.api.nvim_win_get_option(vim.api.nvim_get_current_win(), 'cursorline')
+  if cursorline_info == true then
+    vim.api.nvim_win_set_option(vim.api.nvim_get_current_win(), 'cursorline', false)
+  end
 
   -- first check to see if cursor is in a tab char or past end of line
   if cur_offset ~= 0 then
@@ -183,7 +195,10 @@ local function add_virt_cur(ns)
 end
 
 -- Get pattern from input for hint and preview
-local function get_input_pattern(prompt, maxchar, opts)
+function M.get_input_pattern(prompt, maxchar, opts)
+  local hint = require'hop.hint'
+  local jump_target = require'hop.jump_target'
+
   local hs = {}
   if opts then
     hs = create_hint_state(opts)
@@ -273,9 +288,12 @@ function M.move_cursor_to(w, line, column, hint_offset, direction)
   end
 
   if hint_offset ~= nil and not (hint_offset == 0) then
-    column = column + hint_offset
+    -- Add `hint_offset` based on `charidx`.
     local buf_line = vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(w), line - 1, line, false)[1]
-    column = vim.fn.byteidx(buf_line, column)
+    -- Since `charidx` returns -1 when `column` is the tail, subtract 1 and add 1 to the return value to get
+    -- the correct value.
+    local char_idx = vim.fn.charidx(buf_line, column - 1) + 1 + hint_offset
+    column = vim.fn.byteidx(buf_line, char_idx)
   end
 
   -- update the jump list
@@ -295,6 +313,8 @@ function M.hint_with(jump_target_gtr, opts)
 end
 
 function M.hint_with_callback(jump_target_gtr, opts, callback)
+  local hint = require'hop.hint'
+
   if opts == nil then
     opts = override_opts(opts)
   end
@@ -311,15 +331,22 @@ function M.hint_with_callback(jump_target_gtr, opts, callback)
   local generated = jump_target_gtr(opts)
   local jump_target_count = #generated.jump_targets
 
-  local h = nil
+  local target_idx = nil
   if jump_target_count == 0 then
-    eprintln(' -> there’s no such thing we can see…', opts.teasing)
-    clear_namespace(hs.buf_list, hs.hl_ns)
-    clear_namespace(hs.buf_list, hs.dim_ns)
-    return
+    target_idx = 0
+  elseif vim.v.count > 0 then
+    target_idx = vim.v.count
   elseif jump_target_count == 1 and opts.jump_on_sole_occurrence then
-    local jt = generated.jump_targets[1]
-    callback(jt)
+    target_idx = 1
+  end
+
+  if target_idx ~= nil then
+    local jt = generated.jump_targets[target_idx]
+    if jt then
+      callback(jt)
+    else
+      eprintln(' -> there’s no such thing we can see…', opts.teasing)
+    end
 
     clear_namespace(hs.buf_list, hs.hl_ns)
     clear_namespace(hs.buf_list, hs.dim_ns)
@@ -335,6 +362,7 @@ function M.hint_with_callback(jump_target_gtr, opts, callback)
   hint.set_hint_extmarks(hs.hl_ns, hs.hints, opts)
   vim.cmd('redraw')
 
+  local h = nil
   while h == nil do
     local ok, key = pcall(vim.fn.getchar)
     if not ok then
@@ -376,6 +404,8 @@ end
 -- Refining hints allows to advance the state machine by one step. If a terminal step is reached, this function jumps to
 -- the location. Otherwise, it stores the new state machine.
 function M.refine_hints(key, hint_state, callback, opts)
+  local hint = require'hop.hint'
+
   local h, hints = hint.reduce_hints(hint_state.hints, key)
 
   if h == nil then
@@ -404,14 +434,24 @@ function M.quit(hint_state)
   clear_namespace(hint_state.buf_list, hint_state.hl_ns)
   clear_namespace(hint_state.buf_list, hint_state.dim_ns)
 
+  -- Restore users cursorline setting
+  if hint_state.cursorline == true then
+    vim.api.nvim_win_set_option(vim.api.nvim_get_current_win(), 'cursorline', true)
+  end
+
   for _, buf in ipairs(hint_state.buf_list) do
-    if vim.fn.has("nvim-0.6") == 1 then
+    -- sometimes, buffers might be unloaded; that’s the case with floats for instance (we can invoke Hop from them but
+    -- then they disappear); we need to check whether the buffer is still valid before trying to do anything else with
+    -- it
+    if vim.api.nvim_buf_is_valid(buf) and vim.fn.has("nvim-0.6") == 1 then
       for ns in pairs(hint_state.diag_ns) do vim.diagnostic.show(ns, buf) end
     end
   end
 end
 
 function M.hint_words(opts)
+  local jump_target = require'hop.jump_target'
+
   opts = override_opts(opts)
 
   local generator
@@ -428,6 +468,8 @@ function M.hint_words(opts)
 end
 
 function M.hint_patterns(opts, pattern)
+  local jump_target = require'hop.jump_target'
+
   opts = override_opts(opts)
 
   -- The pattern to search is either retrieved from the (optional) argument
@@ -438,7 +480,7 @@ function M.hint_patterns(opts, pattern)
   else
     vim.cmd('redraw')
     vim.fn.inputsave()
-    pat = get_input_pattern('Hop pattern: ', nil, opts)
+    pat = M.get_input_pattern('Hop pattern: ', nil, opts)
     vim.fn.inputrestore()
     if not pat then return end
   end
@@ -462,9 +504,11 @@ function M.hint_patterns(opts, pattern)
 end
 
 function M.hint_char1(opts)
+  local jump_target = require'hop.jump_target'
+
   opts = override_opts(opts)
 
-  local c = get_input_pattern('Hop 1 char: ', 1)
+  local c = M.get_input_pattern('Hop 1 char: ', 1)
   if not c then
     return
   end
@@ -483,9 +527,11 @@ function M.hint_char1(opts)
 end
 
 function M.hint_char2(opts)
+  local jump_target = require'hop.jump_target'
+
   opts = override_opts(opts)
 
-  local c = get_input_pattern('Hop 2 char: ', 2)
+  local c = M.get_input_pattern('Hop 2 char: ', 2)
   if not c then
     return
   end
@@ -504,6 +550,8 @@ function M.hint_char2(opts)
 end
 
 function M.hint_lines(opts)
+  local jump_target = require'hop.jump_target'
+
   opts = override_opts(opts)
 
   local generator
@@ -514,15 +562,18 @@ function M.hint_lines(opts)
   end
 
   M.hint_with(
-    generator(jump_target.regex_by_line_start()),
+    generator(jump_target.by_line_start()),
     opts
   )
 end
 
 function M.hint_vertical(opts)
+  local hint = require'hop.hint'
+  local jump_target = require'hop.jump_target'
+
   opts = override_opts(opts)
   -- only makes sense as end position given movement goal.
-  opts.hint_position = require'hop.hint'.HintPosition.END
+  opts.hint_position = hint.HintPosition.END
 
   local generator
   if opts.current_line_only then
@@ -540,6 +591,8 @@ end
 
 
 function M.hint_lines_skip_whitespace(opts)
+  local jump_target = require'hop.jump_target'
+
   opts = override_opts(opts)
 
   local generator
@@ -556,6 +609,8 @@ function M.hint_lines_skip_whitespace(opts)
 end
 
 function M.hint_anywhere(opts)
+  local jump_target = require'hop.jump_target'
+
   opts = override_opts(opts)
 
   local generator
@@ -574,7 +629,7 @@ end
 -- Setup user settings.
 function M.setup(opts)
   -- Look up keys in user-defined table with fallback to defaults.
-  M.opts = setmetatable(opts or {}, {__index = defaults})
+  M.opts = setmetatable(opts or {}, {__index = require'hop.defaults'})
   M.initialized = true
 
   -- Insert the highlights and register the autocommand if asked to.

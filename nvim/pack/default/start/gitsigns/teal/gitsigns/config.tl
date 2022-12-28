@@ -33,6 +33,7 @@ local record M
       internal: boolean
       indent_heuristic: boolean
       vertical: boolean
+      linematch: integer
     end
 
     diff_opts: DiffOpts
@@ -47,9 +48,20 @@ local record M
       keymaps: {string:string}
     end
 
-    type SignsConfig = {string: SignConfig}
+    enum SignType
+      'add'
+      'change'
+      'delete'
+      'topdelete'
+      'changedelete'
+      'untracked'
+    end
+
+    type SignsConfig = {SignType: SignConfig}
 
     signs: SignsConfig
+    _signs_staged: SignsConfig
+    _signs_staged_enable: boolean
 
     count_chars: {string|integer:string}
     signcolumn: boolean
@@ -135,6 +147,7 @@ M.schema = {
       delete       = {hl = 'GitSignsDelete', text = '▁', numhl='GitSignsDeleteNr', linehl='GitSignsDeleteLn' },
       topdelete    = {hl = 'GitSignsDelete', text = '▔', numhl='GitSignsDeleteNr', linehl='GitSignsDeleteLn' },
       changedelete = {hl = 'GitSignsChange', text = '~', numhl='GitSignsChangeNr', linehl='GitSignsChangeLn' },
+      untracked    = {hl = 'GitSignsAdd'   , text = '┆', numhl='GitSignsAddNr'   , linehl='GitSignsAddLn'    },
     },
     description = [[
       Configuration for signs:
@@ -157,6 +170,33 @@ M.schema = {
 
       For example if `GitSignsAdd` is not defined but `GitGutterAdd` is defined,
       then `GitSignsAdd` will be linked to `GitGutterAdd`.
+    ]]
+  },
+
+  _signs_staged = {
+    type = 'table',
+    deep_extend = true,
+    default = {
+      add          = {hl = 'GitSignsStagedAdd'   , text = '┃', numhl='GitSignsStagedAddNr'   , linehl='GitSignsStagedAddLn'    },
+      change       = {hl = 'GitSignsStagedChange', text = '┃', numhl='GitSignsStagedChangeNr', linehl='GitSignsStagedChangeLn' },
+      delete       = {hl = 'GitSignsStagedDelete', text = '▁', numhl='GitSignsStagedDeleteNr', linehl='GitSignsStagedDeleteLn' },
+      topdelete    = {hl = 'GitSignsStagedDelete', text = '▔', numhl='GitSignsStagedDeleteNr', linehl='GitSignsStagedDeleteLn' },
+      changedelete = {hl = 'GitSignsStagedChange', text = '~', numhl='GitSignsStagedChangeNr', linehl='GitSignsStagedChangeLn' },
+    },
+    description = [[
+      Configuration for signs of staged hunks.
+
+      See |gitsigns-config-signs|.
+    ]]
+  },
+
+  _signs_staged_enable = {
+    type = 'boolean',
+    default = false,
+    description = [[
+      Show signs for staged hunks.
+
+      When enabled the signs defined in |git-config-signs_staged|` are used.
     ]]
   },
 
@@ -333,11 +373,12 @@ M.schema = {
     type = 'table',
     deep_extend = true,
     default = function(): {string:any}
-      local r = {
+      local r: M.Config.DiffOpts = {
         algorithm = 'myers',
         internal = false,
         indent_heuristic = false,
-        vertical = true
+        vertical = true,
+        linematch = nil
       }
       for _, o in ipairs(vim.opt.diffopt:get()) do
         if o == 'indent-heuristic' then
@@ -352,7 +393,9 @@ M.schema = {
         elseif o == 'horizontal' then
           r.vertical = false
         elseif vim.startswith(o, 'algorithm:') then
-          r.algorithm = string.sub(o, 11)
+          r.algorithm = string.sub(o, ('algorithm:'):len() + 1)
+        elseif vim.startswith(o, 'linematch:') then
+          r.linematch = tonumber(string.sub(o, ('linematch:'):len() + 1)) as integer
         end
       end
       return r
@@ -379,6 +422,9 @@ M.schema = {
             diff library.
         • vertical: boolean
             Start diff mode with vertical splits.
+        • linematch: integer
+            Enable second-stage diff on hunks to align lines.
+            Requires `internal=true`.
     ]]
   },
 

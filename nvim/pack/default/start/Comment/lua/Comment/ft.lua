@@ -1,19 +1,25 @@
 ---@mod comment.ft Language/Filetype detection
 ---@brief [[
 ---This module is the core of filetype and commentstring detection and uses the
---- |lua-treesitter| APIs to accurately detect filetype and gives the corresponding
+---|lua-treesitter| APIs to accurately detect filetype and gives the corresponding
 ---commentstring, stored inside the plugin, for the filetype/langauge.
+---
+---Compound (dot-separated) filetypes are also supported i.e. 'ansible.yaml',
+---'ios.swift' etc. The commentstring resolution will be done from left to right.
+---For example, If the filetype is 'ansible.yaml' then 'ansible' commenstring will
+---be used if found otherwise it'll fallback to 'yaml'. Read `:h 'filetype'`
 ---@brief ]]
 
 local A = vim.api
 
----Common commentstring shared b/w mutliple languages
+---Common commentstring shared b/w multiple languages
 local M = {
     cxx_l = '//%s',
     cxx_b = '/*%s*/',
     dbl_hash = '##%s',
     dash = '--%s',
     dash_bracket = '--[[%s]]',
+    handlebars = '{{!--%s--}}',
     hash = '#%s',
     hash_bracket = '#[[%s]]',
     haskell_b = '{-%s-}',
@@ -22,13 +28,15 @@ local M = {
     latex = '%%s',
     lisp_l = ';;%s',
     lisp_b = '#|%s|#',
+    twig = '{#%s#}',
 }
 
----Lang table that contains commentstring (linewise/blockwise) for mutliple filetypes
+---Lang table that contains commentstring (linewise/blockwise) for multiple filetypes
 ---Structure = { filetype = { linewise, blockwise } }
 ---@type table<string,string[]>
-local L = {
+local L = setmetatable({
     arduino = { M.cxx_l, M.cxx_b },
+    applescript = { M.hash },
     bash = { M.hash },
     bib = { M.latex },
     c = { M.cxx_l, M.cxx_b },
@@ -40,6 +48,7 @@ local L = {
     cs = { M.cxx_l, M.cxx_b },
     css = { M.cxx_b, M.cxx_b },
     cuda = { M.cxx_l, M.cxx_b },
+    dart = { M.cxx_l, M.cxx_b },
     dhall = { M.dash, M.haskell_b },
     dot = { M.cxx_l, M.cxx_b },
     eelixir = { M.html, M.html },
@@ -58,6 +67,7 @@ local L = {
     go = { M.cxx_l, M.cxx_b },
     graphql = { M.hash },
     groovy = { M.cxx_l, M.cxx_b },
+    handlebars = { M.handlebars, M.handlebars },
     haskell = { M.dash, M.haskell_b },
     heex = { M.html, M.html },
     html = { M.html, M.html },
@@ -72,12 +82,15 @@ local L = {
     julia = { M.hash, '#=%s=#' },
     kotlin = { M.cxx_l, M.cxx_b },
     lidris = { M.dash, M.haskell_b },
+    lilypond = { M.latex, '%{%s%}' },
     lisp = { M.lisp_l, M.lisp_b },
     lua = { M.dash, M.dash_bracket },
+    luau = { M.dash, M.dash_bracket },
     markdown = { M.html, M.html },
     make = { M.hash },
     mbsyncrc = { M.dbl_hash },
     meson = { M.hash },
+    nim = { M.hash, '#[%s]#' },
     nix = { M.hash, M.cxx_b },
     nu = { M.hash },
     ocaml = { M.fsharp_b, M.fsharp_b },
@@ -88,6 +101,7 @@ local L = {
     prisma = { M.cxx_l },
     r = { M.hash }, -- R doesn't have block comments
     readline = { M.hash },
+    rego = { M.hash },
     ruby = { M.hash },
     rust = { M.cxx_l, M.cxx_b },
     scala = { M.cxx_l, M.cxx_b },
@@ -105,6 +119,7 @@ local L = {
     template = { M.dbl_hash },
     tmux = { M.hash },
     toml = { M.hash },
+    twig = { M.twig, M.twig },
     typescript = { M.cxx_l, M.cxx_b },
     typescriptreact = { M.cxx_l, M.cxx_b },
     vim = { '"%s' },
@@ -113,7 +128,16 @@ local L = {
     xdefaults = { '!%s' },
     yaml = { M.hash },
     zig = { M.cxx_l }, -- Zig doesn't have block comments
-}
+}, {
+    -- Support for compound filetype i.e. 'ios.swift', 'ansible.yaml' etc.
+    __index = function(this, k)
+        local base, fallback = string.match(k, '^(.-)%.(.*)')
+        if not (base or fallback) then
+            return nil
+        end
+        return this[base] or this[fallback]
+    end,
+})
 
 local ft = {}
 
@@ -142,26 +166,35 @@ function ft.set(lang, val)
     return ft
 end
 
----Get line/block commentstring for a given filetype
+---Get line/block/both commentstring(s) for a given filetype
 ---@param lang string Filetype/Language of the buffer
----@param ctype integer See |comment.utils.ctype|
----@return string _ Commentstring
+---@param ctype? integer See |comment.utils.ctype|. If given `nil`, it'll
+---return a copy of { line, block } commentstring.
+---@return nil|string|string[] #Returns stored commentstring, if {lang} is not
+---recognized then returns native |commentstring|
 ---@usage [[
 ---local ft = require('Comment.ft')
 ---local U = require('Comment.utils')
----print(ft.get(vim.bo.filetype, U.ctype.linewise))
+---
+----- 1. Primary filetype
+---ft.get('rust', U.ctype.linewise) -- `//%s`
+---ft.get('rust') -- `{ '//%s', '/*%s*/' }`
+---
+----- 2. Compound filetype
+----- NOTE: This will return `yaml` commenstring(s),
+-----       as `ansible` commentstring is not found.
+---ft.get('ansible.yaml', U.ctype.linewise) -- `#%s`
+---ft.get('ansible.yaml') -- { '#%s' }
 ---@usage ]]
 function ft.get(lang, ctype)
-    local l = L[lang]
-    return l and l[ctype]
-end
-
----Get a copy of commentstring(s) for a given filetype
----@param lang string Filetype/Language of the buffer
----@return string[] _ Tuple of { line, block } commentstring
----@usage `require('Comment.ft').lang(vim.bo.filetype)`
-function ft.lang(lang)
-    return vim.deepcopy(L[lang])
+    local tuple = L[lang]
+    if not tuple then
+        return vim.bo.commentstring
+    end
+    if not ctype then
+        return vim.deepcopy(tuple)
+    end
+    return tuple[ctype]
 end
 
 ---Get a language tree for a given range by walking the parse tree recursively.
@@ -171,9 +204,9 @@ end
 ---
 ---NOTE: This ignores `tree-sitter-comment` parser, if installed.
 ---@param tree userdata Parse tree to be walked
----@param range integer[] Range to check for
+---@param range integer[] Range to check
 ---{start_row, start_col, end_row, end_col}
----@return userdata _ Returns a |treesitter-languagetree|
+---@return userdata #Returns a |treesitter-languagetree|
 ---@see treesitter-languagetree
 ---@see lua-treesitter-core
 ---@usage [[
@@ -194,15 +227,14 @@ end
 
 ---Calculate commentstring with the power of treesitter
 ---@param ctx CommentCtx
----@return string _ Commentstring
+---@return nil|string #Commentstring
 ---@see comment.utils.CommentCtx
 function ft.calculate(ctx)
     local buf = A.nvim_get_current_buf()
     local ok, parser = pcall(vim.treesitter.get_parser, buf)
-    local default = ft.get(A.nvim_buf_get_option(buf, 'filetype'), ctx.ctype)
 
     if not ok then
-        return default
+        return ft.get(vim.bo.filetype, ctx.ctype) --[[ @as string ]]
     end
 
     local lang = ft.contains(parser, {
@@ -212,7 +244,7 @@ function ft.calculate(ctx)
         ctx.range.ecol,
     }):lang()
 
-    return ft.get(lang, ctx.ctype) or default
+    return ft.get(lang, ctx.ctype) or ft.get(vim.bo.filetype, ctx.ctype) --[[ @as string ]]
 end
 
 ---@export ft

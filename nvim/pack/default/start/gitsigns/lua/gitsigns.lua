@@ -5,7 +5,6 @@ local scheduler = require('gitsigns.async').scheduler
 local Status = require("gitsigns.status")
 local git = require('gitsigns.git')
 local manager = require('gitsigns.manager')
-local nvim = require('gitsigns.nvim')
 local util = require('gitsigns.util')
 local hl = require('gitsigns.highlight')
 
@@ -40,7 +39,7 @@ local M = {}
 
 
 
-M.detach_all = function()
+function M.detach_all()
    for k, _ in pairs(cache) do
       M.detach(k)
    end
@@ -51,7 +50,7 @@ end
 
 
 
-M.detach = function(bufnr, _keep_signs)
+function M.detach(bufnr, _keep_signs)
 
 
 
@@ -216,13 +215,16 @@ local attach_throttled = throttle_by_id(function(cbuf, aucmd)
       return
    end
 
-   if api.nvim_buf_get_option(cbuf, 'buftype') ~= '' then
+   if vim.bo[cbuf].buftype ~= '' then
       dprint('Non-normal buffer')
       return
    end
 
    local file, commit = get_buf_path(cbuf)
    local encoding = vim.bo[cbuf].fileencoding
+   if encoding == '' then
+      encoding = 'utf-8'
+   end
 
    local file_dir = util.dirname(file)
 
@@ -289,6 +291,11 @@ local attach_throttled = throttle_by_id(function(cbuf, aucmd)
       git_obj = git_obj,
    })
 
+   if not api.nvim_buf_is_loaded(cbuf) then
+      dprint('Un-loaded buffer')
+      return
+   end
+
 
 
    api.nvim_buf_attach(cbuf, false, {
@@ -316,85 +323,17 @@ M.attach = void(function(bufnr, _trigger)
    attach_throttled(bufnr or current_buf(), _trigger)
 end)
 
-local M0 = M
-
-local function complete(arglead, line)
-   local n = #vim.split(line, '%s+')
-
-   local matches = {}
-   if n == 2 then
-      local actions = require('gitsigns.actions')
-      for _, m in ipairs({ actions, M0 }) do
-         for func, _ in pairs(m) do
-            if vim.startswith(func, '_') then
-
-            elseif vim.startswith(func, arglead) then
-               table.insert(matches, func)
-            end
-         end
-      end
-   end
-   return matches
-end
-
-
-
-
-
-
-
-
-local function parse_to_lua(a)
-   if tonumber(a) then
-      return tonumber(a)
-   elseif a == 'false' or a == 'true' then
-      return a == 'true'
-   elseif a == 'nil' then
-      return nil
-   end
-   return a
-end
-
-local run_cmd_func = void(function(params)
-   local pos_args_raw, named_args_raw = require('gitsigns.argparse').parse_args(params.args)
-
-   local func = pos_args_raw[1]
-
-   if not func then
-      func = async.wrap(vim.ui.select, 3)(complete('', 'Gitsigns '), {})
-   end
-
-   local pos_args = vim.tbl_map(parse_to_lua, vim.list_slice(pos_args_raw, 2))
-   local named_args = vim.tbl_map(parse_to_lua, named_args_raw)
-
-   local actions = require('gitsigns.actions')
-   local actions0 = actions
-
-   local cmd_func = actions.get_cmd_func(func)
-   if cmd_func then
-
-
-      cmd_func(pos_args, named_args, params)
-      return
-   end
-
-   if type(actions0[func]) == 'function' then
-      actions0[func](unpack(pos_args), named_args)
-      return
-   end
-
-   if type(M0[func]) == 'function' then
-
-      M0[func](unpack(pos_args))
-      return
-   end
-
-   error(string.format('%s is not a valid function or action', func))
-end)
-
-local function setup_command()
-   nvim.command('Gitsigns', run_cmd_func,
-   { force = true, nargs = '*', range = true, complete = complete })
+local function setup_cli()
+   local funcs = M
+   api.nvim_create_user_command('Gitsigns', function(params)
+      require('gitsigns.cli').run(funcs, params)
+   end, {
+      force = true,
+      nargs = '*',
+      range = true,
+      complete = function(arglead, line)
+         return require('gitsigns.cli').complete(funcs, arglead, line)
+      end, })
 end
 
 local function wrap_func(fn, ...)
@@ -413,14 +352,14 @@ local function autocmd(event, opts)
       opts0 = opts
    end
    opts0.group = 'gitsigns'
-   nvim.autocmd(event, opts0)
+   api.nvim_create_autocmd(event, opts0)
 end
 
 local function on_or_after_vimenter(fn)
    if vim.v.vim_did_enter == 1 then
       fn()
    else
-      nvim.autocmd('VimEnter', {
+      api.nvim_create_autocmd('VimEnter', {
          callback = wrap_func(fn),
          once = true,
       })
@@ -453,7 +392,7 @@ M.setup = void(function(cfg)
 
    if config.debug_mode then
       for nm, f in pairs(gs_debug.add_debug_functions(cache)) do
-         M0[nm] = f
+         (M)[nm] = f
       end
    end
 
@@ -466,7 +405,7 @@ M.setup = void(function(cfg)
 
    on_or_after_vimenter(hl.setup_highlights)
 
-   setup_command()
+   setup_cli()
 
    git.enable_yadm = config.yadm.enable
    git.set_version(config._git_version)
@@ -481,7 +420,7 @@ M.setup = void(function(cfg)
       end
    end
 
-   nvim.augroup('gitsigns')
+   api.nvim_create_augroup('gitsigns', {})
 
    autocmd('VimLeavePre', M.detach_all)
    autocmd('ColorScheme', hl.setup_highlights)

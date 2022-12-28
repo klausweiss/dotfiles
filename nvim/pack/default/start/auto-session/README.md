@@ -15,18 +15,18 @@ Auto Session takes advantage of Neovim's existing session management capabilitie
 :warning: Please note that if there are errors in your config, restoring the session might fail, if that happens, auto session will then disable auto saving for the current session.
 Manually saving a session can still be done by calling `:SaveSession`.
 
-AutoSession now tracks `cwd` changes!  
-By default, handling is as follows:  
-  DirChangedPre (before the cwd actually changes):  
-    - Save the current session  
-    - Clear all buffers `%bd!`. This guarantees buffers don't bleed to the  
-      next session.  
-    - Clear jumps. Also done so there is no bleading between sessions.  
-    - Run the `pre_cwd_changed_hook`  
-  DirChanged (after the cwd has changed):  
-    - Restore session using new cwd  
-    - Run the `post_cwd_changed_hook`  
-    
+AutoSession now tracks `cwd` changes!
+By default, handling is as follows:
+  DirChangedPre (before the cwd actually changes):
+    - Save the current session
+    - Clear all buffers `%bd!`. This guarantees buffers don't bleed to the
+      next session.
+    - Clear jumps. Also done so there is no bleading between sessions.
+    - Run the `pre_cwd_changed_hook`
+  DirChanged (after the cwd has changed):
+    - Restore session using new cwd
+    - Run the `post_cwd_changed_hook`
+
 Now when the user changes the cwd with `:cd some/new/dir` auto-session handles it gracefully, saving the current session so there aren't losses and loading the session for the upcoming cwd if it exists.
 
 Hooks are available for custom actions _before_ and _after_ the `cwd` is changed. These hooks can be configured through the `cwd_change_handling` key as follows:
@@ -134,7 +134,7 @@ require('lualine').setup{
 
 ```lua
 require("auto-session").setup {
-  bypass_session_save_file_types = nil, -- boolean: Bypass auto save when only buffer open is one of these file types
+  bypass_session_save_file_types = nil, -- table: Bypass auto save when only buffer open is one of these file types
   cwd_change_handling = { -- table: Config for handling the DirChangePre and DirChanged autocmds, can be set to nil to disable altogether
     restore_upcoming_session = true, -- boolean: restore session for upcoming cwd on cwd change
     pre_cwd_changed_hook = nil, -- function: This is called after auto_session code runs for the `DirChangedPre` autocmd
@@ -150,7 +150,7 @@ For a better experience with the plugin overall using this config for `sessionop
 **Lua**
 
 ```lua
-vim.o.sessionoptions="blank,buffers,curdir,folds,help,tabpages,winsize,winpos,terminal"
+vim.o.sessionoptions="blank,buffers,curdir,folds,help,tabpages,winsize,winpos,terminal,localoptions"
 ```
 
 **VimL**
@@ -201,6 +201,7 @@ You can use the `Autosession {delete|search}` command to open a picker using `vi
 Command hooks exist in the format: {hook_name}
 
 - {pre*save}: executes \_before* a session is saved
+- {save*extra}: execute \_after* a session is saved, return string will save to `*x.vim`, reference `:help mks`
 - {post*save}: executes \_after* a session is saved
 - {pre*restore}: executs \_before* a session is restored
 - {post*restore}: executs \_after* a session is restored
@@ -216,6 +217,11 @@ let g:auto_session_{hook_name}_cmds = ["{hook_command1}", "{hook_command2}"]
 lua << EOF
 require('auto-session').setup {
     {hook_name}_cmds = {"{hook_command1}", "{hook_command2}"}
+    save_extra_cmds = {
+        function()
+            return [[echo "hello world"]]
+        end
+    }
 }
 EOF
 ```
@@ -275,12 +281,10 @@ See installation and usage instructions in the plugin's page.
 
 # Compatibility
 
-Neovim > 0.5
+Neovim > 0.7
 
 Tested with:
 
 ```
-NVIM v0.5.0-dev+a1ec36f
-Build type: Release
-LuaJIT 2.1.0-beta3
+NVIM v0.7.0
 ```

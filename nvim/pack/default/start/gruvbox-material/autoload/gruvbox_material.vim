@@ -11,6 +11,7 @@ function! gruvbox_material#get_configuration() "{{{
         \ 'background': get(g:, 'gruvbox_material_background', 'medium'),
         \ 'foreground': get(g:, 'gruvbox_material_foreground', get(g:, 'gruvbox_material_palette', 'material')),
         \ 'transparent_background': get(g:, 'gruvbox_material_transparent_background', 0),
+        \ 'dim_inactive_windows': get(g:, 'gruvbox_material_dim_inactive_windows', 0),
         \ 'disable_italic_comment': get(g:, 'gruvbox_material_disable_italic_comment', 0),
         \ 'enable_bold': get(g:, 'gruvbox_material_enable_bold', 0),
         \ 'enable_italic': get(g:, 'gruvbox_material_enable_italic', 0),
@@ -36,6 +37,7 @@ function! gruvbox_material#get_palette(background, foreground, colors_override) 
   if a:background ==# 'hard' "{{{
     if &background ==# 'dark'
       let palette1 = {
+            \ 'bg_dim':           ['#141617',   '232'],
             \ 'bg0':              ['#1d2021',   '234'],
             \ 'bg1':              ['#282828',   '235'],
             \ 'bg2':              ['#282828',   '235'],
@@ -56,6 +58,7 @@ function! gruvbox_material#get_palette(background, foreground, colors_override) 
             \ }
     else
       let palette1 = {
+            \ 'bg_dim':           ['#f3eac7',   '229'],
             \ 'bg0':              ['#f9f5d7',   '230'],
             \ 'bg1':              ['#f5edca',   '229'],
             \ 'bg2':              ['#f3eac7',   '229'],
@@ -78,6 +81,7 @@ function! gruvbox_material#get_palette(background, foreground, colors_override) 
   elseif a:background ==# 'medium' "{{{
     if &background ==# 'dark'
       let palette1 = {
+            \ 'bg_dim':           ['#1b1b1b',   '233'],
             \ 'bg0':              ['#282828',   '235'],
             \ 'bg1':              ['#32302f',   '236'],
             \ 'bg2':              ['#32302f',   '236'],
@@ -98,6 +102,7 @@ function! gruvbox_material#get_palette(background, foreground, colors_override) 
             \ }
     else
       let palette1 = {
+            \ 'bg_dim':           ['#f2e5bc',   '228'],
             \ 'bg0':              ['#fbf1c7',   '229'],
             \ 'bg1':              ['#f4e8be',   '228'],
             \ 'bg2':              ['#f2e5bc',   '228'],
@@ -120,6 +125,7 @@ function! gruvbox_material#get_palette(background, foreground, colors_override) 
   else "{{{
     if &background ==# 'dark'
       let palette1 = {
+            \ 'bg_dim':           ['#252423',   '233'],
             \ 'bg0':              ['#32302f',   '236'],
             \ 'bg1':              ['#3c3836',   '237'],
             \ 'bg2':              ['#3c3836',   '237'],
@@ -140,6 +146,7 @@ function! gruvbox_material#get_palette(background, foreground, colors_override) 
             \ }
     else
       let palette1 = {
+            \ 'bg_dim':           ['#ebdbb2',   '223'],
             \ 'bg0':              ['#f2e5bc',   '228'],
             \ 'bg1':              ['#eddeb5',   '223'],
             \ 'bg2':              ['#ebdbb2',   '228'],

@@ -73,6 +73,11 @@ describe('gitsigns', function()
   end)
 
   it('gitdir watcher works on a fresh repo', function()
+    local nvim_ver = exec_lua('return vim.version().minor')
+    if nvim_ver == 8 then
+      -- v0.8.0 has some regression that's fixed it v0.9.0 dev
+      pending()
+    end
     screen:try_resize(20,6)
     setup_test_repo{no_add=true}
     -- Don't set this too low, or else the test will lock up
@@ -95,7 +100,7 @@ describe('gitsigns', function()
 
     check {
       status = {head='', added=18, changed=0, removed=0},
-      signs = {added=8}
+      signs = {untracked=8}
     }
 
     git{"add", test_file}
@@ -486,7 +491,7 @@ describe('gitsigns', function()
 
         check {
           status = {head='master', added=1, changed=0, removed=0},
-          signs  = {added=1}
+          signs  = {untracked=1}
         }
 
       end)
@@ -502,7 +507,7 @@ describe('gitsigns', function()
 
         check {
           status = {head='master', added=1, changed=0, removed=0},
-          signs  = {added=1}
+          signs  = {untracked=1}
         }
 
         feed('mhs') -- Stage the file (add file to index)
@@ -524,7 +529,7 @@ describe('gitsigns', function()
 
         check {
           status = {head='master', added=1, changed=0, removed=0},
-          signs  = {added=1}
+          signs  = {untracked=1}
         }
 
         git{"add", newfile}
@@ -538,7 +543,7 @@ describe('gitsigns', function()
 
         check {
           status = {head='master', added=1, changed=0, removed=0},
-          signs  = {added=1}
+          signs  = {untracked=1}
         }
 
       end)
@@ -623,7 +628,7 @@ describe('gitsigns', function()
 
         check {
           status = {head='master', added=3, removed=0, changed=0},
-          signs = {added=3}
+          signs = {untracked=3}
         }
 
         git{'add', spacefile}

@@ -56,6 +56,7 @@ The name of each command should be descriptive enough for you to use it.
     "                          :BufferWipeout<CR>
     " Close commands
     "                          :BufferCloseAllButCurrent<CR>
+    "                          :BufferCloseAllButVisible<CR>
     "                          :BufferCloseAllButPinned<CR>
     "                          :BufferCloseAllButCurrentOrPinned<CR>
     "                          :BufferCloseBuffersLeft<CR>
@@ -283,6 +284,14 @@ Controls if icons are rendered on each tab.
     let g:bufferline.maximum_padding = 4
 <
 
+                                                *g:bufferline.minimum_padding*
+`g:bufferline.minimum_padding`  int  (default 1)
+
+  Sets the minimum padding width with which to surround each tab.
+>
+    let g:bufferline.minimum_padding = 1
+<
+
                                                  *g:bufferline.maximum_length*
 `g:bufferline.maximum_length`  int  (default 30)
 
@@ -299,6 +308,60 @@ Controls if icons are rendered on each tab.
 >
     let g:bufferline.no_name_title = v:null
 <
+
+                                                           *g:bufferline.hide*
+`g:bufferline.hide`  table  (default |v:false| for all)
+
+  Sets which elements are hidden in the bufferline. Possible options are:
+
+  - `alternate`, which controls the visibility of the alternate buffer
+    (`g:bufferline.highlight.alternate` must be |v:true|);
+  - `current`, which controls the visibility of the current buffer;
+  - `extensions`, which controls the visibility of file extensions;
+  - `inactive`, which controls the visibility of the inactive buffers; and
+  - `visible`, which controls the visibility of visible buffers
+    (`g:bufferline.highlight.visible` must be |v:true|).
+>
+    let g:bufferline.hide = {'current': v:false, 'inactive': v:true}
+<
+
+                                                    *g:bufferline.diagnostics*
+`g:bufferline.diagnostics`  list
+
+  Default: >
+  {
+    [vim.diagnostic.severity.ERROR] = {enabled = false, icon = 'Ⓧ '},
+    [vim.diagnostic.severity.HINT] = {enabled = false, icon = '💡'},
+    [vim.diagnostic.severity.INFO] = {enabled = false, icon = 'ⓘ '},
+    [vim.diagnostic.severity.WARN] = {enabled = false, icon = '⚠️ '},
+  }
+<
+
+  Enables or disables showing diagnostics in the bufferline. You can use
+  |vim.diagnostic.severity| or a list (e.g.
+  `{{enabled = true}, {enabled = true},` …`}`) in the order of
+  ERROR/WARN/INFO/HINT.
+
+  - `enabled`, whether this diagnostics of this severity are shown in the
+    bufferline.
+  - `icon`, which controls what icon accompanies the number of diagnostics.
+
+                                            *g:bufferline.highlight_alternate*
+`g:bufferline.highlight_alternate`  boolean  (default |v:false|)
+
+  Enables highlighting of alternate buffers.
+>
+    let g:bufferline.highlight_alternate = v:true
+<
+
+                                              *g:bufferline.highlight_visible*
+`g:bufferline.highlight_visible`  boolean  (default |v:true|)
+
+  Enables highlighting of visible buffers.
+>
+    let g:bufferline.highlight_visible = v:true
+<
+
 ==============================================================================
 5. Integrations                                          *barbar-integrations*
 
@@ -309,12 +372,12 @@ bind open and close commands to (e.g. nvim-tree):
 >
     local tree = {}
     tree.open = function ()
-       require'bufferline.state'.set_offset(31, 'FileTree')
+       require'bufferline.api'.set_offset(31, 'FileTree')
        require'nvim-tree'.find_file(true)
     end
 
     tree.close = function ()
-       require'bufferline.state'.set_offset(0)
+       require'bufferline.api'.set_offset(0)
        require'nvim-tree'.close()
     end
 

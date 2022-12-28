@@ -56,7 +56,7 @@ end
 
 git.commits = function(opts)
   opts.entry_maker = vim.F.if_nil(opts.entry_maker, make_entry.gen_from_git_commits(opts))
-  local git_command = vim.F.if_nil(opts.git_command, { "git", "log", "--pretty=oneline", "--abbrev-commit", "--", "." })
+  local git_command = vim.F.if_nil(opts.git_command, { "git", "log", "--graph", "--oneline", "--decorate", "--", "." })
 
   pickers
     .new(opts, {
@@ -71,12 +71,9 @@ git.commits = function(opts)
       sorter = conf.file_sorter(opts),
       attach_mappings = function(_, map)
         actions.select_default:replace(actions.git_checkout)
-        map("i", "<c-r>m", actions.git_reset_mixed)
-        map("n", "<c-r>m", actions.git_reset_mixed)
-        map("i", "<c-r>s", actions.git_reset_soft)
-        map("n", "<c-r>s", actions.git_reset_soft)
-        map("i", "<c-r>h", actions.git_reset_hard)
-        map("n", "<c-r>h", actions.git_reset_hard)
+        map({ "i", "n" }, "<c-r>m", actions.git_reset_mixed)
+        map({ "i", "n" }, "<c-r>s", actions.git_reset_soft)
+        map({ "i", "n" }, "<c-r>h", actions.git_reset_hard)
         return true
       end,
     })
@@ -118,8 +115,7 @@ git.bcommits = function(opts)
   opts.current_line = (opts.current_file == nil) and get_current_buf_line(opts.winnr) or nil
   opts.current_file = vim.F.if_nil(opts.current_file, vim.api.nvim_buf_get_name(opts.bufnr))
   opts.entry_maker = vim.F.if_nil(opts.entry_maker, make_entry.gen_from_git_commits(opts))
-  local git_command =
-    vim.F.if_nil(opts.git_command, { "git", "log", "--pretty=oneline", "--abbrev-commit", "--follow" })
+  local git_command = vim.F.if_nil(opts.git_command, { "git", "log", "--graph", "--oneline", "--decorate", "--follow" })
 
   pickers
     .new(opts, {
@@ -203,8 +199,10 @@ git.branches = function(opts)
     .. "%(authorname)"
     .. "%(upstream:lstrip=2)"
     .. "%(committerdate:format-local:%Y/%m/%d %H:%M:%S)"
-  local output =
-    utils.get_os_command_output({ "git", "for-each-ref", "--perl", "--format", format, opts.pattern }, opts.cwd)
+  local output = utils.get_os_command_output(
+    { "git", "for-each-ref", "--perl", "--format", format, "--sort", "-authordate", opts.pattern },
+    opts.cwd
+  )
 
   local results = {}
   local widths = {
@@ -293,23 +291,12 @@ git.branches = function(opts)
       sorter = conf.file_sorter(opts),
       attach_mappings = function(_, map)
         actions.select_default:replace(actions.git_checkout)
-        map("i", "<c-t>", actions.git_track_branch)
-        map("n", "<c-t>", actions.git_track_branch)
-
-        map("i", "<c-r>", actions.git_rebase_branch)
-        map("n", "<c-r>", actions.git_rebase_branch)
-
-        map("i", "<c-a>", actions.git_create_branch)
-        map("n", "<c-a>", actions.git_create_branch)
-
-        map("i", "<c-s>", actions.git_switch_branch)
-        map("n", "<c-s>", actions.git_switch_branch)
-
-        map("i", "<c-d>", actions.git_delete_branch)
-        map("n", "<c-d>", actions.git_delete_branch)
-
-        map("i", "<c-y>", actions.git_merge_branch)
-        map("n", "<c-y>", actions.git_merge_branch)
+        map({ "i", "n" }, "<c-t>", actions.git_track_branch)
+        map({ "i", "n" }, "<c-r>", actions.git_rebase_branch)
+        map({ "i", "n" }, "<c-a>", actions.git_create_branch)
+        map({ "i", "n" }, "<c-s>", actions.git_switch_branch)
+        map({ "i", "n" }, "<c-d>", actions.git_delete_branch)
+        map({ "i", "n" }, "<c-y>", actions.git_merge_branch)
         return true
       end,
     })
@@ -368,8 +355,7 @@ git.status = function(opts)
           end,
         }
 
-        map("i", "<tab>", actions.git_staging_toggle)
-        map("n", "<tab>", actions.git_staging_toggle)
+        map({ "i", "n" }, "<tab>", actions.git_staging_toggle)
         return true
       end,
     })

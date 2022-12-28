@@ -2,21 +2,16 @@
 ((identifier) @variable (#set! "priority" 95))
 
 [
-  "const"
   "default"
   "enum"
-  "extern"
-  "inline"
-  "static"
   "struct"
   "typedef"
   "union"
-  "volatile"
   "goto"
-  "register"
 ] @keyword
 
 "sizeof" @keyword.operator
+
 "return" @keyword.return
 
 [
@@ -34,7 +29,6 @@
  "switch"
 ] @conditional
 
-"#define" @constant.macro
 [
   "#if"
   "#ifdef"
@@ -43,7 +37,9 @@
   "#elif"
   "#endif"
   (preproc_directive)
-] @keyword
+] @preproc
+
+"#define" @define
 
 "#include" @include
 
@@ -106,7 +102,7 @@
  (false)
 ] @boolean
 
-(conditional_expression [ "?" ":" ] @conditional)
+(conditional_expression [ "?" ":" ] @conditional.ternary)
 
 (string_literal) @string
 (system_lib_string) @string
@@ -134,12 +130,18 @@
 
 [
  (type_identifier)
- (primitive_type)
  (sized_type_specifier)
  (type_descriptor)
 ] @type
 
-(sizeof_expression value: (parenthesized_expression (identifier) @type))
+(storage_class_specifier) @storageclass
+
+(type_qualifier) @type.qualifier
+
+(type_definition
+  declarator: (type_identifier) @type.definition)
+
+(primitive_type) @type.builtin
 
 ((identifier) @constant
  (#lua-match? @constant "^[A-Z][A-Z0-9_]+$"))
@@ -147,6 +149,9 @@
   name: (identifier) @constant)
 (case_statement
   value: (identifier) @constant)
+
+((identifier) @constant.builtin
+    (#any-of? @constant.builtin "stderr" "stdin" "stdout"))
 
 ;; Preproc def / undef
 (preproc_def
@@ -166,8 +171,7 @@
 (preproc_function_def
   name: (identifier) @function.macro)
 
-(comment) @comment
-(comment) @spell
+(comment) @comment @spell
 
 ;; Parameters
 (parameter_declaration

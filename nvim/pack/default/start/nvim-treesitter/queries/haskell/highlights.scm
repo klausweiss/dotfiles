@@ -38,7 +38,7 @@
   "∀"
 ] @repeat
 
-(pragma) @constant.macro
+(pragma) @preproc
 
 [
   "if"
@@ -81,6 +81,7 @@
   "in"
   "class"
   "instance"
+  "pattern"
   "data"
   "newtype"
   "family"

@@ -7,6 +7,7 @@ local record M
     "change"
     "topdelete"
     "changedelete"
+    "untracked"
   end
 
   record Sign
@@ -15,6 +16,7 @@ local record M
     lnum: integer
   end
 
+  name: string
   group: string
   config: SignsConfig
 

@@ -204,11 +204,13 @@ local function gen_config_doc()
 end
 
 local function parse_func_header(line)
-  local func = line:match('%.([^ ]+)')
+  local func = line:match('%w+%.([%w_]+)')
   if not func then
     error('Unable to parse: '..line)
   end
-  local args_raw = line:match('function%((.*)%)')
+  local args_raw =
+    line:match('function%((.*)%)') or             -- M.name = function(args)
+    line:match('function%s+%w+%.[%w_]+%((.*)%)')  -- function M.name(args)
   local args = {}
   for k in string.gmatch(args_raw, "([%w_]+):") do
     if k:sub(1, 1) ~= '_' then
@@ -293,7 +295,7 @@ end
 
 local function get_marker_text(marker)
   return ({
-    VERSION   = '0.3-dev',
+    VERSION   = '0.6-dev',
     CONFIG    = gen_config_doc,
     FUNCTIONS = gen_functions_doc{
       'teal/gitsigns.tl',

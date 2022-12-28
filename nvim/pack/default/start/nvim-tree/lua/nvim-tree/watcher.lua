@@ -1,4 +1,4 @@
-local uv = vim.loop
+local notify = require "nvim-tree.notify"
 
 local log = require "nvim-tree.log"
 local utils = require "nvim-tree.utils"
@@ -44,27 +44,28 @@ function Event:start()
 
   local rc, _, name
 
-  self._fs_event, _, name = uv.new_fs_event()
+  self._fs_event, _, name = vim.loop.new_fs_event()
   if not self._fs_event then
     self._fs_event = nil
-    utils.notify.warn(string.format("Could not initialize an fs_event watcher for path %s : %s", self._path, name))
+    notify.warn(string.format("Could not initialize an fs_event watcher for path %s : %s", self._path, name))
     return false
   end
 
   local event_cb = vim.schedule_wrap(function(err, filename)
     if err then
-      log.line("watcher", "event_cb for %s fail : %s", self._path, err)
+      log.line("watcher", "event_cb '%s' '%s' FAIL : %s", self._path, filename, err)
+      self:destroy(string.format("File system watcher failed (%s) for path %s, halting watcher.", err, self._path))
     else
       log.line("watcher", "event_cb '%s' '%s'", self._path, filename)
       for _, listener in ipairs(self._listeners) do
-        listener()
+        listener(filename)
       end
     end
   end)
 
   rc, _, name = self._fs_event:start(self._path, FS_EVENT_FLAGS, event_cb)
   if rc ~= 0 then
-    utils.notify.warn(string.format("Could not start the fs_event watcher for path %s : %s", self._path, name))
+    notify.warn(string.format("Could not start the fs_event watcher for path %s : %s", self._path, name))
     return false
   end
 
@@ -82,28 +83,35 @@ function Event:remove(listener)
   end
 end
 
-function Event:destroy()
+function Event:destroy(message)
   log.line("watcher", "Event:destroy '%s'", self._path)
 
   if self._fs_event then
+    if message then
+      notify.warn(message)
+    end
+
     local rc, _, name = self._fs_event:stop()
     if rc ~= 0 then
-      utils.notify.warn(string.format("Could not stop the fs_event watcher for path %s : %s", self._path, name))
+      notify.warn(string.format("Could not stop the fs_event watcher for path %s : %s", self._path, name))
     end
     self._fs_event = nil
   end
 
   Event._events[self._path] = nil
+
+  self.destroyed = true
 end
 
-function Watcher:new(path, callback, data)
-  log.line("watcher", "Watcher:new '%s'", path)
+function Watcher:new(path, files, callback, data)
+  log.line("watcher", "Watcher:new '%s' %s", path, vim.inspect(files))
 
   local w = setmetatable(data, Watcher)
 
   w._event = Event._events[path] or Event:new(path)
   w._listener = nil
   w._path = path
+  w._files = files
   w._callback = callback
 
   if not w._event then
@@ -118,8 +126,10 @@ function Watcher:new(path, callback, data)
 end
 
 function Watcher:start()
-  self._listener = function()
-    self._callback(self)
+  self._listener = function(filename)
+    if not self._files or vim.tbl_contains(self._files, filename) then
+      self._callback(self)
+    end
   end
 
   self._event:add(self._listener)
@@ -131,6 +141,8 @@ function Watcher:destroy()
   self._event:remove(self._listener)
 
   utils.array_remove(Watcher._watchers, self)
+
+  self.destroyed = true
 end
 
 M.Watcher = Watcher

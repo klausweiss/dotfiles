@@ -39,6 +39,25 @@ lsp.references = function(opts)
       return
     end
 
+    if #locations == 1 and opts.jump_type ~= "never" then
+      if opts.jump_type == "tab" then
+        vim.cmd "tabedit"
+      elseif opts.jump_type == "split" then
+        vim.cmd "new"
+      elseif opts.jump_type == "vsplit" then
+        vim.cmd "vnew"
+      end
+      -- jump to location
+      local location = locations[1]
+      local bufnr = opts.bufnr
+      if location.filename then
+        bufnr = vim.uri_to_bufnr(vim.uri_from_fname(location.filename))
+      end
+      vim.api.nvim_win_set_buf(0, bufnr)
+      vim.api.nvim_win_set_cursor(0, { location.lnum, location.col - 1 })
+      return
+    end
+
     pickers
       .new(opts, {
         prompt_title = "LSP References",

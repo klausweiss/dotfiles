@@ -3,8 +3,13 @@
 [
   "@mixin"
   "@media"
-  "@include"
 ] @keyword
+
+"@function" @keyword.function
+
+"@return" @keyword.return
+
+"@include" @include
 
 [
   "@while"
@@ -27,6 +32,10 @@
 
 (mixin_statement (name) @function)
 (mixin_statement (parameters (parameter) @parameter))
+
+(function_statement (name) @function)
+(function_statement (parameters (parameter) @parameter))
+
 (plain_value) @string
 (keyword_query) @function
 (identifier) @variable

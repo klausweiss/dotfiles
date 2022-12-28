@@ -20,7 +20,7 @@ Super fast git decorations implemented purely in lua/teal.
 - Navigation between hunks
 - Stage hunks (with undo)
 - Preview diffs of hunks (with word diff)
-- Customisable (signs, highlights, mappings, etc)
+- Customizable (signs, highlights, mappings, etc)
 - Status bar integration
 - Git blame a specific line using virtual text.
 - Hunk text object
@@ -32,9 +32,12 @@ Super fast git decorations implemented purely in lua/teal.
 
 ## Requirements
 
-- Neovim >= 0.5.0
+- Neovim >= 0.7.0
 
-  Note: If you are running a development version of Neovim (aka `master`), then breakage may occur if your build is behind latest.
+  **Note:** If your version of Neovim is too old, then you can use a past [release].
+
+  **Note:** If you are running a development version of Neovim (aka `master`), then breakage may occur if your build is behind latest.
+
 - Newish version of git. Older versions may not work with some features.
 
 ## Installation
@@ -77,11 +80,12 @@ the default settings:
 ```lua
 require('gitsigns').setup {
   signs = {
-    add          = {hl = 'GitSignsAdd'   , text = '│', numhl='GitSignsAddNr'   , linehl='GitSignsAddLn'},
-    change       = {hl = 'GitSignsChange', text = '│', numhl='GitSignsChangeNr', linehl='GitSignsChangeLn'},
-    delete       = {hl = 'GitSignsDelete', text = '_', numhl='GitSignsDeleteNr', linehl='GitSignsDeleteLn'},
-    topdelete    = {hl = 'GitSignsDelete', text = '‾', numhl='GitSignsDeleteNr', linehl='GitSignsDeleteLn'},
-    changedelete = {hl = 'GitSignsChange', text = '~', numhl='GitSignsChangeNr', linehl='GitSignsChangeLn'},
+    add          = { hl = 'GitSignsAdd'   , text = '│', numhl='GitSignsAddNr'   , linehl='GitSignsAddLn'    },
+    change       = { hl = 'GitSignsChange', text = '│', numhl='GitSignsChangeNr', linehl='GitSignsChangeLn' },
+    delete       = { hl = 'GitSignsDelete', text = '_', numhl='GitSignsDeleteNr', linehl='GitSignsDeleteLn' },
+    topdelete    = { hl = 'GitSignsDelete', text = '‾', numhl='GitSignsDeleteNr', linehl='GitSignsDeleteLn' },
+    changedelete = { hl = 'GitSignsChange', text = '~', numhl='GitSignsChangeNr', linehl='GitSignsChangeLn' },
+    untracked    = { hl = 'GitSignsAdd'   , text = '┆', numhl='GitSignsAddNr'   , linehl='GitSignsAddLn'    },
   },
   signcolumn = true,  -- Toggle with `:Gitsigns toggle_signs`
   numhl      = false, -- Toggle with `:Gitsigns toggle_numhl`
@@ -243,18 +247,20 @@ Feature                                                  | gitsigns.nvim        
 Shows signs for added, modified, and removed lines       | :white_check_mark:   | :white_check_mark:                            |
 Asynchronous                                             | :white_check_mark:   | :white_check_mark:                            |
 Runs diffs in-process (no IO or pipes)                   | :white_check_mark: * |                                               | * Via [lua](https://github.com/neovim/neovim/pull/14536) or FFI.
+Supports Nvim's diff-linematch                           | :white_check_mark: * |                                               | * Via [diff-linematch]
 Only adds signs for drawn lines                          | :white_check_mark: * |                                               | * Via Neovims decoration API
 Updates immediately                                      | :white_check_mark:   | *                                             | * Triggered on CursorHold
 Ensures signs are always up to date                      | :white_check_mark: * |                                               | * Watches the git dir to do so
 Never saves the buffer                                   | :white_check_mark:   | :white_check_mark: :heavy_exclamation_mark: * | * Writes [buffer](https://github.com/airblade/vim-gitgutter/blob/0f98634b92da9a35580b618c11a6d2adc42d9f90/autoload/gitgutter/diff.vim#L106) (and index) to short lived temp files
 Quick jumping between hunks                              | :white_check_mark:   | :white_check_mark:                            |
 Stage/reset/preview individual hunks                     | :white_check_mark:   | :white_check_mark:                            |
+Preview hunks directly in the buffer (inline)            | :white_check_mark: * |                                               | * Via `preview_hunk_inline`
 Stage/reset hunks in range/selection                     | :white_check_mark:   | :white_check_mark: :heavy_exclamation_mark: * | * Only stage
 Stage/reset all hunks in buffer                          | :white_check_mark:   |                                               |
 Undo staged hunks                                        | :white_check_mark:   |                                               |
 Word diff in buffer                                      | :white_check_mark:   |                                               |
 Word diff in hunk preview                                | :white_check_mark:   | :white_check_mark:                            |
-Show deleted/changes lines directly in buffer            | :white_check_mark: * |                                               | * Via [virtual lines](https://github.com/neovim/neovim/pull/15351)
+Show deleted/changes lines directly in buffer            | :white_check_mark: * |                                               | * Via [virtual lines]
 Stage partial hunks                                      | :white_check_mark:   |                                               |
 Hunk text object                                         | :white_check_mark:   | :white_check_mark:                            |
 Diff against index or any commit                         | :white_check_mark:   | :white_check_mark:                            |
@@ -268,7 +274,7 @@ Customizable signs and mappings                          | :white_check_mark:   
 Customizable extra diff arguments                        | :white_check_mark:   | :white_check_mark:                            |
 Can be toggled globally or per buffer                    | :white_check_mark: * | :white_check_mark:                            | * Through the detach/attach functions
 Statusline integration                                   | :white_check_mark:   | :white_check_mark:                            |
-Works with [yadm](https://yadm.io/)                      | :white_check_mark:   |                                               |
+Works with [yadm]                                        | :white_check_mark:   |                                               |
 Live blame in buffer (using virtual text)                | :white_check_mark:   |                                               |
 Blame preview                                            | :white_check_mark:   |                                               |
 Automatically follows open files moved with `git mv`     | :white_check_mark:   |                                               |
@@ -278,10 +284,6 @@ Open diffview with any revision/commit                   | :white_check_mark:   
 As of 2022-09-01
 
 ## Integrations
-
-### [vim-repeat]
-
-If installed, `stage_hunk()` and `reset_hunk()` are repeatable with the `.` (dot) operator.
 
 ### [vim-fugitive]
 
@@ -317,14 +319,16 @@ If installed and enabled (via `config.trouble`; defaults to true if installed), 
 
 <!-- links -->
 [coc-git]: https://github.com/neoclide/coc-git
+[diff-linematch]: https://github.com/neovim/neovim/pull/14537
 [luv]: https://github.com/luvit/luv/blob/master/docs.md
 [null-ls]: https://github.com/jose-elias-alvarez/null-ls.nvim
 [nvim-lua-guide]: https://github.com/nanotee/nvim-lua-guide
 [packer.nvim]: https://github.com/wbthomason/packer.nvim
+[release]: https://github.com/lewis6991/gitsigns.nvim/releases
 [trouble.nvim]: https://github.com/folke/trouble.nvim
 [vim-fugitive]: https://github.com/tpope/vim-fugitive
 [vim-gitgutter]: https://github.com/airblade/vim-gitgutter
 [vim-plug]: https://github.com/junegunn/vim-plug
-[vim-repeat]: https://github.com/tpope/vim-repeat
 [vim-signify]: https://github.com/mhinz/vim-signify
+[virtual lines]: https://github.com/neovim/neovim/pull/15351
 [yadm]: https://yadm.io

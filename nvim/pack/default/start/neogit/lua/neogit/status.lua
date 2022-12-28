@@ -24,6 +24,8 @@ M.status_buffer = nil
 M.commit_view = nil
 M.locations = {}
 
+M.outdated = {}
+
 local hunk_header_matcher = vim.regex("^@@.*@@")
 local diff_add_matcher = vim.regex("^+")
 local diff_delete_matcher = vim.regex("^-")
@@ -138,6 +140,7 @@ local function draw_buffer()
     if #data.items == 0 then
       return
     end
+
     output:append(string.format("%s (%d)", header, #data.items))
 
     local location = locations_lookup[key]
@@ -159,6 +162,10 @@ local function draw_buffer()
           output:append(string.format("%s %s", mode_to_text[f.mode], f.name))
         else
           output:append(f.name)
+        end
+
+        if f.done then
+          M.status_buffer:place_sign(#output, "NeogitRebaseDone", "hl")
         end
 
         local file = files_lookup[f.name] or { folded = true }
@@ -205,6 +212,9 @@ local function draw_buffer()
     table.insert(new_locations, location)
   end
 
+  if M.repo.rebase.head then
+    render_section("Rebasing: " .. M.repo.rebase.head, "rebase")
+  end
   render_section("Untracked files", "untracked")
   render_section("Unstaged changes", "unstaged")
   render_section("Staged changes", "staged")
@@ -295,7 +305,7 @@ local function restore_cursor_location(section_loc, file_loc, hunk_loc)
   vim.fn.setpos(".", { 0, hunk.first, 0, 0 })
 end
 
-local function refresh_status()
+local function refresh_status_buffer()
   if M.status_buffer == nil then
     return
   end
@@ -315,18 +325,30 @@ local function refresh_status()
 end
 
 local refresh_lock = a.control.Semaphore.new(1)
-local function refresh(which)
+local lock_holder = nil
+
+local function refresh(which, reason)
   which = which or true
 
-  logger.debug("[STATUS BUFFER]: Starting refresh")
+  logger.info("[STATUS BUFFER]: Starting refresh")
   if refresh_lock.permits == 0 then
-    logger.debug("[STATUS BUFFER]: Refresh lock not available. Aborting refresh")
+    logger.debug(
+      string.format(
+        "[STATUS BUFFER]: Refresh lock not available. Aborting refresh. Lock held by: %q",
+        lock_holder
+      )
+    )
+    --- Undo the deadlock fix
+    --- This is because refresh wont properly wait but return immediately if
+    --- refresh is already in progress. This breaks as waiting for refresh does
+    --- not mean that a status buffer is drawn and ready
     a.util.scheduler()
-    refresh_status()
-    return
+    -- refresh_status()
+    -- return
   end
 
   local permit = refresh_lock:acquire()
+  lock_holder = reason or "unknown"
   logger.debug("[STATUS BUFFER]: Acquired refresh lock")
 
   a.util.scheduler()
@@ -336,7 +358,7 @@ local function refresh(which)
     if which == true or which.status then
       M.repo:update_status()
       a.util.scheduler()
-      refresh_status()
+      refresh_status_buffer()
     end
 
     local refreshes = {}
@@ -346,6 +368,13 @@ local function refresh(which)
         M.repo:update_branch_information()
       end)
     end
+    if which == true or which.rebase then
+      table.insert(refreshes, function()
+        logger.debug("[STATUS BUFFER]: Refreshing rebase information")
+        M.repo:update_rebase_status()
+      end)
+    end
+
     if which == true or which.stashes then
       table.insert(refreshes, function()
         logger.debug("[STATUS BUFFER]: Refreshing stash")
@@ -382,8 +411,9 @@ local function refresh(which)
     a.util.join(refreshes)
     logger.debug("[STATUS BUFFER]: Refreshes completed")
     a.util.scheduler()
-    refresh_status()
-    vim.cmd([[do <nomodeline> User NeogitStatusRefreshed]])
+
+    refresh_status_buffer()
+    vim.cmd("do <nomodeline> User NeogitStatusRefreshed")
   end
 
   a.util.scheduler()
@@ -391,12 +421,15 @@ local function refresh(which)
     restore_cursor_location(s, f, h)
   end
 
-  logger.debug("[STATUS BUFFER]: Finished refresh")
-  logger.debug("[STATUS BUFFER]: Refresh lock is now free")
+  logger.info("[STATUS BUFFER]: Finished refresh")
+  logger.info("[STATUS BUFFER]: Refresh lock is now free")
+  lock_holder = nil
   permit:forget()
 end
 
-local dispatch_refresh = a.void(refresh)
+local dispatch_refresh = a.void(function(v, reason)
+  refresh(v, reason)
+end)
 
 local refresh_manually = a.void(function(fname)
   if not fname or fname == "" then
@@ -407,7 +440,7 @@ local refresh_manually = a.void(function(fname)
   if not path then
     return
   end
-  refresh { status = true, diffs = { "*:" .. path } }
+  refresh({ status = true, diffs = { "*:" .. path } }, "manually")
 end)
 
 --- Compatibility endpoint to refresh data from an autocommand.
@@ -415,7 +448,11 @@ end)
 --  resolving the file name to the path relative to the repository root and
 --  refresh that file's cache data.
 local function refresh_viml_compat(fname)
+  logger.info("[STATUS BUFFER]: refresh_viml_compat")
   if not config.values.auto_refresh then
+    return
+  end
+  if #vim.fs.find(".git/", { upward = true }) == 0 then -- not a git repository
     return
   end
 
@@ -459,14 +496,16 @@ local function toggle()
 
   if on_hunk then
     local hunk = get_current_hunk_of_item(item)
+    assert(hunk, "Hunk is nil")
     hunk.folded = not hunk.folded
+    vim.api.nvim_win_set_cursor(0, { hunk.first, 0 })
   elseif item then
     item.folded = not item.folded
   else
     section.folded = not section.folded
   end
 
-  refresh_status()
+  refresh_status_buffer()
 end
 
 local reset = function()
@@ -475,8 +514,9 @@ local reset = function()
   if not config.values.auto_refresh then
     return
   end
-  refresh(true)
+  refresh(true, "reset")
 end
+
 local dispatch_reset = a.void(reset)
 
 local function close(skip_close)
@@ -522,9 +562,9 @@ local function generate_patch_from_selection(item, hunk, from, to, reverse)
           if operand == "-" then
             table.insert(diff_content, " " .. line)
           end
-        -- If we want to apply the patch in reverse, we need to include every `+` line we skip as a normal line, since
-        -- it's unchanged as far as the diff is concerned and should not be reversed.
-        -- We also need to adapt the original line offset based on if we skip or not
+          -- If we want to apply the patch in reverse, we need to include every `+` line we skip as a normal line, since
+          -- it's unchanged as far as the diff is concerned and should not be reversed.
+          -- We also need to adapt the original line offset based on if we skip or not
         elseif reverse then
           if operand == "+" then
             table.insert(diff_content, " " .. line)
@@ -635,7 +675,7 @@ local stage = function()
         end
         add.call()
       end
-      refresh(true)
+      refresh(true, "stage")
       M.current_operation = nil
       return
     else
@@ -649,7 +689,8 @@ local stage = function()
     end
   end
 
-  refresh { status = true, diffs = { "*:" .. item.name } }
+  assert(item, "Stage item is nil")
+  refresh({ status = true, diffs = { "*:" .. item.name } }, "stage_finish")
   M.current_operation = nil
 end
 
@@ -666,8 +707,8 @@ local unstage = function()
     unstage_selection()
   else
     if item == nil then
-      git.status.unstage_all(".")
-      refresh(true)
+      git.status.unstage_all()
+      refresh(true, "unstage")
       M.current_operation = nil
       return
     else
@@ -683,7 +724,8 @@ local unstage = function()
     end
   end
 
-  refresh { status = true, diffs = { "*:" .. item.name } }
+  assert(item, "Unstage item is nil")
+  refresh({ status = true, diffs = { "*:" .. item.name } }, "unstage_finish")
   M.current_operation = nil
 end
 
@@ -704,13 +746,24 @@ local discard = function()
     return
   end
 
-  -- TODO: fix nesting
   local mode = vim.api.nvim_get_mode()
+  -- Make sure the index is in sync as git-status skips it
+  -- Do this manually since the `cli` add --no-optional-locks
+  local result
+  require("neogit.process").new({ cmd = { "git", "update-index", "--refresh" } }):spawn_async()
+  logger.debug("Refreshed index: " .. vim.inspect(result))
+  -- TODO: fix nesting
   if mode.mode == "V" then
     local section, item, hunk, from, to = get_selection()
+    logger.debug("Discarding selection hunk:" .. vim.inspect(hunk))
     local patch = generate_patch_from_selection(item, hunk, from, to, true)
+    logger.debug("Patch:" .. vim.inspect(patch))
+
     if section.name == "staged" then
-      cli.apply.reverse.index.with_patch(patch).call()
+      local result = cli.apply.reverse.index.with_patch(patch).call()
+      if result.code ~= 0 then
+        error("Failed to discard" .. vim.inspect(result))
+      end
     else
       cli.apply.reverse.with_patch(patch).call()
     end
@@ -725,7 +778,7 @@ local discard = function()
       local hunk, lines = get_current_hunk_of_item(item)
       lines[1] =
         string.format("@@ -%d,%d +%d,%d @@", hunk.index_from, hunk.index_len, hunk.index_from, hunk.disk_len)
-      local diff = table.concat(lines, "\n")
+      local diff = table.concat(lines or {}, "\n")
       diff = table.concat({ "--- a/" .. item.name, "+++ b/" .. item.name, diff, "" }, "\n")
       if section.name == "staged" then
         cli.apply.reverse.index.with_patch(diff).call()
@@ -740,7 +793,7 @@ local discard = function()
     end
   end
 
-  refresh(true)
+  refresh(true, "discard")
   M.current_operation = nil
 
   a.util.scheduler()
@@ -759,7 +812,7 @@ local set_folds = function(to)
       end
     end)
   end)
-  refresh(true)
+  refresh(true, "set_folds")
 end
 
 --- These needs to be a function to avoid a circular dependency
@@ -786,7 +839,7 @@ local cmd_func_map = function()
     ["Stage"] = { "nv", a.void(stage), true },
     ["StageUnstaged"] = a.void(function()
       git.status.stage_modified()
-      refresh { status = true, diffs = true }
+      refresh({ status = true, diffs = true }, "StageUnstaged")
     end),
     ["StageAll"] = a.void(function()
       git.status.stage_all()
@@ -795,10 +848,14 @@ local cmd_func_map = function()
     ["Unstage"] = { "nv", a.void(unstage), true },
     ["UnstageStaged"] = a.void(function()
       git.status.unstage_all()
-      refresh { status = true, diffs = true }
+      refresh({ status = true, diffs = true }, "UnstageStaged")
     end),
     ["CommandHistory"] = function()
       GitCommandHistory:new():show()
+    end,
+    ["Console"] = function()
+      local process = require("neogit.process")
+      process.show_console()
     end,
     ["TabOpen"] = function()
       local _, item = get_current_section_item()
@@ -820,7 +877,11 @@ local cmd_func_map = function()
       if item and section then
         if section.name == "unstaged" or section.name == "staged" or section.name == "untracked" then
           local path = item.name
-          local hunk = get_current_hunk_of_item(item)
+          local hunk, hunk_lines = get_current_hunk_of_item(item)
+          local cursor_row, cursor_col
+          if hunk then
+            cursor_row, cursor_col = unpack(vim.api.nvim_win_get_cursor(0))
+          end
 
           notif.delete_all()
           M.status_buffer:close()
@@ -834,7 +895,16 @@ local cmd_func_map = function()
           vim.cmd("e " .. relpath)
 
           if hunk then
-            vim.cmd(tostring(hunk.disk_from))
+            local line_offset = cursor_row - hunk.first
+            local row = hunk.disk_from + line_offset - 1
+            for i = 1, line_offset do
+              if string.sub(hunk_lines[i], 1, 1) == "-" then
+                row = row - 1
+              end
+            end
+            -- adjust for diff sign column
+            local col = cursor_col == 0 and 0 or cursor_col - 1
+            vim.api.nvim_win_set_cursor(0, { row, col })
           end
         elseif vim.tbl_contains({ "unmerged", "unpulled", "recent", "stashes" }, section.name) then
           if M.commit_view and M.commit_view.is_open then
@@ -890,6 +960,7 @@ local cmd_func_map = function()
   }
 end
 
+--- Creates a new status buffer
 local function create(kind, cwd)
   kind = kind or config.values.kind
 
@@ -938,7 +1009,7 @@ local function create(kind, cwd)
       end
 
       logger.debug("[STATUS BUFFER]: Dispatching initial render")
-      dispatch_refresh(true)
+      refresh(true, "Buffer.create")
     end,
   }
 end

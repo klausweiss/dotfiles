@@ -11,13 +11,14 @@ local M = {}
 local function pull_from(popup, name, remote, branch)
   notif.create("Pulling from " .. name)
 
-  local res = pull_lib.pull_interactive(remote, branch, popup:to_cli())
+  local res = pull_lib.pull_interactive(remote, branch, popup:get_arguments())
 
-  if res.code == 0 then
+  if res and res.code == 0 then
     a.util.scheduler()
     notif.create("Pulled from " .. name)
-    status.refresh(true)
+    vim.cmd("do <nomodeline> User NeogitPullComplete")
   end
+  status.refresh(true, "pull_from")
 end
 
 function M.create()
@@ -31,7 +32,7 @@ function M.create()
     :action("u", "Pull from upstream", function(popup)
       pull_from(popup, "upstream", "upstream", status.repo.head.branch)
     end)
-    :action("e", "Pull from elsewhere", function()
+    :action("e", "Pull from elsewhere", function(popup)
       local remote = input.get_user_input("remote: ")
       local branch = git.branch.prompt_for_branch()
       pull_from(popup, remote, remote, branch)

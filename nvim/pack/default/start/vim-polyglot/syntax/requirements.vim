@@ -3,7 +3,7 @@ if polyglot#init#is_disabled(expand('<sfile>:p'), 'requirements', 'syntax/requir
 endif
 
 " the Requirements File Format syntax support for Vim
-" Version: 1.6.0
+" Version: 1.7.1
 " Author:  raimon <raimon49@hotmail.com>
 " License: MIT LICENSE
 " The MIT License (MIT)
@@ -34,6 +34,7 @@ endif
 
 syn case match
 
+syn match requirementsVersion "\v\d+[a-zA-Z0-9\.\-\*]*"
 syn region requirementsComment start="[ \t]*#" end="$"
 syn match requirementsCommandOption "\v^\[?--?[a-zA-Z\-]*\]?"
 syn match requirementsVersionSpecifiers "\v(\=\=\=?|\<\=?|\>\=?|\~\=|\!\=)"
@@ -43,14 +44,15 @@ syn match requirementsVersionControls "\v(git\+?|hg\+|svn\+|bzr\+).*://.\S+"
 syn match requirementsURLs "\v(\@\s)?(https?|ftp|gopher)://?[^\s/$.?#].\S*"
 syn match requirementsEnvironmentMarkers "\v;\s[^#]+"
 
-hi link requirementsComment Comment
-hi link requirementsCommandOption Special
-hi link requirementsVersionSpecifiers Boolean
-hi link requirementsPackageName Identifier
-hi link requirementsExtras Type
-hi link requirementsVersionControls Underlined
-hi link requirementsURLs Underlined
-hi link requirementsEnvironmentMarkers Macro
+hi def link requirementsVersion Number
+hi def link requirementsComment Comment
+hi def link requirementsCommandOption Special
+hi def link requirementsVersionSpecifiers Boolean
+hi def link requirementsPackageName Identifier
+hi def link requirementsExtras Type
+hi def link requirementsVersionControls Underlined
+hi def link requirementsURLs Underlined
+hi def link requirementsEnvironmentMarkers Macro
 
 let b:current_syntax = "requirements"
 

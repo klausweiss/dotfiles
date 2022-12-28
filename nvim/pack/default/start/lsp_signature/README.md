@@ -65,7 +65,7 @@ use {
 In your init.lua, call setup()
 
 ```lua
-cfg = {…}  -- add you config here
+local cfg = {…}  -- add your config here
 require "lsp_signature".setup(cfg)
 ```
 
@@ -150,6 +150,7 @@ There are two keybinds available:
 
   max_height = 12, -- max height of signature floating_window
   max_width = 80, -- max_width of signature floating_window
+  noice = false, -- set to true if you using noice to render markdown
   wrap = true, -- allow doc/signature text wrap inside floating_window, useful if your lsp return doc/sig is too long
   
   floating_window = true, -- show hint in a floating window, set to false for virtual text only mode
@@ -160,6 +161,7 @@ There are two keybinds available:
 
   floating_window_off_x = 1, -- adjust float windows x position.
   floating_window_off_y = 0, -- adjust float windows y position. e.g -2 move window up 2 lines; 2 move down 2 lines
+                              -- can be either number or function, see examples
 
   close_timeout = 4000, -- close floating window after ms when laster parameter is entered
   fix_pos = false,  -- set to true, the floating window will not auto-close until finish all parameters
@@ -168,7 +170,7 @@ There are two keybinds available:
   hint_scheme = "String",
   hi_parameter = "LspSignatureActiveParameter", -- how your parameter will be highlight
   handler_opts = {
-    border = "rounded"   -- double, rounded, single, shadow, none
+    border = "rounded"   -- double, rounded, single, shadow, none, or a table of borders
   },
 
   always_trigger = false, -- sometime show signature on new line or in middle of parameter can be confusing, set it to false for #58
@@ -228,6 +230,37 @@ end
 ```
 
 ![signature in status line](https://i.redd.it/b842vy1dm6681.png)
+
+
+#### set floating windows position based on cursor position
+
+```lua
+-- cfg = {…}  -- add you config here
+local cfg = {
+  floating_window_off_x = 5, -- adjust float windows x position.
+  floating_window_off_y = function() -- adjust float windows y position. e.g. set to -2 can make floating window move up 2 lines
+    local linenr = vim.api.nvim_win_get_cursor(0)[1] -- buf line number
+    local pumheight = vim.o.pumheight
+    local winline = vim.fn.winline() -- line number in the window
+    local winheight = vim.fn.winheight(0)
+
+    -- window top
+    if winline - 1 < pumheight then
+      return pumheight
+    end
+
+    -- window bottom
+    if winheight - winline < pumheight then
+      return -pumheight
+    end
+    return 0
+  end,
+}
+require "lsp_signature".setup(cfg)
+
+```
+
+
 
 ### Should signature floating windows fixed
 

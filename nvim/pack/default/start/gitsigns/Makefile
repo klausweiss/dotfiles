@@ -5,19 +5,25 @@ FILTER ?= .*
 
 LUA_VERSION   := 5.1
 TL_VERSION    := 0.14.1
-NEOVIM_BRANCH := master
+NEOVIM_BRANCH ?= master
+
+DEPS_DIR := $(PWD)/deps/nvim-$(NEOVIM_BRANCH)
 
 LUAROCKS       := luarocks --lua-version=$(LUA_VERSION)
-LUAROCKS_TREE  := $(PWD)/deps/luarocks/usr
+LUAROCKS_TREE  := $(DEPS_DIR)/luarocks/usr
 LUAROCKS_LPATH := $(LUAROCKS_TREE)/share/lua/$(LUA_VERSION)
 LUAROCKS_INIT  := eval $$($(LUAROCKS) --tree $(LUAROCKS_TREE) path) &&
 
 .DEFAULT_GOAL := build
 
-deps/neovim:
-	@mkdir -p deps
+$(DEPS_DIR)/neovim:
+	@mkdir -p $(DEPS_DIR)
 	git clone --depth 1 https://github.com/neovim/neovim --branch $(NEOVIM_BRANCH) $@
-	make -C $@ DEPS_BUILD_DIR=$(dir $(LUAROCKS_TREE))
+	@# disable LTO to reduce compile time
+	make -C $@ \
+		DEPS_BUILD_DIR=$(dir $(LUAROCKS_TREE)) \
+		CMAKE_BUILD_TYPE=RelWithDebInfo \
+		CMAKE_EXTRA_FLAGS=-DENABLE_LTO=OFF
 
 TL := $(LUAROCKS_TREE)/bin/tl
 
@@ -34,20 +40,23 @@ $(INSPECT):
 .PHONY: lua_deps
 lua_deps: $(TL) $(INSPECT)
 
-export VIMRUNTIME=$(PWD)/deps/neovim/runtime
+.PHONY: test_deps
+test_deps: $(DEPS_DIR)/neovim
+
+export VIMRUNTIME=$(DEPS_DIR)/neovim/runtime
 export TEST_COLORS=1
 
 .PHONY: test
-test: deps/neovim
+test: $(DEPS_DIR)/neovim
 	$(LUAROCKS_INIT) busted \
 		-v \
 		--lazy \
 		--helper=$(PWD)/test/preload.lua \
 		--output test.busted.outputHandlers.nvim \
-		--lpath=$(PWD)/deps/neovim/?.lua \
-		--lpath=$(PWD)/deps/neovim/build/?.lua \
-		--lpath=$(PWD)/deps/neovim/runtime/lua/?.lua \
-		--lpath=$(PWD)/deps/?.lua \
+		--lpath=$(DEPS_DIR)/neovim/?.lua \
+		--lpath=$(DEPS_DIR)/neovim/build/?.lua \
+		--lpath=$(DEPS_DIR)/neovim/runtime/lua/?.lua \
+		--lpath=$(DEPS_DIR)/?.lua \
 		--lpath=$(PWD)/lua/?.lua \
 		--filter="$(FILTER)" \
 		$(PWD)/test

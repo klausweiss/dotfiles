@@ -46,7 +46,6 @@ source.new = function(name, s)
 end
 
 ---Reset current completion state
----@return boolean
 source.reset = function(self)
   self.cache:clear()
   self.revision = self.revision + 1
@@ -105,13 +104,14 @@ source.get_entries = function(self, ctx)
 
   local inputs = {}
   local entries = {}
+  local matching_config = self:get_matching_config()
   for _, e in ipairs(target_entries) do
     local o = e:get_offset()
     if not inputs[o] then
       inputs[o] = string.sub(ctx.cursor_before_line, o)
     end
 
-    local match = e:match(inputs[o], self:get_matching_config())
+    local match = e:match(inputs[o], matching_config)
     e.score = match.score
     e.exact = false
     if e.score >= 1 then
@@ -123,7 +123,7 @@ source.get_entries = function(self, ctx)
       end
     end
   end
-  self.cache:set({ 'get_entries', self.revision, ctx.cursor_before_line }, entries)
+  self.cache:set({ 'get_entries', tostring(self.revision), ctx.cursor_before_line }, entries)
 
   local max_item_count = self:get_source_config().max_item_count or 200
   local limited_entries = {}
@@ -136,44 +136,44 @@ source.get_entries = function(self, ctx)
   return limited_entries
 end
 
----Get default insert range
+---Get default insert range (UTF8 byte index).
 ---@return lsp.Range
 source.get_default_insert_range = function(self)
   if not self.context then
     error('context is not initialized yet.')
   end
 
-  return self.cache:ensure({ 'get_default_insert_range', self.revision }, function()
+  return self.cache:ensure({ 'get_default_insert_range', tostring(self.revision) }, function()
     return {
       start = {
         line = self.context.cursor.row - 1,
-        character = misc.to_utfindex(self.context.cursor_line, self.offset),
+        character = self.offset - 1,
       },
       ['end'] = {
         line = self.context.cursor.row - 1,
-        character = misc.to_utfindex(self.context.cursor_line, self.context.cursor.col),
+        character = self.context.cursor.col - 1,
       },
     }
   end)
 end
 
----Get default replace range
+---Get default replace range (UTF8 byte index).
 ---@return lsp.Range
 source.get_default_replace_range = function(self)
   if not self.context then
     error('context is not initialized yet.')
   end
 
-  return self.cache:ensure({ 'get_default_replace_range', self.revision }, function()
+  return self.cache:ensure({ 'get_default_replace_range', tostring(self.revision) }, function()
     local _, e = pattern.offset('^' .. '\\%(' .. self:get_keyword_pattern() .. '\\)', string.sub(self.context.cursor_line, self.offset))
     return {
       start = {
         line = self.context.cursor.row - 1,
-        character = misc.to_utfindex(self.context.cursor_line, self.offset),
+        character = self.offset,
       },
       ['end'] = {
         line = self.context.cursor.row - 1,
-        character = misc.to_utfindex(self.context.cursor_line, e and self.offset + e - 1 or self.context.cursor.col),
+        character = (e and self.offset + e - 2 or self.context.cursor.col - 1),
       },
     }
   end)
@@ -222,7 +222,10 @@ source.get_keyword_pattern = function(self)
     return c.keyword_pattern
   end
   if self.source.get_keyword_pattern then
-    return self.source:get_keyword_pattern(misc.copy(c))
+    local keyword_pattern = self.source:get_keyword_pattern(misc.copy(c))
+    if keyword_pattern then
+      return keyword_pattern
+    end
   end
   return config.get().completion.keyword_pattern
 end
@@ -238,19 +241,30 @@ source.get_keyword_length = function(self)
 end
 
 ---Get filter
---@return function
+--@return fun(entry: cmp.Entry, context: cmp.Context): boolean
 source.get_entry_filter = function(self)
   local c = self:get_source_config()
   if c.entry_filter then
-    return c.entry_filter
+    return c.entry_filter --[[@as fun(entry: cmp.Entry, context: cmp.Context): boolean]]
   end
-  return function(_, _) return true end
+  return function(_, _)
+    return true
+  end
+end
+
+---Get lsp.PositionEncodingKind
+---@return lsp.PositionEncodingKind
+source.get_position_encoding_kind = function(self)
+  if self.source.get_position_encoding_kind then
+    return self.source:get_position_encoding_kind()
+  end
+  return types.lsp.PositionEncodingKind.UTF16
 end
 
 ---Invoke completion
 ---@param ctx cmp.Context
 ---@param callback function
----@return boolean Return true if not trigger completion.
+---@return boolean? Return true if not trigger completion.
 source.complete = function(self, ctx, callback)
   local offset = ctx:get_offset(self:get_keyword_pattern())
 
@@ -275,7 +289,7 @@ source.complete = function(self, ctx, callback)
       triggerCharacter = before_char,
     }
   elseif ctx:get_reason() ~= types.cmp.ContextReason.TriggerOnly then
-    if self:get_keyword_length() <= (ctx.cursor.col - offset) then
+    if offset < ctx.cursor.col and self:get_keyword_length() <= (ctx.cursor.col - offset) then
       if self.incomplete and self.context.cursor.col ~= ctx.cursor.col and self.status ~= source.SourceStatus.FETCHING then
         completion_context = {
           triggerKind = types.lsp.CompletionTriggerKind.TriggerForIncompleteCompletions,
@@ -315,6 +329,7 @@ source.complete = function(self, ctx, callback)
       completion_context = completion_context,
     }),
     self.complete_dedup(vim.schedule_wrap(function(response)
+      ---@type lsp.CompletionResponse
       response = response or {}
 
       self.incomplete = response.isIncomplete or false
@@ -328,7 +343,7 @@ source.complete = function(self, ctx, callback)
         self.entries = {}
         for i, item in ipairs(response.items or response) do
           if (misc.safe(item) or {}).label then
-            local e = entry.new(ctx, self, item)
+            local e = entry.new(ctx, self, item, response.itemDefaults)
             self.entries[i] = e
             self.offset = math.min(self.offset, e:get_offset())
           end

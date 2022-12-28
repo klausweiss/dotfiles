@@ -23,8 +23,6 @@
 -- For the full copy of the GNU Affero General Public License see:
 -- http://www.gnu.org/licenses.
 
-local string_match = string.match
-
 local buflisted = vim.fn.buflisted
 local bufnr = vim.fn.bufnr
 local command = vim.api.nvim_command
@@ -42,11 +40,31 @@ local win_is_valid = vim.api.nvim_win_is_valid
 local buf_get_option = vim.api.nvim_buf_get_option
 local buf_set_option = vim.api.nvim_buf_set_option
 
-local reverse = require'bufferline.utils'.reverse
+--- @type bufferline.state
+local state = require'bufferline.state'
+
+--- @type bufferline.utils
+local utils = require'bufferline.utils'
 
 -------------------
 -- Section: helpers
 -------------------
+
+local cmd = vim.api.nvim_cmd and
+  --- @param action string
+  --- @param buffer_number integer
+  --- @param force? boolean
+  --- @param mods? {[string]: any}
+  function(action, buffer_number, force, mods)
+    vim.cmd[action] {bang = force, count = buffer_number, mods = mods}
+  end or
+  --- @param action string
+  --- @param buffer_number integer
+  --- @param force? boolean
+  --- @param mods? string
+  function(action, buffer_number, force, mods)
+    command((mods or '') .. " " .. action .. (force and '!' or '') .. " " .. buffer_number)
+  end
 
 --- Use `vim.notify` to print an error `msg`
 --- @param msg string
@@ -75,7 +93,7 @@ local function new(force)
 
   create_autocmd('BufWipeout', {
     buffer = 0,
-    callback = function() require'bufferline.state'.close_buffer(empty_buffer) end,
+    callback = function() state.close_buffer(empty_buffer) end,
     group = create_augroup('bbye_empty_buffer', {})
   })
 end
@@ -90,12 +108,11 @@ local bbye = {}
 --- Delete a buffer
 --- @param action string the command to use to delete the buffer (e.g. `'bdelete'`)
 --- @param force boolean if true, forcefully delete the buffer
---- @param buffer integer|nil|string the name of the buffer.
---- @param mods nil|string the modifiers to the command (e.g. `'verbose'`)
---- @param[opt] focus_id nil|number the preferred buffer to focus
+--- @param buffer? integer|string the name of the buffer.
+--- @param mods? string|{[string]: any} the modifiers to the command (e.g. `'verbose'`)
+--- @param focus_id? number the preferred buffer to focus
 function bbye.delete(action, force, buffer, mods, focus_id)
-  local buffer_number = type(buffer) == 'string' and bufnr(buffer) or buffer or get_current_buf()
-  mods = mods or ''
+  local buffer_number = type(buffer) == 'string' and bufnr(buffer) or tonumber(buffer) or get_current_buf()
 
   if buffer_number < 0 then
     err("E516: No buffers were deleted. No match for " .. buffer)
@@ -103,7 +120,13 @@ function bbye.delete(action, force, buffer, mods, focus_id)
   end
 
   local is_modified = buf_get_option(buffer_number, 'modified')
-  local has_confirm = vim.o.confirm or (string_match(mods, 'conf') ~= nil)
+
+  local has_confirm = vim.o.confirm
+  if type(mods) == 'table' then
+    has_confirm = has_confirm or mods.confirm
+  elseif mods then
+    has_confirm = has_confirm or mods:match('conf') ~= nil
+  end
 
   if is_modified and not (force or has_confirm) then
     err("E89: No write since last change for buffer " .. buffer_number .. " (add ! to override)")
@@ -121,7 +144,7 @@ function bbye.delete(action, force, buffer, mods, focus_id)
   -- For cases where adding buffers causes new windows to appear or hiding some
   -- causes windows to disappear and thereby decrement, loop backwards.
   local window_ids = list_wins()
-  local window_ids_reversed = reverse(window_ids)
+  local window_ids_reversed = utils.reverse(window_ids)
 
   for _, window_number in ipairs(window_ids_reversed) do
     if win_get_buf(window_number) == buffer_number then
@@ -137,7 +160,7 @@ function bbye.delete(action, force, buffer, mods, focus_id)
         end
       end)
 
-      if not (no_errors or string_match(vim.v.errmsg, 'E85')) then
+      if not (no_errors or vim.v.errmsg:match('E85')) then
         err(vim.v.errmsg)
         return
       end
@@ -160,12 +183,9 @@ function bbye.delete(action, force, buffer, mods, focus_id)
   -- Using buflisted() over bufexists() because bufhidden=delete causes the
   -- buffer to still _exist_ even though it won't be :bdelete-able.
   if buflisted(buffer_number) == 1 and buffer_number ~= get_current_buf() then
-    local no_errors = pcall(function()
-      command(mods .. " " .. action .. (force and '!' or '') .. " " .. buffer_number)
-    end)
-
+    local no_errors = pcall(cmd, action, buffer_number, force, mods)
     if not no_errors then
-      if string_match(vim.v.errmsg, 'E516') then
+      if vim.v.errmsg:match('E516') then
         set_current_buf(buffer_number)
       else
         err(vim.v.errmsg)
@@ -179,18 +199,18 @@ end
 
 --- 'bdelete' a buffer
 --- @param force boolean if true, forcefully delete the buffer
---- @param buffer integer|nil|string the name of the buffer.
---- @param mods nil|string the modifiers to the command (e.g. `'verbose'`)
---- @param[opt] focus_id nil|number the preferred buffer to focus
+--- @param buffer? integer|string the name of the buffer.
+--- @param mods? string|{[string]: any} the modifiers to the command (e.g. `'verbose'`)
+--- @param focus_id? number the preferred buffer to focus
 function bbye.bdelete(force, buffer, mods, focus_id)
   bbye.delete('bdelete', force, buffer, mods, focus_id)
 end
 
 --- 'bwipeout' a buffer
 --- @param force boolean if true, forcefully delete the buffer
---- @param buffer integer|nil|string the name of the buffer.
---- @param mods nil|string the modifiers to the command (e.g. `'verbose'`)
---- @param[opt] focus_id nil|number the preferred buffer to focus
+--- @param buffer? integer|string the name of the buffer.
+--- @param mods? string|{[string]: any} the modifiers to the command (e.g. `'verbose'`)
+--- @param focus_id? number the preferred buffer to focus
 function bbye.bwipeout(force, buffer, mods, focus_id)
   bbye.delete('bwipeout', force, buffer, mods, focus_id)
 end

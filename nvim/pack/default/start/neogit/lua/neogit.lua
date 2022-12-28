@@ -1,4 +1,5 @@
 local config = require("neogit.config")
+local a = require("plenary.async")
 local lib = require("neogit.lib")
 local signs = require("neogit.lib.signs")
 local hl = require("neogit.lib.hl")
@@ -29,7 +30,9 @@ local neogit = {
         popup.create()
       end
     else
-      status.create(opts.kind, opts.cwd)
+      a.run(function()
+        status.create(opts.kind, opts.cwd)
+      end)
     end
   end,
   reset = status.reset,
@@ -54,6 +57,8 @@ local neogit = {
       config.values.mappings.status["p"] = ""
     end
     hl.setup()
+
+    require("neogit.autocmds").setup()
   end,
   complete = function(arglead)
     if arglead:find("^kind=") then

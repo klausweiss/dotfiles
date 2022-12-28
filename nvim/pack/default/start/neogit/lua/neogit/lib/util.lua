@@ -8,6 +8,20 @@ local function map(tbl, f)
   return t
 end
 
+---@param tbl any[]
+---@param f fun(v: any) -> any|nil
+---@return any[]
+local function filter_map(tbl, f)
+  local t = {}
+  for _, v in ipairs(tbl) do
+    v = f(v)
+    if v ~= nil then
+      table.insert(t, v)
+    end
+  end
+  return t
+end
+
 ---@param value number
 ---@param min number
 ---@param max number
@@ -142,8 +156,7 @@ local function split_lines(str)
   return vim.split(str, "\r?\n")
 end
 
-local function parse_command_args(...)
-  local args = { ... }
+local function parse_command_args(args)
   local tbl = {}
 
   for _, val in pairs(args) do
@@ -164,6 +177,7 @@ return {
   clamp = clamp,
   slice = slice,
   map = map,
+  filter_map = filter_map,
   range = range,
   filter = filter,
   str_right_pad = str_right_pad,

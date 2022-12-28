@@ -8,6 +8,8 @@ local icons = require "nvim-tree.renderer.components.icons"
 local Builder = {}
 Builder.__index = Builder
 
+local DEFAULT_ROOT_FOLDER_LABEL = ":~:s?$?/..?"
+
 function Builder.new(root_cwd)
   return setmetatable({
     index = 0,
@@ -20,8 +22,8 @@ function Builder.new(root_cwd)
   }, Builder)
 end
 
-function Builder:configure_root_modifier(root_folder_modifier)
-  self.root_folder_modifier = root_folder_modifier or ":~"
+function Builder:configure_root_label(root_folder_label)
+  self.root_folder_label = root_folder_label or DEFAULT_ROOT_FOLDER_LABEL
   return self
 end
 
@@ -125,7 +127,11 @@ function Builder:_build_folder(node, padding, git_hl, git_icons_tbl)
   self:_insert_line(line)
 
   if #icon > 0 then
-    self:_insert_highlight("NvimTreeFolderIcon", offset, offset + #icon)
+    if node.open then
+      self:_insert_highlight("NvimTreeOpenedFolderIcon", offset, offset + #icon)
+    else
+      self:_insert_highlight("NvimTreeClosedFolderIcon", offset, offset + #icon)
+    end
   end
 
   local foldername_hl = "NvimTreeFolderName"
@@ -200,7 +206,7 @@ function Builder:_highlight_opened_files(node, offset, icon_length, git_icons_le
   self:_insert_highlight("NvimTreeOpenedFile", from, to)
 end
 
-function Builder:_build_file(node, padding, git_highlight, git_icons_tbl)
+function Builder:_build_file(node, padding, git_highlight, git_icons_tbl, unloaded_bufnr)
   local offset = string.len(padding)
 
   local icon = self:_build_file_icon(node, offset)
@@ -222,7 +228,9 @@ function Builder:_build_file(node, padding, git_highlight, git_icons_tbl)
     self:_insert_highlight("NvimTreeImageFile", col_start, col_end)
   end
 
-  local should_highlight_opened_files = self.highlight_opened_files and vim.fn.bufloaded(node.absolute_path) > 0
+  local should_highlight_opened_files = self.highlight_opened_files
+    and vim.fn.bufloaded(node.absolute_path) > 0
+    and vim.fn.bufnr(node.absolute_path) ~= unloaded_bufnr
   if should_highlight_opened_files then
     self:_highlight_opened_files(node, offset, #icon, git_icons_length)
   end
@@ -232,7 +240,7 @@ function Builder:_build_file(node, padding, git_highlight, git_icons_tbl)
   end
 end
 
-function Builder:_build_line(node, idx, num_children)
+function Builder:_build_line(node, idx, num_children, unloaded_bufnr)
   local padding = pad.get_padding(self.depth, idx, num_children, node, self.markers)
 
   if string.len(padding) > 0 then
@@ -242,10 +250,17 @@ function Builder:_build_line(node, idx, num_children)
   local git_highlight = git.get_highlight(node)
   local git_icons_tbl = git.get_icons(node)
 
-  if self.is_git_sign and git_icons_tbl and #git_icons_tbl > 0 then
-    local git_info = git_icons_tbl[1]
-    table.insert(self.signs, { sign = git_info.hl, lnum = self.index + 1 })
-    git_icons_tbl = {}
+  if git_icons_tbl and #git_icons_tbl > 0 then
+    if self.is_git_sign then
+      local git_info = git_icons_tbl[1]
+      table.insert(self.signs, { sign = git_info.hl, lnum = self.index + 1 })
+      git_icons_tbl = {}
+    else
+      -- sort icons so it looks slightly better
+      table.sort(git_icons_tbl, function(a, b)
+        return a.ord < b.ord
+      end)
+    end
   end
 
   local is_folder = node.nodes ~= nil
@@ -256,13 +271,13 @@ function Builder:_build_line(node, idx, num_children)
   elseif is_symlink then
     self:_build_symlink(node, padding, git_highlight, git_icons_tbl)
   else
-    self:_build_file(node, padding, git_highlight, git_icons_tbl)
+    self:_build_file(node, padding, git_highlight, git_icons_tbl, unloaded_bufnr)
   end
   self.index = self.index + 1
 
   if node.open then
     self.depth = self.depth + 1
-    self:build(node)
+    self:build(node, unloaded_bufnr)
     self.depth = self.depth - 1
   end
 end
@@ -281,12 +296,12 @@ function Builder:_get_nodes_number(nodes)
   return i
 end
 
-function Builder:build(tree)
+function Builder:build(tree, unloaded_bufnr)
   local num_children = self:_get_nodes_number(tree.nodes)
   local idx = 1
   for _, node in ipairs(tree.nodes) do
     if not node.hidden then
-      self:_build_line(node, idx, num_children)
+      self:_build_line(node, idx, num_children, unloaded_bufnr)
       idx = idx + 1
     end
   end
@@ -294,14 +309,21 @@ function Builder:build(tree)
   return self
 end
 
-local function format_root_name(root_cwd, modifier)
-  local base_root = utils.path_remove_trailing(vim.fn.fnamemodify(root_cwd, modifier))
-  return utils.path_join { base_root, ".." }
+local function format_root_name(root_cwd, root_label)
+  if type(root_label) == "function" then
+    local label = root_label(root_cwd)
+    if type(label) == "string" then
+      return label
+    else
+      root_label = DEFAULT_ROOT_FOLDER_LABEL
+    end
+  end
+  return utils.path_remove_trailing(vim.fn.fnamemodify(root_cwd, root_label))
 end
 
 function Builder:build_header(show_header)
   if show_header then
-    local root_name = format_root_name(self.root_cwd, self.root_folder_modifier)
+    local root_name = format_root_name(self.root_cwd, self.root_folder_label)
     self:_insert_line(root_name)
     self:_insert_highlight("NvimTreeRootFolder", 0, string.len(root_name))
     self.index = 1

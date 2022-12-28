@@ -56,7 +56,7 @@ local function open_floating_window()
   api.nvim_buf_set_lines(border_buffer, 0, -1, true, border_lines)
   -- create border window
   local border_window = api.nvim_open_win(border_buffer, true, border_opts)
-  vim.cmd('set winhl=Normal:Floating')
+  vim.cmd('set winhl=NormalFloat:Normal')
 
   -- create a unlisted scratch buffer
   if LAZYGIT_BUFFER == nil or vim.fn.bufwinnr(LAZYGIT_BUFFER) == -1 then
@@ -65,7 +65,7 @@ local function open_floating_window()
     LAZYGIT_LOADED = true
   end
   -- create file window, enter the window, and use the options defined in opts
-  local _ = api.nvim_open_win(LAZYGIT_BUFFER, true, opts)
+  local win = api.nvim_open_win(LAZYGIT_BUFFER, true, opts)
 
   vim.bo[LAZYGIT_BUFFER].filetype = 'lazygit'
 
@@ -78,6 +78,8 @@ local function open_floating_window()
   vim.cmd(cmd)
   cmd = [[autocmd WinLeave <buffer> silent! execute 'silent bdelete! %s']]
   vim.cmd(cmd:format(border_buffer))
+
+  return win, border_window
 end
 
 return {

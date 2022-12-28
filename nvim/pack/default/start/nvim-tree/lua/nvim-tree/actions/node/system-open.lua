@@ -1,4 +1,4 @@
-local uv = vim.loop
+local notify = require "nvim-tree.notify"
 
 local M = {
   config = {
@@ -18,10 +18,10 @@ function M.fn(node)
     cmd = M.config.system_open.cmd,
     args = M.config.system_open.args,
     errors = "\n",
-    stderr = uv.new_pipe(false),
+    stderr = vim.loop.new_pipe(false),
   }
   table.insert(process.args, node.link_to or node.absolute_path)
-  process.handle, process.pid = uv.spawn(
+  process.handle, process.pid = vim.loop.spawn(
     process.cmd,
     { args = process.args, stdio = { nil, nil, process.stderr }, detached = true },
     function(code)
@@ -29,17 +29,16 @@ function M.fn(node)
       process.stderr:close()
       process.handle:close()
       if code ~= 0 then
-        process.errors = process.errors .. string.format("NvimTree system_open: return code %d.", code)
-        error(process.errors)
+        notify.warn(string.format("system_open failed with return code %d: %s", code, process.errors))
       end
     end
   )
   table.remove(process.args)
   if not process.handle then
-    error("\n" .. process.pid .. "\nNvimTree system_open: failed to spawn process using '" .. process.cmd .. "'.")
+    notify.warn(string.format("system_open failed to spawn command '%s': %s", process.cmd, process.pid))
     return
   end
-  uv.read_start(process.stderr, function(err, data)
+  vim.loop.read_start(process.stderr, function(err, data)
     if err then
       return
     end
@@ -47,7 +46,7 @@ function M.fn(node)
       process.errors = process.errors .. data
     end
   end)
-  uv.unref(process.handle)
+  vim.loop.unref(process.handle)
 end
 
 function M.setup(opts)

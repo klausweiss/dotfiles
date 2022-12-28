@@ -28,6 +28,12 @@ end
 
 M.job_cnt = 0
 
+local function try_close(pipe: uv.Pipe)
+  if pipe and not pipe:is_closing() then
+    pipe:close()
+  end
+end
+
 function M.run_job(obj: M.JobSpec, callback: function(integer, integer, string, string)): M.JobSpec
   if gsd.debug_mode then
     local cmd: string = obj.command..' '..table.concat(obj.args, ' ')
@@ -39,10 +45,10 @@ function M.run_job(obj: M.JobSpec, callback: function(integer, integer, string, 
   s.stdout_data = {}
   s.stderr_data = {}
 
-  s.stdout = guv.new_pipe(false) as uv.Pipe
-  s.stderr = guv.new_pipe(false) as uv.Pipe
+  s.stdout = guv.new_pipe(false)
+  s.stderr = guv.new_pipe(false)
   if obj.writer then
-    s.stdin = guv.new_pipe(false) as uv.Pipe
+    s.stdin = guv.new_pipe(false)
   end
 
   s.handle, s.pid = guv.spawn(obj.command, {
@@ -58,9 +64,9 @@ function M.run_job(obj: M.JobSpec, callback: function(integer, integer, string, 
       if s.stdout then s.stdout:read_stop() end
       if s.stderr then s.stderr:read_stop() end
 
-      if s.stdin  and not s.stdin:is_closing()  then s.stdin:close()  end
-      if s.stdout and not s.stdout:is_closing() then s.stdout:close() end
-      if s.stderr and not s.stderr:is_closing() then s.stderr:close() end
+      try_close(s.stdin)
+      try_close(s.stdout)
+      try_close(s.stderr)
 
       local stdout_result = #s.stdout_data > 0 and table.concat(s.stdout_data) or nil
       local stderr_result = #s.stderr_data > 0 and table.concat(s.stderr_data) or nil
@@ -70,9 +76,9 @@ function M.run_job(obj: M.JobSpec, callback: function(integer, integer, string, 
   )
 
   if not s.handle then
-    if s.stdin  and not s.stdin:is_closing()  then s.stdin:close()  end
-    if s.stdout and not s.stdout:is_closing() then s.stdout:close() end
-    if s.stderr and not s.stderr:is_closing() then s.stderr:close() end
+    try_close(s.stdin)
+    try_close(s.stdout)
+    try_close(s.stderr)
     error(debug.traceback("Failed to spawn process: " .. vim.inspect(obj)))
   end
 
@@ -93,14 +99,14 @@ function M.run_job(obj: M.JobSpec, callback: function(integer, integer, string, 
         s.stdin:write("\n")
       else
         s.stdin:write("\n", function()
-          s.stdin:close()
+          try_close(s.stdin)
         end)
       end
     end
   elseif writer then
     -- write is string
     s.stdin:write(writer, function()
-      s.stdin:close()
+      try_close(s.stdin)
     end)
   end
 

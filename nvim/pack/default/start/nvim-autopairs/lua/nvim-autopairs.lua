@@ -19,7 +19,8 @@ local default = {
     disable_filetype = { 'TelescopePrompt', 'spectre_panel' },
     disable_in_macro = false,
     disable_in_visualblock = false,
-    ignored_next_char = [=[[%w%%%'%[%"%.]]=],
+    disable_in_replace_mode = true,
+    ignored_next_char = [=[[%w%%%'%[%"%.%`%$]]=],
     break_undo = true,
     check_ts = false,
     enable_moveright = true,
@@ -165,6 +166,10 @@ local function is_disable()
         return true
     end
 
+    if M.config.disable_in_replace_mode and vim.api.nvim_get_mode().mode == "R" then
+        return true
+    end
+
     if M.config.disable_in_visualblock and utils.is_block_wise_mode() then
         return true
     end
@@ -297,7 +302,7 @@ M.on_attach = function(bufnr)
             bufnr,
             'i',
             '<bs>',
-            string.format('v:lua.MPairs.autopairs_bs(%d)', bufnr),
+            'v:lua.MPairs.autopairs_bs()',
             { expr = true, noremap = true }
         )
     end

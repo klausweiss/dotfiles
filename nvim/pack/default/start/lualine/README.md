@@ -251,6 +251,7 @@ sections = {lualine_a = {'mode'}}
 - `location` (location in file in line:column format)
 - `mode` (vim mode)
 - `progress` (%progress in file)
+- `searchcount` (number of search matches when hlsearch is active)
 - `tabs` (shows currently available tabs)
 - `windows` (shows currently available windows)
 
@@ -279,7 +280,7 @@ sections = { lualine_c = {'%=', '%t%m', '%3p'} }
 
 ##### Vim variables as lualine component
 
-Variables from `g:`, `v:`, `t:`, `w:`, `b:`, `o`, `go:`, `vo:`, `to:`, `wo:`, `bo:` scopes can be used.
+Variables from `g:`, `v:`, `t:`, `w:`, `b:`, `o:`, `to:`, `wo:`, `bo:` scopes can be used.
 
 See `:h lua-vim-variables` and `:h lua-vim-options` if you are not sure what to use.
 
@@ -451,6 +452,11 @@ sections = {
                    --   padding = { left = left_padding, right = right_padding }
 
       fmt = nil,   -- Format function, formats the component's output.
+                   -- This function receives two arguments:
+                   -- - string that is going to be displayed and
+                   --   that can be changed, enhanced and etc.
+                   -- - context object with information you might
+                   --   need. E.g. tabnr if used with tabs.
       on_click = nil, -- takes a function that is called when component is clicked with mouse.
                    -- the function receives several arguments
                    -- - number of clicks incase of multiple clicks
@@ -649,6 +655,16 @@ sections = {
         active = 'lualine_{section}_normal',     -- Color for active tab.
         inactive = 'lualine_{section}_inactive', -- Color for inactive tab.
       },
+
+      fmt = function(name, context)
+        -- Show + if buffer is modified in tab
+        local buflist = vim.fn.tabpagebuflist(context.tabnr)
+        local winnr = vim.fn.tabpagewinnr(context.tabnr)
+        local bufnr = buflist[winnr]
+        local mod = vim.fn.getbufvar(bufnr, '&mod')
+
+        return name .. (mod == 1 and ' +' or '')
+      end
     }
   }
 }
@@ -878,9 +894,10 @@ options = { disabled_filetypes = {'lua'} }
 ```
 
 You can also disable lualine completely.
+Note that you need to call this after the setup
 ```lua
   require('lualine').hide({
-    place = {'statusline', 'tabline', 'winbar'}, -- The segmentthis change applies to.
+    place = {'statusline', 'tabline', 'winbar'}, -- The segment this change applies to.
     unhide = false,  -- whether to reenable lualine again/
   })
 ```

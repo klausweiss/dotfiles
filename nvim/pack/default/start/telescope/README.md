@@ -116,6 +116,8 @@ to get an understanding of how to use Telescope and how to configure it.
 Try the command `:Telescope find_files<cr>`
   to see if `telescope.nvim` is installed correctly.
 
+Using VimL:
+
 ```viml
 " Find files using Telescope command-line sugar.
 nnoremap <leader>ff <cmd>Telescope find_files<cr>
@@ -128,6 +130,16 @@ nnoremap <leader>ff <cmd>lua require('telescope.builtin').find_files()<cr>
 nnoremap <leader>fg <cmd>lua require('telescope.builtin').live_grep()<cr>
 nnoremap <leader>fb <cmd>lua require('telescope.builtin').buffers()<cr>
 nnoremap <leader>fh <cmd>lua require('telescope.builtin').help_tags()<cr>
+```
+
+Using Lua:
+
+```lua
+local builtin = require('telescope.builtin')
+vim.keymap.set('n', '<leader>ff', builtin.find_files, {})
+vim.keymap.set('n', '<leader>fg', builtin.live_grep, {})
+vim.keymap.set('n', '<leader>fb', builtin.buffers, {})
+vim.keymap.set('n', '<leader>fh', builtin.help_tags, {})
 ```
 
 See [builtin pickers](#pickers) for a list of all builtin functions.
@@ -289,7 +301,7 @@ Built-in functions. Ready to be bound to any key you like.
 | `builtin.marks`                     | Lists vim marks and their value                                                                                                                             |
 | `builtin.colorscheme`               | Lists available colorschemes and applies them on `<cr>`                                                                                                     |
 | `builtin.quickfix`                  | Lists items in the quickfix list                                                                                                                            |
-| `builtin.quickfixhistory`           | Lists all quickfix lists in your history and open them with `builtin.quickfix`                                                                              |
+| `builtin.quickfixhistory`           | Lists all quickfix lists in your history and open them with `builtin.quickfix` or quickfix window                                                           |
 | `builtin.loclist`                   | Lists items from the current window's location list                                                                                                         |
 | `builtin.jumplist`                  | Lists Jump List entries                                                                                                                                     |
 | `builtin.vim_options`               | Lists vim options, allows you to edit the current value on `<cr>`                                                                                           |
@@ -512,7 +524,7 @@ Telescope user autocmds:
 ## Extensions
 
 Telescope provides the capabilities to create & register extensions, which
-improve telescope in a variety of ways.
+improves telescope in a variety of ways.
 
 Some extensions provide integration with external tools, outside of the scope of
 `builtins`.  Others provide performance enhancements by using compiled C and

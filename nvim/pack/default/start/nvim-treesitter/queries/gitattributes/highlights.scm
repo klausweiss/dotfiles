@@ -1,14 +1,14 @@
 (dir_sep) @punctuation.delimiter
 
-(wildcard) @punctuation.special
-
 (quoted_pattern
-  ("\"" @character.special))
+  ("\"" @punctuation.special))
 
 (range_notation) @string.special
 
 (range_notation
   [ "[" "]" ] @punctuation.bracket)
+
+(wildcard) @character.special
 
 (range_negation) @operator
 
@@ -50,5 +50,4 @@
 
 (ERROR) @error
 
-(comment) @comment
-(comment) @spell
+(comment) @comment @spell

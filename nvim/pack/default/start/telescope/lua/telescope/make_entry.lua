@@ -4,23 +4,23 @@
 ---
 --- Each picker has a finder made up of two parts, the results which are the
 --- data to be displayed, and the entry_maker. These entry_makers are functions
---- returned from make_entry functions. These will be referrd to as
+--- returned from make_entry functions. These will be referred to as
 --- entry_makers in the following documentation.
 ---
---- Every entry maker returns a function which accepts the data to be used for
+--- Every entry maker returns a function that accepts the data to be used for
 --- an entry. This function will return an entry table (or nil, meaning skip
---- this entry) which contains of the - following important keys:
+--- this entry) which contains the following important keys:
 --- - value any: value key can be anything but still required
 --- - valid bool: is an optional key because it defaults to true but if the key
----   is set to false it will not be displayed by the picker. (optional)
+---   is set to false it will not be displayed by the picker (optional)
 --- - ordinal string: is the text that is used for filtering (required)
 --- - display string|function: is either a string of the text that is being
 ---   displayed or a function receiving the entry at a later stage, when the entry
----   is actually being displayed. A function can be useful here if complex
----   calculation have to be done. `make_entry` can also return a second value
+---   is actually being displayed. A function can be useful here if a complex
+---   calculation has to be done. `make_entry` can also return a second value
 ---   a highlight array which will then apply to the line. Highlight entry in
 ---   this array has the following signature `{ { start_col, end_col }, hl_group }`
----   (required).
+---   (required)
 --- - filename string: will be interpreted by the default `<cr>` action as
 ---   open this file (optional)
 --- - bufnr number: will be interpreted by the default `<cr>` action as open
@@ -30,7 +30,7 @@
 --- - col number: col value which will be interpreted by the default `<cr>`
 ---   action as a jump to this column (optional)
 ---
---- More information on easier displaying, see |telescope.pickers.entry_display|
+--- For more information on easier displaying, see |telescope.pickers.entry_display|
 ---
 --- TODO: Document something we call `entry_index`
 ---@brief ]]
@@ -192,8 +192,15 @@ do
       return rawget(t, rawget(lookup_keys, k))
     end
 
-    return function(line)
-      return setmetatable({ line }, mt_file_entry)
+    if opts.file_entry_encoding then
+      return function(line)
+        line = vim.iconv(line, opts.file_entry_encoding, "utf8")
+        return setmetatable({ line }, mt_file_entry)
+      end
+    else
+      return function(line)
+        return setmetatable({ line }, mt_file_entry)
+      end
     end
   end
 end
@@ -244,12 +251,23 @@ do
     return { filename, lnum, nil, text }
   end
 
+  local parse_only_filename = function(t)
+    t.filename = t.value
+    t.lnum = nil
+    t.col = nil
+    t.text = ""
+
+    return { t.filename, nil, nil, "" }
+  end
+
   function make_entry.gen_from_vimgrep(opts)
     opts = opts or {}
 
     local mt_vimgrep_entry
     local parse = parse_with_col
-    if opts.__inverted == true then
+    if opts.__matches == true then
+      parse = parse_only_filename
+    elseif opts.__inverted == true then
       parse = parse_without_col
     end
 
@@ -290,7 +308,7 @@ do
       end
     end
 
-    local display_string = "%s:%s%s"
+    local display_string = "%s%s%s"
 
     mt_vimgrep_entry = {
       cwd = vim.fn.expand(opts.cwd or vim.loop.cwd()),
@@ -298,12 +316,14 @@ do
       display = function(entry)
         local display_filename = utils.transform_path(opts, entry.filename)
 
-        local coordinates = ""
+        local coordinates = ":"
         if not disable_coordinates then
-          if entry.col then
-            coordinates = string.format("%s:%s:", entry.lnum, entry.col)
-          else
-            coordinates = string.format("%s:", entry.lnum)
+          if entry.lnum then
+            if entry.col then
+              coordinates = string.format(":%s:%s:", entry.lnum, entry.col)
+            else
+              coordinates = string.format(":%s:", entry.lnum)
+            end
           end
         end
 
@@ -411,17 +431,27 @@ function make_entry.gen_from_git_commits(opts)
       return nil
     end
 
-    local sha, msg = string.match(entry, "([^ ]+) (.+)")
+    local marker, sha, msg = string.match(entry, "([*\\/| ]+) +([0-9a-f]*) +(.*)")
+
+    if not sha then
+      marker = entry
+      sha = ""
+      msg = ""
+    end
 
     if not msg then
-      sha = entry
       msg = "<empty commit message>"
     end
 
+    marker, _ = string.gsub(marker, "\\", "+")
+    marker, _ = string.gsub(marker, "/", "-")
+    marker, _ = string.gsub(marker, "+", "/")
+    marker, _ = string.gsub(marker, "-", "\\")
+
     return make_entry.set_default_entry_mt({
       value = sha,
-      ordinal = sha .. " " .. msg,
-      msg = msg,
+      ordinal = marker .. " " .. sha .. " " .. msg,
+      msg = marker .. " " .. msg,
       display = make_display,
       current_file = opts.current_file,
     }, opts)
@@ -792,10 +822,11 @@ function make_entry.gen_from_registers(opts)
   end
 
   return function(entry)
+    local contents = vim.fn.getreg(entry)
     return make_entry.set_default_entry_mt({
       value = entry,
-      ordinal = entry,
-      content = vim.fn.getreg(entry),
+      ordinal = string.format("%s %s", entry, contents),
+      content = contents,
       display = make_display,
     }, opts)
   end
@@ -813,11 +844,23 @@ function make_entry.gen_from_keymaps(opts)
     return utils.display_termcodes(entry.lhs)
   end
 
+  local function get_attr(entry)
+    local ret = ""
+    if entry.value.noremap ~= 0 then
+      ret = ret .. "*"
+    end
+    if entry.value.buffer ~= 0 then
+      ret = ret .. "@"
+    end
+    return ret
+  end
+
   local displayer = require("telescope.pickers.entry_display").create {
     separator = "▏",
     items = {
-      { width = 2 },
+      { width = 3 },
       { width = opts.width_lhs },
+      { width = 2 },
       { remaining = true },
     },
   }
@@ -825,6 +868,7 @@ function make_entry.gen_from_keymaps(opts)
     return displayer {
       entry.mode,
       get_lhs(entry),
+      get_attr(entry),
       get_desc(entry),
     }
   end
@@ -1131,7 +1175,7 @@ function make_entry.gen_from_diagnostics(opts)
     local pos = string.format("%4d:%2d", entry.lnum, entry.col)
     local line_info = {
       (signs and signs[entry.type] .. " " or "") .. pos,
-      "Diagnostic" .. entry.type,
+      "DiagnosticSign" .. entry.type,
     }
 
     return displayer {
@@ -1226,7 +1270,7 @@ function make_entry.gen_from_commands(opts)
       attrs,
       entry.nargs,
       entry.complete or "",
-      entry.definition,
+      entry.definition:gsub("\n", " "),
     }
   end
 

@@ -35,6 +35,15 @@ local function extract_captures()
   return captures
 end
 
+local function list_any(list, predicate)
+  for _, v in pairs(list) do
+    if predicate(v) then
+      return true
+    end
+  end
+  return false
+end
+
 local function do_check()
   local timings = {}
   local parsers = require("nvim-treesitter.info").installed_parsers()
@@ -56,14 +65,17 @@ local function do_check()
       table.insert(timings, { duration = duration, lang = lang, query_type = query_type })
       io_print("Checking " .. lang .. " " .. query_type .. string.format(" (%.02fms)", duration * 1e-6))
       if not ok then
-        vim.api.nvim_err_writeln(query)
-        last_error = query
+        local err_msg = lang .. " (" .. query_type .. "): " .. query
+        io_print(err_msg)
+        last_error = err_msg
       else
         if query then
           for _, capture in ipairs(query.captures) do
             local is_valid = (
               vim.startswith(capture, "_") -- Helpers.
-              or vim.tbl_contains(captures[query_type], capture)
+              or list_any(captures[query_type], function(documented_capture)
+                return vim.startswith(capture, documented_capture)
+              end)
             )
             if not is_valid then
               local error = string.format("(x) Invalid capture @%s in %s for %s.", capture, query_type, lang)

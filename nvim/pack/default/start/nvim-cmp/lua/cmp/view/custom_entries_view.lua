@@ -30,7 +30,6 @@ custom_entries_view.new = function()
   self.entries_win:option('cursorlineopt', 'line')
   self.entries_win:option('foldenable', false)
   self.entries_win:option('wrap', false)
-  self.entries_win:option('scrolloff', 0)
   -- This is done so that strdisplaywidth calculations for lines in the
   -- custom_entries_view window exactly match with what is really displayed,
   -- see comment in cmp.Entry.get_view. Setting tabstop to 1 makes all tabs be
@@ -154,8 +153,8 @@ custom_entries_view.open = function(self, offset, entries)
   height = math.min(height, #self.entries)
 
   local pos = api.get_screen_cursor()
-  local cursor = api.get_cursor()
-  local delta = cursor[2] + 1 - self.offset
+  local cursor_before_line = api.get_cursor_before_line()
+  local delta = vim.fn.strdisplaywidth(cursor_before_line:sub(self.offset))
   local row, col = pos[1], pos[2] - delta - 1
 
   local border_info = window.get_border_info({ style = completion })
@@ -195,6 +194,7 @@ custom_entries_view.open = function(self, offset, entries)
   -- Apply window options (that might be changed) on the custom completion menu.
   self.entries_win:option('winblend', vim.o.pumblend)
   self.entries_win:option('winhighlight', completion.winhighlight)
+  self.entries_win:option('scrolloff', completion.scrolloff)
   self.entries_win:open({
     relative = 'editor',
     style = 'minimal',
@@ -213,7 +213,7 @@ custom_entries_view.open = function(self, offset, entries)
     if self:is_direction_top_down() then
       self:_select(1, { behavior = types.cmp.SelectBehavior.Select })
     else
-      self:_select(#self.entries - 1, { behavior = types.cmp.SelectBehavior.Select })
+      self:_select(#self.entries, { behavior = types.cmp.SelectBehavior.Select })
     end
   else
     if self:is_direction_top_down() then
@@ -284,16 +284,33 @@ end
 custom_entries_view.select_next_item = function(self, option)
   if self:visible() then
     local cursor = vim.api.nvim_win_get_cursor(self.entries_win.win)[1]
-    if self:is_direction_top_down() then
-      cursor = cursor + 1
-    else
-      cursor = cursor - 1
-    end
+    local is_top_down = self:is_direction_top_down()
+    local last = #self.entries
+
     if not self.entries_win:option('cursorline') then
-      cursor = (self:is_direction_top_down() and 1) or #self.entries
-    elseif #self.entries < cursor then
-      cursor = (not self:is_direction_top_down() and #self.entries + 1) or 0
+      cursor = (is_top_down and 1) or last
+    else
+      if is_top_down then
+        if cursor == last then
+          cursor = 0
+        else
+          cursor = cursor + option.count
+          if last < cursor then
+            cursor = last
+          end
+        end
+      else
+        if cursor == 0 then
+          cursor = last
+        else
+          cursor = cursor - option.count
+          if cursor < 0 then
+            cursor = 0
+          end
+        end
+      end
     end
+
     self:_select(cursor, option)
   end
 end
@@ -301,16 +318,33 @@ end
 custom_entries_view.select_prev_item = function(self, option)
   if self:visible() then
     local cursor = vim.api.nvim_win_get_cursor(self.entries_win.win)[1]
-    if self:is_direction_top_down() then
-      cursor = cursor - 1
-    else
-      cursor = cursor + 1
-    end
+    local is_top_down = self:is_direction_top_down()
+    local last = #self.entries
+
     if not self.entries_win:option('cursorline') then
-      cursor = (self:is_direction_top_down() and #self.entries) or 1
-    elseif #self.entries < cursor then
-      cursor = (not self:is_direction_top_down() and 0) or #self.entries + 1
+      cursor = (is_top_down and last) or 1
+    else
+      if is_top_down then
+        if cursor == 1 then
+          cursor = 0
+        else
+          cursor = cursor - option.count
+          if cursor < 0 then
+            cursor = 1
+          end
+        end
+      else
+        if cursor == last then
+          cursor = 0
+        else
+          cursor = cursor + option.count
+          if last < cursor then
+            cursor = last
+          end
+        end
+      end
     end
+
     self:_select(cursor, option)
   end
 end

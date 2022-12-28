@@ -131,6 +131,7 @@ end)
 cmp.select_next_item = cmp.sync(function(option)
   option = option or {}
   option.behavior = option.behavior or cmp.SelectBehavior.Insert
+  option.count = option.count or 1
 
   if cmp.core.view:visible() then
     local release = cmp.core:suspend()
@@ -139,9 +140,9 @@ cmp.select_next_item = cmp.sync(function(option)
     return true
   elseif vim.fn.pumvisible() == 1 then
     if option.behavior == cmp.SelectBehavior.Insert then
-      feedkeys.call(keymap.t('<C-n>'), 'in')
+      feedkeys.call(keymap.t(string.rep('<C-n>', option.count)), 'in')
     else
-      feedkeys.call(keymap.t('<Down>'), 'in')
+      feedkeys.call(keymap.t(string.rep('<Down>', option.count)), 'in')
     end
     return true
   end
@@ -152,6 +153,7 @@ end)
 cmp.select_prev_item = cmp.sync(function(option)
   option = option or {}
   option.behavior = option.behavior or cmp.SelectBehavior.Insert
+  option.count = option.count or 1
 
   if cmp.core.view:visible() then
     local release = cmp.core:suspend()
@@ -160,9 +162,9 @@ cmp.select_prev_item = cmp.sync(function(option)
     return true
   elseif vim.fn.pumvisible() == 1 then
     if option.behavior == cmp.SelectBehavior.Insert then
-      feedkeys.call(keymap.t('<C-p>'), 'in')
+      feedkeys.call(keymap.t(string.rep('<C-p>', option.count)), 'in')
     else
-      feedkeys.call(keymap.t('<Up>'), 'in')
+      feedkeys.call(keymap.t(string.rep('<Up>', option.count)), 'in')
     end
     return true
   end
@@ -184,7 +186,7 @@ cmp.confirm = cmp.sync(function(option, callback)
   option = option or {}
   option.select = option.select or false
   option.behavior = option.behavior or cmp.get_config().confirmation.default_behavior or cmp.ConfirmBehavior.Insert
-  callback = callback or (function() end)
+  callback = callback or function() end
 
   if cmp.core.view:visible() then
     local e = cmp.core.view:get_selected_entry()
@@ -302,7 +304,8 @@ local on_insert_enter = function()
     cmp.core:on_change('InsertEnter')
   end
 end
-autocmd.subscribe({ 'InsertEnter', 'CmdlineEnter' }, async.debounce_next_tick(on_insert_enter))
+autocmd.subscribe({ 'CmdlineEnter' }, async.debounce_next_tick(on_insert_enter))
+autocmd.subscribe({ 'InsertEnter' }, async.debounce_next_tick_by_keymap(on_insert_enter))
 
 -- async.throttle is needed for performance. The mapping `:<C-u>...<CR>` will fire `CmdlineChanged` for each character.
 local on_text_changed = function()

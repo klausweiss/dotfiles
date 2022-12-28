@@ -5,6 +5,7 @@
 
 (parameter_declaration
   declarator: (reference_declarator) @parameter)
+
 ; function(Foo ...foo)
 (variadic_parameter_declaration
   declarator: (variadic_declarator
@@ -24,6 +25,9 @@
      (field_identifier) @method)) @_parent
  (#has-parent? @_parent template_method function_declarator call_expression))
 
+(field_declaration
+  (field_identifier) @field)
+
 (field_initializer
  (field_identifier) @property)
 
@@ -31,7 +35,12 @@
   declarator: (field_identifier) @method)
 
 (concept_definition
-  name: (identifier) @type)
+  name: (identifier) @type.definition)
+
+(alias_declaration
+  name: (type_identifier) @type.definition)
+
+(auto) @type.builtin
 
 (namespace_identifier) @namespace
 ((namespace_identifier) @type
@@ -127,27 +136,25 @@
 [
  "class"
  "decltype"
- "constexpr"
  "explicit"
- "final"
  "friend"
- "mutable"
  "namespace"
  "override"
- "private"
- "protected"
- "public"
  "template"
  "typename"
  "using"
- "virtual"
  "co_await"
  "concept"
  "requires"
- "consteval"
- "constinit"
- (auto)
 ] @keyword
+
+[
+ "public"
+ "private"
+ "protected"
+ "virtual"
+ "final"
+] @type.qualifier
 
 [
  "co_yield"
@@ -158,24 +165,24 @@
  "new"
  "delete"
 
- ;; these keywords are not supported by the parser
- ;"eq"
- ;"not_eq"
- ;
- ;"compl"
- ;"and"
- ;"or"
- ;
- ;"bitand"
- ;"bitand_eq"
- ;"bitor"
- ;"bitor_eq"
- ;"xor"
- ;"xor_eq"
+ "xor"
+ "bitand"
+ "bitor"
+ "compl"
+ "not"
+ "xor_eq"
+ "and_eq"
+ "or_eq"
+ "not_eq"
+ "and"
+ "or"
 ] @keyword.operator
 
 "<=>" @operator
 
 "::" @punctuation.delimiter
+
+(template_argument_list
+  ["<" ">"] @punctuation.bracket)
 
 (literal_suffix) @operator

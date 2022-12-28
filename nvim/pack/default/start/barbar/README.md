@@ -32,19 +32,17 @@ files you can even type the letter ahead from memory.
 
 #### Using [vim-plug](https://github.com/junegunn/vim-plug)
 ```vim
-Plug 'kyazdani42/nvim-web-devicons'
+Plug 'nvim-tree/nvim-web-devicons'
 Plug 'romgrk/barbar.nvim'
 ```
 
 #### Using [packer.nvim](https://github.com/wbthomason/packer.nvim)
 ```lua
-use {
-  'romgrk/barbar.nvim',
-  requires = {'kyazdani42/nvim-web-devicons'}
-}
+use 'nvim-tree/nvim-web-devicons'
+use {'romgrk/barbar.nvim', wants = 'nvim-web-devicons'}
 ```
 
-You can skip the dependency on `'kyazdani42/nvim-web-devicons'` if you
+You can skip the dependency on `'nvim-tree/nvim-web-devicons'` if you
 [disable icons](#options).  If you want the icons, don't forget to
 install [nerd fonts](https://www.nerdfonts.com/).
 
@@ -136,6 +134,7 @@ nnoremap <silent>    <A-c> <Cmd>BufferClose<CR>
 "                          :BufferWipeout
 " Close commands
 "                          :BufferCloseAllButCurrent
+"                          :BufferCloseAllButVisible
 "                          :BufferCloseAllButPinned
 "                          :BufferCloseAllButCurrentOrPinned
 "                          :BufferCloseBuffersLeft
@@ -226,9 +225,27 @@ let bufferline.closable = v:true
 "  - middle-click: delete buffer
 let bufferline.clickable = v:true
 
+" Enables / disables diagnostic symbols
+" ERROR / WARN / INFO / HINT
+let bufferline.diagnostics = [
+  \ {'enabled': v:true, 'icon': 'ﬀ'},
+  \ {'enabled': v:false},
+  \ {'enabled': v:false},
+  \ {'enabled': v:true},
+\]
+
 " Excludes buffers from the tabline
 let bufferline.exclude_ft = ['javascript']
 let bufferline.exclude_name = ['package.json']
+
+" Hide inactive buffers and file extensions. Other options are `alternate`, `current`, and `visible`.
+let bufferline.hide = {'extensions': v:true, 'inactive': v:true}
+
+" Disable highlighting alternate buffers
+let bufferline.highlight_alternate = v:false
+
+" Enable highlighting visible buffers
+let bufferline.highlight_visible = v:true
 
 " Enable/disable icons
 " if set to 'buffer_number', will show buffer number in the tabline
@@ -255,6 +272,9 @@ let bufferline.insert_at_end = v:false
 
 " Sets the maximum padding width with which to surround each tab.
 let bufferline.maximum_padding = 4
+
+" Sets the minimum padding width with which to surround each tab.
+let bufferline.minimum_padding = 1
 
 " Sets the maximum buffer name length.
 let bufferline.maximum_length = 30
@@ -298,9 +318,33 @@ require'bufferline'.setup {
   --  - middle-click: delete buffer
   clickable = true,
 
+  -- Enables / disables diagnostic symbols
+  diagnostics = {
+    -- you can use a list
+    {enabled = true, icon = 'ﬀ'}, -- ERROR
+    {enabled = false}, -- WARN
+    {enabled = false}, -- INFO
+    {enabled = true},  -- HINT
+
+    -- OR `vim.diagnostic.severity`
+    [vim.diagnostic.severity.ERROR] = {enabled = true, icon = 'ﬀ'},
+    [vim.diagnostic.severity.WARN] = {enabled = false},
+    [vim.diagnostic.severity.INFO] = {enabled = false},
+    [vim.diagnostic.severity.HINT] = {enabled = true},
+  },
+
   -- Excludes buffers from the tabline
   exclude_ft = {'javascript'},
   exclude_name = {'package.json'},
+
+  -- Hide inactive buffers and file extensions. Other options are `alternate`, `current`, and `visible`.
+  hide = {extensions = true, inactive = true},
+
+  -- Disable highlighting alternate buffers
+  highlight_alternate = false,
+
+  -- Enable highlighting visible buffers
+  highlight_visible = true,
 
   -- Enable/disable icons
   -- if set to 'numbers', will show buffer index in the tabline
@@ -327,6 +371,9 @@ require'bufferline'.setup {
 
   -- Sets the maximum padding width with which to surround each tab
   maximum_padding = 1,
+
+  -- Sets the minimum padding width with which to surround each tab
+  minimum_padding = 1,
 
   -- Sets the maximum buffer name length.
   maximum_length = 30,
@@ -440,7 +487,7 @@ vim.api.nvim_create_autocmd('BufWinEnter', {
   pattern = '*',
   callback = function()
     if vim.bo.filetype == 'NvimTree' then
-      require'bufferline.state'.set_offset(31, 'FileTree')
+      require'bufferline.api'.set_offset(31, 'FileTree')
     end
   end
 })
@@ -449,7 +496,7 @@ vim.api.nvim_create_autocmd('BufWinLeave', {
   pattern = '*',
   callback = function()
     if vim.fn.expand('<afile>'):match('NvimTree') then
-      require'bufferline.state'.set_offset(0)
+      require'bufferline.api'.set_offset(0)
     end
   end
 })
@@ -466,22 +513,22 @@ You can add the following functions and then use `nvim-tree` mappings:
 
 ```lua
 local nvim_tree_events = require('nvim-tree.events')
-local bufferline_state = require('bufferline.state')
+local bufferline_api = require('bufferline.api')
 
 local function get_tree_size()
   return require'nvim-tree.view'.View.width
 end
 
 nvim_tree_events.subscribe('TreeOpen', function()
-  bufferline_state.set_offset(get_tree_size())
+  bufferline_api.set_offset(get_tree_size())
 end)
 
 nvim_tree_events.subscribe('Resize', function()
-  bufferline_state.set_offset(get_tree_size())
+  bufferline_api.set_offset(get_tree_size())
 end)
 
 nvim_tree_events.subscribe('TreeClose', function()
-  bufferline_state.set_offset(0)
+  bufferline_api.set_offset(0)
 end)
 ```
 

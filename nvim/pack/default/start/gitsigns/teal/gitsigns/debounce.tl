@@ -13,7 +13,7 @@ end
 ---@param fn (function) Function to debounce
 ---@returns (function) Debounced function.
 function M.debounce_trailing(ms: number, fn: function): function
-  local timer = uv.new_timer(true) as vim.loop.Timer
+  local timer = uv.new_timer(true)
   return function(...)
     local argv = {...}
     timer:start(ms, 0, function()
@@ -30,7 +30,7 @@ end
 --@param fn (function) Function to throttle
 --@returns (function) throttled function.
 function M.throttle_leading(ms: number, fn: function): function
-  local timer = uv.new_timer(true) as vim.loop.Timer
+  local timer = uv.new_timer(true)
   local running = false
   return function(...)
     if not running then

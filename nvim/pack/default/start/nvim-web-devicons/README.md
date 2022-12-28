@@ -10,7 +10,13 @@ colors for each icon.
 ## Installation
 
 ```vim
-Plug 'kyazdani42/nvim-web-devicons'
+Plug 'nvim-tree/nvim-web-devicons'
+```
+
+or with [packer.nvim](https://github.com/wbthomason/packer.nvim)
+
+```
+use 'nvim-tree/nvim-web-devicons'
 ```
 
 ## Usage
@@ -18,7 +24,7 @@ Plug 'kyazdani42/nvim-web-devicons'
 ### Setup
 
 This adds all the highlight groups for the devicons
-i.e. it calls `highlight IconNameDevicon guifg='<color>' ctermfg='<cterm_color>'` for all icons
+i.e. it calls `vim.api.nvim_set_hl` for all icons
 this might need to be re-called in a `Colorscheme` to re-apply cleared highlights
 if the color scheme changes
 
@@ -35,6 +41,9 @@ require'nvim-web-devicons'.setup {
     name = "Zsh"
   }
  };
+ -- globally enable different highlight colors per icon (default to true)
+ -- if set to false all icons will have the default icon's color
+ color_icons = true;
  -- globally enable default icons (default to false)
  -- will get overriden by `get_icons` option
  default = true;

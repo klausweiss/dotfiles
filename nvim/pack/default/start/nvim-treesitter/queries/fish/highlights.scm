@@ -7,14 +7,20 @@
  "||"
  "|"
  "&"
- "="
- "!="
  ".."
  "!"
  (direction)
  (stream_redirect)
- (test_option)
 ] @operator
+
+;; match operators of test command
+(command
+  name: (word) @function.builtin (#match? @function.builtin "^test$")
+  argument: (word) @operator (#match? @operator "^(!?\\=|-[a-zA-Z]+)$"))
+
+;; match operators of [ command
+(test_command
+  argument: (word) @operator (#match? @operator "^(!?\\=|-[a-zA-Z]+)$"))
 
 [
  "not"
@@ -103,7 +109,7 @@
             ]
 )
 
-(command_substitution_dollar "$" @punctuation.bracket)
+(command_substitution "$" @punctuation.bracket)
 
 ; non-bultin command names
 (command name: (word) @function.call)
@@ -116,7 +122,7 @@
         ]
 )
 
-(test_command "test" @function.builtin)
+(test_command (word) @function.builtin)
 
 ;; Functions
 
@@ -150,10 +156,12 @@
 [(integer) (float)] @number
 (comment) @comment
 (comment) @spell
-(test_option) @string
 
 ((word) @boolean
 (#any-of? @boolean "true" "false"))
+
+((program . (comment) @preproc)
+  (#match? @preproc "^#!/"))
 
 ;; Error
 

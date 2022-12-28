@@ -1,29 +1,46 @@
 local cmp = require('cmp')
 
-local MODIFIER_REGEX = {
-  vim.regex([=[abo\%[veleft]\s*]=]),
-  vim.regex([=[bel\%[owright]\s*]=]),
-  vim.regex([=[bo\%[tright]\s*]=]),
-  vim.regex([=[bro\%[wse]\s*]=]),
-  vim.regex([=[conf\%[irm]\s*]=]),
-  vim.regex([=[hid\%[e]\s*]=]),
-  vim.regex([=[keepal\s*t]=]),
-  vim.regex([=[keeppa\%[tterns]\s*]=]),
-  vim.regex([=[lefta\%[bove]\s*]=]),
-  vim.regex([=[loc\%[kmarks]\s*]=]),
-  vim.regex([=[nos\%[wapfile]\s*]=]),
-  vim.regex([=[rightb\%[elow]\s*]=]),
-  vim.regex([=[sil\%[ent]\s*]=]),
-  vim.regex([=[tab\s*]=]),
-  vim.regex([=[to\%[pleft]\s*]=]),
-  vim.regex([=[verb\%[ose]\s*]=]),
-  vim.regex([=[vert\%[ical]\s*]=]),
+local function create_regex(patterns, head)
+  local pattern = [[\%(]] .. table.concat(patterns, [[\|]]) .. [[\)]]
+  if head then
+    pattern = '^' .. pattern
+  end
+  return vim.regex(pattern)
+end
+
+local DEFAULT_OPTION = {
+  ignore_cmds = { 'Man', '!' }
 }
-local COUNT_RANGE_REGEX = {
-  vim.regex([=[\%(\d\+\|\$\),\%(\d\+\|\$\)\s*]=]),
-  vim.regex([=['<,'>\s*]=]),
-  vim.regex([=[\%(\d\+\|\$\)\s*]=]),
-}
+
+local MODIFIER_REGEX = create_regex({
+  [=[\s*abo\%[veleft]\s*]=],
+  [=[\s*bel\%[owright]\s*]=],
+  [=[\s*bo\%[tright]\s*]=],
+  [=[\s*bro\%[wse]\s*]=],
+  [=[\s*conf\%[irm]\s*]=],
+  [=[\s*hid\%[e]\s*]=],
+  [=[\s*keepal\s*t]=],
+  [=[\s*keeppa\%[tterns]\s*]=],
+  [=[\s*lefta\%[bove]\s*]=],
+  [=[\s*loc\%[kmarks]\s*]=],
+  [=[\s*nos\%[wapfile]\s*]=],
+  [=[\s*rightb\%[elow]\s*]=],
+  [=[\s*sil\%[ent]\s*]=],
+  [=[\s*tab\s*]=],
+  [=[\s*to\%[pleft]\s*]=],
+  [=[\s*verb\%[ose]\s*]=],
+  [=[\s*vert\%[ical]\s*]=],
+}, true)
+
+local COUNT_RANGE_REGEX = create_regex({
+  [=[\s*\%(\d\+\|\$\)\%[,\%(\d\+\|\$\)]\s*]=],
+  [=[\s*'\%[<,'>]\s*]=],
+  [=[\s*\%(\d\+\|\$\)\s*]=],
+}, true)
+
+local OPTION_NAME_COMPLETION_REGEX = create_regex({
+  [=[se\%[tlocal]]=],
+}, true)
 
 local definitions = {
   {
@@ -31,32 +48,56 @@ local definitions = {
     regex = [=[[^[:blank:]]*$]=],
     kind = cmp.lsp.CompletionItemKind.Variable,
     isIncomplete = true,
-    exec = function(arglead, cmdline, col, force)
-      local suffix_pos = vim.regex([[\k*$]]):match_str(arglead)
-      local fixed_input = string.sub(arglead, 1, suffix_pos or #arglead)
+    exec = function(option, arglead, cmdline, col, force)
+      local _, parsed = pcall(function()
+        local target = cmdline
+        local s, e = COUNT_RANGE_REGEX:match_str(target)
+        if s and e then
+          target = target:sub(e + 1)
+        end
+        -- nvim_parse_cmd throw error when the cmdline contains range specifier.
+        return vim.api.nvim_parse_cmd(target, {}) or {}
+      end)
+      parsed = parsed or {}
+
+      -- Check ignore cmd.
+      if vim.tbl_contains(option.ignore_cmds, parsed.cmd) then
+        return {}
+      end
 
       -- Cleanup modifiers.
+      -- We can just remove modifiers because modifiers is always separated by space.
       if arglead ~= cmdline then
-        for _, re in ipairs(MODIFIER_REGEX) do
-          local s, e = re:match_str(cmdline)
-          if s and e then
-            cmdline = string.sub(cmdline, e + 1)
+        while true do
+          local s, e = MODIFIER_REGEX:match_str(cmdline)
+          if s == nil then
             break
           end
+          cmdline = string.sub(cmdline, e + 1)
         end
       end
 
-      -- Cleanup range or count.
-      local prefix = ''
-      for _, re in ipairs(COUNT_RANGE_REGEX) do
-        local s, e = re:match_str(cmdline)
-        if s and e then
-          if arglead == cmdline then
-            prefix = string.sub(cmdline, 1, e)
+      -- Support ":'<,'>del|".
+      -- The `vim.fn.getcompletion` does not return `delete` command for this case.
+      -- We should remove `'<,'>` for `vim.fn.getcompletion` and then after add the removed prefix for each completed items.
+      if arglead == cmdline then
+        while true do
+          local s, e = COUNT_RANGE_REGEX:match_str(cmdline)
+          if s == nil then
+            break
           end
           cmdline = string.sub(cmdline, e + 1)
-          break
         end
+      end
+
+      -- Support `lua vim.treesitter._get|` or `'<,'>del|` completion.
+      -- In this case, the `vim.fn.getcompletion` will return only `get_query` for `vim.treesitter.get_|`.
+      -- We should detect `vim.treesitter.` and `get_query` separately.
+      -- TODO: The `\h\w*` was choosed by huristic. We should consider more suitable detection.
+      local fixed_input
+      do
+        local suffix_pos = vim.regex([[\h\w*$]]):match_str(arglead)
+        fixed_input = string.sub(arglead, 1, suffix_pos or #arglead)
       end
 
       -- Ignore prefix only cmdline. (e.g.: 4, '<,'>)
@@ -64,15 +105,26 @@ local definitions = {
         return {}
       end
 
+      -- The `vim.fn.getcompletion` does not return `*no*cursorline` option.
+      -- cmp-cmdline corrects `no` prefix for option name.
+      local is_option_name_completion = OPTION_NAME_COMPLETION_REGEX:match_str(cmdline) ~= nil
+
       local items = {}
       local escaped = cmdline:gsub([[\\]], [[\\\\]]);
-      for _, item in ipairs(vim.fn.getcompletion(escaped, 'cmdline')) do
-        item = type(item) == 'string' and { word = item } or item
-        item.word = prefix .. item.word
+      for _, word_or_item in ipairs(vim.fn.getcompletion(escaped, 'cmdline')) do
+        local word = type(word_or_item) == 'string' and word_or_item or word_or_item.word
+        local item = { word = word }
+        table.insert(items, item)
+        if is_option_name_completion then
+          table.insert(items, vim.tbl_deep_extend('force', {}, item, {
+            word = 'no' .. item.word
+          }))
+        end
+      end
+      for _, item in ipairs(items) do
         if not string.find(item.word, fixed_input, 1, true) then
           item.word = fixed_input .. item.word
         end
-        table.insert(items, item)
       end
       return items
     end
@@ -98,10 +150,6 @@ source.get_trigger_characters = function()
   return { ' ', '.', '#', '-' }
 end
 
-source.is_available = function()
-  return vim.api.nvim_get_mode().mode == 'c'
-end
-
 source.complete = function(self, params, callback)
   local offset = 0
   local ctype = ''
@@ -114,6 +162,7 @@ source.complete = function(self, params, callback)
       offset = s
       ctype = def.type
       items = def.exec(
+        vim.tbl_deep_extend('keep', params.option, DEFAULT_OPTION),
         string.sub(params.context.cursor_before_line, s + 1),
         params.context.cursor_before_line,
         params.context.cursor.col,
@@ -165,4 +214,3 @@ source.complete = function(self, params, callback)
 end
 
 return source
-

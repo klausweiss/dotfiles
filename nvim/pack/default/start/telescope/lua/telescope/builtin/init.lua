@@ -52,7 +52,7 @@ end
 ---@field search_dirs table: directory/directories/files to search, mutually exclusive with `grep_open_files`
 ---@field glob_pattern string|table: argument to be used with `--glob`, e.g. "*.toml", can use the opposite "!*.toml"
 ---@field type_filter string: argument to be used with `--type`, e.g. "rust", see `rg --type-list`
----@field additional_args function: function(opts) which returns a table of additional arguments to be passed on
+---@field additional_args function|table: additional arguments to be passed on. Can be fn(opts) -> tbl
 ---@field max_results number: define a upper result value
 ---@field disable_coordinates boolean: don't show the line & row numbers (default: false)
 builtin.live_grep = require_on_exported_call("telescope.builtin.__files").live_grep
@@ -65,7 +65,7 @@ builtin.live_grep = require_on_exported_call("telescope.builtin.__files").live_g
 ---@field search_dirs table: directory/directories/files to search, mutually exclusive with `grep_open_files`
 ---@field use_regex boolean: if true, special characters won't be escaped, allows for using regex (default: false)
 ---@field word_match string: can be set to `-w` to enable exact word matches
----@field additional_args function: function(opts) which returns a table of additional arguments to be passed on
+---@field additional_args function|table: additional arguments to be passed on. Can be fn(opts) -> tbl
 ---@field disable_coordinates boolean: don't show the line and row numbers (default: false)
 ---@field only_sort_text boolean: only sort the text, not the file, line or row (default: false)
 builtin.grep_string = require_on_exported_call("telescope.builtin.__files").grep_string
@@ -74,6 +74,7 @@ builtin.grep_string = require_on_exported_call("telescope.builtin.__files").grep
 ---@param opts table: options to pass to the picker
 ---@field cwd string: root dir to search from (default: cwd, use utils.buffer_dir() to search relative to open buffer)
 ---@field find_command function|table: cmd to use for the search. Can be a fn(opts) -> tbl (default: autodetect)
+---@field file_entry_encoding string: encoding of output of `find_command`
 ---@field follow boolean: if true, follows symlinks (i.e. uses `-L` flag for the `find` command)
 ---@field hidden boolean: determines whether to show hidden files or not (default: false)
 ---@field no_ignore boolean: show files ignored by .gitignore, .ignore, etc. (default: false)
@@ -271,6 +272,7 @@ builtin.oldfiles = require_on_exported_call("telescope.builtin.__internal").oldf
 --- - Default keymaps:
 ---   - `<C-e>`: open the command line with the text of the currently selected result populated in it
 ---@param opts table: options to pass to the picker
+---@field filter_fn function: filter fn(cmd:string). true if the history command should be presented.
 builtin.command_history = require_on_exported_call("telescope.builtin.__internal").command_history
 
 --- Lists searches that were executed recently, and reruns them on `<cr>`
@@ -330,6 +332,8 @@ builtin.registers = require_on_exported_call("telescope.builtin.__internal").reg
 ---@param opts table: options to pass to the picker
 ---@field modes table: a list of short-named keymap modes to search (default: { "n", "i", "c", "x" })
 ---@field show_plug boolean: if true, the keymaps for which the lhs contains "<Plug>" are also shown (default: true)
+---@field only_buf boolean: if true, only show the buffer-local keymaps (default: false)
+---@field lhs_filter function: filter(lhs:string) -> boolean. true if the keymap should be shown (optional)
 builtin.keymaps = require_on_exported_call("telescope.builtin.__internal").keymaps
 
 --- Lists all available filetypes, sets currently open buffer's filetype to selected filetype in Telescope on `<cr>`
@@ -372,6 +376,7 @@ builtin.jumplist = require_on_exported_call("telescope.builtin.__internal").jump
 ---@param opts table: options to pass to the picker
 ---@field include_declaration boolean: include symbol declaration in the lsp references (default: true)
 ---@field include_current_line boolean: include current line (default: false)
+---@field jump_type string: how to goto reference if there is only one, values: "tab", "split", "vsplit", "never"
 ---@field fname_width number: defines the width of the filename section (default: 30)
 ---@field show_line boolean: show results text (default: true)
 ---@field trim_text boolean: trim results text (default: false)
@@ -474,9 +479,10 @@ builtin.lsp_dynamic_workspace_symbols = require_on_exported_call("telescope.buil
 builtin.diagnostics = require_on_exported_call("telescope.builtin.__diagnostics").get
 
 local apply_config = function(mod)
-  local pickers_conf = require("telescope.config").pickers
   for k, v in pairs(mod) do
     mod[k] = function(opts)
+      local pickers_conf = require("telescope.config").pickers
+
       opts = opts or {}
       opts.bufnr = opts.bufnr or vim.api.nvim_get_current_buf()
       opts.winnr = opts.winnr or vim.api.nvim_get_current_win()

@@ -26,7 +26,8 @@ function M:open()
     autocmds = {
       ["BufUnload"] = function()
         self.on_close()
-        vim.cmd([[silent w!]])
+        vim.cmd("silent w!")
+        require("neogit.process").defer_show_preview_buffers()
       end,
     },
     mappings = {
@@ -40,7 +41,7 @@ function M:open()
       buffer:set_lines(0, -1, false, self.content)
 
       -- NOTE: This avoids the user having to force to save the contents of the buffer.
-      vim.cmd([[silent w!]])
+      vim.cmd("silent w!")
     end,
   }
 end

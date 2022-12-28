@@ -4,7 +4,7 @@ local fn = vim.fn
 
 -- local lua_magic = [[^$()%.[]*+-?]]
 
-local special_chars = { "%", "*", "[", "]", "^", "$", "(", ")", ".", "+", "-", "?" }
+local special_chars = { "%", "*", "[", "]", "^", "$", "(", ")", ".", "+", "-", "?", '"' }
 
 local contains = vim.tbl_contains
 -- local lsp_trigger_chars = {}
@@ -39,7 +39,7 @@ helper.log = function(...)
       str = str .. " |" .. tostring(i) .. ": " .. tostring(v)
     end
   end
-  if #str > 2 then
+  if #str > 4 then
     if log_path ~= nil and #log_path > 3 then
       local f = io.open(log_path, "a+")
       if f == nil then
@@ -73,7 +73,8 @@ helper.replace_special = replace_special
 local function findwholeword(input, word)
   word = replace_special(word)
 
-  local l, e = string.find(input, "%(") -- All languages I know, func parameter start with (
+  local e
+  local l, _ = string.find(input, "%(") -- All languages I know, func parameter start with (
   l = l or 1
   l, e = string.find(input, "%f[%a]" .. word .. "%f[%A]", l)
 
@@ -351,8 +352,8 @@ helper.cleanup_async = function(close_float_win, delay, force)
   end, delay * 1000)
 end
 
--- modified from https://github.com/neovim/neovim/blob/b3b02eb52943fdc8ba74af3b485e9d11655bc9c9/runtime/lua/vim/lsp/util.lua#L40-L86
 local function get_border_height(opts)
+  local border_height = { none = 0, single = 2, double = 2, rounded = 2, solid = 2, shadow = 1 }
   local border = opts.border
   local height = 0
   if border == nil then
@@ -360,10 +361,9 @@ local function get_border_height(opts)
   end
 
   if type(border) == "string" then
-    local border_height = { none = 0, single = 2, double = 2, rounded = 2, solid = 2, shadow = 1 }
     height = border_height[border]
   else
-    local function border_height(id)
+    local function _border_height(id)
       id = (id - 1) % #border + 1
       if type(border[id]) == "table" then
         -- border specified as a table of <character, highlight group>
@@ -373,8 +373,8 @@ local function get_border_height(opts)
         return #border[id] > 0 and 1 or 0
       end
     end
-    height = height + border_height(2) -- top
-    height = height + border_height(6) -- bottom
+    height = height + _border_height(2) -- top
+    height = height + _border_height(6) -- bottom
   end
 
   return height
@@ -389,20 +389,29 @@ helper.cal_pos = function(contents, opts)
   if not _LSP_SIG_CFG.floating_window_above_cur_line or lnum <= 2 then
     return {}, 0
   end
-  local lines
-  local border_height
   local util = vim.lsp.util
   contents = util._trim(contents, opts)
-  util.try_trim_markdown_code_blocks(contents)
+  -- there are 2 cases:
+  -- 1. contents[1] = "```{language_id}", and contents[#contents] = "```", the code fences will be removed
+  --    and return language_id
+  -- 2. in other cases, no lines will be removed, and return "markdown"
+  local filetype = util.try_trim_markdown_code_blocks(contents)
   log(vim.inspect(contents))
 
   local width, height = util._make_floating_popup_size(contents, opts)
   local float_option = util.make_floating_popup_options(width, height, opts)
 
+  -- if the filetype returned is "markdown", and contents contains code fences, the height should minus 2,
+  -- because the code fences won't be display
+  local code_block_flag = contents[1]:match("^```")
+  if filetype == "markdown" and code_block_flag ~= nil then
+    height = height - 2
+  end
+
   log("popup size:", width, height, float_option)
   local off_y = 0
   local max_height = float_option.height or _LSP_SIG_CFG.max_height
-  border_height = border_height or get_border_height(float_option)
+  local border_height = get_border_height(float_option)
   -- shift win above current line
   if float_option.anchor == "NW" or float_option.anchor == "NE" then
     -- note: the floating widnows will be under current line
@@ -423,7 +432,7 @@ helper.cal_pos = function(contents, opts)
     float_option.height = 1
   end
   float_option.max_height = max_height
-  return float_option, off_y, lines, max_height
+  return float_option, off_y, contents, max_height
 end
 
 local nvim_0_6
@@ -626,15 +635,19 @@ helper.highlight_parameter = function(s, l)
       s = s - 1 + #_LSP_SIG_CFG.padding
       l = l + #_LSP_SIG_CFG.padding
     end
+    local line = 0
 
+    if _LSP_SIG_CFG.noice then
+      line = 1
+    end
     if _LSP_SIG_CFG.bufnr and api.nvim_buf_is_valid(_LSP_SIG_CFG.bufnr) then
       log("extmark", _LSP_SIG_CFG.bufnr, s, l, #_LSP_SIG_CFG.padding)
       _LSP_SIG_CFG.markid = api.nvim_buf_set_extmark(
         _LSP_SIG_CFG.bufnr,
         _LSP_SIG_CFG.ns,
-        0,
+        line,
         s,
-        { end_line = 0, end_col = l, hl_group = hi }
+        { end_line = line, end_col = l, hl_group = hi }
       )
 
       log("extmark_id", _LSP_SIG_CFG.markid)

@@ -20,7 +20,8 @@
   name: (identifier) @parameter)
 
 (spread_parameter
- (variable_declarator) @parameter) ; int... foo
+ (variable_declarator
+   name: (identifier) @parameter)) ; int... foo
 
 ;; Lambda parameter
 (inferred_parameters (identifier) @parameter) ; (x,y) -> ...
@@ -50,6 +51,7 @@
 "&&"
 "|"
 "||"
+"!"
 "!="
 "=="
 "*"
@@ -109,7 +111,8 @@
 ; Fields
 
 (field_declaration
-  declarator: (variable_declarator) @field)
+  declarator: (variable_declarator
+    name: (identifier) @field))
 
 (field_access
   field: (identifier) @field)
@@ -149,7 +152,7 @@
 [
   (line_comment)
   (block_comment)
-] @comment
+] @comment @spell
 
 [
 (true)
@@ -159,7 +162,6 @@
 ; Keywords
 
 [
-"abstract"
 "assert"
 "break"
 "class"
@@ -169,33 +171,45 @@
 "enum"
 "exports"
 "extends"
-"final"
 "implements"
 "instanceof"
 "interface"
 "module"
-"native"
-"open"
 "opens"
 "package"
 "permits"
-"private"
-"protected"
 "provides"
-"public"
 "requires"
-"sealed"
-"non-sealed"
-"static"
-"strictfp"
-"synchronized"
 "to"
-"transient"
-"transitive"
 "uses"
-"volatile"
 "with"
 ] @keyword
+
+(synchronized_statement
+  "synchronized" @keyword)
+
+[
+"abstract"
+"final"
+"native"
+"non-sealed"
+"open"
+"private"
+"protected"
+"public"
+"sealed"
+"static"
+"strictfp"
+"transitive"
+] @type.qualifier
+
+(modifiers
+  "synchronized" @type.qualifier)
+
+[
+"transient"
+"volatile"
+] @storageclass
 
 [
 "return"
@@ -215,7 +229,7 @@
 "case"
 ] @conditional
 
-(ternary_expression ["?" ":"] @conditional)
+(ternary_expression ["?" ":"] @conditional.ternary)
 
 ;
 

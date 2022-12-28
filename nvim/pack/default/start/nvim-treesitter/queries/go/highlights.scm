@@ -5,12 +5,15 @@
 ; Identifiers
 
 (type_identifier) @type
+(type_spec name: (type_identifier) @type.definition)
 (field_identifier) @property
 (identifier) @variable
 (package_identifier) @namespace
 
 (parameter_declaration (identifier) @parameter)
 (variadic_parameter_declaration (identifier) @parameter)
+
+(label_name) @label
 
 ((identifier) @constant
  (#eq? @constant "_"))
@@ -185,8 +188,7 @@
 ; Literals
 
 (interpreted_string_literal) @string
-(raw_string_literal) @string
-(raw_string_literal) @spell
+(raw_string_literal) @string @spell
 (rune_literal) @string
 (escape_sequence) @string.escape
 
@@ -202,8 +204,7 @@
   . (literal_element (identifier) @field))
 (field_declaration name: (field_identifier) @field)
 
-(comment) @comment
-(comment) @spell
+(comment) @comment @spell
 
 (ERROR) @error
 

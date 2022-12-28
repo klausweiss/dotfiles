@@ -1,4 +1,4 @@
-local utils = require "nvim-tree.utils"
+local notify = require "nvim-tree.notify"
 
 local M = {}
 
@@ -6,6 +6,7 @@ local global_handlers = {}
 
 M.Event = {
   Ready = "Ready",
+  WillRenameNode = "WillRenameNode",
   NodeRenamed = "NodeRenamed",
   TreeOpen = "TreeOpen",
   TreeClose = "TreeClose",
@@ -30,7 +31,7 @@ local function dispatch(event_name, payload)
   for _, handler in pairs(get_handlers(event_name)) do
     local success, error = pcall(handler, payload)
     if not success then
-      utils.notify.error("Handler for event " .. event_name .. " errored. " .. vim.inspect(error))
+      notify.error("Handler for event " .. event_name .. " errored. " .. vim.inspect(error))
     end
   end
 end
@@ -38,6 +39,11 @@ end
 --@private
 function M._dispatch_ready()
   dispatch(M.Event.Ready)
+end
+
+--@private
+function M._dispatch_will_rename_node(old_name, new_name)
+  dispatch(M.Event.WillRenameNode, { old_name = old_name, new_name = new_name })
 end
 
 --@private

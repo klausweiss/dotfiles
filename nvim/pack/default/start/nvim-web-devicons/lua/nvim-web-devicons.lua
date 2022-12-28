@@ -596,6 +596,12 @@ local icons = {
     cterm_color = "66",
     name = "GodotProject",
   },
+  ["graphql"] = {
+    icon = "",
+    color = "#e535ab",
+    cterm_color = "199",
+    name = "GraphQL"
+  },
   ["gruntfile"] = {
     icon = "",
     color = "#e37933",
@@ -728,6 +734,12 @@ local icons = {
     cterm_color = "185",
     name = "Json",
   },
+  ["json5"] = {
+    icon = "ﬥ",
+    color = "#cbcb41",
+    cterm_color = "185",
+    name = "Json5",
+  },
   ["jsx"] = {
     icon = "",
     color = "#519aba",
@@ -741,15 +753,15 @@ local icons = {
     name = "Ksh",
   },
   ["kt"] = {
-    icon = "𝙆",
-    color = "#F88A02",
-    cterm_color = "208",
+    icon = "",
+    color = "#7F52FF",
+    cterm_color = "99",
     name = "Kotlin",
   },
   ["kts"] = {
-    icon = "𝙆",
-    color = "#F88A02",
-    cterm_color = "208",
+    icon = "",
+    color = "#7F52FF",
+    cterm_color = "99",
     name = "KotlinScript",
   },
   ["leex"] = {
@@ -781,6 +793,12 @@ local icons = {
     color = "#51a0cf",
     cterm_color = "74",
     name = "Lua",
+  },
+  ["luau"] = {
+    icon = "",
+    color = "#51a0cf",
+    cterm_color = "74",
+    name = "Luau",
   },
   ["makefile"] = {
     icon = "",
@@ -995,6 +1013,12 @@ local icons = {
     cterm_color = "67",
     name = "Pyo",
   },
+  ["query"] = {
+    icon = "",
+    color = "#90a850",
+    cterm_color = "154",
+    name = "Query",
+  },
   ["r"] = {
     icon = "ﳒ",
     color = "#358a5b",
@@ -1055,11 +1079,23 @@ local icons = {
     cterm_color = "204",
     name = "Sass",
   },
+  ["sbt"] = {
+    icon = "",
+    color = "#cc3e44",
+    cterm_color = "167",
+    name = "sbt",
+  },
   ["scala"] = {
     icon = "",
     color = "#cc3e44",
     cterm_color = "167",
     name = "Scala",
+  },
+  ["scm"] = {
+    icon = "ﬦ",
+    color = "#000000",
+    cterm_color = "16",
+    name = "Scheme",
   },
   ["scss"] = {
     icon = "",
@@ -1192,6 +1228,18 @@ local icons = {
     color = "#3D6117",
     cterm_color = "58",
     name = "Tex",
+  },
+  ["tf"] = {
+    icon = "",
+    color = "#5F43E9",
+    cterm_color = "57",
+    name = "Terraform",
+  },
+  ["tfvars"] = {
+    icon = "",
+    color = "#5F43E9",
+    cterm_color = "57",
+    name = "TFVars",
   },
   ["toml"] = {
     icon = "",
@@ -1427,6 +1475,7 @@ local filetypes = {
   ["glb"] = "glb",
   ["go"] = "go",
   ["godot"] = "godot",
+  ["graphql"] = "graphql",
   ["gruntfile"] = "gruntfile",
   ["gulpfile"] = "gulpfile",
   ["haml"] = "haml",
@@ -1444,6 +1493,7 @@ local filetypes = {
   ["jpeg"] = "jpeg",
   ["jpg"] = "jpg",
   ["json"] = "json",
+  ["json5"] = "json5",
   ["julia"] = "jl",
   ["kotlin"] = "kt",
   ["leex"] = "leex",
@@ -1477,6 +1527,7 @@ local filetypes = {
   ["ppt"] = "ppt",
   ["prisma"] = "prisma",
   ["procfile"] = "Procfile",
+  ["prolog"] = "pro",
   ["ps1"] = "ps1",
   ["psb"] = "psb",
   ["psd"] = "psd",
@@ -1485,6 +1536,7 @@ local filetypes = {
   ["pyd"] = "pyd",
   ["pyo"] = "pyo",
   ["python"] = "py",
+  ["query"] = "query",
   ["r"] = "r",
   ["rlib"] = "rlib",
   ["rmd"] = "rmd",
@@ -1492,7 +1544,9 @@ local filetypes = {
   ["ruby"] = "rb",
   ["rust"] = "rs",
   ["sass"] = "sass",
+  ["sbt"] = "sbt",
   ["scala"] = "scala",
+  ["scheme"] = "scm",
   ["scss"] = "scss",
   ["sh"] = "sh",
   ["slim"] = "slim",
@@ -1512,6 +1566,7 @@ local filetypes = {
   ["tads"] = "t",
   ["tcl"] = "tcl",
   ["terminal"] = "terminal",
+  ["tex"] = "tex",
   ["toml"] = "toml",
   ["tres"] = "tres",
   ["tscn"] = "tscn",
@@ -1543,39 +1598,46 @@ local default_icon = {
 local global_opts = {
   override = {},
   default = false,
+  color_icons = true,
 }
 
 local function get_highlight_name(data)
+  if not global_opts.color_icons then
+  	data = default_icon
+  end
+
   return data.name and "DevIcon" .. data.name
 end
 
+local nvim_set_hl = vim.api.nvim_set_hl
 local function set_up_highlight(icon_data)
+  if not global_opts.color_icons then
+  	icon_data = default_icon
+  end
+
   local hl_group = get_highlight_name(icon_data)
-  if hl_group then
-    local highlight_command = "highlight! " .. hl_group
-
-    if icon_data.color then
-      highlight_command = highlight_command .. " guifg=" .. icon_data.color
-    end
-
-    if icon_data.cterm_color then
-      highlight_command = highlight_command .. " ctermfg=" .. icon_data.cterm_color
-    end
-
-    if icon_data.color or icon_data.cterm_color then
-      vim.api.nvim_command(highlight_command)
-    end
+  if hl_group and (icon_data.color or icon_data.cterm_color) then
+	  nvim_set_hl(0, get_highlight_name(icon_data), {
+		  fg = icon_data.color,
+		  ctermfg = tonumber(icon_data.cterm_color),
+	  })
   end
 end
 
+local nvim_get_hl_by_name = vim.api.nvim_get_hl_by_name
 local function highlight_exists(group)
   if not group then return end
 
-  local ok, hl = pcall(vim.api.nvim_get_hl_by_name, group, true)
+  local ok, hl = pcall(nvim_get_hl_by_name, group, true)
   return ok and not (hl or {})[true]
 end
 
 local function set_up_highlights()
+  if not global_opts.color_icons then
+    set_up_highlight(default_icon)
+    return
+  end
+
   for _, icon_data in pairs(icons) do
     local has_color = icon_data.color or icon_data.cterm_color
     local name_valid = icon_data.name and not highlight_exists(get_highlight_name(icon_data))
@@ -1586,16 +1648,24 @@ local function set_up_highlights()
 end
 
 local function get_highlight_foreground(icon_data)
-  return string.format("#%06x", vim.api.nvim_get_hl_by_name(get_highlight_name(icon_data), true).foreground)
+  if not global_opts.color_icons then
+  	icon_data = default_icon
+  end
+
+  return string.format("#%06x", nvim_get_hl_by_name(get_highlight_name(icon_data), true).foreground)
 end
 
 local function get_highlight_ctermfg(icon_data)
-  local _, _, ctermfg = string.find(vim.fn.execute("highlight " .. get_highlight_name(icon_data)), "ctermfg=(%d+)")
-  return ctermfg
+  if not global_opts.color_icons then
+  	icon_data = default_icon
+  end
+
+  return nvim_get_hl_by_name(get_highlight_name(icon_data), false).foreground
 end
 
 local loaded = false
 
+local if_nil = vim.F.if_nil
 local function setup(opts)
   if loaded then
     return
@@ -1609,6 +1679,8 @@ local function setup(opts)
     global_opts.default = true
   end
 
+  global_opts.color_icons = if_nil(user_icons.color_icons, global_opts.color_icons)
+
   if user_icons.override and user_icons.override.default_icon then
     default_icon = user_icons.override.default_icon
   end
@@ -1619,12 +1691,11 @@ local function setup(opts)
 
   set_up_highlights()
 
-  vim.cmd([[augroup NvimWebDevicons]])
-  vim.cmd([[autocmd!]])
-  vim.cmd(
-    [[autocmd ColorScheme * lua require('nvim-web-devicons').set_up_highlights()]]
-  )
-  vim.cmd([[augroup END]])
+  vim.api.nvim_create_autocmd("ColorScheme", {
+	  desc = "Re-apply icon colors after changing colorschemes",
+	  group = vim.api.nvim_create_augroup("NvimWebDevicons", { clear = true }),
+	  callback = set_up_highlights,
+  })
 end
 
 local function get_icon(name, ext, opts)
@@ -1633,7 +1704,7 @@ local function get_icon(name, ext, opts)
     setup()
   end
 
-  local has_default = (opts and opts.default) or global_opts.default
+  local has_default = if_nil(opts and opts.default, global_opts.default)
   local icon_data = icons[name] or icons[ext] or (has_default and default_icon)
 
   if icon_data then
@@ -1656,7 +1727,7 @@ local function get_icon_colors(name, ext, opts)
     setup()
   end
 
-  local has_default = (opts and opts.default) or global_opts.default
+  local has_default = if_nil(opts and opts.default, global_opts.default)
   local icon_data = icons[name] or icons[ext] or (has_default and default_icon)
 
   if icon_data then
@@ -1697,6 +1768,10 @@ end
 
 local function set_icon(user_icons)
   icons = vim.tbl_extend("force", icons, user_icons or {})
+  if not global_opts.color_icons then
+  	return
+  end
+
   for _, icon_data in pairs(user_icons) do
     set_up_highlight(icon_data)
   end

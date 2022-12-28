@@ -29,7 +29,7 @@ function M.process_multiline(lines, options)
 		if lines[1]:match("^%s*$") then
 			table.remove(lines, 1)
 		end
-		if lines[#lines]:match("^%s*$") then
+		if #lines > 0 and lines[#lines]:match("^%s*$") then
 			lines[#lines] = nil
 		end
 	end
@@ -107,6 +107,10 @@ function M.aupatescape(s)
 	end
 	local escaped, _ = s:gsub(",", "\\,")
 	return vim.fn.fnameescape(escaped)
+end
+
+function M.sanitize(str)
+	return str:gsub("%\r", "")
 end
 
 return M

@@ -1,14 +1,14 @@
-local cache = require('cmp.utils.cache')
 local misc = require('cmp.utils.misc')
 local buffer = require('cmp.utils.buffer')
 local api = require('cmp.utils.api')
+local config = require('cmp.config')
 
 ---@class cmp.WindowStyle
 ---@field public relative string
 ---@field public row integer
 ---@field public col integer
----@field public width integer
----@field public height integer
+---@field public width integer|float
+---@field public height integer|float
 ---@field public border string|string[]|nil
 ---@field public zindex integer|nil
 
@@ -20,7 +20,6 @@ local api = require('cmp.utils.api')
 ---@field public style cmp.WindowStyle
 ---@field public opt table<string, any>
 ---@field public buffer_opt table<string, any>
----@field public cache cmp.Cache
 local window = {}
 
 ---new
@@ -32,7 +31,6 @@ window.new = function()
   self.sbar_win = nil
   self.thumb_win = nil
   self.style = {}
-  self.cache = cache.new()
   self.opt = {}
   self.buffer_opt = {}
   return self
@@ -88,6 +86,11 @@ window.set_style = function(self, style)
   end
 
   self.style.zindex = self.style.zindex or 1
+
+  --- GUI clients are allowed to return fractional bounds, but we need integer
+  --- bounds to open the window
+  self.style.width = math.ceil(self.style.width)
+  self.style.height = math.ceil(self.style.height)
 end
 
 ---Return buffer id.
@@ -216,6 +219,7 @@ end
 ---Return win info.
 window.info = function(self)
   local border_info = self:get_border_info()
+  local scrollbar = config.get().window.completion.scrollbar
   local info = {
     row = self.style.row,
     col = self.style.col,
@@ -228,7 +232,7 @@ window.info = function(self)
     scrollbar_offset = 0,
   }
 
-  if self:get_content_height() > info.inner_height then
+  if self:get_content_height() > info.inner_height and scrollbar then
     info.scrollable = true
     if not border_info.visible then
       info.scrollbar_offset = 1

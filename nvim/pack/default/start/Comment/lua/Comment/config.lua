@@ -4,37 +4,23 @@
 ---Following is the default config for the |comment.usage.setup|. If you want to
 ---override, just modify the option that you want, then it will be merged with the
 ---default config.
----
 --->
----    {
----        padding = true,
----        sticky = true,
----        ignore = nil,
----        toggler = {
----            line = 'gcc',
----            block = 'gbc',
----        },
----        opleader = {
----            line = 'gc',
----            block = 'gb',
----        },
----        extra = {
----            above = 'gcO',
----            below = 'gco',
----            eol = 'gcA',
----        },
----        mappings = {
----            basic = true,
----            extra = true,
----            extended = false,
----        },
----        pre_hook = nil,
----        post_hook = nil,
----    }
+---  {
+---      padding = true,
+---      sticky = true,
+---      ignore = nil,
+---      toggler = { line = 'gcc', block = 'gbc' },
+---      opleader = { line = 'gc', block = 'gb' },
+---      extra = { above = 'gcO', below = 'gco', eol = 'gcA' },
+---      mappings = { basic = true, extra = true },
+---      pre_hook = nil,
+---      post_hook = nil,
+---  }
 ---<
 ---@brief ]]
 
----@class CommentConfig Plugin's configuration
+---Plugin's configuration
+---@class CommentConfig
 ---Controls space between the comment
 ---and the line (default: 'true')
 ---@field padding boolean|fun():boolean
@@ -49,41 +35,41 @@
 ---NOTE: If given 'false', then the
 ---plugin won't create any mappings
 ---@field mappings Mappings|false
----@field toggler Toggler
----@field opleader Opleader
----@field extra ExtraMapping
+---@field toggler Toggler See |comment.config.Toggler|
+---@field opleader Opleader See |comment.config.Opleader|
+---@field extra ExtraMapping See |comment.config.ExtraMapping|
 ---Function to call before (un)comment.
 ---It is called with a {ctx} argument
 ---of type |comment.utils.CommentCtx|
 ---(default: 'nil')
----@field pre_hook fun(ctx):string
+---@field pre_hook fun(c: CommentCtx): string
 ---Function to call after (un)comment.
 ---It is called with a {ctx} argument
 ---of type |comment.utils.CommentCtx|
 ---(default: 'nil')
----@field post_hook fun(ctx)
+---@field post_hook fun(c: CommentCtx)
 
----@class Mappings Create default mappings
+---Create default mappings
+---@class Mappings
 ---Enables operator-pending mapping; `gcc`, `gbc`,
 ---`gc{motion}` and `gb{motion}` (default: 'true')
 ---@field basic boolean
 ---Enable extra mapping; `gco`, `gcO` and `gcA`
 ---(default: 'true')
 ---@field extra boolean
----Enable extended mapping; `g>`, `g<c`, 'g<b',
----'g<', 'g<c', 'g<b', `g>{motion}` and `g<{motion}`
----(default: 'false')
----@field extended boolean
 
----@class Toggler LHS of toggle mappings in NORMAL
+---LHS of toggle mappings in NORMAL
+---@class Toggler
 ---@field line string Linewise comment (default: 'gcc')
 ---@field block string Blockwise comment (default: 'gbc')
 
----@class Opleader LHS of operator-mode mappings in NORMAL and VISUAL mode
+---LHS of operator-mode mappings in NORMAL and VISUAL mode
+---@class Opleader
 ---@field line string Linewise comment (default: 'gc')
 ---@field block string Blockwise comment (default: 'gb')
 
----@class ExtraMapping LHS of extra mappings
+---LHS of extra mappings
+---@class ExtraMapping
 ---@field below string Inserts comment below (default: 'gco')
 ---@field above string Inserts comment above (default: 'gcO')
 ---@field eol string Inserts comment at the end of line (default: 'gcA')
@@ -92,7 +78,6 @@
 ---@class RootConfig
 ---@field config CommentConfig
 ---@field position? integer[] To be used to restore cursor position
----@field count integer Helps with dot-repeat support for count prefix
 local Config = {
     state = {},
     config = {
@@ -101,7 +86,6 @@ local Config = {
         mappings = {
             basic = true,
             extra = true,
-            extended = false,
         },
         toggler = {
             line = 'gcc',

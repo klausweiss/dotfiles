@@ -1,131 +1,112 @@
-local git = require("neogit.lib.git")
-local util = require("neogit.lib.util")
 local logger = require("neogit.logger")
-
-local fmt = string.format
-local fn = vim.fn
+local client = require("neogit.client")
+local log = require("neogit.lib.git.log")
+local notif = require("neogit.lib.notification")
 
 local M = {}
 
-local commit_header_pat = "([| *]*)%*([| *]*)commit (%w+)"
+local a = require("plenary.async")
 
-local function is_new_commit(line)
-  local s1, s2, oid = line:match(commit_header_pat)
-
-  return s1 ~= nil and s2 ~= nil and oid ~= nil
+local function rebase_command(cmd)
+  local git = require("neogit.lib.git")
+  cmd = cmd or git.cli.rebase
+  local envs = client.get_envs_git_editor()
+  return cmd.env(envs).show_popup(false):in_pty(true).call(true)
 end
 
--- NOTE: this is duplicated
-local function parse(raw)
-  local commits = {}
-  local idx = 1
+function M.rebase_interactive(...)
+  a.util.scheduler()
+  local git = require("neogit.lib.git")
+  local result = rebase_command(git.cli.rebase.interactive.args(...))
+  if result.code ~= 0 then
+    notif.create("Rebasing failed. Resolve conflicts before continuing", vim.log.levels.ERROR)
+  end
+  a.util.scheduler()
+  local status = require("neogit.status")
+  status.refresh(true, "rebase_interactive")
+end
 
-  local function advance()
-    idx = idx + 1
-    return raw[idx]
+function M.rebase_onto(branch)
+  a.util.scheduler()
+  local git = require("neogit.lib.git")
+  local result = rebase_command(git.cli.rebase.args(branch))
+  if result.code ~= 0 then
+    notif.create("Rebasing failed. Resolve conflicts before continuing", vim.log.levels.ERROR)
+  end
+end
+
+function M.continue()
+  local git = require("neogit.lib.git")
+  return rebase_command(git.cli.rebase.continue)
+end
+
+function M.skip()
+  local git = require("neogit.lib.git")
+  return rebase_command(git.cli.rebase.skip)
+end
+
+local uv = require("neogit.lib.uv")
+function M.update_rebase_status(state)
+  local cli = require("neogit.lib.git.cli")
+  local root = cli.git_root()
+  if root == "" then
+    return
   end
 
-  local line = raw[idx]
-  while line do
-    local commit = {}
-    local s1, s2
+  local rebase = {
+    items = {},
+    head = nil,
+  }
 
-    s1, s2, commit.oid = line:match(commit_header_pat)
-    commit.level = util.str_count(s1, "|") + util.str_count(s2, "|")
+  local _, stat = a.uv.fs_stat(root .. "/.git/rebase-merge")
+  local rebase_file = nil
 
-    local start_idx = #s1 + #s2 + 1
-
-    local function ladvance()
-      local line = advance()
-      return line and line:sub(start_idx + 1, -1) or nil
+  -- Find the rebase progress files
+  if stat then
+    rebase_file = root .. "/.git/rebase-merge"
+  else
+    local _, stat = a.uv.fs_stat(root .. "/.git/rebase-apply")
+    if stat then
+      rebase_file = root .. "/.git/rebase-apply"
     end
+  end
 
-    do
-      local line = ladvance()
+  if rebase_file then
+    local err, head = uv.read_file(rebase_file .. "/head-name")
+    if not head then
+      logger.error("Failed to read rebase-merge head: " .. err)
+      return
+    end
+    head = head:match("refs/heads/([^\r\n]+)")
+    rebase.head = head
 
-      if vim.startswith(line, "Merge:") then
-        commit.merge = line:match("Merge:%s*(%w+) (%w+)")
+    local _, todos = uv.read_file(rebase_file .. "/git-rebase-todo")
+    local _, done = uv.read_file(rebase_file .. "/done")
 
-        line = ladvance()
+    -- we need \r? to support windows
+    for line in (done or ""):gmatch("[^\r\n]+") do
+      if not line:match("^#") then
+        table.insert(rebase.items, { name = line, done = true })
       end
-
-      commit.author_name, commit.author_email = line:match("Author:%s*(.+) <(.+)>")
+    end
+    local cur = rebase.items[#rebase.items]
+    if cur then
+      cur.done = false
+      cur.stopped = true
     end
 
-    commit.author_date = ladvance():match("AuthorDate:%s*(.+)")
-    commit.committer_name, commit.committer_email = ladvance():match("Commit:%s*(.+) <(.+)>")
-    commit.committer_date = ladvance():match("CommitDate:%s*(.+)")
-
-    advance()
-
-    commit.description = {}
-    line = advance()
-
-    while line and not is_new_commit(line) do
-      table.insert(commit.description, line:sub(start_idx + 5, -1))
-      line = advance()
-    end
-
-    if line ~= nil then
-      commit.description[#commit.description] = nil
-    end
-
-    table.insert(commits, commit)
-  end
-
-  return commits
-end
-
-function M.commits()
-  local output = git.cli.log.format("fuller").args("--graph").call_sync()
-
-  return parse(output)
-end
-
--- FIXME: this should be moved to a place that can be reused
-local function get_nvim_remote_editor()
-  local neogit_path = debug.getinfo(1, "S").source:sub(2, -31)
-  local nvim_path = fn.shellescape(vim.v.progpath)
-
-  local runtimepath_cmd = fn.shellescape(fmt("set runtimepath^=%s", fn.fnameescape(neogit_path)))
-  local lua_cmd = fn.shellescape("lua require('neogit.client').client()")
-
-  local shell_cmd = {
-    nvim_path,
-    "--headless",
-    "--clean",
-    "--noplugin",
-    "-n",
-    "-R",
-    "-c",
-    runtimepath_cmd,
-    "-c",
-    lua_cmd,
-  }
-
-  return table.concat(shell_cmd, " ")
-end
-
--- FIXME: this should be moved to a place that can be reused
-local function get_envs_git_editor()
-  local nvim_cmd = get_nvim_remote_editor()
-  return {
-    GIT_SEQUENCE_EDITOR = nvim_cmd,
-    GIT_EDITOR = nvim_cmd,
-  }
-end
-
-function M.run_interactive(commit)
-  local envs = get_envs_git_editor()
-  local job = git.cli.rebase.interactive.env(envs).args(commit).to_job()
-
-  job.on_exit = function(j)
-    if j.code > 0 then
-      logger.debug(fmt("Execution of '%s' failed with code %d", j.cmd, j.code))
+    for line in (todos or ""):gmatch("[^\r\n]+") do
+      if not line:match("^#") then
+        table.insert(rebase.items, { name = line })
+      end
     end
   end
 
-  job:start()
+  state.rebase = rebase
+end
+
+M.register = function(meta)
+  meta.update_rebase_status = M.update_rebase_status
 end
 
 return M
