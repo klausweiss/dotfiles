@@ -10,7 +10,9 @@ local tags = require("tags")
 awful.screen.connect_for_each_screen(function(screen)
     libtheme.set_wallpaper(screen)
     awful.tag(tags.tags, screen, awful.layout.layouts[1])
-    if screen.geometry.height >= 640 then
-       bars.mk_bar(screen, keyboard.CTRL)
+    if CONFIG.BARS == nil or CONFIG.BARS then
+        if screen.geometry.height >= 640 then
+            bars.mk_bar(screen, keyboard.CTRL)
+        end
     end
 end)

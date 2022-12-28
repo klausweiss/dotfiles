@@ -1,6 +1,6 @@
 CONFIG = {
-	BARS = true,
-	SYSTEM_SHORTCUTS = true,
+	BARS = false,
+	SYSTEM_SHORTCUTS = false,
 }
 
 require("error-handler")
