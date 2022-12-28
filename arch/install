@@ -5,4 +5,5 @@
 sudo pacman -Sy
 	git-delta
 	neovim
+	rofi
 
