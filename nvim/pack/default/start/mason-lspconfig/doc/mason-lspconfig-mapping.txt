@@ -33,6 +33,7 @@ dhall-lsp                     dhall_lsp_server
 diagnostic-languageserver     diagnosticls
 dockerfile-language-server    dockerls
 dot-language-server           dotls
+drools-lsp                    drools_lsp
 efm                           efm
 elixir-ls                     elixirls
 elm-language-server           elmls
@@ -77,6 +78,7 @@ nimlsp                        nimls
 ocaml-lsp                     ocamllsp
 omnisharp                     omnisharp
 opencl-language-server        opencl_ls
+openscad-lsp                  openscad_lsp
 perlnavigator                 perlnavigator
 phpactor                      phpactor
 powershell-editor-services    powershell_es
@@ -89,6 +91,7 @@ python-lsp-server             pylsp
 pyright                       pyright
 quick-lint-js                 quick_lint_js
 r-languageserver              r_language_server
+raku-navigator                raku_navigator
 reason-language-server        reason_ls
 remark-language-server        remark_ls
 rescript-lsp                  rescriptls

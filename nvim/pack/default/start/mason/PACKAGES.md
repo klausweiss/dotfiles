@@ -62,6 +62,7 @@
 - [dockerfile-language-server](#dockerfile-language-server)
 - [dot-language-server](#dot-language-server)
 - [dprint](#dprint)
+- [drools-lsp](#drools-lsp)
 - [editorconfig-checker](#editorconfig-checker)
 - [efm](#efm)
 - [elixir-ls](#elixir-ls)
@@ -87,6 +88,7 @@
 - [gersemi](#gersemi)
 - [gitlint](#gitlint)
 - [glint](#glint)
+- [glow](#glow)
 - [go-debug-adapter](#go-debug-adapter)
 - [gofumpt](#gofumpt)
 - [goimports](#goimports)
@@ -152,9 +154,11 @@
 - [node-debug2-adapter](#node-debug2-adapter)
 - [nxls](#nxls)
 - [ocaml-lsp](#ocaml-lsp)
+- [ocamlformat](#ocamlformat)
 - [omnisharp](#omnisharp)
 - [omnisharp-mono](#omnisharp-mono)
 - [opencl-language-server](#opencl-language-server)
+- [openscad-lsp](#openscad-lsp)
 - [perlnavigator](#perlnavigator)
 - [php-cs-fixer](#php-cs-fixer)
 - [php-debug-adapter](#php-debug-adapter)
@@ -183,6 +187,7 @@
 - [python-lsp-server](#python-lsp-server)
 - [quick-lint-js](#quick-lint-js)
 - [r-languageserver](#r-languageserver)
+- [raku-navigator](#raku-navigator)
 - [reason-language-server](#reason-language-server)
 - [remark-cli](#remark-cli)
 - [remark-language-server](#remark-language-server)
@@ -199,6 +204,7 @@
 - [ruff-lsp](#ruff-lsp)
 - [rust-analyzer](#rust-analyzer)
 - [rustfmt](#rustfmt)
+- [rustywind](#rustywind)
 - [salt-lsp](#salt-lsp)
 - [selene](#selene)
 - [semgrep](#semgrep)
@@ -238,6 +244,7 @@
 - [tflint](#tflint)
 - [twigcs](#twigcs)
 - [typescript-language-server](#typescript-language-server)
+- [unocss-language-server](#unocss-language-server)
 - [usort](#usort)
 - [vala-language-server](#vala-language-server)
 - [vale](#vale)
@@ -1083,6 +1090,7 @@ Categories: `LSP`
 <details>
     <summary>History:</summary>
 
+- [`01cba2a`](https://github.com/williamboman/mason.nvim/commit/01cba2a) 2023-01-13 - fix(crystalline): update linux asset name ([#901](https://github.com/williamboman/mason.nvim/issues/901)) by William Boman
 - [`976aa4f`](https://github.com/williamboman/mason.nvim/commit/976aa4f) 2022-07-08 - refactor: add mason-schemas and mason-core modules ([#29](https://github.com/williamboman/mason.nvim/issues/29)) by William Boman
 - [`8cad236`](https://github.com/williamboman/mason.nvim/commit/8cad236) 2022-07-08 - refactor: move packages to mason-registry ([#27](https://github.com/williamboman/mason.nvim/issues/27)) by William Boman
 </details>
@@ -1463,11 +1471,32 @@ Categories: `Formatter`
 <details>
     <summary>History:</summary>
 
+- [`369d520`](https://github.com/williamboman/mason.nvim/commit/369d520) 2023-01-07 - feat(dprint): add linux_x64 musl target ([#862](https://github.com/williamboman/mason.nvim/issues/862)) by XDream8
 - [`da5f398`](https://github.com/williamboman/mason.nvim/commit/da5f398) 2022-10-17 - feat(registry): add dprint formatter ([#562](https://github.com/williamboman/mason.nvim/issues/562)) by Silas Groh
 </details>
 
 ```
 :MasonInstall dprint
+```
+
+
+# drools-lsp
+
+> An implementation of a language server for the Drools Rule Language.
+
+Homepage: [https://github.com/kiegroup/drools-lsp](https://github.com/kiegroup/drools-lsp)  
+Languages: `Drools`  
+Categories: `LSP`  
+
+<details>
+    <summary>History:</summary>
+
+- [`d4601be`](https://github.com/williamboman/mason.nvim/commit/d4601be) 2023-01-16 - feat(drools-lsp): link executable to jar file ([#912](https://github.com/williamboman/mason.nvim/issues/912)) by David Ward
+- [`dd61453`](https://github.com/williamboman/mason.nvim/commit/dd61453) 2023-01-13 - feat(registry): add drools-lsp ([#898](https://github.com/williamboman/mason.nvim/issues/898)) by David Ward
+</details>
+
+```
+:MasonInstall drools-lsp
 ```
 
 
@@ -1482,6 +1511,7 @@ Categories: `Linter`
 <details>
     <summary>History:</summary>
 
+- [`24e78fc`](https://github.com/williamboman/mason.nvim/commit/24e78fc) 2023-01-14 - fix(editorconfig-checker): update Windows assets ([#904](https://github.com/williamboman/mason.nvim/issues/904)) by William Boman
 - [`d7eb2ee`](https://github.com/williamboman/mason.nvim/commit/d7eb2ee) 2022-09-17 - feat: more competent platform detection ([#436](https://github.com/williamboman/mason.nvim/issues/436)) by William Boman
 - [`ac70755`](https://github.com/williamboman/mason.nvim/commit/ac70755) 2022-09-17 - feat(editorconfig-checker): use the pre-packaged ec ([#434](https://github.com/williamboman/mason.nvim/issues/434)) by Seth Daniel
 - [`4f87e41`](https://github.com/williamboman/mason.nvim/commit/4f87e41) 2022-07-10 - feat: add editorconfig-checker, misspell, shfmt, vint ([#39](https://github.com/williamboman/mason.nvim/issues/39)) by Seth Daniel
@@ -1893,6 +1923,7 @@ Categories: `Formatter`
 <details>
     <summary>History:</summary>
 
+- [`4d734ae`](https://github.com/williamboman/mason.nvim/commit/4d734ae) 2023-01-12 - fix: avoid calling API functions inside fast event ([#892](https://github.com/williamboman/mason.nvim/issues/892)) by William Boman
 - [`67e9cf8`](https://github.com/williamboman/mason.nvim/commit/67e9cf8) 2022-12-12 - feat(registry): add fourmolu ([#752](https://github.com/williamboman/mason.nvim/issues/752)) by shurizzle
 </details>
 
@@ -1978,6 +2009,25 @@ Categories: `LSP` `Linter`
 
 ```
 :MasonInstall glint
+```
+
+
+# glow
+
+> Render markdown on the CLI, with pizzazz
+
+Homepage: [https://github.com/charmbracelet/glow](https://github.com/charmbracelet/glow)  
+Languages: `Markdown`  
+Categories:   
+
+<details>
+    <summary>History:</summary>
+
+- [`160bd7c`](https://github.com/williamboman/mason.nvim/commit/160bd7c) 2023-01-12 - feat(registry): add glow ([#886](https://github.com/williamboman/mason.nvim/issues/886)) by Seth Daniel
+</details>
+
+```
+:MasonInstall glow
 ```
 
 
@@ -2914,6 +2964,8 @@ Categories: `LSP`
 <details>
     <summary>History:</summary>
 
+- [`4d734ae`](https://github.com/williamboman/mason.nvim/commit/4d734ae) 2023-01-12 - fix: avoid calling API functions inside fast event ([#892](https://github.com/williamboman/mason.nvim/issues/892)) by William Boman
+- [`7344927`](https://github.com/williamboman/mason.nvim/commit/7344927) 2023-01-12 - fix(lua-language-server): only install Linux assets on GNU systems ([#890](https://github.com/williamboman/mason.nvim/issues/890)) by William Boman
 - [`976aa4f`](https://github.com/williamboman/mason.nvim/commit/976aa4f) 2022-07-08 - refactor: add mason-schemas and mason-core modules ([#29](https://github.com/williamboman/mason.nvim/issues/29)) by William Boman
 - [`8cad236`](https://github.com/williamboman/mason.nvim/commit/8cad236) 2022-07-08 - refactor: move packages to mason-registry ([#27](https://github.com/williamboman/mason.nvim/issues/27)) by William Boman
 </details>
@@ -3302,6 +3354,26 @@ Categories: `LSP`
 ```
 
 
+# ocamlformat
+
+> ocamlformat is a tool for formatting OCaml code. It automatically adjusts the layout of your code to follow the
+recommended style guidelines, making it easier to read and understand.
+
+Homepage: [https://github.com/ocaml-ppx/ocamlformat](https://github.com/ocaml-ppx/ocamlformat)  
+Languages: `OCaml`  
+Categories: `Formatter`  
+
+<details>
+    <summary>History:</summary>
+
+- [`b71538a`](https://github.com/williamboman/mason.nvim/commit/b71538a) 2023-01-05 - feat(registry): add ocamlformat ([#851](https://github.com/williamboman/mason.nvim/issues/851)) by Feiyou Guo
+</details>
+
+```
+:MasonInstall ocamlformat
+```
+
+
 # omnisharp
 
 > OmniSharp language server based on Roslyn workspaces. This version of Omnisharp requires dotnet (.NET 6.0) to be
@@ -3362,6 +3434,26 @@ Categories: `LSP`
 
 ```
 :MasonInstall opencl-language-server
+```
+
+
+# openscad-lsp
+
+> Language Server Protocol implementation for OpenSCAD, written in Rust.
+
+Homepage: [https://github.com/Leathong/openscad-LSP](https://github.com/Leathong/openscad-LSP)  
+Languages: `OpenSCAD`  
+Categories: `LSP`  
+
+<details>
+    <summary>History:</summary>
+
+- [`a4ebe1f`](https://github.com/williamboman/mason.nvim/commit/a4ebe1f) 2023-01-09 - fix(openscad-lsp): fix bin definition ([#876](https://github.com/williamboman/mason.nvim/issues/876)) by William Boman
+- [`0975eea`](https://github.com/williamboman/mason.nvim/commit/0975eea) 2023-01-08 - feat(registry): add openscad-lsp ([#869](https://github.com/williamboman/mason.nvim/issues/869)) by Alexander Berg
+</details>
+
+```
+:MasonInstall openscad-lsp
 ```
 
 
@@ -3941,6 +4033,25 @@ Categories: `LSP`
 ```
 
 
+# raku-navigator
+
+> Raku Language Server that includes Raku critic and code navigation
+
+Homepage: [https://github.com/bscan/RakuNavigator](https://github.com/bscan/RakuNavigator)  
+Languages: `Raku`  
+Categories: `LSP`  
+
+<details>
+    <summary>History:</summary>
+
+- [`86409b6`](https://github.com/williamboman/mason.nvim/commit/86409b6) 2022-12-28 - feat(registry): add raku-navigator ([#791](https://github.com/williamboman/mason.nvim/issues/791)) by Humberto Massa
+</details>
+
+```
+:MasonInstall raku-navigator
+```
+
+
 # reason-language-server
 
 > A language server for reason, in reason
@@ -4229,6 +4340,7 @@ Categories: `LSP`
 <details>
     <summary>History:</summary>
 
+- [`8a1a49b`](https://github.com/williamboman/mason.nvim/commit/8a1a49b) 2023-01-09 - feat(rust-analyzer): use .zip archives on Windows ([#873](https://github.com/williamboman/mason.nvim/issues/873)) by MordechaiHadad
 - [`d7eb2ee`](https://github.com/williamboman/mason.nvim/commit/d7eb2ee) 2022-09-17 - feat: more competent platform detection ([#436](https://github.com/williamboman/mason.nvim/issues/436)) by William Boman
 - [`3f4071f`](https://github.com/williamboman/mason.nvim/commit/3f4071f) 2022-08-07 - chore: reformat long descriptions ([#264](https://github.com/williamboman/mason.nvim/issues/264)) by William Boman
 - [`976aa4f`](https://github.com/williamboman/mason.nvim/commit/976aa4f) 2022-07-08 - refactor: add mason-schemas and mason-core modules ([#29](https://github.com/williamboman/mason.nvim/issues/29)) by William Boman
@@ -4257,6 +4369,25 @@ Categories: `Formatter`
 
 ```
 :MasonInstall rustfmt
+```
+
+
+# rustywind
+
+> CLI for organizing Tailwind CSS classes
+
+Homepage: [https://github.com/avencera/rustywind](https://github.com/avencera/rustywind)  
+Languages: `JavaScript` `TypeScript` `JSX` `HTML` `Vue` `Angular`  
+Categories: `Formatter`  
+
+<details>
+    <summary>History:</summary>
+
+- [`e562473`](https://github.com/williamboman/mason.nvim/commit/e562473) 2023-01-13 - feat(registry): add rustywind ([#900](https://github.com/williamboman/mason.nvim/issues/900)) by Celso Benedetti
+</details>
+
+```
+:MasonInstall rustywind
 ```
 
 
@@ -4473,6 +4604,7 @@ Categories: `LSP` `Compiler`
 <details>
     <summary>History:</summary>
 
+- [`73831cb`](https://github.com/williamboman/mason.nvim/commit/73831cb) 2023-01-06 - fix(solang): llvm13 -> llvm14 ([#859](https://github.com/williamboman/mason.nvim/issues/859)) by William Boman
 - [`976aa4f`](https://github.com/williamboman/mason.nvim/commit/976aa4f) 2022-07-08 - refactor: add mason-schemas and mason-core modules ([#29](https://github.com/williamboman/mason.nvim/issues/29)) by William Boman
 - [`8cad236`](https://github.com/williamboman/mason.nvim/commit/8cad236) 2022-07-08 - refactor: move packages to mason-registry ([#27](https://github.com/williamboman/mason.nvim/issues/27)) by William Boman
 </details>
@@ -4608,13 +4740,14 @@ Categories: `LSP`
 > Awesome Spectral JSON/YAML linter with OpenAPI/AsyncAPI support. Spectral is a flexible object linter with out
 of the box support for OpenAPI v2 and v3, JSON Schema, and AsyncAPI.
 
-Homepage: [https://github.com/luizcorreia/spectral-language-server](https://github.com/luizcorreia/spectral-language-server)  
+Homepage: [https://github.com/stoplightio/vscode-spectral](https://github.com/stoplightio/vscode-spectral)  
 Languages: `JSON` `YAML`  
 Categories: `LSP`  
 
 <details>
     <summary>History:</summary>
 
+- [`b94f8ff`](https://github.com/williamboman/mason.nvim/commit/b94f8ff) 2023-01-05 - fix(spectral-language-server): update homepage ([#855](https://github.com/williamboman/mason.nvim/issues/855)) by William Boman
 - [`30a9451`](https://github.com/williamboman/mason.nvim/commit/30a9451) 2022-11-15 - fix(spectral-language-server): link spectral-language-server executable ([#666](https://github.com/williamboman/mason.nvim/issues/666)) by William Boman
 - [`e0268a6`](https://github.com/williamboman/mason.nvim/commit/e0268a6) 2022-09-26 - fix(spectral-language-server): build directly from source ([#464](https://github.com/williamboman/mason.nvim/issues/464)) by William Boman
 - [`3f4071f`](https://github.com/williamboman/mason.nvim/commit/3f4071f) 2022-08-07 - chore: reformat long descriptions ([#264](https://github.com/williamboman/mason.nvim/issues/264)) by William Boman
@@ -5052,6 +5185,25 @@ Categories: `LSP`
 ```
 
 
+# unocss-language-server
+
+> Language Server Protocol implementation for UnoCSS.
+
+Homepage: [https://github.com/xna00/unocss-language-server](https://github.com/xna00/unocss-language-server)  
+Languages: `CSS`  
+Categories: `LSP`  
+
+<details>
+    <summary>History:</summary>
+
+- [`8e61dbc`](https://github.com/williamboman/mason.nvim/commit/8e61dbc) 2023-01-12 - feat(registry): add unocss-language-server ([#888](https://github.com/williamboman/mason.nvim/issues/888)) by Tom Mi
+</details>
+
+```
+:MasonInstall unocss-language-server
+```
+
+
 # usort
 
 > Safe, minimal import sorting for Python projects.
@@ -5082,6 +5234,8 @@ Categories: `LSP`
 <details>
     <summary>History:</summary>
 
+- [`b61d7f1`](https://github.com/williamboman/mason.nvim/commit/b61d7f1) 2023-01-15 - fix(vala-lanaguager-server): update meson build commands  ([#896](https://github.com/williamboman/mason.nvim/issues/896)) by Access
+- [`38f0d1e`](https://github.com/williamboman/mason.nvim/commit/38f0d1e) 2023-01-05 - fix(vala-language-server): use git tag source instead of releases ([#856](https://github.com/williamboman/mason.nvim/issues/856)) by William Boman
 - [`976aa4f`](https://github.com/williamboman/mason.nvim/commit/976aa4f) 2022-07-08 - refactor: add mason-schemas and mason-core modules ([#29](https://github.com/williamboman/mason.nvim/issues/29)) by William Boman
 - [`8cad236`](https://github.com/williamboman/mason.nvim/commit/8cad236) 2022-07-08 - refactor: move packages to mason-registry ([#27](https://github.com/williamboman/mason.nvim/issues/27)) by William Boman
 </details>
@@ -5227,6 +5381,7 @@ Categories: `LSP`
 <details>
     <summary>History:</summary>
 
+- [`f52f438`](https://github.com/williamboman/mason.nvim/commit/f52f438) 2023-01-09 - refactor(providers): remove ?include_prerelease query param ([#872](https://github.com/williamboman/mason.nvim/issues/872)) by William Boman
 - [`976aa4f`](https://github.com/williamboman/mason.nvim/commit/976aa4f) 2022-07-08 - refactor: add mason-schemas and mason-core modules ([#29](https://github.com/williamboman/mason.nvim/issues/29)) by William Boman
 - [`8cad236`](https://github.com/williamboman/mason.nvim/commit/8cad236) 2022-07-08 - refactor: move packages to mason-registry ([#27](https://github.com/williamboman/mason.nvim/issues/27)) by William Boman
 </details>

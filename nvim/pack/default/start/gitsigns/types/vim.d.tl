@@ -22,6 +22,8 @@ local record M
 
   iconv: function(string, string, string): string
 
+  is_callable: function(any): boolean
+
   record go
     operatorfunc: string
   end
@@ -89,6 +91,7 @@ local record M
 
   record g
     gitsigns_head: string
+    loaded_fugitive: integer
   end
 
   record v
@@ -145,6 +148,14 @@ local record M
   gsplit: function(string, string, boolean): function(): string
 
   pesc: function(string): string
+
+  record Regex
+    userdata
+
+    match_str: function(Regex, string): integer, integer
+  end
+
+  regex: function(string): Regex
 
   startswith: function(string, string): boolean
   endswith: function(string, string): boolean

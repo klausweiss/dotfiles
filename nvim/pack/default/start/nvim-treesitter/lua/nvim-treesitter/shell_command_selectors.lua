@@ -96,8 +96,15 @@ function M.select_compiler_args(repo, compiler)
       repo.files,
       "-shared",
       "-Os",
-      "-lstdc++",
     }
+    if
+      #vim.tbl_filter(function(file)
+        local ext = vim.fn.fnamemodify(file, ":e")
+        return ext == "cc" or ext == "cpp" or ext == "cxx"
+      end, repo.files) > 0
+    then
+      table.insert(args, "-lstdc++")
+    end
     if fn.has "win32" == 0 then
       table.insert(args, "-fPIC")
     end

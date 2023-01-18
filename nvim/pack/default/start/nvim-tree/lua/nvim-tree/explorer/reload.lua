@@ -8,6 +8,7 @@ local git = require "nvim-tree.git"
 local log = require "nvim-tree.log"
 
 local NodeIterator = require "nvim-tree.iterators.node-iterator"
+local Watcher = require "nvim-tree.watcher"
 
 local M = {}
 
@@ -86,7 +87,7 @@ function M.reload(node, git_status, unloaded_bufnr)
       end
 
       if not nodes_by_path[abs] then
-        if t == "directory" and vim.loop.fs_access(abs, "R") then
+        if t == "directory" and vim.loop.fs_access(abs, "R") and Watcher.is_fs_event_capable(abs) then
           local folder = builders.folder(node, abs, name)
           nodes_by_path[abs] = folder
           table.insert(node.nodes, folder)
@@ -104,7 +105,7 @@ function M.reload(node, git_status, unloaded_bufnr)
       else
         local n = nodes_by_path[abs]
         if n then
-          n.executable = builders.is_executable(n.parent, abs, n.extension or "")
+          n.executable = builders.is_executable(abs)
           n.fs_stat = fs_stat_cached(abs)
         end
       end

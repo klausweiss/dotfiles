@@ -82,7 +82,7 @@ Using [vim-plug](https://github.com/junegunn/vim-plug)
 
 ```viml
 Plug 'nvim-lua/plenary.nvim'
-Plug 'nvim-telescope/telescope.nvim', { 'tag': '0.1.0' }
+Plug 'nvim-telescope/telescope.nvim', { 'tag': '0.1.1' }
 " or                                , { 'branch': '0.1.x' }
 ```
 
@@ -90,14 +90,14 @@ Using [dein](https://github.com/Shougo/dein.vim)
 
 ```viml
 call dein#add('nvim-lua/plenary.nvim')
-call dein#add('nvim-telescope/telescope.nvim', { 'rev': '0.1.0' })
+call dein#add('nvim-telescope/telescope.nvim', { 'rev': '0.1.1' })
 " or                                         , { 'rev': '0.1.x' })
 ```
 Using [packer.nvim](https://github.com/wbthomason/packer.nvim)
 
 ```lua
 use {
-  'nvim-telescope/telescope.nvim', tag = '0.1.0',
+  'nvim-telescope/telescope.nvim', tag = '0.1.1',
 -- or                            , branch = '0.1.x',
   requires = { {'nvim-lua/plenary.nvim'} }
 }
@@ -279,12 +279,12 @@ Built-in functions. Ready to be bound to any key you like.
 
 ### File Pickers
 
-| Functions                           | Description                                                                                                                       |
-|-------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------|
-| `builtin.find_files`                | Lists files in your current working directory, respects .gitignore                                                                |
-| `builtin.git_files`                 | Fuzzy search through the output of `git ls-files` command, respects .gitignore                                                    |
-| `builtin.grep_string`               | Searches for the string under your cursor in your current working directory                                                       |
-| `builtin.live_grep`                 | Search for a string in your current working directory and get results live as you type, respects .gitignore                       |
+| Functions                           | Description                                                                                                                                                              |
+|-------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `builtin.find_files`                | Lists files in your current working directory, respects .gitignore                                                                                                       |
+| `builtin.git_files`                 | Fuzzy search through the output of `git ls-files` command, respects .gitignore                                                                                           |
+| `builtin.grep_string`               | Searches for the string under your cursor in your current working directory                                                                                              |
+| `builtin.live_grep`                 | Search for a string in your current working directory and get results live as you type, respects .gitignore. (Requires [ripgrep](https://github.com/BurntSushi/ripgrep)) |
 
 ### Vim Pickers
 

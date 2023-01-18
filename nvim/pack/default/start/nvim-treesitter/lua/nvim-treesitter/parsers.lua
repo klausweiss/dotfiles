@@ -8,7 +8,6 @@ local filetype_to_parsername = {
   PKGBUILD = "bash",
   html_tags = "html",
   ["typescript.tsx"] = "tsx",
-  terraform = "hcl",
   ["html.handlebars"] = "glimmer",
   systemverilog = "verilog",
   cls = "latex",
@@ -97,7 +96,7 @@ list.qmljs = {
     branch = "master",
     files = { "src/parser.c", "src/scanner.c" },
   },
-  filetype = "qmljs",
+  filetype = "qml",
   maintainers = { "@Decodetalkers" },
 }
 
@@ -241,6 +240,15 @@ list.rust = {
     files = { "src/parser.c", "src/scanner.c" },
   },
   maintainers = { "@vigoux" },
+}
+
+list.fsh = {
+  install_info = {
+    url = "https://github.com/mgramigna/tree-sitter-fsh",
+    files = { "src/parser.c" },
+    branch = "main",
+  },
+  maintainers = { "@mgramigna" },
 }
 
 list.fusion = {
@@ -601,6 +609,15 @@ list.slint = {
   experimental = true,
 }
 
+list.smali = {
+  install_info = {
+    url = "https://github.com/amaanq/tree-sitter-smali",
+    files = { "src/parser.c" },
+  },
+  maintainers = { "@amaanq" },
+  experimental = true,
+}
+
 list.haskell = {
   install_info = {
     url = "https://github.com/tree-sitter/tree-sitter-haskell",
@@ -616,6 +633,17 @@ list.hcl = {
   },
   maintainers = { "@MichaHoffmann" },
   filetype = "hcl",
+}
+
+list.terraform = {
+  install_info = {
+    url = "https://github.com/MichaHoffmann/tree-sitter-hcl",
+    files = { "src/parser.c", "src/scanner.cc" },
+    branch = "main",
+    location = "dialects/terraform",
+  },
+  maintainers = { "@MichaHoffmann" },
+  filetype = "terraform",
 }
 
 list.markdown = {
@@ -704,6 +732,7 @@ list.elm = {
     url = "https://github.com/elm-tooling/tree-sitter-elm",
     files = { "src/parser.c", "src/scanner.cc" },
   },
+  maintainers = { "@zweimach" },
 }
 
 list.yaml = {
@@ -1167,10 +1196,19 @@ list.astro = {
 list.wgsl = {
   install_info = {
     url = "https://github.com/szebniok/tree-sitter-wgsl",
-    files = { "src/parser.c" },
+    files = { "src/parser.c", "src/scanner.c" },
   },
   maintainers = { "@szebniok" },
   filetype = "wgsl",
+}
+
+list.wgsl_bevy = {
+  install_info = {
+    url = "https://github.com/theHamsta/tree-sitter-wgsl-bevy",
+    files = { "src/parser.c", "src/scanner.c" },
+    generate_requires_npm = true,
+  },
+  maintainers = { "@theHamsta" },
 }
 
 list.m68k = {

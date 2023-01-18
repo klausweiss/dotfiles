@@ -1,8 +1,8 @@
 <div align="center">
   <h1>nvim-treesitter</h1>
   <p>
-    <a href="https://nvim-treesitter.zulipchat.com/">
-      <img alt="Zulip Chat" src="https://img.shields.io/badge/zulip-join_chat-brightgreen.svg" />
+    <a href="https://matrix.to/#/#nvim-treesitter:matrix.org">
+      <img alt="Matrix Chat" src="https://img.shields.io/matrix/nvim-treesitter:matrix.org" />
     </a>
     <a href="https://github.com/nvim-treesitter/nvim-treesitter/actions?query=workflow%3A%22Linting+and+style+checking%22+branch%3Amaster">
       <img alt="Linting and Style" src="https://github.com/nvim-treesitter/nvim-treesitter/workflows/Linting%20and%20style%20checking/badge.svg" />
@@ -103,8 +103,8 @@ All modules are disabled by default and need to be activated explicitly in your 
 
 ```lua
 require'nvim-treesitter.configs'.setup {
-  -- A list of parser names, or "all"
-  ensure_installed = { "c", "lua", "rust" },
+  -- A list of parser names, or "all" (the four listed parsers should always be installed)
+  ensure_installed = { "c", "lua", "vim", "help" },
 
   -- Install parsers synchronously (only applied to `ensure_installed`)
   sync_install = false,
@@ -208,6 +208,7 @@ We are looking for maintainers to add more parsers and to write query files for 
 - [x] [fish](https://github.com/ram02z/tree-sitter-fish) (maintained by @ram02z)
 - [x] [foam](https://github.com/FoamScience/tree-sitter-foam) (experimental, maintained by @FoamScience)
 - [ ] [fortran](https://github.com/stadelmanma/tree-sitter-fortran)
+- [x] [fsh](https://github.com/mgramigna/tree-sitter-fsh) (maintained by @mgramigna)
 - [x] [fusion](https://gitlab.com/jirgn/tree-sitter-fusion.git) (maintained by @jirgn)
 - [x] [Godot (gdscript)](https://github.com/PrestonKnopp/tree-sitter-gdscript) (maintained by @Shatur)
 - [x] [git_rebase](https://github.com/the-mikedavis/tree-sitter-git-rebase) (maintained by @gbprod)
@@ -287,6 +288,7 @@ We are looking for maintainers to add more parsers and to write query files for 
 - [x] [scheme](https://github.com/6cdh/tree-sitter-scheme) (maintained by @6cdh)
 - [x] [scss](https://github.com/serenadeai/tree-sitter-scss) (maintained by @elianiva)
 - [x] [slint](https://github.com/jrmoulton/tree-sitter-slint) (experimental, maintained by @jrmoulton)
+- [x] [smali](https://github.com/amaanq/tree-sitter-smali) (experimental, maintained by @amaanq)
 - [x] [solidity](https://github.com/YongJieYongJie/tree-sitter-solidity) (maintained by @YongJieYongJie)
 - [x] [sparql](https://github.com/BonaBeavis/tree-sitter-sparql) (maintained by @BonaBeavis)
 - [x] [sql](https://github.com/derekstride/tree-sitter-sql) (maintained by @derekstride)
@@ -296,6 +298,7 @@ We are looking for maintainers to add more parsers and to write query files for 
 - [x] [swift](https://github.com/alex-pinkus/tree-sitter-swift) (maintained by @alex-pinkus)
 - [x] [sxhkdrc](https://github.com/RaafatTurki/tree-sitter-sxhkdrc) (maintained by @RaafatTurki)
 - [x] [teal](https://github.com/euclidianAce/tree-sitter-teal) (maintained by @euclidianAce)
+- [x] [terraform](https://github.com/MichaHoffmann/tree-sitter-hcl) (maintained by @MichaHoffmann)
 - [x] [tiger](https://github.com/ambroisie/tree-sitter-tiger) (maintained by @ambroisie)
 - [x] [tlaplus](https://github.com/tlaplus-community/tree-sitter-tlaplus) (maintained by @ahelwer, @susliko)
 - [x] [todotxt](https://github.com/arnarg/tree-sitter-todotxt.git) (experimental, maintained by @arnarg)
@@ -413,13 +416,14 @@ This directory must be writeable and must be explicitly added to the
 `runtimepath`. For example:
 
 ``` lua
+  vim.opt.runtimepath:append("/some/path/to/store/parsers")
+
   require'nvim-treesitter.configs'.setup {
     parser_install_dir = "/some/path/to/store/parsers",
 
     ...
 
   }
-  vim.opt.runtimepath:append("/some/path/to/store/parsers")
 ```
 
 If this option is not included in the setup options, or is explicitly set to

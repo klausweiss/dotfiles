@@ -12,6 +12,7 @@ local copy_paste = require "nvim-tree.actions.fs.copy-paste"
 local collapse_all = require "nvim-tree.actions.tree-modifiers.collapse-all"
 local git = require "nvim-tree.git"
 local filters = require "nvim-tree.explorer.filters"
+local modified = require "nvim-tree.modified"
 
 local _config = {}
 
@@ -368,7 +369,9 @@ local function setup_autocommands(opts)
         (filters.config.filter_no_buffer or renderer.config.highlight_opened_files ~= "none")
         and vim.bo[data.buf].buftype == ""
       then
-        reloaders.reload_explorer()
+        utils.debounce("Buf:filter_buffer", opts.view.debounce_delay, function()
+          reloaders.reload_explorer()
+        end)
       end
     end,
   })
@@ -380,7 +383,9 @@ local function setup_autocommands(opts)
         (filters.config.filter_no_buffer or renderer.config.highlight_opened_files ~= "none")
         and vim.bo[data.buf].buftype == ""
       then
-        reloaders.reload_explorer(nil, data.buf)
+        utils.debounce("Buf:filter_buffer", opts.view.debounce_delay, function()
+          reloaders.reload_explorer(nil, data.buf)
+        end)
       end
     end,
   })
@@ -415,7 +420,7 @@ local function setup_autocommands(opts)
   if opts.update_focused_file.enable then
     create_nvim_tree_autocmd("BufEnter", {
       callback = function()
-        utils.debounce("BufEnter:find_file", opts.update_focused_file.debounce_delay, function()
+        utils.debounce("BufEnter:find_file", opts.view.debounce_delay, function()
           find_file(false)
         end)
       end,
@@ -476,6 +481,17 @@ local function setup_autocommands(opts)
       end,
     })
   end
+
+  if opts.modified.enable then
+    create_nvim_tree_autocmd({ "BufModifiedSet", "BufWritePost" }, {
+      callback = function()
+        utils.debounce("Buf:modified", opts.view.debounce_delay, function()
+          modified.reload()
+          reloaders.reload_explorer()
+        end)
+      end,
+    })
+  end
 end
 
 local DEFAULT_OPTS = { -- BEGIN_DEFAULT_OPTS
@@ -499,6 +515,8 @@ local DEFAULT_OPTS = { -- BEGIN_DEFAULT_OPTS
   view = {
     adaptive_size = false,
     centralize_selection = false,
+    cursorline = true,
+    debounce_delay = 15,
     width = 30,
     hide_root_folder = false,
     side = "left",
@@ -531,6 +549,7 @@ local DEFAULT_OPTS = { -- BEGIN_DEFAULT_OPTS
     highlight_git = false,
     full_name = false,
     highlight_opened_files = "none",
+    highlight_modified = "none",
     root_folder_label = ":~:s?$?/..?",
     indent_width = 2,
     indent_markers = {
@@ -547,6 +566,7 @@ local DEFAULT_OPTS = { -- BEGIN_DEFAULT_OPTS
     icons = {
       webdev_colors = true,
       git_placement = "before",
+      modified_placement = "after",
       padding = " ",
       symlink_arrow = " ➛ ",
       show = {
@@ -554,11 +574,13 @@ local DEFAULT_OPTS = { -- BEGIN_DEFAULT_OPTS
         folder = true,
         folder_arrow = true,
         git = true,
+        modified = true,
       },
       glyphs = {
         default = "",
         symlink = "",
         bookmark = "",
+        modified = "●",
         folder = {
           arrow_closed = "",
           arrow_open = "",
@@ -589,7 +611,6 @@ local DEFAULT_OPTS = { -- BEGIN_DEFAULT_OPTS
   },
   update_focused_file = {
     enable = false,
-    debounce_delay = 15,
     update_root = false,
     ignore_list = {},
   },
@@ -633,6 +654,11 @@ local DEFAULT_OPTS = { -- BEGIN_DEFAULT_OPTS
     show_on_open_dirs = true,
     timeout = 400,
   },
+  modified = {
+    enable = false,
+    show_on_dirs = true,
+    show_on_open_dirs = true,
+  },
   actions = {
     use_system_clipboard = true,
     change_dir = {
@@ -672,7 +698,6 @@ local DEFAULT_OPTS = { -- BEGIN_DEFAULT_OPTS
   },
   trash = {
     cmd = "gio trash",
-    require_confirm = true,
   },
   live_filter = {
     prefix = "[FILTER]: ",
@@ -687,6 +712,12 @@ local DEFAULT_OPTS = { -- BEGIN_DEFAULT_OPTS
   },
   notify = {
     threshold = vim.log.levels.INFO,
+  },
+  ui = {
+    confirm = {
+      remove = true,
+      trash = true,
+    },
   },
   log = {
     enable = false,
@@ -809,6 +840,7 @@ function M.setup(conf)
   require("nvim-tree.renderer").setup(opts)
   require("nvim-tree.live-filter").setup(opts)
   require("nvim-tree.marks").setup(opts)
+  require("nvim-tree.modified").setup(opts)
   if M.config.renderer.icons.show.file and pcall(require, "nvim-web-devicons") then
     require("nvim-web-devicons").setup()
   end
@@ -833,7 +865,12 @@ function M.setup(conf)
 
   vim.schedule(function()
     M.on_enter(netrw_disabled)
+    vim.g.NvimTreeSetup = 1
+    vim.api.nvim_exec_autocmds("User", { pattern = "NvimTreeSetup" })
   end)
 end
+
+vim.g.NvimTreeRequired = 1
+vim.api.nvim_exec_autocmds("User", { pattern = "NvimTreeRequired" })
 
 return M

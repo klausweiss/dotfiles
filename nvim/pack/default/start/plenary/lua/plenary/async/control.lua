@@ -33,7 +33,8 @@ function Condvar:notify_all()
   end
 
   for i = 1, len do
-    -- table.remove will ensure that indexes are correct and make "ipairs" safe, which is not the case for "self.handles[i] = nil"
+    -- table.remove will ensure that indexes are correct and make "ipairs" safe,
+    -- which is not the case for "self.handles[i] = nil"
     table.remove(self.handles, i)
   end
 end
@@ -74,7 +75,7 @@ end
 ---async function, blocks until a permit can be acquired
 ---example:
 ---local semaphore = Semaphore.new(1024)
----local permit = await(semaphore:acquire())
+---local permit = semaphore:acquire()
 ---permit:forget()
 ---when a permit can be acquired returns it
 ---call permit:forget() to forget the permit
@@ -93,8 +94,7 @@ Semaphore.acquire = a.wrap(function(self, callback)
 
     if self.permits > 0 and #self.handles > 0 then
       self.permits = self.permits - 1
-      local callback = table.remove(self.handles)
-      callback(self_permit)
+      table.remove(self.handles)(self_permit)
     end
   end
 
@@ -176,14 +176,14 @@ M.channel.counter = function()
 
   Receiver.recv = function()
     if counter == 0 then
-      await(condvar:wait())
+      condvar:wait()
     end
     counter = counter - 1
   end
 
   Receiver.last = function()
     if counter == 0 then
-      await(condvar:wait())
+      condvar:wait()
     end
     counter = 0
   end

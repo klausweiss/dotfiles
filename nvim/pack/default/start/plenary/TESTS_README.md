@@ -34,11 +34,21 @@ The test **some test** checks that a functions output is as expected based on th
 
 # Running tests
 
-Run the test using `:PlenaryBustedTest <file>`. 
+Run the test using `:PlenaryBustedFile <file>`. 
 
 ```vimscript
 " Run the test in the current buffer
-:PlenaryBustedTest %
+:PlenaryBustedFile %
+" Run all tests in the directory "tests/plenary/"
+:PlenaryBustedDirectory tests/plenary/
+```
+
+Or you can run tests in headless mode to see output in terminal:
+
+```bash
+# run all tests in terminal
+cd plenary.nvim
+nvim --headless -c 'PlenaryBustedDirectory tests'
 ```
 
 # mocking with luassert
@@ -124,4 +134,20 @@ To test this in your `~/.config/nvim` configuration, try the suggested file stru
 ```
 lua/example/module.lua
 lua/spec/example/module_spec.lua
+```
+
+# Asynchronous testing
+
+Tests run in a coroutine, which can be yielded and resumed. This can be used to
+test code that uses asynchronous Neovim functionalities. For example, this can
+be done inside a test:
+
+```lua
+local co = coroutine.running()
+vim.defer_fn(function()
+  coroutine.resume(co)
+end, 1000)
+--The test will reach here immediately.
+coroutine.yield()
+--The test will only reach here after one second, when the deferred function runs.
 ```

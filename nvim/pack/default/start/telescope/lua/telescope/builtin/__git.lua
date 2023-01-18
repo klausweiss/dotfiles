@@ -203,6 +203,7 @@ git.branches = function(opts)
     { "git", "for-each-ref", "--perl", "--format", format, "--sort", "-authordate", opts.pattern },
     opts.cwd
   )
+  local show_remote_tracking_branches = vim.F.if_nil(opts.show_remote_tracking_branches, true)
 
   local results = {}
   local widths = {
@@ -225,7 +226,11 @@ git.branches = function(opts)
     }
     local prefix
     if vim.startswith(entry.refname, "refs/remotes/") then
-      prefix = "refs/remotes/"
+      if show_remote_tracking_branches then
+        prefix = "refs/remotes/"
+      else
+        return
+      end
     elseif vim.startswith(entry.refname, "refs/heads/") then
       prefix = "refs/heads/"
     else
@@ -314,7 +319,7 @@ git.status = function(opts)
 
   local gen_new_finder = function()
     local expand_dir = vim.F.if_nil(opts.expand_dir, true)
-    local git_cmd = { "git", "status", "-s", "--", "." }
+    local git_cmd = { "git", "status", "-z", "--", "." }
 
     if expand_dir then
       table.insert(git_cmd, #git_cmd - 1, "-u")
@@ -332,7 +337,7 @@ git.status = function(opts)
     end
 
     return finders.new_table {
-      results = output,
+      results = vim.split(output[1], " ", { trimempty = true }),
       entry_maker = vim.F.if_nil(opts.entry_maker, make_entry.gen_from_git_status(opts)),
     }
   end

@@ -60,8 +60,12 @@
   (type_operator)
   (tycon_arrow)
   (qualified_module)  ; grabs the `.` (dot), ex: import System.IO
+  (qualified_type)
+  (qualified_variable)
   (all_names)
   (wildcard)
+  "."
+  ".."
   "="
   "|"
   "::"
@@ -106,16 +110,24 @@
 
 (variable) @variable
 (pat_wildcard) @variable
+(signature name: (variable) @variable)
 
-(signature name: (variable) @type)
 (function
   name: (variable) @function
   patterns: (patterns))
-((signature (fun)) . (function (variable) @function))
-((signature (context (fun))) . (function (variable) @function))
-((signature (forall (context (fun)))) . (function (variable) @function))
+(function
+  name: (variable) @function
+  rhs: (exp_lambda))
+((signature (variable) @function (fun)) . (function (variable)))
+((signature (variable) @_type (fun)) . (function (variable) @function) (#eq? @function @_type))
+((signature (variable) @function (context (fun))) . (function (variable)))
+((signature (variable) @_type (context (fun))) . (function (variable) @function) (#eq? @function @_type))
+((signature (variable) @function (forall (context (fun)))) . (function (variable)))
+((signature (variable) @_type (forall (context (fun)))) . (function (variable) @function) (#eq? @function @_type))
 
 (exp_infix (variable) @operator)  ; consider infix functions as operators
+(exp_section_right (variable) @operator) ; partially applied infix functions (sections) also get highlighted as operators
+(exp_section_left (variable) @operator)
 
 (exp_infix (exp_name) @function.call (#set! "priority" 101))
 (exp_apply . (exp_name (variable) @function.call))
@@ -126,12 +138,13 @@
 ;; Types
 
 (type) @type
+(type_star) @type
 (type_variable) @type
 
 (constructor) @constructor
 
 ; True or False
-((constructor) @_bool (#match? @_bool "(True|False)")) @boolean
+((constructor) @boolean (#any-of? @boolean "True" "False"))
 
 
 ;; ----------------------------------------------------------------------------

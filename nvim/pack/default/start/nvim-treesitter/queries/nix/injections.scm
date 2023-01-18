@@ -15,8 +15,7 @@
     (string_expression (string_fragment) @bash)
     (indented_string_expression (string_fragment) @bash)
   ]
-  (#match? @_path "(^\\w*Phase|(pre|post)\\w*|(.*\\.)?\\w*([sS]cript|[hH]ook)|(.*\\.)?startup)$"))
-  @combined
+  (#match? @_path "(^\\w+(Phase|Hook)|(pre|post)[A-Z]\\w+|script)$"))
 
 (apply_expression
   function: (_) @_func

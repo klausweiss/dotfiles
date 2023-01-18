@@ -288,7 +288,8 @@ function M.update_selection(buf, node, selection_mode)
   -- "gv": Start Visual mode with the same area as the previous area and the same mode.
   -- Hence, area will be what we defined in "<" and ">" marks. We only feed `selection_mode` if it is
   -- different than previous `visualmode`, otherwise it will stop visual mode.
-  api.nvim_feedkeys("gv" .. selection_mode, "x", false)
+  -- bang=true is provided to avoid gv side-effects
+  api.nvim_cmd({ cmd = "normal", bang = true, args = { "gv" .. selection_mode } }, {})
 end
 
 -- Byte length of node range
@@ -400,12 +401,12 @@ function M.swap_nodes(node_or_range1, node_or_range2, bufnr, cursor_to_second)
     local line_delta = 0
     if
       range1["end"].line < range2.start.line
-      or (range1["end"].line == range2.start.line and range1["end"].character < range2.start.character)
+      or (range1["end"].line == range2.start.line and range1["end"].character <= range2.start.character)
     then
       line_delta = #text2 - #text1
     end
 
-    if range1["end"].line == range2.start.line and range1["end"].character < range2.start.character then
+    if range1["end"].line == range2.start.line and range1["end"].character <= range2.start.character then
       if line_delta ~= 0 then
         --- why?
         --correction_after_line_change =  -range2.start.character

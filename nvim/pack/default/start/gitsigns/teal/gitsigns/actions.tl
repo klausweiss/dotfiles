@@ -537,7 +537,8 @@ local nav_hunk = void(function(opts: NavHunkOpts)
 
   local hunks: {Hunk} = {}
   vim.list_extend(hunks, get_hunks(bufnr, bcache, opts.greedy, false) or {})
-  vim.list_extend(hunks, get_hunks(bufnr, bcache, opts.greedy, true) or {})
+  local hunks_head = get_hunks(bufnr, bcache, opts.greedy, true) or {}
+  vim.list_extend(hunks, gs_hunks.filter_common(hunks_head, bcache.hunks))
 
   if not hunks or vim.tbl_isempty(hunks) then
     if opts.navigation_message then
@@ -570,13 +571,18 @@ local nav_hunk = void(function(opts: NavHunkOpts)
     if opts.preview or popup.is_open('hunk') ~= nil then
       -- Use defer so the cursor change can settle, otherwise the popup might
       -- appear in the old position
-      defer(M.preview_hunk)
+      defer(function()
+        -- Close the popup in case one is open which will cause it to focus the
+        -- popup
+        popup.close('hunk')
+        M.preview_hunk()
+      end)
     elseif has_preview_inline(bufnr) then
       defer(M.preview_hunk_inline)
     end
 
     if index ~= nil and opts.navigation_message then
-        api.nvim_echo({{string.format('Hunk %d of %d', index, #hunks), 'None'}}, false, {})
+      api.nvim_echo({{string.format('Hunk %d of %d', index, #hunks), 'None'}}, false, {})
     end
 
   end
@@ -711,23 +717,19 @@ end
 --- window. If the preview is already open, calling this
 --- will cause the window to get focus.
 M.preview_hunk = noautocmd(function()
+  -- Wrap in noautocmd so vim-repeat continues to work
+
   if popup.focus_open('hunk') then
     return
   end
-  -- Wrap in noautocmd so vim-repeat continues to work
+
   local bufnr = current_buf()
-  local bcache = cache[bufnr]
-  if not bcache then
+
+  local hunk, index = get_cursor_hunk(bufnr)
+
+  if not hunk then
     return
   end
-
-  local hunks: {Hunk} = {}
-  vim.list_extend(hunks, bcache.hunks or {})
-  vim.list_extend(hunks, bcache.hunks_staged or {})
-
-  local hunk, index = get_cursor_hunk(bufnr, hunks)
-
-  if not hunk then return end
 
   local lines_fmt = {
     {{'Hunk <hunk_no> of <num_hunks>', 'Title'}},
@@ -738,31 +740,48 @@ M.preview_hunk = noautocmd(function()
 
   local lines_spec = lines_format(lines_fmt, {
     hunk_no = index,
-    num_hunks = #bcache.hunks,
+    num_hunks = #cache[bufnr].hunks,
     hunk = gs_hunks.patch_lines(hunk, vim.bo[bufnr].fileformat),
   })
 
   popup.create(lines_spec, config.preview_config, 'hunk')
 end)
 
+local function clear_preview_inline(bufnr: integer)
+  api.nvim_buf_clear_namespace(bufnr, ns_inline, 0, -1)
+end
+
 --- Preview the hunk at the cursor position inline in the buffer.
 M.preview_hunk_inline = function()
-  local hunk = get_cursor_hunk()
+  local bufnr = current_buf()
+
+  local hunk = get_cursor_hunk(bufnr)
 
   if not hunk then
     return
   end
 
-  local bufnr = current_buf()
+  clear_preview_inline(bufnr)
+
   manager.show_added(bufnr, ns_inline, hunk)
   manager.show_deleted(bufnr, ns_inline, hunk)
 
   api.nvim_create_autocmd({ 'CursorMoved', 'InsertEnter' }, {
+    buffer = bufnr,
+    desc = 'Clear gitsigns inline preview',
     callback = function()
-      api.nvim_buf_clear_namespace(bufnr, ns_inline, 0, -1)
+      clear_preview_inline(bufnr)
     end,
     once = true
   })
+
+  -- Virtual lines will be hidden if cursor is on the top row, so automatically
+  -- scroll the viewport.
+  if api.nvim_win_get_cursor(0)[1] == 1 then
+    local keys = hunk.removed.count..'<C-y>'
+    local cy = api.nvim_replace_termcodes(keys, true, false, true)
+    api.nvim_feedkeys(cy, 'n', false)
+  end
 
 end
 

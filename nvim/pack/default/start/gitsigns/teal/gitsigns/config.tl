@@ -142,34 +142,34 @@ M.schema = {
     type = 'table',
     deep_extend = true,
     default = {
-      add          = {hl = 'GitSignsAdd'   , text = '┃', numhl='GitSignsAddNr'   , linehl='GitSignsAddLn'    },
-      change       = {hl = 'GitSignsChange', text = '┃', numhl='GitSignsChangeNr', linehl='GitSignsChangeLn' },
-      delete       = {hl = 'GitSignsDelete', text = '▁', numhl='GitSignsDeleteNr', linehl='GitSignsDeleteLn' },
-      topdelete    = {hl = 'GitSignsDelete', text = '▔', numhl='GitSignsDeleteNr', linehl='GitSignsDeleteLn' },
-      changedelete = {hl = 'GitSignsChange', text = '~', numhl='GitSignsChangeNr', linehl='GitSignsChangeLn' },
-      untracked    = {hl = 'GitSignsAdd'   , text = '┆', numhl='GitSignsAddNr'   , linehl='GitSignsAddLn'    },
+      add          = {hl = 'GitSignsAdd',          text = '┃', numhl = 'GitSignsAddNr',          linehl = 'GitSignsAddLn'          },
+      change       = {hl = 'GitSignsChange',       text = '┃', numhl = 'GitSignsChangeNr',       linehl = 'GitSignsChangeLn'       },
+      delete       = {hl = 'GitSignsDelete',       text = '▁', numhl = 'GitSignsDeleteNr',       linehl = 'GitSignsDeleteLn'       },
+      topdelete    = {hl = 'GitSignsTopdelete',    text = '▔', numhl = 'GitSignsTopdeleteNr',    linehl = 'GitSignsTopdeleteLn'    },
+      changedelete = {hl = 'GitSignsChangedelete', text = '~', numhl = 'GitSignsChangedeleteNr', linehl = 'GitSignsChangedeleteLn' },
+      untracked    = {hl = 'GitSignsUntracked',    text = '┆', numhl = 'GitSignsUntrackedNr',    linehl = 'GitSignsUntrackedLn'    },
     },
+    default_help = [[{
+      add          = { text = '┃' },
+      change       = { text = '┃' },
+      delete       = { text = '▁' },
+      topdelete    = { text = '▔' },
+      changedelete = { text = '~' },
+      untracked    = { text = '┆' },
+    }]],
     description = [[
       Configuration for signs:
-        • `hl` specifies the highlight group to use for the sign.
         • `text` specifies the character to use for the sign.
-        • `numhl` specifies the highlight group to use for the number column
-          (see |gitsigns-config.numhl|).
-        • `linehl` specifies the highlight group to use for the line
-          (see |gitsigns-config.linehl|).
         • `show_count` to enable showing count of hunk, e.g. number of deleted
           lines.
 
-      Note if a highlight is not defined, it will be automatically derived by
-      searching for other defined highlights in the following order:
-        • `GitGutter*`
-        • `Signify*`
-        • `Diff*Gutter`
-        • `diff*`
-        • `Diff*`
+      The highlights `GitSigns[kind][type]` is used for each kind of sign. E.g.
+      'add' signs uses the highlights:
+        • `GitSignsAdd`   (for normal text signs)
+        • `GitSignsAddNr` (for signs when `config.numhl == true`)
+        • `GitSignsAddLn `(for signs when `config.linehl == true`)
 
-      For example if `GitSignsAdd` is not defined but `GitGutterAdd` is defined,
-      then `GitSignsAdd` will be linked to `GitGutterAdd`.
+      See |gitsigns-highlight-groups|.
     ]]
   },
 
@@ -177,12 +177,19 @@ M.schema = {
     type = 'table',
     deep_extend = true,
     default = {
-      add          = {hl = 'GitSignsStagedAdd'   , text = '┃', numhl='GitSignsStagedAddNr'   , linehl='GitSignsStagedAddLn'    },
-      change       = {hl = 'GitSignsStagedChange', text = '┃', numhl='GitSignsStagedChangeNr', linehl='GitSignsStagedChangeLn' },
-      delete       = {hl = 'GitSignsStagedDelete', text = '▁', numhl='GitSignsStagedDeleteNr', linehl='GitSignsStagedDeleteLn' },
-      topdelete    = {hl = 'GitSignsStagedDelete', text = '▔', numhl='GitSignsStagedDeleteNr', linehl='GitSignsStagedDeleteLn' },
-      changedelete = {hl = 'GitSignsStagedChange', text = '~', numhl='GitSignsStagedChangeNr', linehl='GitSignsStagedChangeLn' },
+      add          = {hl = 'GitSignsStagedAdd'         , text = '┃', numhl='GitSignsStagedAddNr'         , linehl='GitSignsStagedAddLn'          },
+      change       = {hl = 'GitSignsStagedChange'      , text = '┃', numhl='GitSignsStagedChangeNr'      , linehl='GitSignsStagedChangeLn'       },
+      delete       = {hl = 'GitSignsStagedDelete'      , text = '▁', numhl='GitSignsStagedDeleteNr'      , linehl='GitSignsStagedDeleteLn'       },
+      topdelete    = {hl = 'GitSignsStagedTopdelete'   , text = '▔', numhl='GitSignsStagedTopdeleteNr'   , linehl='GitSignsStagedTopdeleteLn'    },
+      changedelete = {hl = 'GitSignsStagedChangedelete', text = '~', numhl='GitSignsStagedChangedeleteNr', linehl='GitSignsStagedChangedeleteLn' },
     },
+    default_help = [[{
+      add          = { text = '┃' },
+      change       = { text = '┃' },
+      delete       = { text = '▁' },
+      topdelete    = { text = '▔' },
+      changedelete = { text = '~' },
+    }]],
     description = [[
       Configuration for signs of staged hunks.
 
@@ -386,9 +393,6 @@ M.schema = {
         elseif o == 'internal' then
           if vim.diff then
             r.internal = true
-          elseif jit and jit.os ~= "Windows" then
-            -- Use FFI
-            r.internal = true
           end
         elseif o == 'horizontal' then
           r.vertical = false
@@ -414,9 +418,6 @@ M.schema = {
             • "histogram"  histogram diff algorithm
         • internal: boolean
             Use Neovim's built in xdiff library for running diffs.
-
-            Note Neovim v0.5 uses LuaJIT's FFI interface, whereas v0.5+ uses
-            `vim.diff`.
         • indent_heuristic: boolean
             Use the indent heuristic for the internal
             diff library.

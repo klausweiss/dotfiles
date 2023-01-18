@@ -345,11 +345,16 @@ end
 --- @param layout bufferline.layout.data
 local function open_buffer_start_animation(layout, bufnr)
   local buffer_data = state.get_buffer_data(bufnr)
+  local icons_option = options.icons()
   local index = utils.index_of(Layout.buffers, bufnr)
 
   buffer_data.real_width = Layout.calculate_width(
-    layout.base_widths[index] or
-      Layout.calculate_buffer_width(bufnr, #Layout.buffers + 1, options.diagnostics(), options.index_buffers(), options.file_icons()),
+    layout.base_widths[index] or Layout.calculate_buffer_width(bufnr, #Layout.buffers + 1, {
+      buffer_index = options.index_buffers(icons_option),
+      buffer_number = options.number_buffers(icons_option),
+      diagnostics = options.diagnostics(),
+      file_icon = options.file_icons(icons_option)
+    }),
     layout.padding_width
   )
 
@@ -751,11 +756,11 @@ local function generate_tabline(bufnrs, refocus)
   local diagnostics = options.diagnostics()
   local has_close = options.closable()
   local has_icon_custom_colors = options.icon_custom_colors()
-  local icons_enabled = options.icons()
 
-  local has_icons = (icons_enabled == true) or (icons_enabled == 'both') or (icons_enabled == 'buffer_number_with_icon')
-  local has_buffer_number = (icons_enabled == 'buffer_numbers') or (icons_enabled == 'buffer_number_with_icon')
-  local has_numbers = (icons_enabled == 'numbers') or (icons_enabled == 'both')
+  local icons_option = options.icons()
+  local has_file_icons = options.file_icons(icons_option)
+  local has_buffer_index = options.index_buffers(icons_option)
+  local has_buffer_number = options.number_buffers(icons_option)
 
   local layout = Layout.calculate()
 
@@ -801,7 +806,7 @@ local function generate_tabline(bufnrs, refocus)
     local iconPrefix = ''
     local icon = ''
 
-    if has_buffer_number or has_numbers then
+    if has_buffer_number or has_buffer_index then
       local number_text = has_buffer_number and tostring(bufnr) or tostring(i)
 
       bufferIndexPrefix = hl_tabline('Buffer' .. status .. 'Index')
@@ -812,16 +817,16 @@ local function generate_tabline(bufnrs, refocus)
       local letter = JumpMode.get_letter(bufnr)
 
       -- Replace first character of buf name with jump letter
-      if letter and not has_icons then
+      if letter and not has_file_icons then
         name = strcharpart(name, 1)
       end
 
       jumpLetterPrefix = hl_tabline('Buffer' .. status .. 'Target')
       jumpLetter = (letter or '') ..
-        (has_icons and (' ' .. (letter and '' or ' ')) or '')
+        (has_file_icons and (' ' .. (letter and '' or ' ')) or '')
     else
 
-      if has_icons then
+      if has_file_icons then
         local iconChar, iconHl = icons.get_icon(bufnr, status)
         local hlName = is_inactive and 'BufferInactive' or iconHl
         iconPrefix = has_icon_custom_colors and hl_tabline('Buffer' .. status .. 'Icon') or (hlName and hl_tabline(hlName) or namePrefix)
@@ -830,7 +835,7 @@ local function generate_tabline(bufnrs, refocus)
     end
 
     local closePrefix = ''
-    local close = ''
+    local close = ' '
     if has_close or is_pinned then
       local closeIcon =
         is_pinned and
@@ -840,7 +845,7 @@ local function generate_tabline(bufnrs, refocus)
           options.icon_close_tab_modified())
 
       closePrefix = namePrefix
-      close = closeIcon .. ' '
+      close = closeIcon .. close
 
       if click_enabled then
         closePrefix =

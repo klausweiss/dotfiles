@@ -1,7 +1,8 @@
+![Linux](https://img.shields.io/badge/Linux-%23.svg?logo=linux&color=FCC624&logoColor=black)
+![macOS](https://img.shields.io/badge/macOS-%23.svg?logo=apple&color=000000&logoColor=white)
+![Windows](https://img.shields.io/badge/Windows-%23.svg?logo=windows&color=0078D6&logoColor=white)
 [![GitHub CI](https://github.com/williamboman/mason.nvim/workflows/Tests/badge.svg)](https://github.com/williamboman/mason.nvim/actions?query=workflow%3ATests+branch%3Amain+event%3Apush)
-![Platforms](https://img.shields.io/badge/platform-linux%20macOS%20windows-blue)
-![Repository size](https://img.shields.io/github/repo-size/williamboman/mason.nvim)
-[![Sponsors](https://img.shields.io/github/sponsors/williamboman?style=flat-square)](https://github.com/sponsors/williamboman)
+[![Sponsors](https://img.shields.io/github/sponsors/williamboman)](https://github.com/sponsors/williamboman)
 
 <img src="https://user-images.githubusercontent.com/6705160/177613416-0c0354d2-f431-40d8-87f0-21310f0bba0e.png" alt="mason.nvim" />
 
@@ -205,6 +206,16 @@ local DEFAULT_SETTINGS = {
 
         -- The border to use for the UI window. Accepts same border values as |nvim_open_win()|.
         border = "none",
+
+        -- Width of the window. Accepts:
+        -- - Integer greater than 1 for fixed width.
+        -- - Float in the range of 0-1 for a percentage of screen width.
+        width = 0.8,
+
+        -- Height of the window. Accepts:
+        -- - Integer greater than 1 for fixed height.
+        -- - Float in the range of 0-1 for a percentage of screen height.
+        height = 0.9,
 
         icons = {
             -- The list icon to use for installed packages.

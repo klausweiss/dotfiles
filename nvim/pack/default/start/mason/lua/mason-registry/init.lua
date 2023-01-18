@@ -64,10 +64,17 @@ end
 function M.get_package(package_name)
     local ok, pkg = pcall(require, index[package_name])
     if not ok then
-        log.error(pkg)
+        log.fmt_error("Failed to load package %s: %s", package_name, pkg or "")
         error(("Cannot find package %q."):format(package_name))
     end
     return pkg
+end
+
+---Returns true if the provided package_name can be found in the registry.
+---@param package_name string
+---@return boolean
+function M.has_package(package_name)
+    return index[package_name] ~= nil
 end
 
 local get_packages = _.map(M.get_package)

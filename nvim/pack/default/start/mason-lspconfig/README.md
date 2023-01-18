@@ -181,6 +181,7 @@ local DEFAULT_SETTINGS = {
 | Dlang                               | `serve_d`                  |
 | Docker                              | `dockerls`                 |
 | Dot                                 | `dotls`                    |
+| Drools                              | `drools_lsp`               |
 | EFM (general purpose server)        | `efm`                      |
 | ESLint                              | `eslint`                   |
 | Elixir                              | `elixirls`                 |
@@ -229,6 +230,7 @@ local DEFAULT_SETTINGS = {
 | OneScript, 1C:Enterprise            | `bsl_ls`                   |
 | OpenAPI                             | `spectral`                 |
 | OpenCL                              | `opencl_ls`                |
+| OpenSCAD                            | `openscad_lsp`             |
 | PHP                                 | `intelephense`             |
 | PHP                                 | `phpactor`                 |
 | PHP                                 | `psalm`                    |
@@ -243,6 +245,7 @@ local DEFAULT_SETTINGS = {
 | Python [(docs)][pylsp]              | `pylsp`                    |
 | Python                              | `ruff_lsp`                 |
 | R                                   | `r_language_server`        |
+| Raku                                | `raku_navigator`           |
 | ReScript                            | `rescriptls`               |
 | Reason                              | `reason_ls`                |
 | Robot Framework                     | `robotframework_ls`        |

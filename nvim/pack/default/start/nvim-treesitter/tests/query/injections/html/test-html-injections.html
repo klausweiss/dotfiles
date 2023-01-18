@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title></title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="css/style.css" rel="stylesheet">
+    <style> footer{ } </style>
+    <!--      ^ css  -->
+    <style title="Test Style without type attribute"> footer{ } </style>
+    <!--                                                ^ css  -->
+    <style type="text/css" title="test style with defined type attribute"> footer{ } </style>
+    <!--                                                                    ^ css  -->
+  </head>
+  <body>
+    <script> const x = 1 </script>
+    <!--        ^ javascript -->
+    <script defer> const x = 1 </script>
+    <!--              ^ javascript -->
+    <script type="text/javascript"> const x = 1 </script>
+    <!--                              ^ javascript -->
+    <div style="height: 100%">
+<!--                ^ css      -->
+      Test div to test css injections for style attributes
+    </div>
+  </body>
+</html>

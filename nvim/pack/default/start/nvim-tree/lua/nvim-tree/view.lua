@@ -95,6 +95,7 @@ local function create_buffer(bufnr)
   else
     require("nvim-tree.actions").apply_mappings(M.get_bufnr())
   end
+  events._dispatch_tree_attached_post(M.get_bufnr())
 end
 
 local function get_size()
@@ -389,8 +390,8 @@ function M.restore_tab_state()
 end
 
 --- Returns the window number for nvim-tree within the tabpage specified
----@param tabpage number: (optional) the number of the chosen tabpage. Defaults to current tabpage.
----@return number
+---@param tabpage number|nil (optional) the number of the chosen tabpage. Defaults to current tabpage.
+---@return number|nil
 function M.get_winnr(tabpage)
   tabpage = tabpage or vim.api.nvim_get_current_tabpage()
   local tabinfo = M.View.tabpages[tabpage]
@@ -406,8 +407,8 @@ function M.get_bufnr()
 end
 
 --- Checks if nvim-tree is displaying the help ui within the tabpage specified
----@param tabpage number: (optional) the number of the chosen tabpage. Defaults to current tabpage.
----@return number
+---@param tabpage number|nil (optional) the number of the chosen tabpage. Defaults to current tabpage.
+---@return number|nil
 function M.is_help_ui(tabpage)
   tabpage = tabpage or vim.api.nvim_get_current_tabpage()
   local tabinfo = M.View.tabpages[tabpage]
@@ -490,6 +491,7 @@ function M.setup(opts)
   M.View.hide_root_folder = options.hide_root_folder
   M.View.tab = opts.tab
   M.View.preserve_window_proportions = options.preserve_window_proportions
+  M.View.winopts.cursorline = options.cursorline
   M.View.winopts.number = options.number
   M.View.winopts.relativenumber = options.relativenumber
   M.View.winopts.signcolumn = options.signcolumn
