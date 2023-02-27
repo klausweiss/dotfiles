@@ -297,7 +297,7 @@ require 'nvim-treesitter.configs'.setup {
 }
 
 -- lsp
-require('lspconfig')
+local lspconfig = require('lspconfig')
 
 -- Use an on_attach function to only map the following keys
 -- after the language server attaches to the current buffer
@@ -384,17 +384,34 @@ local default_lsp_options = {
 local function setup_lsp(server, options_arg)
   local options = table_merge(options_arg or {}, default_lsp_options)
   options.capabilities = table_merge(options.capabilities, cmp_lsp_capabilities)
-  require 'lspconfig'[server].setup(options)
+  lspconfig[server].setup(options)
 end
 
 require("mason").setup()
 require("mason-lspconfig").setup()
 
--- c++
-setup_lsp('clangd')
+require("mason-lspconfig").setup_handlers {
+  -- The first entry (without a key) will be the default handler
+  -- and will be called for each installed server that doesn't have
+  -- a dedicated handler.
+  function(server_name) -- default handler (optional)
+    setup_lsp(server_name, {})
+  end,
+  -- Next, you can provide a dedicated handler for specific servers.
+  -- For example, a handler override for the `rust_analyzer`:
 
--- elm
-setup_lsp('elmls')
+  ["purescriptls"] = function()
+    setup_lsp('purescriptls', {
+      settings = {
+        purescript = {
+          formatter = "tidy",
+        }
+      },
+    })
+  end,
+
+}
+
 
 -- haskell
 setup_lsp('hls', {
@@ -404,24 +421,6 @@ setup_lsp('hls', {
     },
   },
 })
-
--- purescript
-setup_lsp('purescriptls', {
-  settings = {
-    purescript = {
-      formatter = "tidy",
-    }
-  },
-})
-
--- js
-setup_lsp('tsserver', {})
-
--- css
-setup_lsp('cssls', {})
-
--- lua
-setup_lsp('lua_ls', {})
 
 -- flutter
 require("flutter-tools").setup {
