@@ -4,6 +4,7 @@
 | [als](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#als) | [ada-language-server](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#ada-language-server) |
 | [angularls](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#angularls) | [angular-language-server](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#angular-language-server) |
 | [ansiblels](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#ansiblels) | [ansible-language-server](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#ansible-language-server) |
+| [antlersls](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#antlersls) | [antlers-language-server](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#antlers-language-server) |
 | [apex_ls](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#apex_ls) | [apex-language-server](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#apex-language-server) |
 | [arduino_language_server](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#arduino_language_server) | [arduino-language-server](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#arduino-language-server) |
 | [asm_lsp](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#asm_lsp) | [asm-lsp](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#asm-lsp) |
@@ -12,6 +13,7 @@
 | [bashls](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#bashls) | [bash-language-server](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#bash-language-server) |
 | [beancount](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#beancount) | [beancount-language-server](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#beancount-language-server) |
 | [bicep](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#bicep) | [bicep-lsp](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#bicep-lsp) |
+| [bright_script](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#bright_script) | [brighterscript](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#brighterscript) |
 | [bsl_ls](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#bsl_ls) | [bsl-language-server](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#bsl-language-server) |
 | [bufls](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#bufls) | [buf-language-server](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#buf-language-server) |
 | [clangd](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#clangd) | [clangd](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#clangd) |
@@ -28,6 +30,7 @@
 | [denols](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#denols) | [deno](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#deno) |
 | [dhall_lsp_server](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#dhall_lsp_server) | [dhall-lsp](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#dhall-lsp) |
 | [diagnosticls](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#diagnosticls) | [diagnostic-languageserver](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#diagnostic-languageserver) |
+| [docker_compose_language_service](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#docker_compose_language_service) | [docker-compose-language-service](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#docker-compose-language-service) |
 | [dockerls](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#dockerls) | [dockerfile-language-server](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#dockerfile-language-server) |
 | [dotls](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#dotls) | [dot-language-server](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#dot-language-server) |
 | [drools_lsp](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#drools_lsp) | [drools-lsp](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#drools-lsp) |
@@ -40,6 +43,7 @@
 | [erlangls](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#erlangls) | [erlang-ls](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#erlang-ls) |
 | [esbonio](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#esbonio) | [esbonio](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#esbonio) |
 | [eslint](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#eslint) | [eslint-lsp](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#eslint-lsp) |
+| [fennel_language_server](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#fennel_language_server) | [fennel-language-server](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#fennel-language-server) |
 | [flux_lsp](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#flux_lsp) | [flux-lsp](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#flux-lsp) |
 | [foam_ls](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#foam_ls) | [foam-language-server](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#foam-language-server) |
 | [fortls](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#fortls) | [fortls](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#fortls) |
@@ -65,9 +69,11 @@
 | [lelwel_ls](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#lelwel_ls) | [lelwel](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#lelwel) |
 | [lemminx](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#lemminx) | [lemminx](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#lemminx) |
 | [ltex](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#ltex) | [ltex-ls](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#ltex-ls) |
+| [lua_ls](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#lua_ls) | [lua-language-server](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#lua-language-server) |
 | [luau_lsp](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#luau_lsp) | [luau-lsp](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#luau-lsp) |
 | [marksman](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#marksman) | [marksman](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#marksman) |
 | [mm0_ls](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#mm0_ls) | [metamath-zero-lsp](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#metamath-zero-lsp) |
+| [move_analyzer](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#move_analyzer) | [move-analyzer](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#move-analyzer) |
 | [neocmake](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#neocmake) | [neocmakelsp](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#neocmakelsp) |
 | [nickel_ls](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#nickel_ls) | [nickel-lang-lsp](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#nickel-lang-lsp) |
 | [nil_ls](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#nil_ls) | [nil](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#nil) |
@@ -85,6 +91,7 @@
 | [puppet](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#puppet) | [puppet-editor-services](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#puppet-editor-services) |
 | [purescriptls](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#purescriptls) | [purescript-language-server](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#purescript-language-server) |
 | [pylsp](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#pylsp) | [python-lsp-server](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#python-lsp-server) |
+| [pyre](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#pyre) | [pyre](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#pyre) |
 | [pyright](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#pyright) | [pyright](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#pyright) |
 | [quick_lint_js](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#quick_lint_js) | [quick-lint-js](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#quick-lint-js) |
 | [r_language_server](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#r_language_server) | [r-languageserver](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#r-languageserver) |
@@ -112,7 +119,6 @@
 | [sqlls](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#sqlls) | [sqlls](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#sqlls) |
 | [sqls](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#sqls) | [sqls](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#sqls) |
 | [stylelint_lsp](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#stylelint_lsp) | [stylelint-lsp](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#stylelint-lsp) |
-| [sumneko_lua](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#sumneko_lua) | [lua-language-server](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#lua-language-server) |
 | [svelte](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#svelte) | [svelte-language-server](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#svelte-language-server) |
 | [svlangserver](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#svlangserver) | [svlangserver](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#svlangserver) |
 | [svls](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#svls) | [svls](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#svls) |
@@ -124,12 +130,15 @@
 | [tflint](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#tflint) | [tflint](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#tflint) |
 | [theme_check](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#theme_check) | [shopify-theme-check](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#shopify-theme-check) |
 | [tsserver](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#tsserver) | [typescript-language-server](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#typescript-language-server) |
+| [unocss](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#unocss) | [unocss-language-server](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#unocss-language-server) |
 | [vala_ls](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#vala_ls) | [vala-language-server](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#vala-language-server) |
 | [verible](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#verible) | [verible](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#verible) |
+| [veryl_ls](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#veryl_ls) | [veryl-ls](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#veryl-ls) |
 | [vimls](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#vimls) | [vim-language-server](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#vim-language-server) |
 | [visualforce_ls](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#visualforce_ls) | [visualforce-language-server](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#visualforce-language-server) |
 | [vls](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#vls) | [vls](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#vls) |
 | [volar](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#volar) | [vue-language-server](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#vue-language-server) |
+| [vtsls](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#vtsls) | [vtsls](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#vtsls) |
 | [vuels](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#vuels) | [vetur-vls](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#vetur-vls) |
 | [wgsl_analyzer](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#wgsl_analyzer) | [wgsl-analyzer](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#wgsl-analyzer) |
 | [yamlls](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#yamlls) | [yaml-language-server](https://github.com/williamboman/mason.nvim/blob/main/PACKAGES.md#yaml-language-server) |

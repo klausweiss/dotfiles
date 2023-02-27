@@ -162,6 +162,7 @@ require("flutter-tools").setup{} -- use defaults
 - `FlutterOutlineToggle` - Toggle the outline window showing the widget tree for the given file.
 - `FlutterOutlineOpen` - Opens an outline window showing the widget tree for the given file.
 - `FlutterDevTools` - Starts a Dart Dev Tools server.
+- `FlutterDevToolsActivate` - Activates a Dart Dev Tools server.
 - `FlutterCopyProfilerUrl` - Copies the profiler url to your system clipboard (+ register). Note that commands `FlutterRun` and
   `FlutterDevTools` must be executed first.
 - `FlutterLspRestart` - This command restarts the dart language server, and is intended for situations where it begins to work incorrectly.
@@ -257,6 +258,7 @@ require("flutter-tools").setup {
     color = { -- show the derived colours for dart variables
       enabled = false, -- whether or not to highlight color variables at all, only supported on flutter >= 2.10
       background = false, -- highlight the background
+      background_color = nil, -- required, when background is transparent (i.e. background_color = { r = 19, g = 17, b = 24},)
       foreground = false, -- highlight the foreground
       virtual_text = true, -- show the highlight using virtual text
       virtual_text_str = "■", -- the virtual text character to highlight

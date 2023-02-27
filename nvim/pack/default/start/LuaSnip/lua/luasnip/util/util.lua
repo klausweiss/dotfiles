@@ -488,16 +488,6 @@ local function get_snippet_filetypes()
 	return deduplicate(redirect_filetypes(fts))
 end
 
-local json_decode
-local json_encode
-if vim.json then
-	json_decode = vim.json.decode
-	json_encode = vim.json.encode
-else
-	json_decode = vim.fn.json_decode
-	json_encode = vim.fn.json_encode
-end
-
 local function pos_add(p1, p2)
 	return { p1[1] + p2[1], p1[2] + p2[2] }
 end
@@ -579,6 +569,20 @@ local function indx_of(t, v)
 	return nil
 end
 
+local function lazy_table(lazy_t, lazy_defs)
+	return setmetatable(lazy_t, {
+		__index = function(t, k)
+			local v = lazy_defs[k]
+			if v then
+				local v_resolved = v()
+				rawset(t, k, v_resolved)
+				return v_resolved
+			end
+			return nil
+		end,
+	})
+end
+
 return {
 	get_cursor_0ind = get_cursor_0ind,
 	set_cursor_0ind = set_cursor_0ind,
@@ -602,15 +606,14 @@ return {
 	indent = indent,
 	expand_tabs = expand_tabs,
 	tab_width = tab_width,
-	clear_invalid = clear_invalid,
 	buffer_comment_chars = buffer_comment_chars,
 	string_wrap = string_wrap,
 	to_line_table = to_line_table,
 	find_outer_snippet = find_outer_snippet,
 	redirect_filetypes = redirect_filetypes,
 	get_snippet_filetypes = get_snippet_filetypes,
-	json_encode = json_encode,
-	json_decode = json_decode,
+	json_decode = vim.json.decode,
+	json_encode = vim.json.encode,
 	bytecol_to_utfcol = bytecol_to_utfcol,
 	pos_sub = pos_sub,
 	pos_add = pos_add,
@@ -624,4 +627,5 @@ return {
 	reverse_lookup = reverse_lookup,
 	nop = nop,
 	indx_of = indx_of,
+	lazy_table = lazy_table,
 }

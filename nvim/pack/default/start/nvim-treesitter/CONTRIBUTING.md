@@ -8,7 +8,7 @@ If you haven't already, you should really come and reach out to us on our
 As you know, `nvim-treesitter` is roughly split in two parts:
 
 - Parser configurations : for various things like `locals`, `highlights`
-- What we like to call *modules* : tiny lua modules that provide a given feature, based on parser configurations
+- What we like to call _modules_ : tiny lua modules that provide a given feature, based on parser configurations
 
 Depending on which part of the plugin you want to contribute to, please read the appropriate section.
 
@@ -44,7 +44,7 @@ on the "Neovim tree-sitter" [Matrix channel].
 ## Parser configurations
 
 Contributing to parser configurations is basically modifying one of the `queries/*/*.scm`.
-Each of these `scheme` files contains a *tree-sitter query* for a given purpose.
+Each of these `scheme` files contains a _tree-sitter query_ for a given purpose.
 Before going any further, we highly suggest that you [read more about tree-sitter queries](https://tree-sitter.github.io/tree-sitter/using-parsers#pattern-matching-with-queries).
 
 Each query has an appropriate name, which is then used by modules to extract data from the syntax tree.
@@ -56,12 +56,12 @@ For now these are the types of queries used by `nvim-treesitter`:
 - `folds.scm`: used to define folds.
 - `injections.scm`: used to define injections.
 
-For these types there is a *norm* you will have to follow so that features work fine.
+For these types there is a _norm_ you will have to follow so that features work fine.
 Here are some global advices:
 
 - If your language is listed [here](https://github.com/nvim-treesitter/nvim-treesitter#supported-languages),
   you can install the [playground plugin](https://github.com/nvim-treesitter/playground).
-- If your language is listed [here](https://tree-sitter.github.io/tree-sitter/using-parsers#pattern-matching-with-queries),
+- If your language is listed [here](https://github.com/nvim-treesitter/nvim-treesitter#supported-languages),
   you can debug and experiment with your queries there.
 - If not, you should consider installing the [tree-sitter cli](https://github.com/tree-sitter/tree-sitter/tree/master/cli),
   you should then be able to open a local playground using `tree-sitter build-wasm && tree-sitter web-ui` within the
@@ -139,32 +139,33 @@ effect on highlighting. We will work on improving highlighting in the near futur
 #### Keywords
 
 ```scheme
-@keyword          ; various keywords
-@keyword.function ; keywords that define a function (e.g. `func` in Go, `def` in Python)
-@keyword.operator ; operators that are English words (e.g. `and` / `or`)
-@keyword.return   ; keywords like `return` and `yield`
+@keyword             ; various keywords
+@keyword.function    ; keywords that define a function (e.g. `func` in Go, `def` in Python)
+@keyword.operator    ; operators that are English words (e.g. `and` / `or`)
+@keyword.return      ; keywords like `return` and `yield`
 
-@conditional      ; keywords related to conditionals (e.g. `if` / `else`)
-@conditional.ternary ; Ternary operator: condition ? 1 : 2
-@repeat           ; keywords related to loops (e.g. `for` / `while`)
-@debug            ; keywords related to debugging
-@label            ; GOTO and other labels (e.g. `label:` in C)
-@include          ; keywords for including modules (e.g. `import` / `from` in Python)
-@exception        ; keywords related to exceptions (e.g. `throw` / `catch`)
+@conditional         ; keywords related to conditionals (e.g. `if` / `else`)
+@conditional.ternary ; ternary operator (e.g. `?` / `:`)
+
+@repeat              ; keywords related to loops (e.g. `for` / `while`)
+@debug               ; keywords related to debugging
+@label               ; GOTO and other labels (e.g. `label:` in C)
+@include             ; keywords for including modules (e.g. `import` / `from` in Python)
+@exception           ; keywords related to exceptions (e.g. `throw` / `catch`)
 ```
 
 #### Types
 
 ```scheme
-@type                  ; type or class definitions and annotations
-@type.builtin          ; built-in types
-@type.definition       ; type definitions (e.g. `typedef` in C)
-@type.qualifier        ; type qualifiers (e.g. `const`)
+@type            ; type or class definitions and annotations
+@type.builtin    ; built-in types
+@type.definition ; type definitions (e.g. `typedef` in C)
+@type.qualifier  ; type qualifiers (e.g. `const`)
 
-@storageclass          ; modifiers that affect storage in memory or life-time
-@attribute             ; attribute annotations (e.g. Python decorators)
-@field                 ; object and struct fields
-@property              ; similar to `@field`
+@storageclass    ; modifiers that affect storage in memory or life-time
+@attribute       ; attribute annotations (e.g. Python decorators)
+@field           ; object and struct fields
+@property        ; similar to `@field`
 ```
 
 #### Identifiers
@@ -173,9 +174,9 @@ effect on highlighting. We will work on improving highlighting in the near futur
 @variable         ; various variable names
 @variable.builtin ; built-in variable names (e.g. `this`)
 
-@constant          ; constant identifiers
-@constant.builtin  ; built-in constant values
-@constant.macro    ; constants defined by the preprocessor
+@constant         ; constant identifiers
+@constant.builtin ; built-in constant values
+@constant.macro   ; constants defined by the preprocessor
 
 @namespace        ; modules or namespaces
 @symbol           ; symbols or atoms
@@ -221,7 +222,6 @@ Used for XML-like tags.
 
 #### Conceal
 
-
 ```scheme
 @conceal ; for captures that are only used for concealing
 ```
@@ -260,7 +260,7 @@ Used for XML-like tags.
 
 You can set the scope of a definition by setting the `scope` property on the definition.
 
-For example, a javascript function declaration creates a scope. The function name is captured as the definition.
+For example, a JavaScript function declaration creates a scope. The function name is captured as the definition.
 This means that the function definition would only be available WITHIN the scope of the function, which is not the case.
 The definition can be used in the scope the function was defined in.
 

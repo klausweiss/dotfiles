@@ -1,6 +1,5 @@
 local types = require('cmp.types')
 local cache = require('cmp.utils.cache')
-local misc = require('cmp.utils.misc')
 
 local compare = {}
 
@@ -71,7 +70,7 @@ end
 
 -- sortText
 compare.sort_text = function(entry1, entry2)
-  if misc.safe(entry1.completion_item.sortText) and misc.safe(entry2.completion_item.sortText) then
+  if entry1.completion_item.sortText and entry2.completion_item.sortText then
     local diff = vim.stricmp(entry1.completion_item.sortText, entry2.completion_item.sortText)
     if diff < 0 then
       return true

@@ -1,6 +1,5 @@
 local util = require 'lspconfig.util'
 local lsp = vim.lsp
-local is_windows = vim.fn.has 'win32' == 1
 
 local function fix_all(opts)
   opts = opts or {}
@@ -36,7 +35,7 @@ end
 local bin_name = 'vscode-eslint-language-server'
 local cmd = { bin_name, '--stdio' }
 
-if is_windows then
+if vim.fn.has 'win32' == 1 then
   cmd = { 'cmd.exe', '/C', bin_name, '--stdio' }
 end
 
@@ -50,18 +49,7 @@ local root_file = {
   'eslint.config.js',
 }
 
-local root_with_package = util.find_package_json_ancestor(vim.fn.expand '%:p:h')
-
-if root_with_package then
-  -- only add package.json if it contains eslintConfig field
-  local path_sep = is_windows and '\\' or '/'
-  for line in io.lines(root_with_package .. path_sep .. 'package.json') do
-    if line:find 'eslintConfig' then
-      table.insert(root_file, 'package.json')
-      break
-    end
-  end
-end
+root_file = util.insert_package_json(root_file, 'eslintConfig')
 
 return {
   default_config = {
@@ -181,8 +169,16 @@ npm i -g vscode-langservers-extracted
 ```
 
 `vscode-eslint-language-server` provides an `EslintFixAll` command that can be used to format a document on save:
-```vim
-autocmd BufWritePre *.tsx,*.ts,*.jsx,*.js EslintFixAll
+```lua
+lspconfig.eslint.setup({
+  --- ...
+  on_attach = function(client, bufnr)
+    vim.api.nvim_create_autocmd("BufWritePre", {
+      buffer = bufnr,
+      command = "EslintFixAll",
+    })
+  end,
+})
 ```
 
 See [vscode-eslint](https://github.com/microsoft/vscode-eslint/blob/55871979d7af184bf09af491b6ea35ebd56822cf/server/src/eslintServer.ts#L216-L229) for configuration options.

@@ -414,8 +414,14 @@ setup_lsp('purescriptls', {
   },
 })
 
+-- js
+setup_lsp('tsserver', {})
+
+-- css
+setup_lsp('cssls', {})
+
 -- lua
-setup_lsp('sumneko_lua', {})
+setup_lsp('lua_ls', {})
 
 -- flutter
 require("flutter-tools").setup {

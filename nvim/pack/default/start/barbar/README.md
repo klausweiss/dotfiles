@@ -36,10 +36,17 @@ Plug 'nvim-tree/nvim-web-devicons'
 Plug 'romgrk/barbar.nvim'
 ```
 
+#### Using [lazy.nvim](https://github.com/folke/lazy.nvim)
+```lua
+require('lazy').setup {
+  {'romgrk/barbar.nvim', dependencies = 'nvim-tree/nvim-web-devicons'},
+}
+```
+
 #### Using [packer.nvim](https://github.com/wbthomason/packer.nvim)
 ```lua
 use 'nvim-tree/nvim-web-devicons'
-use {'romgrk/barbar.nvim', wants = 'nvim-web-devicons'}
+use {'romgrk/barbar.nvim', requires = 'nvim-web-devicons'}
 ```
 
 You can skip the dependency on `'nvim-tree/nvim-web-devicons'` if you
@@ -252,6 +259,9 @@ let bufferline.hide = {'extensions': v:true, 'inactive': v:true}
 " Disable highlighting alternate buffers
 let bufferline.highlight_alternate = v:false
 
+" Disable highlighting file icons in inactive buffers
+let bufferline.highlight_inactive_file_icons = v:false
+
 " Enable highlighting visible buffers
 let bufferline.highlight_visible = v:true
 
@@ -350,6 +360,9 @@ require'bufferline'.setup {
 
   -- Disable highlighting alternate buffers
   highlight_alternate = false,
+
+  -- Disable highlighting file icons in inactive buffers
+  highlight_inactive_file_icons = false,
 
   -- Enable highlighting visible buffers
   highlight_visible = true,
@@ -492,18 +505,16 @@ Add this autocmds to your configuration.
 
 ```lua
 vim.api.nvim_create_autocmd('BufWinEnter', {
-  pattern = '*',
-  callback = function()
-    if vim.bo.filetype == 'NvimTree' then
+  callback = function(tbl)
+    if vim.bo[tbl.buf].filetype == 'NvimTree' then
       require'bufferline.api'.set_offset(31, 'FileTree')
     end
   end
 })
 
-vim.api.nvim_create_autocmd('BufWinLeave', {
-  pattern = '*',
-  callback = function()
-    if vim.fn.expand('<afile>'):match('NvimTree') then
+vim.api.nvim_create_autocmd({'BufWinLeave', 'BufWipeout'}, {
+  callback = function(tbl)
+    if vim.bo[tbl.buf].filetype == 'NvimTree' then
       require'bufferline.api'.set_offset(0)
     end
   end

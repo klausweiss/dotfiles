@@ -104,7 +104,7 @@ describe("loaders:", function()
 
 	before_each(function()
 		helpers.clear()
-		ls_helpers.session_setup_luasnip()
+		ls_helpers.session_setup_luasnip({ no_snip_globals = true })
 
 		screen = Screen.new(50, 5)
 		screen:attach()
@@ -437,6 +437,21 @@ describe("loaders:", function()
 			grid = [[
 			2                                                 |
 			3^                                                 |
+			{0:~                                                 }|
+			{0:~                                                 }|
+			{2:-- INSERT --}                                      |]],
+		})
+	end)
+
+	it("Can load jsonc.", function()
+		loaders["vscode(rtp)"]()
+
+		feed("ijsonc")
+		exec_lua("ls.expand()")
+		screen:expect({
+			grid = [[
+			jsonc!!!^                                          |
+			{0:~                                                 }|
 			{0:~                                                 }|
 			{0:~                                                 }|
 			{2:-- INSERT --}                                      |]],

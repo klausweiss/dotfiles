@@ -1,8 +1,12 @@
 local log = require "nvim-tree.log"
 local utils = require "nvim-tree.utils"
+local notify = require "nvim-tree.notify"
 
 local Runner = {}
 Runner.__index = Runner
+
+local timeouts = 0
+local MAX_TIMEOUTS = 5
 
 function Runner:_parse_status_output(status, path)
   -- replacing slashes if on windows
@@ -59,7 +63,7 @@ function Runner:_getopts(stdout_handle, stderr_handle)
 end
 
 function Runner:_log_raw_output(output)
-  if output and type(output) == "string" then
+  if log.enabled "git" and output and type(output) == "string" then
     log.raw("git", "%s", output)
     log.line("git", "done")
   end
@@ -140,7 +144,7 @@ end
 
 -- This module runs a git process, which will be killed if it takes more than timeout which defaults to 400ms
 function Runner.run(opts)
-  local ps = log.profile_start("git job %s %s", opts.project_root, opts.path)
+  local profile = log.profile_start("git job %s %s", opts.project_root, opts.path)
 
   local self = setmetatable({
     project_root = opts.project_root,
@@ -155,10 +159,21 @@ function Runner.run(opts)
   self:_run_git_job()
   self:_wait()
 
-  log.profile_end(ps, "git job %s %s", opts.project_root, opts.path)
+  log.profile_end(profile)
 
   if self.rc == -1 then
     log.line("git", "job timed out  %s %s", opts.project_root, opts.path)
+    timeouts = timeouts + 1
+    if timeouts == MAX_TIMEOUTS then
+      notify.warn(
+        string.format(
+          "%d git jobs have timed out after %dms, disabling git integration. Try increasing git.timeout",
+          timeouts,
+          opts.timeout
+        )
+      )
+      require("nvim-tree.git").disable_git_integration()
+    end
   elseif self.rc ~= 0 then
     log.line("git", "job fail rc %d %s %s", self.rc, opts.project_root, opts.path)
   else

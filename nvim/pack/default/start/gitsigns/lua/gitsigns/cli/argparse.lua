@@ -14,7 +14,7 @@ end
 
 
 
-
+-- Return positional arguments and named arguments
 function M.parse_args(x)
    local pos_args, named_args = {}, {}
 
@@ -30,7 +30,7 @@ function M.parse_args(x)
    local i = 1
    while i <= #x do
       local ch = x:sub(i, i)
-
+      -- dprintf('L(%d)(%s): cur_arg="%s" ch="%s"', i, state, cur_arg, ch)
 
       if state == 'in_arg' then
          if is_char(ch) then

@@ -9,6 +9,11 @@ local configs = require "nvim-treesitter.configs"
 local shell = require "nvim-treesitter.shell_command_selectors"
 
 local M = {}
+
+---@class LockfileInfo
+---@field revision string
+
+---@type table<string, LockfileInfo>
 local lockfile = {}
 
 M.compilers = { vim.fn.getenv "CC", "cc", "gcc", "clang", "cl", "zig" }
@@ -49,7 +54,13 @@ local function reattach_if_possible_fn(lang, error_on_fail)
     for _, buf in ipairs(vim.api.nvim_list_bufs()) do
       if parsers.get_buf_lang(buf) == lang then
         vim._ts_remove_language(lang)
-        local ok, err = pcall(vim.treesitter.language.require_language, lang)
+        local ok, err
+        if vim.treesitter.language.add then
+          local ft = vim.bo[buf].filetype
+          ok, err = pcall(vim.treesitter.language.add, lang, { filetype = ft })
+        else
+          ok, err = pcall(vim.treesitter.language.require_language, lang)
+        end
         if not ok and error_on_fail then
           vim.notify("Could not load parser for " .. lang .. ": " .. vim.inspect(err))
         end
@@ -96,6 +107,8 @@ local function is_ignored_parser(lang)
   return vim.tbl_contains(configs.get_ignored_parser_installs(), lang)
 end
 
+---@param lang string
+---@return string|nil
 local function get_revision(lang)
   if #lockfile == 0 then
     load_lockfile()
@@ -106,7 +119,9 @@ local function get_revision(lang)
     return install_info.revision
   end
 
-  return (lockfile[lang] and lockfile[lang].revision)
+  if lockfile[lang] then
+    return lockfile[lang].revision
+  end
 end
 
 ---@param lang string
@@ -119,8 +134,8 @@ local function get_installed_revision(lang)
 end
 
 -- Clean path for use in a prefix comparison
--- @param input string
--- @return string
+---@param input string
+---@return string
 local function clean_path(input)
   local pth = vim.fn.fnamemodify(input, ":p")
   if fn.has "win32" == 1 then
@@ -129,7 +144,7 @@ local function clean_path(input)
   return pth
 end
 
----Checks if parser is installed with nvim-treesitter
+-- Checks if parser is installed with nvim-treesitter
 ---@param lang string
 ---@return boolean
 local function is_installed(lang)
@@ -155,9 +170,9 @@ local function needs_update(lang)
   return not revision or revision ~= get_installed_revision(lang)
 end
 
----@return table
+---@return string[]
 local function outdated_parsers()
-  return vim.tbl_filter(function(lang)
+  return vim.tbl_filter(function(lang) ---@param lang string
     return is_installed(lang) and needs_update(lang)
   end, info.installed_parsers())
 end
@@ -248,6 +263,8 @@ function M.iter_cmd(cmd_list, i, lang, success_message)
   end
 end
 
+---@param cmd Command
+---@return string command
 local function get_command(cmd)
   local options = ""
   if cmd.opts and cmd.opts.args then
@@ -259,13 +276,15 @@ local function get_command(cmd)
     end
   end
 
-  local final = string.format("%s %s", cmd.cmd, options)
+  local command = string.format("%s %s", cmd.cmd, options)
   if cmd.opts and cmd.opts.cwd then
-    final = shell.make_directory_change_for_command(cmd.opts.cwd, final)
+    command = shell.make_directory_change_for_command(cmd.opts.cwd, command)
   end
-  return final
+  return command
 end
 
+---@param cmd_list Command[]
+---@return boolean
 local function iter_cmd_sync(cmd_list)
   for _, cmd in ipairs(cmd_list) do
     if cmd.info then
@@ -307,7 +326,7 @@ local function run_install(cache_folder, install_folder, lang, repo, with_sync, 
     repo.url = maybe_local_path
   end
 
-  -- compile_location only needed for typescript installs.
+  ---@type string compile_location only needed for typescript installs.
   local compile_location
   if from_local_path then
     compile_location = repo.url
@@ -351,15 +370,30 @@ local function run_install(cache_folder, install_folder, lang, repo, with_sync, 
   local cc = shell.select_executable(M.compilers)
   if not cc then
     api.nvim_err_writeln('No C compiler found! "' .. table.concat(
-      vim.tbl_filter(function(c)
+      vim.tbl_filter(function(c) ---@param c string
         return type(c) == "string"
       end, M.compilers),
       '", "'
     ) .. '" are not executable.')
     return
   end
-  local revision = configs.get_update_strategy() == "lockfile" and get_revision(lang)
 
+  local revision = repo.revision
+  if not revision and configs.get_update_strategy() == "lockfile" then
+    revision = get_revision(lang)
+  end
+
+  ---@class Command
+  ---@field cmd string
+  ---@field info string
+  ---@field err string
+  ---@field opts CmdOpts
+
+  ---@class CmdOpts
+  ---@field args string[]
+  ---@field cwd string
+
+  ---@type Command[]
   local command_list = {}
   if not from_local_path then
     vim.list_extend(command_list, { shell.select_install_rm_cmd(cache_folder, project_name) })
@@ -403,7 +437,7 @@ local function run_install(cache_folder, install_folder, lang, repo, with_sync, 
     shell.select_mv_cmd("parser.so", parser_lib_name, compile_location),
     {
       cmd = function()
-        vim.fn.writefile({ revision or "" }, utils.join_path(configs.get_parser_info_dir(), lang .. ".revision"))
+        vim.fn.writefile({ revision or "" }, utils.join_path(configs.get_parser_info_dir() or "", lang .. ".revision"))
       end,
     },
     { -- auto-attach modules after installation
@@ -424,7 +458,7 @@ local function run_install(cache_folder, install_folder, lang, repo, with_sync, 
 end
 
 ---@param lang string
----@param ask_reinstall boolean
+---@param ask_reinstall boolean|string
 ---@param cache_folder string
 ---@param install_folder string
 ---@param with_sync boolean
@@ -457,6 +491,14 @@ local function install_lang(lang, ask_reinstall, cache_folder, install_folder, w
   run_install(cache_folder, install_folder, lang, install_info, with_sync, generate_from_grammar)
 end
 
+---@class InstallOptions
+---@field with_sync boolean
+---@field ask_reinstall boolean|string
+---@field generate_from_grammar boolean
+---@field exclude_configured_parsers boolean
+
+-- Install a parser
+---@param options? InstallOptions
 ---@return function
 local function install(options)
   options = options or {}
@@ -483,8 +525,8 @@ local function install(options)
     end
     assert(install_folder)
 
-    local languages
-    local ask
+    local languages ---@type string[]
+    local ask ---@type boolean|string
     if ... == "all" then
       languages = parsers.available_parsers()
       ask = false
@@ -525,6 +567,7 @@ function M.update(options)
     M.lockfile = {}
     reset_progress_counter()
     if ... and ... ~= "all" then
+      ---@type string[]
       local languages = vim.tbl_flatten { ... }
       local installed = 0
       for _, lang in ipairs(languages) do
@@ -570,6 +613,7 @@ function M.uninstall(...)
     end
     ensure_installed_parsers = utils.difference(ensure_installed_parsers, configs.get_ignored_parser_installs())
 
+    ---@type string[]
     local languages = vim.tbl_flatten { ... }
     for _, lang in ipairs(languages) do
       local install_dir, err = configs.get_parser_install_dir()
@@ -599,8 +643,7 @@ function M.uninstall(...)
                 vim.notify(
                   "Tried to uninstall parser for "
                     .. lang
-                    .. "! But the parser is still installed (not by nvim-treesitter)."
-                    .. " Please delete the following files manually: "
+                    .. "! But the parser is still installed (not by nvim-treesitter):"
                     .. table.concat(all_parsers_after_deletion, ", "),
                   vim.log.levels.ERROR
                 )
@@ -626,7 +669,7 @@ function M.uninstall(...)
 end
 
 function M.write_lockfile(verbose, skip_langs)
-  local sorted_parsers = {}
+  local sorted_parsers = {} ---@type Parser[]
   -- Load previous lockfile
   load_lockfile()
   skip_langs = skip_langs or {}
@@ -635,6 +678,8 @@ function M.write_lockfile(verbose, skip_langs)
     table.insert(sorted_parsers, { name = k, parser = v })
   end
 
+  ---@param a Parser
+  ---@param b Parser
   table.sort(sorted_parsers, function(a, b)
     return a.name < b.name
   end)
@@ -642,7 +687,7 @@ function M.write_lockfile(verbose, skip_langs)
   for _, v in ipairs(sorted_parsers) do
     if not vim.tbl_contains(skip_langs, v.name) then
       -- I'm sure this can be done in aync way with iter_cmd
-      local sha
+      local sha ---@type string
       if v.parser.install_info.branch then
         sha = vim.split(
           vim.fn.systemlist(

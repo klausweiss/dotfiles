@@ -38,6 +38,7 @@ local M = {
 local L = setmetatable({
     arduino = { M.cxx_l, M.cxx_b },
     applescript = { M.hash },
+    autohotkey = { ";%s", M.cxx_b },
     bash = { M.hash },
     bib = { M.latex },
     c = { M.cxx_l, M.cxx_b },
@@ -59,7 +60,7 @@ local L = setmetatable({
     elm = { M.dash, M.haskell_b },
     elvish = { M.hash },
 	faust = { M.cxx_l, M.cxx_b },
-    fennel = { M.lisp_l },
+    fennel = { ';%s' },
     fish = { M.hash },
     fsharp = { M.cxx_l, M.fsharp_b },
     gdb = { M.hash },
@@ -103,6 +104,7 @@ local L = setmetatable({
     python = { M.hash }, -- Python doesn't have block comments
     php = { M.cxx_l, M.cxx_b },
     prisma = { M.cxx_l },
+    quarto = { M.html, M.html },
     r = { M.hash }, -- R doesn't have block comments
     readline = { M.hash },
     rego = { M.hash },
@@ -144,6 +146,13 @@ local L = setmetatable({
         return this[base] or this[fallback]
     end,
 })
+
+---Maps a filteype to a parsername for filetypes
+---that don't have their own parser (yet).
+---From: <https://github.com/nvim-treesitter/nvim-treesitter/blob/cda8b291ef6fc4e04036e2ea6cf0de8aa84c2656/lua/nvim-treesitter/parsers.lua#L4-L23>.
+local filetype_to_parsername = {
+  quarto = "markdown",
+}
 
 local ft = {}
 
@@ -237,7 +246,9 @@ end
 ---@see comment.utils.CommentCtx
 function ft.calculate(ctx)
     local buf = A.nvim_get_current_buf()
-    local ok, parser = pcall(vim.treesitter.get_parser, buf)
+    local filetype = vim.bo.filetype
+    local parsername = filetype_to_parsername[filetype] or filetype
+    local ok, parser = pcall(vim.treesitter.get_parser, buf, parsername)
 
     if not ok then
         return ft.get(vim.bo.filetype, ctx.ctype) --[[ @as string ]]

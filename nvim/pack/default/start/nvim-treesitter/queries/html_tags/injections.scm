@@ -1,10 +1,9 @@
 ; <style>...</style>
 (
   (style_element
-    (start_tag) @_no_attribute
+    (start_tag
+      (tag_name) .) 
     (raw_text) @css)
-  (#match? @_no_attribute "^\\<\\s*style\\s*\\>$")
-  ; unsure why, but without escaping &lt; and &gt; the query breaks
 ) 
 
 ; <style blocking> ...</style>
@@ -33,9 +32,9 @@
 ; <script>...</script>
 (
   (script_element
-    (start_tag) @_no_attribute
+    (start_tag
+      (tag_name) .) 
     (raw_text) @javascript)
-  (#match? @_no_attribute "^\\<\\s*script\\s*\\>$")
 ) 
 
 ; <script defer>...</script>
@@ -63,5 +62,15 @@
    (attribute_name) @_attr
    (quoted_attribute_value (attribute_value) @css))
  (#eq? @_attr "style"))
+
+; lit-html style template interpolation
+((attribute
+  (quoted_attribute_value (attribute_value) @javascript))
+  (#match? @javascript "\\$\\{")
+  (#offset! @javascript 0 2 0 -1))
+((attribute
+  (attribute_value) @javascript)
+  (#match? @javascript "\\$\\{")
+  (#offset! @javascript 0 2 0 -2))
 
 (comment) @comment

@@ -1,5 +1,65 @@
 # Changelog
 
+## [2.1.1](https://github.com/folke/trouble.nvim/compare/v2.1.0...v2.1.1) (2023-02-19)
+
+
+### Bug Fixes
+
+* ensure that the diagnostic parameters are complete ([#179](https://github.com/folke/trouble.nvim/issues/179)) ([210969f](https://github.com/folke/trouble.nvim/commit/210969fce79e7d11554c61bca263d7e1ac77bde0))
+* icorrect row/line in diagnostics. Fixes [#264](https://github.com/folke/trouble.nvim/issues/264) ([32fa4ed](https://github.com/folke/trouble.nvim/commit/32fa4ed742fc91f3075c98edd3c131b716b9d782))
+
+## [2.1.0](https://github.com/folke/trouble.nvim/compare/v2.0.1...v2.1.0) (2023-02-18)
+
+
+### Features
+
+* expose `require("trouble").is_open()` ([2eb27b3](https://github.com/folke/trouble.nvim/commit/2eb27b34442894e903fdc6e01edea6d7c476be63))
+
+## [2.0.1](https://github.com/folke/trouble.nvim/compare/v2.0.0...v2.0.1) (2023-02-16)
+
+
+### Bug Fixes
+
+* **init:** version check ([73eea32](https://github.com/folke/trouble.nvim/commit/73eea32efec2056cdce7593787390fc9aadf9c0c))
+
+## [2.0.0](https://github.com/folke/trouble.nvim/compare/v1.0.2...v2.0.0) (2023-02-16)
+
+
+### ⚠ BREAKING CHANGES
+
+* Trouble now requires Neovim >= 0.7.2
+
+### Features
+
+* Trouble now requires Neovim &gt;= 0.7.2 ([ef93259](https://github.com/folke/trouble.nvim/commit/ef9325970b341d436f43c50ce876aa0a665d3cf0))
+
+
+### Bug Fixes
+
+* Focus parent before closing ([#259](https://github.com/folke/trouble.nvim/issues/259)) ([66b057b](https://github.com/folke/trouble.nvim/commit/66b057b2b07881bceb969624f4c3b5727703c2c8))
+* **preview:** properly load buffer when showing preview ([949199a](https://github.com/folke/trouble.nvim/commit/949199a9ac60ce784a417f90388b8f173ef53819))
+* **util:** properly load a buffer when jumping to it ([bf0eeea](https://github.com/folke/trouble.nvim/commit/bf0eeead88d59d51003f4da1b649b4977ed90e2b))
+
+
+### Performance Improvements
+
+* dont load buffers when processing items. Get line with luv instead ([82c9a9a](https://github.com/folke/trouble.nvim/commit/82c9a9a9cd2cd2cdb05e05a3e6538529e2473e14))
+
+## [1.0.2](https://github.com/folke/trouble.nvim/compare/v1.0.1...v1.0.2) (2023-02-10)
+
+
+### Bug Fixes
+
+* **telescope:** properly fix issue with relative filenames in telescope. See [#250](https://github.com/folke/trouble.nvim/issues/250) ([7da0821](https://github.com/folke/trouble.nvim/commit/7da0821d20342751a7eedecd28cf16040146cbf7))
+
+## [1.0.1](https://github.com/folke/trouble.nvim/compare/v1.0.0...v1.0.1) (2023-01-23)
+
+
+### Bug Fixes
+
+* ensure first line is selected when padding is false ([#233](https://github.com/folke/trouble.nvim/issues/233)) ([b2d6ac8](https://github.com/folke/trouble.nvim/commit/b2d6ac8607e1ab612a85c1ec563aaff3a60f0603))
+* **telescope:** correctly use cwd for files. Fixes [#250](https://github.com/folke/trouble.nvim/issues/250) ([3174767](https://github.com/folke/trouble.nvim/commit/3174767c61b3786e65d78f539c60c6f70d26cdbe))
+
 ## 1.0.0 (2023-01-04)
 
 

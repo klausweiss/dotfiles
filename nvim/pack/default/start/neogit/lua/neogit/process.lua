@@ -2,6 +2,8 @@ local a = require("plenary.async")
 local notification = require("neogit.lib.notification")
 
 local Buffer = require("neogit.lib.buffer")
+local config = require("neogit.config")
+local logger = require("neogit.logger")
 
 local function remove_escape_codes(s)
   -- from: https://stackoverflow.com/questions/48948630/lua-ansi-escapes-pattern
@@ -58,8 +60,14 @@ end
 local preview_buffer = nil
 
 local function create_preview_buffer()
+  local kind = config.values.preview_buffer.kind
+
   -- May be called multiple times due to scheduling
   if preview_buffer then
+    if preview_buffer.buffer then
+      logger.debug("Preview buffer already exists. Focusing the existing one")
+      preview_buffer.buffer:focus()
+    end
     return
   end
 
@@ -73,7 +81,7 @@ local function create_preview_buffer()
     name = name,
     bufhidden = "hide",
     filetype = "NeogitConsole",
-    kind = "split",
+    kind = kind,
     open = false,
     mappings = {
       n = {
@@ -126,9 +134,7 @@ local function scroll_to_end(win)
 end
 
 function Process.show_console()
-  if not preview_buffer then
-    create_preview_buffer()
-  end
+  create_preview_buffer()
 
   local win = preview_buffer.buffer:show()
   scroll_to_end(win)
@@ -155,14 +161,10 @@ local function append_log(process, data)
     nvim_chan_send(preview_buffer.chan, data .. "\r\n")
   end
 
-  if not preview_buffer then
-    vim.schedule(function()
-      create_preview_buffer()
-      append()
-    end)
-  else
+  vim.schedule(function()
+    create_preview_buffer()
     append()
-  end
+  end)
 end
 
 local hide_console = false
@@ -178,7 +180,6 @@ function Process.hide_preview_buffers()
   end
 end
 
-local config = require("neogit.config")
 function Process:start_timer()
   if self.timer == nil then
     local timer = vim.loop.new_timer()
@@ -194,9 +195,9 @@ function Process:start_timer()
         timer:close()
         if not self.result or (self.result.code ~= 0) then
           local message = string.format(
-            "Command %q running for: %.2f ms",
+            "Command %q running for more than: %.1f seconds",
             table.concat(self.cmd, " "),
-            (vim.loop.hrtime() - self.start) / 1e6
+            math.ceil((vim.loop.now() - self.start) / 100) / 10
           )
 
           append_log(self, message)
@@ -295,30 +296,28 @@ function Process:spawn(cb)
     self.cwd = nil
   end
 
-  local start = vim.loop.hrtime()
+  local start = vim.loop.now()
   self.start = start
 
   local function handle_output(on_partial, on_line)
     local prev_line = ""
 
-    return
-      function(_, lines)
-        -- Complete previous line
-        prev_line = prev_line .. lines[1]
+    return function(_, lines)
+      -- Complete previous line
+      prev_line = prev_line .. lines[1]
 
-        on_partial(remove_escape_codes(lines[1]), lines[1])
+      on_partial(remove_escape_codes(lines[1]), lines[1])
 
-        for i = 2, #lines do
-          on_line(remove_escape_codes(prev_line), prev_line)
-          prev_line = ""
-          -- Before pushing a new line, invoke the stdout for components
-          prev_line = lines[i]
-          on_partial(remove_escape_codes(lines[i]), lines[i])
-        end
-      end,
-      function()
+      for i = 2, #lines do
         on_line(remove_escape_codes(prev_line), prev_line)
+        prev_line = ""
+        -- Before pushing a new line, invoke the stdout for components
+        prev_line = lines[i]
+        on_partial(remove_escape_codes(lines[i]), lines[i])
       end
+    end, function()
+      on_line(remove_escape_codes(prev_line), prev_line)
+    end
   end
 
   local on_stdout, stdout_cleanup = handle_output(function(line, raw)
@@ -341,7 +340,7 @@ function Process:spawn(cb)
 
   local function on_exit(_, code)
     res.code = code
-    res.time = (vim.loop.hrtime() - start) / 1e6
+    res.time = (vim.loop.now() - start)
 
     -- Remove self
     processes[self.job] = nil
@@ -378,7 +377,6 @@ function Process:spawn(cb)
     end
   end
 
-  local logger = require("neogit.logger")
   logger.debug("Spawning: " .. vim.inspect(self.cmd))
   local job = vim.fn.jobstart(self.cmd, {
     cwd = self.cwd,

@@ -11,13 +11,31 @@ function M.setup_jsregexp()
 	)
 end
 
-function M.session_setup_luasnip()
+function M.prevent_jsregexp()
+	-- append default-path.
+	exec_lua([[
+		local old_require = require
+		require = function(modulename)
+			if modulename == "jsregexp" or modulename == "luasnip-jsregexp" then
+				error("Disabled by `prevent_jsregexp`")
+			end
+			return old_require(modulename)
+		end
+	]])
+end
+
+function M.session_setup_luasnip(opts)
+	opts = opts or {}
+	local no_snip_globals = opts.no_snip_globals ~= nil and opts.no_snip_globals
+		or false
+
+	-- stylua: ignore
 	helpers.exec("set rtp+=" .. os.getenv("LUASNIP_SOURCE"))
 	helpers.exec(
-		string.format(
-			"source %s/plugin/luasnip.vim",
-			os.getenv("LUASNIP_SOURCE")
-		)
+		("source %s/plugin/luasnip.vim"):format(os.getenv("LUASNIP_SOURCE"))
+	)
+	helpers.exec(
+		("luafile %s/plugin/luasnip.lua"):format(os.getenv("LUASNIP_SOURCE"))
 	)
 
 	helpers.exec_lua([[
@@ -29,31 +47,35 @@ function M.session_setup_luasnip()
 	ls.setup({
 		store_selection_keys = "<Tab>"
 	})
-
-	s = ls.s
-	sn = ls.sn
-	t = ls.t
-	i = ls.i
-	f = ls.f
-	c = ls.c
-	d = ls.d
-	isn = require("luasnip.nodes.snippet").ISN
-	l = require'luasnip.extras'.lambda
-	dl = require'luasnip.extras'.dynamic_lambda
-	rep = require'luasnip.extras'.rep
-	r = ls.restore_node
-	p = require("luasnip.extras").partial
-	types = require("luasnip.util.types")
-	events = require("luasnip.util.events")
-	fmt = require("luasnip.extras.fmt").fmt
-	fmta = require("luasnip.extras.fmt").fmta
-	parse = ls.parser.parse_snippet
-	n = require("luasnip.extras").nonempty
-	m = require("luasnip.extras").match
-	ai = require("luasnip.nodes.absolute_indexer")
-	sp = require("luasnip.nodes.snippetProxy")
-	pf = require("luasnip.extras.postfix").postfix
 	]])
+
+	if not no_snip_globals then
+		helpers.exec_lua([[
+			s = ls.s
+			sn = ls.sn
+			t = ls.t
+			i = ls.i
+			f = ls.f
+			c = ls.c
+			d = ls.d
+			isn = require("luasnip.nodes.snippet").ISN
+			l = require'luasnip.extras'.lambda
+			dl = require'luasnip.extras'.dynamic_lambda
+			rep = require'luasnip.extras'.rep
+			r = ls.restore_node
+			p = require("luasnip.extras").partial
+			types = require("luasnip.util.types")
+			events = require("luasnip.util.events")
+			fmt = require("luasnip.extras.fmt").fmt
+			fmta = require("luasnip.extras.fmt").fmta
+			parse = ls.parser.parse_snippet
+			n = require("luasnip.extras").nonempty
+			m = require("luasnip.extras").match
+			ai = require("luasnip.nodes.absolute_indexer")
+			sp = require("luasnip.nodes.snippetProxy")
+			pf = require("luasnip.extras.postfix").postfix
+		]])
+	end
 end
 
 function M.static_docstring_test(snip_str, static, docstring)

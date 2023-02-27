@@ -21,6 +21,7 @@ return {
   extension = {
     ['_coffee'] = 'coffee',
     ['astro'] = 'astro',
+    ['cts'] = 'typescript',
     ['cljd'] = 'clojure',
     ['coffee'] = 'coffee',
     ['dart'] = 'dart',
@@ -39,6 +40,7 @@ return {
     ['jl'] = 'julia',
     ['jsx'] = 'javascriptreact',
     ['kt'] = 'kotlin',
+    ['mts'] = 'typescript',
     ['nix'] = 'nix',
     ['plist'] = 'xml',
     ['purs'] = 'purescript',
@@ -51,13 +53,16 @@ return {
     ['tscn'] = 'gdresource',
     ['tsx'] = 'typescriptreact',
     ['sol'] = 'solidity',
+    ['dtsi'] = 'dts',
   },
   file_name = {
     ['cakefile'] = 'coffee',
     ['.babelrc'] = 'json',
+    ['.clangd'] = 'yaml',
     ['.eslintrc'] = 'json',
     ['.firebaserc'] = 'json',
     ['.prettierrc'] = 'json',
+    ['.stylelintrc'] = 'json',
   },
   shebang = shebang
 }

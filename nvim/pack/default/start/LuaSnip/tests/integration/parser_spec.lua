@@ -227,6 +227,7 @@ describe("Parser", function()
 	end)
 
 	it("just inserts the variable if jsregexp is not available.", function()
+		ls_helpers.prevent_jsregexp()
 		ls_helpers.session_setup_luasnip()
 		local snip = '"a${TM_LINE_INDEX/(.*)/asdf $1 asdf/g}a"'
 
@@ -259,6 +260,7 @@ describe("Parser", function()
 		})
 	end)
 	it("copies tabstop if jsregexp is not available.", function()
+		ls_helpers.prevent_jsregexp()
 		ls_helpers.session_setup_luasnip()
 		local snip = '"$1 a ${1/(.*)/asdf $1 asdf/} a"'
 
@@ -280,6 +282,45 @@ describe("Parser", function()
 			{2:-- INSERT --}                                      |]],
 		})
 	end)
+
+	local function check_case_transform(text, expected_map)
+		local supported_modifiers = {
+			upcase = true,
+			downcase = true,
+			capitalize = true,
+			camelcase = true,
+			pascalcase = true,
+		}
+
+		for modifier, modified_expected in pairs(expected_map) do
+			if not supported_modifiers[modifier] then
+				error("unexpected key " .. modifier .. " in expected_map")
+			end
+
+			it("applies " .. modifier .. " correctly", function()
+				ls_helpers.setup_jsregexp()
+				ls_helpers.session_setup_luasnip()
+				local snip = ('"${1:%s} ${1/(.*)/${1:/%s}/}"'):format(
+					text,
+					modifier
+				)
+
+				-- should be sufficient to test this.
+				ls_helpers.lsp_static_test(
+					snip,
+					{ "test text Text " .. modified_expected }
+				)
+			end)
+		end
+	end
+
+	check_case_transform("test text Text", {
+		upcase = "TEST TEXT TEXT",
+		downcase = "test text text",
+		capitalize = "Test text Text",
+		camelcase = "testTextText",
+		pascalcase = "TestTextText",
+	})
 
 	it("modifies invalid $0 with choice.", function()
 		ls_helpers.session_setup_luasnip()
@@ -696,6 +737,25 @@ describe("Parser", function()
 			{2:-- INSERT --}                                      |]],
 		})
 	end)
+
+	it(
+		"correctly transforms if the match does not include the first character.",
+		function()
+			ls_helpers.setup_jsregexp()
+			ls_helpers.session_setup_luasnip()
+			local snip = "${1:asdf.asdf} ${1/[\\.]/-/g}"
+
+			-- expand snippet.
+			exec_lua("ls.lsp_expand([[" .. snip .. "]])")
+
+			screen:expect({
+				grid = [[
+			^a{3:sdf.asdf} asdf-asdf                               |
+			{0:~                                                 }|
+			{2:-- SELECT --}                                      |]],
+			})
+		end
+	)
 
 	it("handles default correctly inside placeholder", function()
 		ls_helpers.session_setup_luasnip()

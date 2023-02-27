@@ -1,18 +1,19 @@
 [
+  (module)
   (dataclass)
-  (charpred)
-  (memberPredicate)
+  (classMember)
+  (classlessPredicate)
   (quantified)
 ] @indent
 
 [
-  (variable)
-  "("
   ")"
-  "{"
   "}"
-  "["
-  "]"
+] @indent_end
+
+[
+  ")"
+  "}"
 ] @branch
 
 [

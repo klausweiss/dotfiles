@@ -1,10 +1,5 @@
 
-
-
-
-
-
-
+   -- Order by highest number of return types
 
 
 
@@ -31,32 +26,32 @@ local M = {}
 
 local Async_T = {}
 
+   -- Handle for an object currently running on the event loop.
+   -- The coroutine is paused while this is active.
+   -- Must provide methods cancel() and is_cancelled()
+   --
+   -- Handle gets updated on each call to a wrapped functions, so provide access
+   -- to it via a proxy
 
 
 
 
 
 
+-- Coroutine.running() was changed between Lua 5.1 and 5.2:
+-- - 5.1: Returns the running coroutine, or nil when called by the main thread.
+-- - 5.2: Returns the running coroutine plus a boolean, true when the running
+--    coroutine is the main one.
+--
+-- For LuaJIT, 5.2 behaviour is enabled with LUAJIT_ENABLE_LUA52COMPAT
+--
+-- We need to handle both.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+-- Store all the async threads in a weak table so we don't prevent them from
+-- being garbage collected
 local handles = setmetatable({}, { __mode = 'k' })
 
-
+--- Returns whether the current execution context is async.
 function M.running()
    local current = coroutine.running()
    if current and handles[current] then
@@ -64,7 +59,7 @@ function M.running()
    end
 end
 
-
+-- hack: teal doesn't know table.maxn exists
 local function maxn(x)
    return ((table).maxn)(x)
 end
@@ -78,9 +73,9 @@ local function is_Async_T(handle)
    end
 end
 
-
+-- Analogous to uv.close
 function Async_T:cancel(cb)
-
+   -- Cancel anything running on the event loop
    if self._current and not self._current:is_cancelled() then
       self._current:cancel(cb)
    end
@@ -92,7 +87,7 @@ function Async_T.new(co)
    return handle
 end
 
-
+-- Analogous to uv.is_closing
 function Async_T:is_cancelled()
    return self._current and self._current:is_cancelled()
 end
@@ -136,8 +131,8 @@ local function run(func, callback, ...)
 end
 
 function M.wait(argc, func, ...)
-
-
+   -- Always run the wrapped functions in xpcall and re-raise the error in the
+   -- coroutine. This makes pcall work as normal.
    local function pfunc(...)
       local args = { ... }
       local cb = args[argc]
@@ -160,10 +155,10 @@ function M.wait(argc, func, ...)
    return unpack(ret, 2, maxn(ret))
 end
 
-
-
-
-
+---Creates an async function with a callback style function.
+---@param func function: A callback style function to be converted. The last argument must be the callback.
+---@param argc number: The number of arguments of func. Must be included.
+---@return function: Returns an async function
 function M.wrap(func, argc)
    assert(argc)
    return function(...)
@@ -174,10 +169,10 @@ function M.wrap(func, argc)
    end
 end
 
-
-
-
-
+---Use this to create a function which executes in an async context but
+---called from a non-async context. Inherently this cannot return anything
+---since it is non-blocking
+---@param func function
 function M.create(func, argc)
    argc = argc or 0
    return function(...)
@@ -189,10 +184,10 @@ function M.create(func, argc)
    end
 end
 
-
-
-
-
+---Use this to create a function which executes in an async context but
+---called from a non-async context. Inherently this cannot return anything
+---since it is non-blocking
+---@param func function
 function M.void(func)
    return function(...)
       if M.running() then
@@ -202,8 +197,8 @@ function M.void(func)
    end
 end
 
-
-
+---An async function that when called will yield to the Neovim scheduler to be
+---able to call the API.
 M.scheduler = M.wrap(vim.schedule, 1)
 
 return M

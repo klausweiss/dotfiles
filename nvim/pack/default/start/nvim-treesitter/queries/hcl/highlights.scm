@@ -50,7 +50,7 @@
   "in"
 ] @repeat
 
-[ 
+[
   "if"
   "else"
   "endif"
@@ -93,7 +93,7 @@
 
 ; var.foo, data.bar
 ;
-; first element in get_attr is a keyword or a reference to a keyword
-(expression (variable_expr (identifier) @keyword) (get_attr (identifier) @field))
+; first element in get_attr is a variable.builtin or a reference to a variable.builtin
+(expression (variable_expr (identifier) @variable.builtin) (get_attr (identifier) @field))
 
 (ERROR) @error

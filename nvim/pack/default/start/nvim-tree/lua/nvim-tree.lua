@@ -13,6 +13,8 @@ local collapse_all = require "nvim-tree.actions.tree-modifiers.collapse-all"
 local git = require "nvim-tree.git"
 local filters = require "nvim-tree.explorer.filters"
 local modified = require "nvim-tree.modified"
+local notify = require "nvim-tree.notify"
+local keymap_legacy = require "nvim-tree.keymap-legacy"
 
 local _config = {}
 
@@ -65,19 +67,6 @@ function M.change_root(filepath, bufnr)
   end
   -- finally fall back to the folder containing the file
   change_dir.fn(vim.fn.fnamemodify(filepath, ":p:h"))
-end
-
----@deprecated
-M.on_keypress = require("nvim-tree.actions.dispatch").dispatch
-
-function M.open(cwd)
-  cwd = cwd ~= "" and cwd or nil
-  if view.is_visible() then
-    lib.set_target_win()
-    view.focus()
-  else
-    lib.open(cwd)
-  end
 end
 
 function M.open_replacing_current_buffer(cwd)
@@ -164,16 +153,77 @@ function M.find_file(with_open, bufnr, bang)
   find_file(with_open, bufnr, bang)
 end
 
-function M.toggle(with_find_file, no_focus, cwd, bang)
+---Open the tree, focusing if already open.
+---@param opts ApiTreeOpenOpts|nil|string
+function M.open(opts)
+  -- legacy arguments
+  if type(opts) == "string" then
+    opts = {
+      path = opts,
+    }
+  end
+
+  opts = opts or {}
+
+  local previous_buf = vim.api.nvim_get_current_buf()
+
+  -- sanitise path
+  if type(opts.path) ~= "string" or vim.fn.isdirectory(opts.path) == 0 then
+    opts.path = nil
+  end
+
+  if view.is_visible() then
+    lib.set_target_win()
+    view.focus()
+  else
+    lib.open(opts)
+  end
+
+  if _config.update_focused_file.enable or opts.find_file then
+    find_file(false, previous_buf, opts.update_root)
+  end
+end
+
+---Toggle the tree.
+---@param opts ApiTreeToggleOpts|nil|boolean
+function M.toggle(opts, no_focus, cwd, bang)
+  -- legacy arguments
+  if type(opts) == "boolean" then
+    opts = {
+      find_file = opts,
+    }
+    if type(cwd) == "string" then
+      opts.path = cwd
+    end
+    if type(no_focus) == "boolean" then
+      opts.focus = not no_focus
+    end
+    if type(bang) == "boolean" then
+      opts.update_root = bang
+    end
+  end
+
+  opts = opts or {}
+
+  -- defaults
+  if opts.focus == nil then
+    opts.focus = true
+  end
+
+  -- sanitise path
+  if type(opts.path) ~= "string" or vim.fn.isdirectory(opts.path) == 0 then
+    opts.path = nil
+  end
+
   if view.is_visible() then
     view.close()
   else
     local previous_buf = vim.api.nvim_get_current_buf()
-    M.open(cwd)
-    if _config.update_focused_file.enable or with_find_file then
-      find_file(false, previous_buf, bang)
+    M.open { path = opts.path, current_window = opts.current_window }
+    if _config.update_focused_file.enable or opts.find_file then
+      find_file(false, previous_buf, opts.update_root)
     end
-    if no_focus then
+    if not opts.focus then
       vim.cmd "noautocmd wincmd p"
     end
   end
@@ -233,12 +283,6 @@ function M.on_enter(netrw_disabled)
   local stats = vim.loop.fs_stat(bufname)
   local is_dir = stats and stats.type == "directory"
   local is_file = stats and stats.type == "file"
-  local cwd
-  if is_dir then
-    cwd = vim.fn.expand(vim.fn.fnameescape(bufname))
-    -- INFO: could potentially conflict with rooter plugins
-    vim.cmd("noautocmd cd " .. vim.fn.fnameescape(cwd))
-  end
 
   local lines = not is_dir and vim.api.nvim_buf_get_lines(bufnr, 0, -1, false) or {}
   local buf_has_content = #lines > 1 or (#lines == 1 and lines[1] ~= "")
@@ -275,7 +319,14 @@ function M.on_enter(netrw_disabled)
   end
 
   if should_open or should_hijack or existing_tree_wins[1] ~= nil then
-    lib.open(cwd)
+    local cwd
+    if is_dir then
+      cwd = vim.fn.expand(vim.fn.fnameescape(bufname))
+      -- INFO: could potentially conflict with rooter plugins
+      vim.cmd("noautocmd cd " .. vim.fn.fnameescape(cwd))
+    end
+
+    lib.open { path = cwd }
 
     if should_focus_other_window then
       vim.cmd "noautocmd wincmd p"
@@ -304,11 +355,11 @@ end
 
 local function setup_vim_commands()
   vim.api.nvim_create_user_command("NvimTreeOpen", function(res)
-    M.open(res.args)
+    M.open { path = res.args }
   end, { nargs = "?", complete = "dir" })
   vim.api.nvim_create_user_command("NvimTreeClose", view.close, { bar = true })
   vim.api.nvim_create_user_command("NvimTreeToggle", function(res)
-    M.toggle(false, false, res.args)
+    M.toggle { find_file = false, focus = true, path = res.args, update_root = false }
   end, { nargs = "?", complete = "dir" })
   vim.api.nvim_create_user_command("NvimTreeFocus", M.focus, { bar = true })
   vim.api.nvim_create_user_command("NvimTreeRefresh", reloaders.reload_explorer, { bar = true })
@@ -317,7 +368,7 @@ local function setup_vim_commands()
     find_file(true, nil, res.bang)
   end, { bang = true, bar = true })
   vim.api.nvim_create_user_command("NvimTreeFindFileToggle", function(res)
-    M.toggle(true, false, res.args, res.bang)
+    M.toggle { find_file = true, focus = true, path = res.args, update_root = res.bang }
   end, { bang = true, nargs = "?", complete = "dir" })
   vim.api.nvim_create_user_command("NvimTreeResize", function(res)
     M.resize(res.args)
@@ -326,6 +377,7 @@ local function setup_vim_commands()
   vim.api.nvim_create_user_command("NvimTreeCollapseKeepBuffers", function()
     collapse_all.fn(true)
   end, { bar = true })
+  vim.api.nvim_create_user_command("NvimTreeGenerateOnAttach", keymap_legacy.cmd_generate_on_attach, {})
 end
 
 function M.change_dir(name)
@@ -509,11 +561,10 @@ local DEFAULT_OPTS = { -- BEGIN_DEFAULT_OPTS
   sync_root_with_cwd = false,
   reload_on_bufenter = false,
   respect_buf_cwd = false,
-  on_attach = "disable",
+  on_attach = "default",
   remove_keymaps = false,
   select_prompts = false,
   view = {
-    adaptive_size = false,
     centralize_selection = false,
     cursorline = true,
     debounce_delay = 15,
@@ -744,7 +795,9 @@ local FIELD_SKIP_VALIDATE = {
 }
 
 local FIELD_OVERRIDE_TYPECHECK = {
-  width = { string = true, ["function"] = true, number = true },
+  width = { string = true, ["function"] = true, number = true, ["table"] = true },
+  max = { string = true, ["function"] = true, number = true },
+  min = { string = true, ["function"] = true, number = true },
   remove_keymaps = { boolean = true, table = true },
   on_attach = { ["function"] = true, string = true },
   sort_by = { ["function"] = true, string = true },
@@ -808,6 +861,7 @@ function M.setup(conf)
   validate_options(conf)
 
   local opts = merge_options(conf)
+
   local netrw_disabled = opts.disable_netrw or opts.hijack_netrw
 
   _config.root_dirs = opts.root_dirs
@@ -826,8 +880,12 @@ function M.setup(conf)
   require("nvim-tree.notify").setup(opts)
   require("nvim-tree.log").setup(opts)
 
-  log.line("config", "default config + user")
-  log.raw("config", "%s\n", vim.inspect(opts))
+  if log.enabled "config" then
+    log.line("config", "default config + user")
+    log.raw("config", "%s\n", vim.inspect(opts))
+  end
+
+  keymap_legacy.generate_legacy_on_attach(opts)
 
   require("nvim-tree.actions").setup(opts)
   require("nvim-tree.keymap").setup(opts)
@@ -864,7 +922,17 @@ function M.setup(conf)
   M.setup_called = true
 
   vim.schedule(function()
-    M.on_enter(netrw_disabled)
+    if
+      #opts.ignore_ft_on_setup > 0
+      or opts.open_on_setup == true
+      or opts.open_on_setup_file
+      or opts.ignore_buffer_on_setup
+    then
+      notify.info "open_on_setup behaviour has been deprecated, please see https://github.com/nvim-tree/nvim-tree.lua/wiki/Open-At-Startup"
+      M.on_enter(netrw_disabled)
+    else
+      M.initialized = true
+    end
     vim.g.NvimTreeSetup = 1
     vim.api.nvim_exec_autocmds("User", { pattern = "NvimTreeSetup" })
   end)

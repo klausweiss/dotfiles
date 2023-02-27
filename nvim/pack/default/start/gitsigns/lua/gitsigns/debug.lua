@@ -9,7 +9,7 @@ local function getvarvalue(name, lvl)
    local value
    local found
 
-
+   -- try local variables
    local i = 1
    while true do
       local n, v = debug.getlocal(lvl, i)
@@ -22,7 +22,7 @@ local function getvarvalue(name, lvl)
    end
    if found then return value end
 
-
+   -- try upvalues
    local func = debug.getinfo(lvl).func
    i = 1
    while true do
@@ -32,7 +32,7 @@ local function getvarvalue(name, lvl)
       i = i + 1
    end
 
-
+   -- not found; get global
    return getfenv(func)[name]
 end
 
@@ -52,8 +52,8 @@ local function get_context(lvl)
    return ret
 end
 
-
-
+-- If called in a callback then make sure the callback defines a __FUNC__
+-- variable which can be used to identify the name of the function.
 local function cprint(obj, lvl)
    lvl = lvl + 1
    local msg = type(obj) == "string" and obj or vim.inspect(obj)

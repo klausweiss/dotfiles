@@ -10,6 +10,8 @@ See also `:help lsp-config`.
 
 ## Install
 
+[![LuaRocks](https://img.shields.io/luarocks/v/neovim/nvim-lspconfig?logo=lua&color=purple)](https://luarocks.org/modules/neovim/nvim-lspconfig)
+
 * Requires neovim version 0.7 above. Update Nvim and nvim-lspconfig before reporting an issue.
 * Install nvim-lspconfig like any other Vim plugin, e.g. with [packer.nvim](https://github.com/wbthomason/packer.nvim):
   ```lua
@@ -156,3 +158,11 @@ a new configuration for it helps others, especially if the server requires speci
       to get started. Most configs are simple. For an extensive example see
       [texlab.lua](https://github.com/neovim/nvim-lspconfig/blob/master/lua/lspconfig/server_configurations/texlab.lua).
 3. Ask questions on our [Discourse](https://neovim.discourse.group/c/7-category/7) or in the [Neovim Matrix room](https://app.element.io/#/room/#neovim:matrix.org).
+
+## License
+
+Copyright Neovim contributors. All rights reserved.
+
+nvim-lspconfig is licensed under the terms of the Apache 2.0 license.
+
+See [LICENSE.md](./LICENSE.md)

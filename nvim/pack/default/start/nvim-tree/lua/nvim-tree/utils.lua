@@ -1,6 +1,5 @@
 local Iterator = require "nvim-tree.iterators.node-iterator"
 local notify = require "nvim-tree.notify"
-local log = require "nvim-tree.log"
 
 local M = {
   debouncers = {},
@@ -11,10 +10,6 @@ M.is_macos = vim.fn.has "mac" == 1 or vim.fn.has "macunix" == 1
 M.is_wsl = vim.fn.has "wsl" == 1
 -- false for WSL
 M.is_windows = vim.fn.has "win32" == 1 or vim.fn.has "win32unix" == 1
-
-function M.path_to_matching_str(path)
-  return path:gsub("(%-)", "(%%-)"):gsub("(%.)", "(%%.)"):gsub("(%_)", "(%%_)")
-end
 
 function M.str_find(haystack, needle)
   return vim.fn.stridx(haystack, needle) ~= -1
@@ -60,7 +55,14 @@ end
 ---@param relative_to string
 ---@return string
 function M.path_relative(path, relative_to)
-  local p, _ = path:gsub("^" .. M.path_to_matching_str(M.path_add_trailing(relative_to)), "")
+  local _, r = path:find(M.path_add_trailing(relative_to), 1, true)
+  local p = path
+  if r then
+    -- take the relative path starting after '/'
+    -- if somehow given a completely matching path,
+    -- returns ""
+    p = path:sub(r + 1)
+  end
   return p
 end
 
@@ -274,7 +276,9 @@ end
 function M.key_by(tbl, key)
   local keyed = {}
   for _, val in ipairs(tbl) do
-    keyed[val[key]] = val
+    if val[key] then
+      keyed[val[key]] = val
+    end
   end
   return keyed
 end
@@ -413,53 +417,6 @@ function M.is_nvim_tree_buf(bufnr)
     end
   end
   return false
-end
-
----Profile a call to vim.loop.fs_scandir
----This should be removed following resolution of #1831
----@param path string
----@return userdata|nil uv_fs_t
----@return string|nil type
----@return string|nil err (fail)
----@return string|nil name (fail)
-function M.fs_scandir_profiled(path)
-  local pn = string.format("fs_scandir %s", path)
-  local ps = log.profile_start(pn)
-
-  local handle, err, name = vim.loop.fs_scandir(path)
-
-  if err or name then
-    log.line("profile", "      %s err     '%s'", pn, vim.inspect(err))
-    log.line("profile", "      %s name    '%s'", pn, vim.inspect(name))
-  end
-
-  log.profile_end(ps, pn)
-
-  return handle, err, name
-end
-
----Profile a call to vim.loop.fs_scandir_next
----This should be removed following resolution of #1831
----@param handle userdata uv_fs_t
----@param tag string arbitrary
----@return string|nil name
----@return string|nil type
----@return string|nil err (fail)
----@return string|nil name (fail)
-function M.fs_scandir_next_profiled(handle, tag)
-  local pn = string.format("fs_scandir_next %s", tag)
-  local ps = log.profile_start(pn)
-
-  local n, t, err, name = vim.loop.fs_scandir_next(handle)
-
-  if err or name then
-    log.line("profile", "      %s err  '%s'", pn, vim.inspect(err))
-    log.line("profile", "      %s name '%s'", pn, vim.inspect(name))
-  end
-
-  log.profile_end(ps, pn)
-
-  return n, t, err, name
 end
 
 return M

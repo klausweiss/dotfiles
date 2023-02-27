@@ -123,12 +123,26 @@ Or:
 
 ```
 
-### Keybinds
-No default keybinds are provided.
-There are two keybinds available:
+### Keymap
+No default keymaps are provided.
+There are two keymaps available in config:
 1. toggle_key: Toggle the signature help window. It manual toggle config.floating_windows on/off
 2. select_signature_key: Select the current signature when mulitple signature is avalible.
 
+#### Customize the keymap in your config:
+
+* To toggle floating windows in `Normal` mode, you need either define a keymap to `vim.lsp.buf.signature_help()` or `require('lsp_signature').toggle_float_win()`
+
+e.g.
+```lua
+    vim.keymap.set({ 'n' }, '<C-k>', function()       require('lsp_signature').toggle_float_win()
+    end, { silent = true, noremap = true, desc = 'toggle signature' })
+
+    vim.keymap.set({ 'n' }, '<Leader>k', function()
+     vim.lsp.buf.signature_help()
+    end, { silent = true, noremap = true, desc = 'toggle signature' })
+
+```
 
 
 ### Full configuration (with default values)
@@ -159,7 +173,8 @@ There are two keybinds available:
   -- will set to true when fully tested, set to false will use whichever side has more space
   -- this setting will be helpful if you do not want the PUM and floating win overlap
 
-  floating_window_off_x = 1, -- adjust float windows x position.
+  floating_window_off_x = 1, -- adjust float windows x position. 
+                             -- can be either a number or function
   floating_window_off_y = 0, -- adjust float windows y position. e.g -2 move window up 2 lines; 2 move down 2 lines
                               -- can be either number or function, see examples
 

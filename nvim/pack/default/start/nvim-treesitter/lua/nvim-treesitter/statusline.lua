@@ -21,6 +21,7 @@ function M.statusline(opts)
   local type_patterns = options.type_patterns or { "class", "function", "method" }
   local transform_fn = options.transform_fn or transform_line
   local separator = options.separator or " -> "
+  local allow_duplicates = options.allow_duplicates or false
 
   local current_node = ts_utils.get_node_at_cursor()
   if not current_node then
@@ -32,8 +33,10 @@ function M.statusline(opts)
 
   while expr do
     local line = ts_utils._get_line_for_node(expr, type_patterns, transform_fn, bufnr)
-    if line ~= "" and not vim.tbl_contains(lines, line) then
-      table.insert(lines, 1, line)
+    if line ~= "" then
+      if allow_duplicates or not vim.tbl_contains(lines, line) then
+        table.insert(lines, 1, line)
+      end
     end
     expr = expr:parent()
   end

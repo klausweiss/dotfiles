@@ -344,7 +344,7 @@ function Picker:find()
   self.original_win_id = a.nvim_get_current_win()
 
   -- User autocmd run it before create Telescope window
-  vim.api.nvim_exec_autocmds("User TelescopeFindPre", {})
+  vim.api.nvim_exec_autocmds("User", { pattern = "TelescopeFindPre" })
 
   -- Create three windows:
   -- 1. Prompt window
@@ -455,6 +455,10 @@ function Picker:find()
     pcall(a.nvim_buf_set_option, results_bufnr, "filetype", "TelescopeResults")
 
     await_schedule()
+
+    -- we need to set the prefix color after changing mode since
+    -- https://github.com/neovim/neovim/commit/cbf9199d65325c1167d7eeb02a34c85d243e781c
+    self:_reset_prefix_color()
 
     while true do
       -- Wait for the next input
@@ -1327,6 +1331,11 @@ function Picker:get_result_completor(results_bufnr, find_id, prompt, status_upda
     self:clear_extra_rows(results_bufnr)
     self.sorter:_finish(prompt)
 
+    if self.wrap_results and self.sorting_strategy == "descending" then
+      local visible_result_rows = vim.api.nvim_win_get_height(self.results_win)
+      vim.api.nvim_win_set_cursor(self.results_win, { self.max_results - visible_result_rows, 1 })
+      vim.api.nvim_win_set_cursor(self.results_win, { self.max_results, 1 })
+    end
     self:_on_complete()
   end)
 end
@@ -1415,6 +1424,8 @@ pickers.new = function(opts, defaults)
   if result["previewer"] == false then
     result["previewer"] = defaults["previewer"]
     result["__hide_previewer"] = true
+  elseif result["previewer"] == true then
+    result["previewer"] = defaults["previewer"]
   elseif type(opts["preview"]) == "table" and opts["preview"]["hide_on_startup"] then
     result["__hide_previewer"] = true
   end

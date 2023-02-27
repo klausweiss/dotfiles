@@ -21,17 +21,19 @@ local err = require('gitsigns.message').error
 
 
 
-
+   -- local extensions
 
 
 
 local M = {BlameInfo = {}, Version = {}, RepoInfo = {}, Repo = {}, FileProps = {}, Obj = {}, }
 
+      -- Info in header
 
 
 
 
 
+      -- Porcelain fields
 
 
 
@@ -85,26 +87,24 @@ local M = {BlameInfo = {}, Version = {}, RepoInfo = {}, Repo = {}, FileProps = {
 
 
 
+ -- Use for tracking moved files
 
 
 
+   -- Object has crlf
+   -- Working copy has crlf
 
 
 
 
 
 
+ -- Use for tracking moved files
 
 
 
-
-
-
-
-
-
-
-
+   -- Object has crlf
+   -- Working copy has crlf
 
 
 
@@ -150,7 +150,7 @@ local function parse_version(version)
    return ret
 end
 
-
+-- Usage: check_version{2,3}
 local function check_version(version)
    if not M.version then
       return false
@@ -167,13 +167,14 @@ local function check_version(version)
    return true
 end
 
+--- @async
 local git_command = async.create(function(args, spec)
    spec = spec or {}
    spec.command = spec.command or 'git'
    spec.args = spec.command == 'git' and {
       '--no-pager',
       '--literal-pathspecs',
-      '-c', 'gc.auto=0',
+      '-c', 'gc.auto=0',   -- Disable auto-packing which emits messages to stderr
       unpack(args),
    } or args
 
@@ -192,8 +193,8 @@ local git_command = async.create(function(args, spec)
 
    local stdout_lines = vim.split(stdout or '', '\n', true)
 
-
-
+   -- If stdout ends with a newline, then remove the final empty string after
+   -- the split
    if stdout_lines[#stdout_lines] == '' then
       stdout_lines[#stdout_lines] = nil
    end
@@ -208,6 +209,7 @@ local git_command = async.create(function(args, spec)
    return stdout_lines, stderr
 end, 2)
 
+--- @async
 function M.diff(file_cmp, file_buf, indent_heuristic, diff_algo)
    return git_command({
       '-c', 'core.safecrlf=false',
@@ -222,6 +224,7 @@ function M.diff(file_cmp, file_buf, indent_heuristic, diff_algo)
    })
 end
 
+--- @async
 local function process_abbrev_head(gitdir, head_str, path, cmd)
    if not gitdir then
       return head_str
@@ -246,6 +249,7 @@ end
 
 local has_cygpath = jit and jit.os == 'Windows' and vim.fn.executable('cygpath') == 1
 
+--- @async
 local cygpath_convert
 
 if has_cygpath then
@@ -256,21 +260,22 @@ end
 
 local function normalize_path(path)
    if path and has_cygpath and not uv.fs_stat(path) then
-
-
+      -- If on windows and path isn't recognizable as a file, try passing it
+      -- through cygpath
       path = cygpath_convert(path)
    end
    return path
 end
 
+--- @async
 function M.get_repo_info(path, cmd, gitdir, toplevel)
-
-
+   -- Does git rev-parse have --absolute-git-dir, added in 2.13:
+   --    https://public-inbox.org/git/20170203024829.8071-16-szeder.dev@gmail.com/
    local has_abs_gd = check_version({ 2, 13 })
    local git_dir_opt = has_abs_gd and '--absolute-git-dir' or '--git-dir'
 
-
-
+   -- Wait for internal scheduler to settle before running command
+   --    https://github.com/lewis6991/gitsigns.nvim/pull/215
    scheduler()
 
    local args = {}
@@ -290,7 +295,7 @@ function M.get_repo_info(path, cmd, gitdir, toplevel)
    local results = git_command(args, {
       command = cmd or 'git',
       suppress_stderr = true,
-      cwd = path,
+      cwd = toplevel or path,
    })
 
    local ret = {
@@ -305,6 +310,7 @@ function M.get_repo_info(path, cmd, gitdir, toplevel)
    return ret
 end
 
+--- @async
 function M.set_version(version)
    if version ~= 'auto' then
       M.version = parse_version(version)
@@ -323,11 +329,12 @@ function M.set_version(version)
    M.version = parse_version(parts[3])
 end
 
+--------------------------------------------------------------------------------
+-- Git repo object methods
+--------------------------------------------------------------------------------
 
-
-
-
-
+--- Run git command the with the objects gitdir and toplevel
+--- @async
 function Repo:command(args, spec)
    spec = spec or {}
    spec.cwd = self.toplevel
@@ -345,6 +352,7 @@ function Repo:command(args, spec)
    return git_command(args1, spec)
 end
 
+--- @async
 function Repo:files_changed()
    local results = self:command({ 'status', '--porcelain', '--ignore-submodules' })
 
@@ -357,11 +365,51 @@ function Repo:files_changed()
    return ret
 end
 
+local function make_bom(...)
+   local r = {}
+   for i, a in ipairs({ ... }) do
+      r[i] = string.char(a)
+   end
+   return table.concat(r)
+end
 
+local BOM_TABLE = {
+   ['utf-8'] = make_bom(0xef, 0xbb, 0xbf),
+   ['utf-16le'] = make_bom(0xff, 0xfe),
+   ['utf-16'] = make_bom(0xfe, 0xff),
+   ['utf-16be'] = make_bom(0xfe, 0xff),
+   ['utf-32le'] = make_bom(0xff, 0xfe, 0x00, 0x00),
+   ['utf-32'] = make_bom(0xff, 0xfe, 0x00, 0x00),
+   ['utf-32be'] = make_bom(0x00, 0x00, 0xfe, 0xff),
+   ['utf-7'] = make_bom(0x2b, 0x2f, 0x76),
+   ['utf-1'] = make_bom(0xf7, 0x54, 0x4c),
+}
+
+local function strip_bom(x, encoding)
+   local bom = BOM_TABLE[encoding]
+   if bom and vim.startswith(x, bom) then
+      return x:sub(bom:len() + 1)
+   end
+   return x
+end
+
+local function iconv_supported(encoding)
+   -- TODO(lewis6991): needs https://github.com/neovim/neovim/pull/21924
+   if vim.startswith(encoding, 'utf-16') then
+      return false
+   elseif vim.startswith(encoding, 'utf-32') then
+      return false
+   end
+   return true
+end
+
+--- Get version of file in the index, return array lines
+--- @async
 function Repo:get_show_text(object, encoding)
    local stdout, stderr = self:command({ 'show', object }, { suppress_stderr = true })
 
-   if encoding and encoding ~= 'utf-8' then
+   if encoding and encoding ~= 'utf-8' and iconv_supported(encoding) then
+      stdout[1] = strip_bom(stdout[1], encoding)
       if vim.iconv then
          for i, l in ipairs(stdout) do
             stdout[i] = vim.iconv(l, encoding, 'utf-8')
@@ -369,7 +417,7 @@ function Repo:get_show_text(object, encoding)
       else
          scheduler()
          for i, l in ipairs(stdout) do
-
+            -- vimscript will interpret strings containing NUL as blob type
             if vim.fn.type(l) == vim.v.t_string then
                stdout[i] = vim.fn.iconv(l, encoding, 'utf-8')
             end
@@ -380,10 +428,12 @@ function Repo:get_show_text(object, encoding)
    return stdout, stderr
 end
 
+--- @async
 function Repo:update_abbrev_head()
    self.abbrev_head = M.get_repo_info(self.toplevel).abbrev_head
 end
 
+--- @async
 function Repo.new(dir, gitdir, toplevel)
    local self = setmetatable({}, { __index = Repo })
 
@@ -393,7 +443,7 @@ function Repo.new(dir, gitdir, toplevel)
       (self)[k] = v
    end
 
-
+   -- Try yadm
    if M.enable_yadm and not self.gitdir then
       if vim.startswith(dir, os.getenv('HOME')) and
          #git_command({ 'ls-files', dir }, { command = 'yadm' }) ~= 0 then
@@ -408,15 +458,17 @@ function Repo.new(dir, gitdir, toplevel)
    return self
 end
 
+--------------------------------------------------------------------------------
+-- Git object methods
+--------------------------------------------------------------------------------
 
-
-
-
-
+--- Run git command the with the objects gitdir and toplevel
+--- @async
 function Obj:command(args, spec)
    return self.repo:command(args, spec)
 end
 
+--- @async
 function Obj:update_file_info(update_relpath, silent)
    local old_object_name = self.object_name
    local props = self:file_info(self.file, silent)
@@ -433,6 +485,7 @@ function Obj:update_file_info(update_relpath, silent)
    return old_object_name ~= self.object_name
 end
 
+--- @async
 function Obj:file_info(file, silent)
    local results, stderr = self:command({
       '-c', 'core.quotepath=off',
@@ -445,8 +498,8 @@ function Obj:file_info(file, silent)
    }, { suppress_stderr = true })
 
    if stderr and not silent then
-
-
+      -- Suppress_stderr for the cases when we run:
+      --    git ls-files --others exists/nonexist
       if not stderr:match('^warning: could not open directory .*: No such file or directory') then
          gsd.eprint(stderr)
       end
@@ -455,7 +508,7 @@ function Obj:file_info(file, silent)
    local result = {}
    for _, line in ipairs(results) do
       local parts = vim.split(line, '\t')
-      if #parts > 2 then
+      if #parts > 2 then -- tracked file
          local eol = vim.split(parts[2], '%s+')
          result.i_crlf = eol[1] == 'i/crlf'
          result.w_crlf = eol[2] == 'w/crlf'
@@ -468,13 +521,14 @@ function Obj:file_info(file, silent)
          else
             result.has_conflicts = true
          end
-      else
+      else -- untracked file
          result.relpath = parts[2]
       end
    end
    return result
 end
 
+--- @async
 function Obj:get_show_text(revision)
    if not self.relpath then
       return {}
@@ -483,7 +537,7 @@ function Obj:get_show_text(revision)
    local stdout, stderr = self.repo:get_show_text(revision .. ':' .. self.relpath, self.encoding)
 
    if not self.i_crlf and self.w_crlf then
-
+      -- Add cr
       for i = 1, #stdout do
          stdout[i] = stdout[i] .. '\r'
       end
@@ -492,15 +546,17 @@ function Obj:get_show_text(revision)
    return stdout, stderr
 end
 
+--- @async
 Obj.unstage_file = function(self)
    self:command({ 'reset', self.file })
 end
 
+--- @async
 function Obj:run_blame(lines, lnum, ignore_whitespace)
    if not self.object_name or self.repo.abbrev_head == '' then
-
-
-
+      -- As we support attaching to untracked files we need to return something if
+      -- the file isn't isn't tracked in git.
+      -- If abbrev_head is empty, then assume the repo has no commits
       return {
          author = 'Not Committed Yet',
          ['author_mail'] = '<not.committed.yet>',
@@ -551,17 +607,18 @@ function Obj:run_blame(lines, lnum, ignore_whitespace)
    return ret
 end
 
+--- @async
 local function ensure_file_in_index(obj)
    if obj.object_name and not obj.has_conflicts then
       return
    end
 
    if not obj.object_name then
-
+      -- If there is no object_name then it is not yet in the index so add it
       obj:command({ 'add', '--intent-to-add', obj.file })
    else
-
-
+      -- Update the index with the common ancestor (stage 1) which is what bcache
+      -- stores
       local info = string.format('%s,%s,%s', obj.mode_bits, obj.object_name, obj.relpath)
       obj:command({ 'update-index', '--add', '--cacheinfo', info })
    end
@@ -569,8 +626,9 @@ local function ensure_file_in_index(obj)
    obj:update_file_info()
 end
 
-
-
+-- Stage 'lines' as the entire contents of the file
+--- @async
+--- @param lines
 function Obj:stage_lines(lines)
    local stdout = self:command({
       'hash-object', '-w', '--path', self.relpath, '--stdin',
@@ -583,15 +641,27 @@ function Obj:stage_lines(lines)
    })
 end
 
+--- @async
 Obj.stage_hunks = function(self, hunks, invert)
    ensure_file_in_index(self)
+
+   local patch = gs_hunks.create_patch(self.relpath, hunks, self.mode_bits, invert)
+
+   if not self.i_crlf and self.w_crlf then
+      -- Remove cr
+      for i = 1, #patch do
+         patch[i] = patch[i]:gsub('\r$', '')
+      end
+   end
+
    self:command({
       'apply', '--whitespace=nowarn', '--cached', '--unidiff-zero', '-',
    }, {
-      writer = gs_hunks.create_patch(self.relpath, hunks, self.mode_bits, invert),
+      writer = patch,
    })
 end
 
+--- @async
 function Obj:has_moved()
    local out = self:command({ 'diff', '--name-status', '-C', '--cached' })
    local orig_relpath = self.orig_relpath or self.relpath
@@ -609,6 +679,7 @@ function Obj:has_moved()
    end
 end
 
+--- @async
 function Obj.new(file, encoding, gitdir, toplevel)
    if in_git_dir(file) then
       dprint('In git dir')
@@ -625,7 +696,7 @@ function Obj.new(file, encoding, gitdir, toplevel)
       return nil
    end
 
-
+   -- When passing gitdir and toplevel, suppress stderr when resolving the file
    local silent = gitdir ~= nil and toplevel ~= nil
 
    self:update_file_info(true, silent)

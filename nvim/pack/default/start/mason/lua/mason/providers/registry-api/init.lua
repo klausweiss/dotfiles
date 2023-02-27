@@ -4,16 +4,16 @@ local api = require "mason-registry.api"
 return {
     github = {
         get_latest_release = function(repo)
-            return api.repo.releases.latest { repo = repo }
+            return api.github.releases.latest { repo = repo }
         end,
         get_all_release_versions = function(repo)
-            return api.repo.releases.all { repo = repo }
+            return api.github.releases.all { repo = repo }
         end,
         get_latest_tag = function(repo)
-            return api.repo.tags.latest { repo = repo }
+            return api.github.tags.latest { repo = repo }
         end,
         get_all_tags = function(repo)
-            return api.repo.tags.all { repo = repo }
+            return api.github.tags.all { repo = repo }
         end,
     },
     npm = {
@@ -38,6 +38,27 @@ return {
         end,
         get_all_versions = function(gem)
             return api.rubygems.versions.all { gem = gem }
+        end,
+    },
+    packagist = {
+        get_latest_version = function(pkg)
+            return api.packagist.versions.latest { pkg = pkg }
+        end,
+        get_all_versions = function(pkg)
+            return api.packagist.versions.all { pkg = pkg }
+        end,
+    },
+    crates = {
+        get_latest_version = function(crate)
+            return api.crate.versions.latest { crate = crate }
+        end,
+        get_all_versions = function(crate)
+            return api.crate.versions.all { crate = crate }
+        end,
+    },
+    golang = {
+        get_all_versions = function(pkg)
+            return api.golang.versions.all { pkg = api.encode_uri_component(pkg) }
         end,
     },
 }

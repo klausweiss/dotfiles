@@ -56,7 +56,7 @@ end
 
 git.commits = function(opts)
   opts.entry_maker = vim.F.if_nil(opts.entry_maker, make_entry.gen_from_git_commits(opts))
-  local git_command = vim.F.if_nil(opts.git_command, { "git", "log", "--graph", "--oneline", "--decorate", "--", "." })
+  local git_command = vim.F.if_nil(opts.git_command, { "git", "log", "--pretty=oneline", "--abbrev-commit", "--", "." })
 
   pickers
     .new(opts, {
@@ -115,7 +115,8 @@ git.bcommits = function(opts)
   opts.current_line = (opts.current_file == nil) and get_current_buf_line(opts.winnr) or nil
   opts.current_file = vim.F.if_nil(opts.current_file, vim.api.nvim_buf_get_name(opts.bufnr))
   opts.entry_maker = vim.F.if_nil(opts.entry_maker, make_entry.gen_from_git_commits(opts))
-  local git_command = vim.F.if_nil(opts.git_command, { "git", "log", "--graph", "--oneline", "--decorate", "--follow" })
+  local git_command =
+    vim.F.if_nil(opts.git_command, { "git", "log", "--pretty=oneline", "--abbrev-commit", "--follow" })
 
   pickers
     .new(opts, {
@@ -356,7 +357,18 @@ git.status = function(opts)
       attach_mappings = function(prompt_bufnr, map)
         actions.git_staging_toggle:enhance {
           post = function()
-            action_state.get_current_picker(prompt_bufnr):refresh(gen_new_finder(), { reset_prompt = true })
+            local picker = action_state.get_current_picker(prompt_bufnr)
+
+            -- temporarily register a callback which keeps selection on refresh
+            local selection = picker:get_selection_row()
+            local callbacks = { unpack(picker._completion_callbacks) } -- shallow copy
+            picker:register_completion_callback(function(self)
+              self:set_selection(selection)
+              self._completion_callbacks = callbacks
+            end)
+
+            -- refresh
+            picker:refresh(gen_new_finder(), { reset_prompt = false })
           end,
         }
 

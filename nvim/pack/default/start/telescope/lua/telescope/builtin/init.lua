@@ -57,7 +57,7 @@ end
 ---@field disable_coordinates boolean: don't show the line & row numbers (default: false)
 builtin.live_grep = require_on_exported_call("telescope.builtin.__files").live_grep
 
---- Searches for the string under your cursor in your current working directory
+--- Searches for the string under your cursor or the visual selection in your current working directory
 ---@param opts table: options to pass to the picker
 ---@field cwd string: root dir to search from (default: cwd, use utils.buffer_dir() to search relative to open buffer)
 ---@field search string: the query to search
@@ -96,7 +96,7 @@ builtin.treesitter = require_on_exported_call("telescope.builtin.__files").trees
 
 --- Live fuzzy search inside of the currently open buffer
 ---@param opts table: options to pass to the picker
----@field skip_empty_lines boolean: if true we dont display empty lines (default: false)
+---@field skip_empty_lines boolean: if true we don't display empty lines (default: false)
 builtin.current_buffer_fuzzy_find = require_on_exported_call("telescope.builtin.__files").current_buffer_fuzzy_find
 
 --- Lists tags in current directory with tag location file preview (users are required to run ctags -R to generate tags
@@ -133,7 +133,7 @@ builtin.current_buffer_tags = require_on_exported_call("telescope.builtin.__file
 ---@field use_git_root boolean: if we should use git root as cwd or the cwd (important for submodule) (default: true)
 ---@field show_untracked boolean: if true, adds `--others` flag to command and shows untracked files (default: false)
 ---@field recurse_submodules boolean: if true, adds the `--recurse-submodules` flag to command (default: false)
----@field git_command table: command that will be exectued. {"git","ls-files","--exclude-standard","--cached"}
+---@field git_command table: command that will be executed. {"git","ls-files","--exclude-standard","--cached"}
 builtin.git_files = require_on_exported_call("telescope.builtin.__git").files
 
 --- Lists commits for current directory with diff preview
@@ -145,11 +145,11 @@ builtin.git_files = require_on_exported_call("telescope.builtin.__git").files
 ---@param opts table: options to pass to the picker
 ---@field cwd string: specify the path of the repo
 ---@field use_git_root boolean: if we should use git root as cwd or the cwd (important for submodule) (default: true)
----@field git_command table: command that will be exectued. {"git","log","--pretty=oneline","--abbrev-commit","--","."}
+---@field git_command table: command that will be executed. {"git","log","--pretty=oneline","--abbrev-commit","--","."}
 builtin.git_commits = require_on_exported_call("telescope.builtin.__git").commits
 
 --- Lists commits for current buffer with diff preview
---- - Default keymaps or your overriden `select_` keys:
+--- - Default keymaps or your overridden `select_` keys:
 ---   - `<cr>`: checks out the currently selected commit
 ---   - `<c-v>`: opens a diff in a vertical split
 ---   - `<c-x>`: opens a diff in a horizontal split
@@ -158,7 +158,7 @@ builtin.git_commits = require_on_exported_call("telescope.builtin.__git").commit
 ---@field cwd string: specify the path of the repo
 ---@field use_git_root boolean: if we should use git root as cwd or the cwd (important for submodule) (default: true)
 ---@field current_file string: specify the current file that should be used for bcommits (default: current buffer)
----@field git_command table: command that will be exectued. {"git","log","--pretty=oneline","--abbrev-commit"}
+---@field git_command table: command that will be executed. {"git","log","--pretty=oneline","--abbrev-commit"}
 builtin.git_bcommits = require_on_exported_call("telescope.builtin.__git").bcommits
 
 --- List branches for current directory, with output from `git log --oneline` shown in the preview window
@@ -224,8 +224,8 @@ builtin.pickers = require_on_exported_call("telescope.builtin.__internal").picke
 
 --- Use the telescope...
 ---@param opts table: options to pass to the picker
----@field show_pluto boolean: we love pluto (default: false, because its a hidden feature)
----@field show_moon boolean: we love the moon (default: false, because its a hidden feature)
+---@field show_pluto boolean: we love Pluto (default: false, because its a hidden feature)
+---@field show_moon boolean: we love the Moon (default: false, because its a hidden feature)
 builtin.planets = require_on_exported_call("telescope.builtin.__internal").planets
 
 --- Lists symbols inside of `data/telescope-sources/*.json` found in your runtime path
@@ -265,6 +265,7 @@ builtin.loclist = require_on_exported_call("telescope.builtin.__internal").locli
 
 --- Lists previously open files, opens on `<cr>`
 ---@param opts table: options to pass to the picker
+---@field cwd string: specify a working directory to filter oldfiles by
 ---@field only_cwd boolean: show only files in the cwd (default: false)
 ---@field cwd_only boolean: alias for only_cwd
 builtin.oldfiles = require_on_exported_call("telescope.builtin.__internal").oldfiles
@@ -305,6 +306,7 @@ builtin.reloader = require_on_exported_call("telescope.builtin.__internal").relo
 
 --- Lists open buffers in current neovim instance, opens selected buffer on `<cr>`
 ---@param opts table: options to pass to the picker
+---@field cwd string: specify a working directory to filter buffers list by
 ---@field show_all_buffers boolean: if true, show all buffers, including unloaded buffers (default: true)
 ---@field ignore_current_buffer boolean: if true, don't show the current buffer in the list (default: false)
 ---@field only_cwd boolean: if true, only show buffers in the current working directory (default: false)
@@ -377,7 +379,7 @@ builtin.jumplist = require_on_exported_call("telescope.builtin.__internal").jump
 ---@param opts table: options to pass to the picker
 ---@field include_declaration boolean: include symbol declaration in the lsp references (default: true)
 ---@field include_current_line boolean: include current line (default: false)
----@field jump_type string: how to goto reference if there is only one, values: "tab", "split", "vsplit", "never"
+---@field jump_type string: how to goto reference if there is only one and the definition file is different from the current file, values: "tab", "split", "vsplit", "never"
 ---@field fname_width number: defines the width of the filename section (default: 30)
 ---@field show_line boolean: show results text (default: true)
 ---@field trim_text boolean: trim results text (default: false)
@@ -399,7 +401,7 @@ builtin.lsp_outgoing_calls = require_on_exported_call("telescope.builtin.__lsp")
 
 --- Goto the definition of the word under the cursor, if there's only one, otherwise show all options in Telescope
 ---@param opts table: options to pass to the picker
----@field jump_type string: how to goto definition if there is only one, values: "tab", "split", "vsplit", "never"
+---@field jump_type string: how to goto definition if there is only one and the definition file is different from the current file, values: "tab", "split", "vsplit", "never"
 ---@field fname_width number: defines the width of the filename section (default: 30)
 ---@field show_line boolean: show results text (default: true)
 ---@field trim_text boolean: trim results text (default: false)
@@ -408,7 +410,7 @@ builtin.lsp_definitions = require_on_exported_call("telescope.builtin.__lsp").de
 --- Goto the definition of the type of the word under the cursor, if there's only one,
 --- otherwise show all options in Telescope
 ---@param opts table: options to pass to the picker
----@field jump_type string: how to goto definition if there is only one, values: "tab", "split", "vsplit", "never"
+---@field jump_type string: how to goto definition if there is only one and the definition file is different from the current file, values: "tab", "split", "vsplit", "never"
 ---@field fname_width number: defines the width of the filename section (default: 30)
 ---@field show_line boolean: show results text (default: true)
 ---@field trim_text boolean: trim results text (default: false)
@@ -416,7 +418,7 @@ builtin.lsp_type_definitions = require("telescope.builtin.__lsp").type_definitio
 
 --- Goto the implementation of the word under the cursor if there's only one, otherwise show all options in Telescope
 ---@param opts table: options to pass to the picker
----@field jump_type string: how to goto implementation if there is only one, values: "tab", "split", "vsplit", "never"
+---@field jump_type string: how to goto implementation if there is only one and the definition file is different from the current file, values: "tab", "split", "vsplit", "never"
 ---@field fname_width number: defines the width of the filename section (default: 30)
 ---@field show_line boolean: show results text (default: true)
 ---@field trim_text boolean: trim results text (default: false)
@@ -427,6 +429,8 @@ builtin.lsp_implementations = require_on_exported_call("telescope.builtin.__lsp"
 ---   - `<C-l>`: show autocompletion menu to prefilter your query by type of symbol you want to see (i.e. `:variable:`)
 ---@param opts table: options to pass to the picker
 ---@field fname_width number: defines the width of the filename section (default: 30)
+---@field symbol_width number: defines the width of the symbol section (default: 25)
+---@field symbol_type_width number: defines the width of the symbol type section (default: 8)
 ---@field show_line boolean: if true, shows the content of the line the tag is found on (default: false)
 ---@field symbols string|table: filter results by symbol kind(s)
 ---@field ignore_symbols string|table: list of symbols to ignore
@@ -439,6 +443,8 @@ builtin.lsp_document_symbols = require_on_exported_call("telescope.builtin.__lsp
 ---@param opts table: options to pass to the picker
 ---@field query string: for what to query the workspace (default: "")
 ---@field fname_width number: defines the width of the filename section (default: 30)
+---@field symbol_width number: defines the width of the symbol section (default: 25)
+---@field symbol_type_width number: defines the width of the symbol type section (default: 8)
 ---@field show_line boolean: if true, shows the content of the line the tag is found on (default: false)
 ---@field symbols string|table: filter results by symbol kind(s)
 ---@field ignore_symbols string|table: list of symbols to ignore

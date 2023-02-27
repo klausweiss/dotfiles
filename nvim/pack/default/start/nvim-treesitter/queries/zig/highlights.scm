@@ -4,10 +4,6 @@
   (line_comment)
 ] @comment @spell
 
-((line_comment) @text.note
-  (#match? @text.note "^// *zig fmt: (on|off) *$")
-)
-
 [
   variable: (IDENTIFIER)
   variable_type_function: (IDENTIFIER)
@@ -27,7 +23,7 @@ parameter: (IDENTIFIER) @parameter
     field_access: (IDENTIFIER)
     parameter: (IDENTIFIER)
   ] @type
-  (#match? @type "^[A-Z]")
+  (#match? @type "^[A-Z]([a-z]+[A-Za-z0-9]*)*$")
 )
 ;; assume camelCase is a function
 (
@@ -36,7 +32,7 @@ parameter: (IDENTIFIER) @parameter
     field_access: (IDENTIFIER)
     parameter: (IDENTIFIER)
   ] @function
-  (#match? @function "^[a-z]+[A-Z]+")
+  (#match? @function "^[a-z]+([A-Z][a-z0-9]*)+$")
 )
 
 ;; assume all CAPS_1 is a constant
@@ -51,7 +47,7 @@ parameter: (IDENTIFIER) @parameter
 [
   function_call: (IDENTIFIER)
   function: (IDENTIFIER)
-] @function.call
+] @function
 
 exception: "!" @exception
 
@@ -60,15 +56,17 @@ exception: "!" @exception
   (#eq? @variable.builtin "_")
 )
 
-; (PtrTypeStart "c" @variable.builtin)
+(PtrTypeStart "c" @variable.builtin)
 
-; (
-;   (ContainerDeclType
-;       (ErrorUnionExpr)
-;       ; "enum"
-;   )
-;   (ContainerField (IDENTIFIER) @constant)
-; )
+(
+  (ContainerDeclType
+    [
+      (ErrorUnionExpr)
+      "enum"
+    ]
+  )
+  (ContainerField (IDENTIFIER) @constant)
+)
 
 field_constant: (IDENTIFIER) @constant
 
@@ -90,105 +88,103 @@ field_constant: (IDENTIFIER) @constant
 (EscapeSequence) @string.escape
 (FormatSequence) @string.special
 
-[
-  "allowzero"
-  "volatile"
-  "threadlocal"
-  "inline"
-  "noinline"
-  "noalias"
-] @type.qualifier
-
-[
-  "anytype"
-  "anyframe"
-  (BuildinTypeExpr)
-] @type.builtin
-
 (BreakLabel (IDENTIFIER) @label)
 (BlockLabel (IDENTIFIER) @label)
 
 [
-  "true"
-  "false"
-] @boolean
+  "asm"
+  "defer"
+  "errdefer"
+  "nosuspend"
+  "test"
+] @keyword
 
 [
-  "undefined"
-  "unreachable"
-  "null"
-] @constant.builtin
+  "fn"
+] @keyword.function
 
 [
-  "else"
+  "and"
+  "or"
+  "orelse"
+] @keyword.operator
+
+[
+  "return"
+  "async"
+  "await"
+  "suspend"
+  "resume"
+] @keyword.return
+
+[
   "if"
+  "else"
   "switch"
 ] @conditional
 
 [
   "for"
   "while"
+  "break"
+  "continue"
 ] @repeat
 
 [
-  "or"
-  "and"
-  "orelse"
-] @keyword.operator
-
-[
-  "packed"
-  "opaque"
-  "comptime"
-] @storageclass
-
-[
-  "struct"
-  "enum"
-  "union"
-  "error"
-  "defer"
-  "errdefer"
-  "async"
-  "nosuspend"
-  "await"
-  "suspend"
-  "resume"
-  "export"
-  "extern"
-  "asm"
-  "callconv"
-] @keyword
+  "usingnamespace"
+] @include
 
 [
   "try"
-  "error"
   "catch"
 ] @exception
 
-; VarDecl
+[
+  "anytype"
+  (BuildinTypeExpr)
+] @type.builtin
+
+[
+  "struct"
+  "union"
+  "enum"
+  "opaque"
+  "error"
+] @type.definition
+
 [
   "const"
   "var"
-  "fn"
-] @keyword.function
+  "volatile"
+  "allowzero"
+  "noalias"
+] @type.qualifier
 
 [
-  "test"
-  "pub"
-  "usingnamespace"
-] @keyword
-
-[
-  "return"
-  "break"
-  "continue"
-] @keyword.return
-
-[
-  "linksection"
+  "addrspace"
   "align"
-] @function.builtin
+  "callconv"
+  "linksection"
+] @storageclass
+
+[
+  "comptime"
+  "export"
+  "extern"
+  "inline"
+  "noinline"
+  "packed"
+  "pub"
+  "threadlocal"
+] @attribute
+
+[
+  "null"
+  "unreachable"
+  "undefined"
+  "true"
+  "false"
+] @constant.builtin
 
 [
   (CompareOp)
@@ -201,7 +197,6 @@ field_constant: (IDENTIFIER) @constant
   "*"
   "**"
   "->"
-  "=>"
   ".?"
   ".*"
   "?"

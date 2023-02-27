@@ -517,4 +517,132 @@ describe("snippets_basic", function()
 			{2:-- INSERT --}                                      |]],
 		})
 	end)
+
+	it("snip_env respects behaviour (set)", function()
+		exec_lua([[
+			ls.setup({
+				snip_env = {
+					__snip_env_behaviour = "set",
+					_s = true
+				}
+			})
+			-- remove this variable from global environment.
+			s = nil
+		]])
+		exec_lua(
+			string.format(
+				[[require("luasnip.loaders.from_lua").load({paths="%s"})]],
+				os.getenv("LUASNIP_SOURCE")
+					.. "/tests/data/lua-snippets/luasnippets2_env_test_set"
+			)
+		)
+	end)
+	it("snip_env respects behaviour (extend)", function()
+		exec_lua([[
+			ls.setup({
+				snip_env = {
+					__snip_env_behaviour = "extend",
+					_s = true,
+					-- default has i as function, check override.
+					i = true
+				}
+			})
+			-- remove this variable from global environment.
+			s = nil
+		]])
+		exec_lua(
+			string.format(
+				[[require("luasnip.loaders.from_lua").load({paths="%s"})]],
+				os.getenv("LUASNIP_SOURCE")
+					.. "/tests/data/lua-snippets/luasnippets2_env_test_extend"
+			)
+		)
+	end)
+
+	it("autocommands are triggered by events", function()
+		assert.is_true(exec_lua([[
+			vim.api.nvim_create_autocmd("User", {
+				pattern = "LuasnipInsertNodeEnter",
+				callback = function()
+					inode_did_enter = true
+				end
+			})
+			ls.snip_expand(
+				s("trig", {
+					t"text", i(1), t"text again", i(2), t"and again"
+				}) )
+			return inode_did_enter
+		]]))
+	end)
+
+	it("{region,delete}_check_events works correctly", function()
+		exec_lua([[
+			ls.setup({
+				history = true,
+				region_check_events = {"CursorHold", "InsertLeave"},
+				delete_check_events = "TextChanged,InsertEnter",
+			})
+
+			ls.snip_expand(s("a", {
+				t"sometext", i(1, "someinsertnode")
+			}))
+		]])
+		screen:expect({
+			grid = [[
+  sometext^s{3:omeinsertnode}                            |
+  {0:~                                                 }|
+  {2:-- SELECT --}                                      |
+]],
+		})
+		-- leave snippet-area, and trigger insertLeave.
+		feed("<Esc>o<Esc>")
+		screen:expect({
+			grid = [[
+  sometextsomeinsertnode                            |
+  ^                                                  |
+                                                    |
+]],
+		})
+		-- make sure we're in the last tabstop (ie. region_check_events did its
+		-- job).
+		exec_lua("ls.jump(1)")
+		screen:expect({
+			grid = [[
+  sometextsomeinsertnode                            |
+  ^                                                  |
+                                                    |
+]],
+		})
+		-- not really necessary, but feels safer this way.
+		exec_lua("ls.jump(-1)")
+		screen:expect({
+			grid = [[
+  sometext^s{3:omeinsertnode}                            |
+                                                    |
+  {2:-- SELECT --}                                      |
+]],
+		})
+
+		-- delete snippet text
+		feed("<Esc>dd")
+		-- make sure the snippet is no longer active.
+		assert.is_true(exec_lua([[
+			return ls.session.current_nodes[vim.api.nvim_get_current_buf()] == nil
+		]]))
+	end)
+
+	it(
+		"jump_destination works for snippets where `node.active` is important",
+		function()
+			exec_lua([[
+			ls.snip_expand(s("", {i(1), sn(2, {t"this is skipped"}), i(3)}))
+		]])
+			assert.are.same(
+				exec_lua(
+					[[return ls.jump_destination(1).absolute_insert_position]]
+				),
+				{ 3 }
+			)
+		end
+	)
 end)

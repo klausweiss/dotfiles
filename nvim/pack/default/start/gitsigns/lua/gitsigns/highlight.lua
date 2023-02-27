@@ -11,8 +11,8 @@ local M = {}
 
 
 
-
-
+-- Use array of dict so we can iterate deterministically
+-- Export for docgen
 M.hls = {
    { GitSignsAdd = { 'GitGutterAdd', 'SignifySignAdd', 'DiffAddedGutter', 'diffAdded', 'DiffAdd',
 desc = "Used for the text of 'add' signs.",
@@ -78,8 +78,8 @@ desc = "Used for buffer line (when `config.linehl == true`) of 'changedelete' si
 desc = "Used for buffer line (when `config.linehl == true`) of 'untracked' signs.",
 }, },
 
-
-
+   -- Don't set GitSignsDeleteLn by default
+   -- {GitSignsDeleteLn = {}},
 
    { GitSignsStagedAdd = { 'GitSignsAdd', fg_factor = 0.5, hidden = true } },
    { GitSignsStagedChange = { 'GitSignsChange', fg_factor = 0.5, hidden = true } },
@@ -133,11 +133,11 @@ desc = "Used for changed word diff regions when `config.word_diff == true`.",
 desc = "Used for deleted word diff regions when `config.word_diff == true`.",
 }, },
 
-
-
-
-
-
+   -- Currently unused
+   -- {GitSignsAddLnVirtLn = {'GitSignsAddLn'}},
+   -- {GitSignsChangeVirtLn = {'GitSignsChangeLn'}},
+   -- {GitSignsAddLnVirtLnInLine = {'GitSignsAddLnInline', }},
+   -- {GitSignsChangeVirtLnInLine = {'GitSignsChangeLnInline', }},
 
    { GitSignsDeleteVirtLn = { 'GitGutterDeleteLine', 'SignifyLineDelete', 'DiffDelete',
 desc = "Used for deleted lines shown by inline `preview_hunk_inline()` or `show_deleted()`.",
@@ -150,7 +150,7 @@ desc = "Used for word diff regions in lines shown by inline `preview_hunk_inline
 }
 
 local function is_hl_set(hl_name)
-
+    -- TODO: this only works with `set termguicolors`
    local exists, hl = pcall(vim.api.nvim_get_hl_by_name, hl_name, true)
    local color = hl.foreground or hl.background or hl.reverse
    return exists and color ~= nil
@@ -185,19 +185,27 @@ local function derive(hl, hldef)
          else
             vim.api.nvim_set_hl(0, hl, { default = true, link = d })
          end
-         break
+         return
       end
+   end
+   if hldef[1] and not hldef.bg_factor and not hldef.fg_factor then
+      -- No fallback found which is set. Just link to the first fallback
+      -- if there are no modifiers
+      dprintf('Deriving %s from %s', hl, hldef[1])
+      vim.api.nvim_set_hl(0, hl, { default = true, link = hldef[1] })
+   else
+      dprintf('Could not derive %s', hl)
    end
 end
 
-
-
+-- Setup a GitSign* highlight by deriving it from other potentially present
+-- highlights.
 M.setup_highlights = function()
    local dprintf = require("gitsigns.debug").dprintf
    for _, hlg in ipairs(M.hls) do
       for hl, hldef in pairs(hlg) do
          if is_hl_set(hl) then
-
+            -- Already defined
             dprintf('Highlight %s is already defined', hl)
          else
             derive(hl, hldef)

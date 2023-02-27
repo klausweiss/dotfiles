@@ -9,13 +9,13 @@ local B = require('gitsigns.signs.base')
 
 local M = {}
 
-
-
-
-
-
-
-
+-- The internal representation of signs in Neovim is a linked list which is slow
+-- to index. To improve efficiency we add an abstraction layer to the signs API
+-- which keeps track of which signs have already been placed in the buffer.
+--
+-- This allows us to:
+--    - efficiently query placed signs.
+--    - skip adding a sign if it has already been placed.
 
 local function capitalise_word(x)
    return x:sub(1, 1):upper() .. x:sub(2)
@@ -54,7 +54,7 @@ local function define_sign(name, opts, redefine)
 end
 
 local function define_signs(obj, redefine)
-
+   -- Define signs
    for stype, cs in pairs(obj.config) do
       local hls = obj.hls[stype]
       define_sign(get_sign_name(stype), {
@@ -100,7 +100,7 @@ end
 
 function M:add(bufnr, signs)
    if not config.signcolumn and not config.numhl and not config.linehl then
-
+      -- Don't place signs if it won't show anything
       return
    end
 

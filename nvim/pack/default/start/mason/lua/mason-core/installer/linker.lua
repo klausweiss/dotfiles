@@ -1,85 +1,144 @@
 local path = require "mason-core.path"
+local Result = require "mason-core.result"
 local platform = require "mason-core.platform"
 local _ = require "mason-core.functional"
 local log = require "mason-core.log"
 local fs = require "mason-core.fs"
+local a = require "mason-core.async"
 
 local M = {}
 
----@param pkg Package
----@param links InstallReceiptLinks
-local function unlink_bin(pkg, links)
-    for executable in pairs(links.bin) do
-        local bin_path = path.bin_prefix(executable)
-        fs.sync.unlink(bin_path)
-    end
+---@alias LinkContext { type: '"bin"' | '"opt"' | '"share"', prefix: fun(path: string): string }
+
+---@type table<'"BIN"' | '"OPT"' | '"SHARE"', LinkContext>
+local LinkContext = {
+    BIN = { type = "bin", prefix = path.bin_prefix },
+    OPT = { type = "opt", prefix = path.opt_prefix },
+    SHARE = { type = "share", prefix = path.share_prefix },
+}
+
+---@param receipt InstallReceipt
+---@param link_context LinkContext
+local function unlink(receipt, link_context)
+    return Result.pcall(function()
+        local links = receipt.links[link_context.type]
+        if not links then
+            return
+        end
+        for linked_file in pairs(links) do
+            if receipt.schema_version == "1.0" and link_context == LinkContext.BIN and platform.is.win then
+                linked_file = linked_file .. ".cmd"
+            end
+            local share_path = link_context.prefix(linked_file)
+            fs.sync.unlink(share_path)
+        end
+    end)
 end
 
 ---@param pkg Package
----@param links InstallReceiptLinks
-function M.unlink(pkg, links)
-    log.fmt_debug("Unlinking %s", pkg)
-    unlink_bin(pkg, links)
-end
-
----@param to string
-local function relative_path_from_bin(to)
-    local _, match_end = to:find(path.install_prefix(), 1, true)
-    assert(match_end, "Failed to produce relative path.")
-    local relative_path = to:sub(match_end + 1)
-    return ".." .. relative_path
+---@param receipt InstallReceipt
+---@nodiscard
+function M.unlink(pkg, receipt)
+    log.fmt_debug("Unlinking %s", pkg, receipt.links)
+    return Result.try(function(try)
+        try(unlink(receipt, LinkContext.BIN))
+        try(unlink(receipt, LinkContext.SHARE))
+        try(unlink(receipt, LinkContext.OPT))
+    end)
 end
 
 ---@async
 ---@param context InstallContext
-local function link_bin(context)
-    local links = context.bin_links
-    local pkg = context.package
-    for name, rel_path in pairs(links) do
-        local target_abs_path = path.concat { pkg:get_install_path(), rel_path }
-        local target_rel_path = relative_path_from_bin(target_abs_path)
-        local bin_path = path.bin_prefix(name)
+---@param link_context LinkContext
+---@param link_fn async fun(dest: string, target: string): Result
+local function link(context, link_context, link_fn)
+    log.trace("Linking", context.package, link_context.type, context.links[link_context.type])
+    return Result.try(function(try)
+        for name, rel_path in pairs(context.links[link_context.type]) do
+            if platform.is.win and link_context == LinkContext.BIN then
+                name = ("%s.cmd"):format(name)
+            end
+            local dest_abs_path = link_context.prefix(name)
+            local target_abs_path = path.concat { context.package:get_install_path(), rel_path }
 
-        assert(not fs.async.file_exists(bin_path), ("bin/%s is already linked."):format(name))
-        assert(fs.async.file_exists(target_abs_path), ("Link target %q does not exist."):format(target_abs_path))
+            do
+                -- 1. Ensure destination directory exists
+                if vim.in_fast_event() then
+                    a.scheduler()
+                end
 
-        log.fmt_debug("Linking bin %s to %s", name, target_rel_path)
+                local dir = vim.fn.fnamemodify(dest_abs_path, ":h")
+                if not fs.async.dir_exists(dir) then
+                    try(Result.pcall(fs.async.mkdirp, dir))
+                end
+            end
 
-        platform.when {
-            unix = function()
-                fs.async.symlink(target_rel_path, bin_path)
-            end,
-            win = function()
-                -- We don't "symlink" on Windows because:
-                -- 1) .LNK is not commonly found in PATHEXT
-                -- 2) some executables can only run from their true installation location
-                -- 3) many utilities only consider .COM, .EXE, .CMD, .BAT files as candidates by default when resolving executables (e.g. neovim's |exepath()| and |executable()|)
-                fs.async.write_file(
-                    ("%s.cmd"):format(bin_path),
-                    _.dedent(([[
-                        @ECHO off
-                        GOTO start
-                        :find_dp0
-                        SET dp0=%%~dp0
-                        EXIT /b
-                        :start
-                        SETLOCAL
-                        CALL :find_dp0
+            do
+                -- 2. Ensure source file exists and target doesn't yet exist OR if --force unlink target if it already
+                -- exists.
+                if context.opts.force then
+                    if fs.async.file_exists(dest_abs_path) then
+                        try(Result.pcall(fs.async.unlink, dest_abs_path))
+                    end
+                elseif fs.async.file_exists(dest_abs_path) then
+                    return Result.failure(("%q is already linked."):format(dest_abs_path, name))
+                end
+                if not fs.async.file_exists(target_abs_path) then
+                    return Result.failure(("Link target %q does not exist."):format(target_abs_path))
+                end
+            end
 
-                        endLocal & goto #_undefined_# 2>NUL || title %%COMSPEC%% & "%%dp0%%\%s" %%*
-                ]]):format(target_rel_path))
-                )
-            end,
-        }
-        context.receipt:with_link("bin", name, rel_path)
-    end
+            -- 3. Execute link.
+            try(link_fn(dest_abs_path, target_abs_path))
+            context.receipt:with_link(link_context.type, name, rel_path)
+        end
+    end)
+end
+
+---@param context InstallContext
+---@param link_context LinkContext
+local function symlink(context, link_context)
+    return link(context, link_context, function(target, dest)
+        return Result.pcall(fs.async.symlink, dest, target)
+    end)
+end
+
+---@param context InstallContext
+local function win_bin_wrapper(context)
+    return link(context, LinkContext.BIN, function(dest, target)
+        return Result.pcall(
+            fs.async.write_file,
+            dest,
+            _.dedent(([[
+                @ECHO off
+                GOTO start
+                :find_dp0
+                SET dp0=%%~dp0
+                EXIT /b
+                :start
+                SETLOCAL
+                CALL :find_dp0
+
+                endLocal & goto #_undefined_# 2>NUL || title %%COMSPEC%% & "%s" %%*
+            ]]):format(target))
+        )
+    end)
 end
 
 ---@async
 ---@param context InstallContext
+---@nodiscard
 function M.link(context)
     log.fmt_debug("Linking %s", context.package)
-    link_bin(context)
+    return Result.try(function(try)
+        if platform.is.win then
+            try(win_bin_wrapper(context))
+        else
+            try(symlink(context, LinkContext.BIN))
+        end
+        try(symlink(context, LinkContext.SHARE))
+        try(symlink(context, LinkContext.OPT))
+    end)
 end
 
 return M

@@ -176,17 +176,16 @@ function Result.run_catching(fn)
     end
 end
 
----@generic V
----@param fn fun(try: fun(result: Result): any): V
----@return Result # Result<V>
+---@generic T
+---@param fn fun(try: fun(result: Result)): T?
+---@return Result # Result<T>
 function Result.try(fn)
     local thread = coroutine.create(fn)
     local step
     step = function(...)
         local ok, result = coroutine.resume(thread, ...)
         if not ok then
-            -- l'exception! panique!!!
-            error(result, 0)
+            return Result.failure(result)
         end
         if coroutine.status(thread) == "dead" then
             if getmetatable(result) == Result then

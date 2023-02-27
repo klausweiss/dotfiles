@@ -2,12 +2,11 @@
 
 ---@brief [[
 --- |telescope.mappings| is used to configure the keybindings within
---- a telescope picker. These keybinds are only local to the picker window
+--- a telescope picker. These key binds are only local to the picker window
 --- and will be cleared once you exit the picker.
 ---
---- We provide multiple different ways of configuring, as described below,
---- to provide an easy to use experience for changing the default behavior
---- of telescope or extending for your own purposes.
+--- We provide multiple configuration options to make it easy for you to adjust
+--- telescope's default key bindings and create your own custom key binds.
 ---
 --- To see many of the builtin actions that you can use as values for this
 --- table, see |telescope.actions|
@@ -39,7 +38,6 @@
 ---     ...,
 ---   }
 --- </code>
----    Into your config.
 ---
 --- To override behavior of a key, simply set the value
 --- to be a function (either by requiring an action or by writing
@@ -53,7 +51,7 @@
 --- </code>
 ---
 ---  If the function you want is part of `telescope.actions`, then you can
----  simply give a string.
+---  simply supply the function name as a string.
 ---    For example, the previous option is equivalent to:
 --- <code>
 ---   {
@@ -350,7 +348,7 @@ mappings.execute_keymap = function(prompt_bufnr, keymap_identifier)
   assert(key_func, string.format("Unsure of how we got this failure: %s %s", prompt_bufnr, keymap_identifier))
 
   key_func(prompt_bufnr)
-  vim.api.nvim_exec_autocmds("User TelescopeKeymap", {})
+  vim.api.nvim_exec_autocmds("User", { pattern = "TelescopeKeymap" })
 end
 
 mappings.clear = function(prompt_bufnr)
