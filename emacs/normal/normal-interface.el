@@ -32,7 +32,7 @@
 			  )
 	dashboard-set-heading-icons t
 	dashboard-set-file-icons t
-	dashboard-page-separator "\n\f\n"
+	dashboard-page-separator "\n\n"
 	)
   )
 

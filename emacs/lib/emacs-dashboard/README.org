@@ -4,7 +4,8 @@
 
 * Emacs Dashboard
 
-[[https://github.com/emacs-dashboard/emacs-dashboard/actions/workflows/ci.yml][https://github.com/emacs-dashboard/emacs-dashboard/workflows/CI/badge.svg]]
+[[https://github.com/emacs-dashboard/emacs-dashboard/actions/workflows/test.yml][https://github.com/emacs-dashboard/emacs-dashboard/workflows/CI/badge.svg]]
+[[https://github.com/emacs-dashboard/emacs-dashboard/actions/workflows/activate.yml][https://github.com/emacs-dashboard/emacs-dashboard/workflows/Activate/badge.svg]]
 
 An extensible emacs startup screen showing you what's most important.
 
@@ -33,6 +34,8 @@ You will need the following packages which are all available on Melpa:
 M-x package-install RET dashboard
 #+END_SRC
 
+** Open the Dashboard
+You can set up the dashboard to open automatically at startup using =dashboard-setup-startup-hook=:
  #+BEGIN_SRC elisp
 (require 'dashboard)
 (dashboard-setup-startup-hook)
@@ -43,7 +46,9 @@ M-x package-install RET dashboard
   (dashboard-setup-startup-hook))
  #+END_SRC
 
-By default, this will show three lists, recent files and bookmarks and org-agenda items.
+Alternatively, if you don't want the dashboard to open by default, you can use the interactive function =dashboard-open= to open it when you do want it.
+
+By default, the dashboard will show three lists, recent files and bookmarks and org-agenda items.
 
 The widget “projects”, which shows a list of recent projects, is not enabled
 by default since it depends on packages that might not be available.  To
@@ -52,13 +57,15 @@ activate the widget, set the variable =dashboard-projects-backend= to either
 available from GNU elpa), then add an entry like
 =(projects . 5)= to the variable =dashboard-items=.
 
+The function =dashboard-refresh-buffer= (an alias for =dashboard-open=) can be used to visit and refresh the dashboard.
+
 ** Emacs Daemon
 
 In addition to the above, configure =initial-buffer-choice= to show
 Dashboard in frames created with =emacsclient -c= as follows:
 
 #+BEGIN_SRC elisp
-(setq initial-buffer-choice (lambda () (get-buffer "*dashboard*")))
+(setq initial-buffer-choice (lambda () (get-buffer-create "*dashboard*")))
 #+END_SRC
 
 * Configuration
@@ -71,10 +78,12 @@ To update the banner or banner title
 ;; Set the banner
 (setq dashboard-startup-banner [VALUE])
 ;; Value can be
-;; 'official which displays the official emacs logo
-;; 'logo which displays an alternative emacs logo
-;; 1, 2 or 3 which displays one of the text banners
-;; "path/to/your/image.gif", "path/to/your/image.png" or "path/to/your/text.txt" which displays whatever gif/image/text you would prefer
+;; - nil to display no banner
+;; - 'official which displays the official emacs logo
+;; - 'logo which displays an alternative emacs logo
+;; - 1, 2 or 3 which displays one of the text banners
+;; - "path/to/your/image.gif", "path/to/your/image.png" or "path/to/your/text.txt" which displays whatever gif/image/text you would prefer
+;; - a cons of '("path/to/your/image.png" . "path/to/your/text.txt")
 
 ;; Content is not centered by default. To center, set
 (setq dashboard-center-content t)
@@ -194,10 +203,8 @@ To show agenda for the upcoming seven days set the variable ~dashboard-week-agen
 (setq dashboard-week-agenda t)
 #+END_SRC
 
-Note that setting list-size for the agenda list is intentionally ignored; all agenda items for the current day will be displayed.
-
 By default org-agenda entries are filter by time, only showing those
-task with ~DEADLINE~ or ~SCHEDULE-TIME~. To show all agenda entries
+task with ~DEADLINE~, ~SCHEDULE-TIME~ or ~TIMESTAMP~ . To show all agenda entries
 (except ~DONE~)
 
 #+begin_src elisp
@@ -221,7 +228,30 @@ are close. Note that this could slow down the dashboard buffer refreshment.
 
 Agenda is now sorted with ~dashboard-agenda-sort-strategy~ following
 the idea of [[https://orgmode.org/worg/doc.html#org-agenda-sorting-strategy][org-agenda-sorting-strategy]]. Suported strategies are
-~time-up~, ~time-down~, ~todo-state-up~ and ~todo-state-down~
+~priority-up~, ~priority-down, ~time-up~, ~time-down~, ~todo-state-up~ and ~todo-state-down~
+
+*** Agenda format
+
+To personalize the aspect of each entry, there is
+~dashboard-agenda-prefix-format~ which initial value is
+~" %i %-12:c %-10s "~ where ~%i~ is the icon category of the item (see
+[[https://orgmode.org/worg/doc.html#org-agenda-category-icon-alist][org-agenda-category-icon-alist]]), ~%-12:c~ gives the category a 12
+chars wide field and append a colon to the category. A similar padding
+but for a 10 wide field is ~%-10s~ that is for the scheduling or
+deadline information. For more information see [[https://orgmode.org/worg/doc.html#org-agenda-prefix-format][org-agenda-prefix-format]].
+
+Deadline or Scheduling time will be formatted using
+~dashboard-agenda-time-string-format~ and the keywords (TODO, DONE)
+respect [[https://orgmode.org/worg/doc.html#org-agenda-todo-keyword-format][org-agenda-todo-keyword-format]].
+
+*** Agenda tags
+
+To customize the tags format there is a variable
+~dashboard-agenda-tags-format~. This variable could be any function that
+receives the tags directly from ~org-get-tags~. By default
+~dashboard-agenda-tags-format~ is set to ~identity~. To hide the
+tags set the variable to ~ignore~: ~(setq dashboard-agenda-tags-format 'ignore)~
+or to ~nil~.
 
 ** Faces
 
@@ -283,10 +313,10 @@ M-x package-delete dashboard-<version> RET
 #+END_SRC
 
 #+BEGIN_SRC shell
-make build
+make package
 make install
 #+END_SRC
 
 ** Prerequisites
 
-  * [[https://github.com/cask/cask][Cask]]
+  * [[https://github.com/emacs-eask/cli][Eask]]
