@@ -29,7 +29,7 @@ end
 local set_sink_number_cmd = function(sink_number) return "pactl set-default-sink " .. sink_number end
 
 local get_output_volume_cmd = function(sink_number)
-   return "pactl list sinks | sed -e '1,/Sink.*" ..
+   return "pactl list sinks | sed -e '0,/Sink.*" ..
        sink_number .. "/d;/Sink/q' | grep -i 'volume.*front' | tail -n1"
 end
 local get_input_volume_cmd = "pactl list sources | grep -i 'volume.*front' | tail -n1"
