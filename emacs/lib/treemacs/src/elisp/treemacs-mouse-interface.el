@@ -1,6 +1,6 @@
 ;;; treemacs.el --- A tree style file viewer package -*- lexical-binding: t -*-
 
-;; Copyright (C) 2021 Alexander Miller
+;; Copyright (C) 2022 Alexander Miller
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -42,6 +42,17 @@
 
 (defvar treemacs--mouse-project-list-functions
   '(("Add Project.el project" . treemacs--builtin-project-mouse-selection-menu)))
+
+(defun treemacs--mouse-drag-advice (fn &rest args)
+  "Advice to wrap `adjust-window-trailing-edge' as FN and its ARGS.
+Ensure that treemacs' window width can be changed with the mouse, even if it is
+locked."
+  (with-selected-window (or (treemacs-get-local-window) (selected-window))
+    (let ((treemacs--width-is-locked)
+          (window-size-fixed))
+      (apply fn args))))
+
+(advice-add #'adjust-window-trailing-edge :around #'treemacs--mouse-drag-advice)
 
 (defun treemacs--builtin-project-mouse-selection-menu ()
   "Build a mouse selection menu for project.el projects."
@@ -137,13 +148,51 @@ Clicking on icons will expand a file's tags, just like
 Must be bound to a mouse click, or EVENT will not be supplied."
   (interactive "e")
   (when (eq 'drag-mouse-1 (elt event 0))
-    (-when-let (treemacs-buffer (treemacs-get-local-buffer))
-      (let* ((node (with-current-buffer treemacs-buffer (treemacs-node-at-point)))
-             (path (-some-> node (treemacs-button-get :path))))
-        (treemacs-with-path path
-          :file-action (progn (select-window (elt (elt event 2) 0))
-                              (find-file path))
-          :no-match-action (ignore))))))
+    (let* ((info1 (elt (cdr event) 0))
+           (info2 (elt (cdr event) 1))
+           (source-window (elt info1 0))
+           (target-window (elt info2 0))
+           (source-pos (elt info1 1))
+           (target-pos (elt info2 1))
+           (treemacs-buffer (treemacs-get-local-buffer)))
+      (if (eq source-window target-window)
+          (treemacs--drag-move-files source-pos target-pos)
+          (let* ((node (with-current-buffer treemacs-buffer (treemacs-node-at-point)))
+                 (path (-some-> node (treemacs-button-get :path))))
+            (treemacs-with-path path
+              :file-action (progn (select-window target-window)
+                                  (find-file path))
+              :no-match-action (ignore)))))))
+
+(defun treemacs--drag-move-files (source-pos target-pos)
+  "Move files with a mouse-drag action.
+SOURCE-POS: Start position of the mouse drag.
+TARGET-POS: End position of the mouse drag."
+  (let* ((source-btn (treemacs--button-in-line source-pos))
+         (target-btn (treemacs--button-in-line target-pos))
+         (source-key (-some-> source-btn (treemacs-button-get :key)))
+         (target-key (-some-> target-btn (treemacs-button-get :key)))
+         (target-dir (and target-key
+                          (if (file-directory-p target-key)
+                              target-key
+                            (treemacs--parent-dir target-key))))
+         (target-file (and source-key target-key
+                           (treemacs-join-path target-dir (treemacs--filename source-key)))))
+    (when (and source-key target-key
+               (not (string= source-key target-key))
+               (not (treemacs-is-path source-key :directly-in target-dir)))
+      (treemacs-do-delete-single-node source-key)
+      (treemacs--without-filewatch
+       (rename-file source-key target-file))
+      (run-hook-with-args 'treemacs-copy-file-functions source-key target-dir)
+      (treemacs-do-insert-single-node target-file target-dir)
+      (treemacs-update-single-file-git-state source-key)
+      (treemacs-update-single-file-git-state target-file)
+      (treemacs--on-file-deletion source-key)
+      (treemacs-goto-file-node target-file)
+      (treemacs-pulse-on-success "Moved %s to %s"
+        (propertize (treemacs--filename target-file) 'face 'font-lock-string-face)
+        (propertize target-dir 'face 'font-lock-string-face)))))
 
 ;;;###autoload
 (defun treemacs-define-doubleclick-action (state action)

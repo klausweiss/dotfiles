@@ -1,6 +1,6 @@
 ;;; company.el --- Modular text completion framework  -*- lexical-binding: t -*-
 
-;; Copyright (C) 2009-2021  Free Software Foundation, Inc.
+;; Copyright (C) 2009-2022  Free Software Foundation, Inc.
 
 ;; Author: Nikolaj Schumacher
 ;; Maintainer: Dmitry Gutov <dgutov@yandex.ru>
@@ -513,7 +513,7 @@ without duplicates."
                  (company-sort-by-backend-importance))
           (const :tag "Prefer case sensitive prefix"
                  (company-sort-prefer-same-case-prefix))
-          (repeat :tag "User defined" (function))))
+          (repeat :tag "User defined" function)))
 
 (defcustom company-completion-started-hook nil
   "Hook run when company starts completing.
@@ -566,45 +566,61 @@ doesn't match anything or finish it manually, e.g. with RET."
 This can be a function do determine if a match is required.
 
 This can be overridden by the backend, if it returns t or `never' to
-`require-match'.  `company-auto-commit' also takes precedence over this."
+`require-match'.  `company-insertion-on-trigger' also takes precedence over
+this."
   :type '(choice (const :tag "Off" nil)
                  (function :tag "Predicate function")
                  (const :tag "On, if user interaction took place"
-                        'company-explicit-action-p)
+                        company-explicit-action-p)
                  (const :tag "On" t)))
 
 (define-obsolete-variable-alias
   'company-auto-complete
-  'company-auto-commit
+  'company-insertion-on-trigger
   "0.9.14")
 
-(defcustom company-auto-commit nil
-  "Determines whether to auto-commit.
-If this is enabled, all characters from `company-auto-commit-chars'
-trigger insertion of the selected completion candidate.
-This can also be a function."
+(define-obsolete-variable-alias
+  'company-auto-commit
+  'company-insertion-on-trigger
+  "0.9.14")
+
+(defcustom company-insertion-on-trigger nil
+  "If enabled, allow triggering insertion of the selected candidate.
+This can also be a predicate function, for example,
+`company-explicit-action-p'.
+
+See `company-insertion-triggers' for more details on how to define
+triggers."
   :type '(choice (const :tag "Off" nil)
                  (function :tag "Predicate function")
                  (const :tag "On, if user interaction took place"
-                        'company-explicit-action-p)
+                        company-explicit-action-p)
                  (const :tag "On" t))
   :package-version '(company . "0.9.14"))
 
 (define-obsolete-variable-alias
   'company-auto-complete-chars
-  'company-auto-commit-chars
+  'company-insertion-triggers
   "0.9.14")
 
-(defcustom company-auto-commit-chars '(?\  ?\) ?.)
-  "Determines which characters trigger auto-commit.
-See `company-auto-commit'.  If this is a string, each character in it
-triggers auto-commit.  If it is a list of syntax description characters (see
-`modify-syntax-entry'), characters with any of those syntaxes do that.
+(define-obsolete-variable-alias
+  'company-auto-commit-chars
+  'company-insertion-triggers
+  "0.9.14")
 
-This can also be a function, which is called with the new input and should
-return non-nil if company should auto-commit.
+(defcustom company-insertion-triggers '(?\  ?\) ?.)
+  "Determine triggers for `company-insertion-on-trigger'.
 
-A character that is part of a valid completion never triggers auto-commit."
+If this is a string, then each character in it can trigger insertion of the
+selected candidate.  If it is a list of syntax description characters (see
+`modify-syntax-entry'), then characters with any of those syntaxes can act
+as triggers.
+
+This can also be a function, which is called with the new input.  To
+trigger insertion, the function should return a non-nil value.
+
+Note that a character that is part of a valid completion never triggers
+insertion."
   :type '(choice (string :tag "Characters")
                  (set :tag "Syntax"
                       (const :tag "Whitespace" ?\ )
@@ -654,7 +670,7 @@ pre-defined list.  See `company-idle-delay'.
 Alternatively, any command with a non-nil `company-begin' property is
 treated as if it was on this list."
   :type '(choice (const :tag "Any command" t)
-                 (const :tag "Self insert command" '(self-insert-command))
+                 (const :tag "Self insert command" (self-insert-command))
                  (repeat :tag "Commands" function))
   :package-version '(company . "0.8.4"))
 
@@ -1059,7 +1075,7 @@ If EXPRESSION is non-nil, return the match string for the respective
 parenthesized expression in REGEXP.
 Matching is limited to the current line."
   (let ((inhibit-field-text-motion t))
-    (company-grab regexp expression (point-at-bol))))
+    (company-grab regexp expression (line-beginning-position))))
 
 (defun company-grab-symbol ()
   "If point is at the end of a symbol, return it.
@@ -1324,7 +1340,15 @@ can retrieve meta-data for them."
             (and (symbolp this-command)
                  (string-match-p "\\`company-" (symbol-name this-command)))))))
 
+(defvar company-auto-update-doc nil
+  "If non-nil, update the documentation buffer on each selection change.
+To toggle the value of this variable, call `company-show-doc-buffer' with a
+prefix argument.")
+
 (defun company-call-frontends (command)
+  (when (and company-auto-update-doc
+             (memq command '(update show)))
+    (company-show-doc-buffer))
   (cl-loop for frontend in company-frontends collect
            (condition-case-unless-debug err
                (funcall frontend command)
@@ -1424,7 +1448,9 @@ update if FORCE-UPDATE."
   (and candidates
        (not (cdr candidates))
        (eq t (compare-strings (car candidates) nil nil
-                              prefix nil nil ignore-case))))
+                              prefix nil nil ignore-case))
+       (not (eq (company-call-backend 'kind (car candidates))
+                'snippet))))
 
 (defun company--fetch-candidates (prefix)
   (let* ((non-essential (not (company-explicit-action-p)))
@@ -1596,7 +1622,7 @@ end of the match."
                           (let ((base-size (cdr company-icon-size))
                                 (dfh (default-font-height)))
                             (min
-                             (if (> dfh (* 2 base-size))
+                             (if (>= dfh (* 2 base-size))
                                  (* 2 base-size)
                                base-size)
                              (* company-icon-margin dfw))))))
@@ -1609,10 +1635,21 @@ end of the match."
                          :background (unless (eq bkg 'unspecified)
                                        bkg)))
              (spacer-px-width (- (* company-icon-margin dfw) icon-size)))
-        (concat
-         (propertize " " 'display spec)
-         (propertize (company-space-string (1- company-icon-margin))
-                     'display `(space . (:width (,spacer-px-width))))))
+        (cond
+         ((<= company-icon-margin 2)
+          (concat
+           (propertize " " 'display spec)
+           (propertize (company-space-string (1- company-icon-margin))
+                       'display `(space . (:width (,spacer-px-width))))))
+         (t
+          (let* ((spacer-left (/ spacer-px-width 2))
+                 (spacer-right (- spacer-px-width spacer-left)))
+            (concat
+             (propertize (company-space-string 1)
+                         'display `(space . (:width (,spacer-left))))
+             (propertize " " 'display spec)
+             (propertize (company-space-string (- company-icon-margin 2))
+                         'display `(space . (:width (,spacer-right)))))))))
     nil))
 
 (defun company-vscode-dark-icons-margin (candidate selected)
@@ -1673,14 +1710,14 @@ fields without issue.
 When BG is omitted and `company-text-icons-add-background' is non-nil, a BG
 color is generated using a gradient between the active tooltip color and
 the FG color."
-  :type 'list)
+  :type '(repeat sexp))
 
 (defcustom company-text-face-extra-attributes '(:weight bold)
   "Additional attributes to add to text/dot icons faces.
 If non-nil, an anonymous face is generated.
 
 Affects `company-text-icons-margin' and `company-dot-icons-margin'."
-  :type 'list)
+  :type '(plist :tag "Face property list"))
 
 (defcustom company-text-icons-format " %s "
   "Format string for printing the text icons."
@@ -1771,7 +1808,7 @@ PROPERTY return nil."
   (if (and (display-graphic-p)
            (image-type-available-p 'svg))
       (cl-case (frame-parameter nil 'background-mode)
-        ('light (company-vscode-light-icons-margin candidate selected))
+        (light (company-vscode-light-icons-margin candidate selected))
         (t (company-vscode-dark-icons-margin candidate selected)))
     (company-text-icons-margin candidate selected)))
 
@@ -1954,18 +1991,20 @@ prefix match (same case) will be prioritized."
                  (funcall company-require-match)
                (eq company-require-match t))))))
 
-(defun company-auto-commit-p (input)
-  "Return non-nil if INPUT should trigger auto-commit."
-  (and (if (functionp company-auto-commit)
-           (funcall company-auto-commit)
-         company-auto-commit)
-       (if (functionp company-auto-commit-chars)
-           (funcall company-auto-commit-chars input)
-         (if (consp company-auto-commit-chars)
+(defun company-insertion-on-trigger-p (input)
+  "Return non-nil if INPUT should trigger insertion.
+For more details see `company-insertion-on-trigger' and
+`company-insertion-triggers'."
+  (and (if (functionp company-insertion-on-trigger)
+           (funcall company-insertion-on-trigger)
+         company-insertion-on-trigger)
+       (if (functionp company-insertion-triggers)
+           (funcall company-insertion-triggers input)
+         (if (consp company-insertion-triggers)
              (memq (char-syntax (string-to-char input))
-                   company-auto-commit-chars)
+                   company-insertion-triggers)
            (string-match (regexp-quote (substring input 0 1))
-                          company-auto-commit-chars)))))
+                         company-insertion-triggers)))))
 
 (defun company--incremental-p ()
   (and (> (point) company-point)
@@ -2030,8 +2069,8 @@ prefix match (same case) will be prioritized."
       (company-update-candidates c)
       c)
      ((and (characterp last-command-event)
-           (company-auto-commit-p (string last-command-event)))
-      ;; auto-commit
+           (company-insertion-on-trigger-p (string last-command-event)))
+      ;; Insertion on trigger.
       (save-excursion
         (goto-char company-point)
         (company-complete-selection)
@@ -2509,7 +2548,8 @@ and invoke the normal binding.
 
 With ARG, move by that many elements."
   (interactive "p")
-  (if (> company-candidates-length 1)
+  (if (or (not company-selection)
+          (> company-candidates-length 1))
       (company-select-next arg)
     (company-abort)
     (company--unread-this-command-keys)))
@@ -2608,6 +2648,18 @@ With ARG, move by that many elements."
         (let ((company-selection-wrap-around t)
               (current-prefix-arg arg))
           (call-interactively 'company-select-next))))))
+
+(defun company-complete-common-or-show-delayed-tooltip ()
+  "Insert the common part of all candidates, or show a tooltip."
+  (interactive)
+  (when (company-manual-begin)
+    (let ((tick (buffer-chars-modified-tick)))
+      (call-interactively 'company-complete-common)
+      (when (eq tick (buffer-chars-modified-tick))
+          (let ((company-tooltip-idle-delay 0.0))
+            (company-complete)
+            (and company-candidates
+                 (company-call-frontends 'post-command)))))))
 
 (defun company-indent-or-complete-common (arg)
   "Indent the current line or region, or complete the common part."
@@ -2790,22 +2842,37 @@ from the candidates list.")
                                  unread-command-events))
     (clear-this-command-keys t)))
 
-(defun company-show-doc-buffer ()
-  "Temporarily show the documentation buffer for the selection."
-  (interactive)
+(defun company--show-doc-buffer ()
+  "Show the documentation buffer for the selection."
   (let ((other-window-scroll-buffer)
         (selection (or company-selection 0)))
-    (company--electric-do
       (let* ((selected (nth selection company-candidates))
              (doc-buffer (or (company-call-backend 'doc-buffer selected)
-                             (user-error "No documentation available")))
+                             (if company-auto-update-doc
+                                 (company-doc-buffer
+                                  (format "%s: No documentation available"
+                                          selected))
+                               (user-error "No documentation available"))))
              start)
         (when (consp doc-buffer)
           (setq start (cdr doc-buffer)
                 doc-buffer (car doc-buffer)))
         (setq other-window-scroll-buffer (get-buffer doc-buffer))
         (let ((win (display-buffer doc-buffer t)))
-          (set-window-start win (if start start (point-min))))))))
+          (set-window-start win (if start start (point-min)))))))
+
+(defun company-show-doc-buffer (&optional toggle-auto-update)
+  "Show the documentation buffer for the selection.
+With a prefix argument TOGGLE-AUTO-UPDATE, toggle the value of
+`company-auto-update-doc'.  When `company-auto-update-doc' is non-nil,
+automatically show the documentation buffer for each selection."
+  (interactive "P")
+  (when toggle-auto-update
+    (setq company-auto-update-doc (not company-auto-update-doc)))
+  (if company-auto-update-doc
+      (company--show-doc-buffer)
+    (company--electric-do
+      (company--show-doc-buffer))))
 (put 'company-show-doc-buffer 'company-keep t)
 
 (defun company-show-location ()
@@ -2833,7 +2900,7 @@ from the candidates list.")
 
 (defvar-local company-callback nil)
 
-(defun company-remove-callback (&optional ignored)
+(defun company-remove-callback (&optional _ignored)
   (remove-hook 'company-completion-finished-hook company-callback t)
   (remove-hook 'company-completion-cancelled-hook 'company-remove-callback t)
   (remove-hook 'company-completion-finished-hook 'company-remove-callback t))
@@ -2867,7 +2934,7 @@ successfully completes the input.
 Example: \(company-begin-with \\='\(\"foo\" \"foobar\" \"foobarbaz\"\)\)"
   (let ((begin-marker (copy-marker (point) t)))
     (company-begin-backend
-     (lambda (command &optional arg &rest ignored)
+     (lambda (command &optional arg &rest _ignored)
        (pcase command
          (`prefix
           (when (equal (point) (marker-position begin-marker))
@@ -3675,6 +3742,10 @@ Delay is determined by `company-tooltip-idle-delay'."
                                               'keep-prefix))
                          (company-strip-prefix completion)
                        completion))
+
+    (when (string-prefix-p "\n" completion)
+      (setq completion (concat (propertize " " 'face 'company-preview) "\n"
+                               (substring completion 1))))
 
     (and (equal pos (point))
          (not (equal completion ""))

@@ -1,6 +1,6 @@
 ;;; treemacs-evil.el --- Evil mode integration for treemacs -*- lexical-binding: t -*-
 
-;; Copyright (C) 2021 Alexander Miller
+;; Copyright (C) 2022 Alexander Miller
 
 ;; Author: Alexander Miller <alexanderm@web.de>
 ;; Package-Requires: ((emacs "26.1") (evil "1.2.12") (treemacs "0.0"))
@@ -33,6 +33,8 @@
   treemacs-advanced-helpful-hydra)
 
 (declare-function treemacs-add-bookmark "treemacs-bookmarks.el")
+
+(declare-function treemacs-git-commit-diff-mode "treemacs-commit-diff-mode.el")
 
 (evil-define-state treemacs
   "Treemacs state"
@@ -82,6 +84,8 @@ Then call ORIG-FUN with its ARGS and reopen treemacs if it was open before."
 (define-key evil-treemacs-state-map (kbd "tf")  #'treemacs-follow-mode)
 (define-key evil-treemacs-state-map (kbd "ta")  #'treemacs-filewatch-mode)
 (define-key evil-treemacs-state-map (kbd "tg")  #'treemacs-git-mode)
+(define-key evil-treemacs-state-map (kbd "tc")  #'treemacs-indicate-top-scroll-mode)
+(define-key evil-treemacs-state-map (kbd "td")  #'treemacs-git-commit-diff-mode)
 (define-key evil-treemacs-state-map (kbd "tn")  #'treemacs-indent-guide-mode)
 (define-key evil-treemacs-state-map (kbd "w")   #'treemacs-set-width)
 (define-key evil-treemacs-state-map (kbd ">")   #'treemacs-increase-width)
@@ -106,6 +110,8 @@ Then call ORIG-FUN with its ARGS and reopen treemacs if it was open before."
 (evil-define-key 'treemacs treemacs-mode-map (kbd "h")      #'treemacs-COLLAPSE-action)
 (evil-define-key 'treemacs treemacs-mode-map (kbd "RET")    #'treemacs-RET-action)
 (evil-define-key 'treemacs treemacs-mode-map (kbd "l")      #'treemacs-RET-action)
+(unless (window-system)
+  (evil-define-key 'treemacs treemacs-mode-map [C-i] #'treemacs-TAB-action))
 
 (provide 'treemacs-evil)
 

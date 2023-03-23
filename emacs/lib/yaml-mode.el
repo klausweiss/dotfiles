@@ -12,19 +12,18 @@
 
 ;; This file is not part of Emacs
 
-;; This file is free software; you can redistribute it and/or modify
+;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
-;; the Free Software Foundation; either version 2, or (at your option)
-;; any later version.
+;; the Free Software Foundation, either version 3 of the License, or
+;; (at your option) any later version.
 
-;; This file is distributed in the hope that it will be useful,
+;; This program is distributed in the hope that it will be useful,
 ;; but WITHOUT ANY WARRANTY; without even the implied warranty of
 ;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ;; GNU General Public License for more details.
 
-;; You should have received a copy of the GNU General Public License along
-;; with this program; if not, write to the Free Software Foundation, Inc.,
-;; 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+;; You should have received a copy of the GNU General Public License
+;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ;;; Commentary:
 
@@ -179,7 +178,7 @@ that key is pressed to begin a block literal."
              "y" "Y" "yes" "Yes" "YES" "n" "N" "no" "No" "NO"
              "true" "True" "TRUE" "false" "False" "FALSE"
              "on" "On" "ON" "off" "Off" "OFF") t)
-          " *$")
+          "\\_>")
   "Regexp matching certain scalar constants in scalar context.")
 
 
@@ -307,8 +306,8 @@ artificially limited to the value of
   (if (eolp) (goto-char (1+ (point))))
   (unless (or (eobp) (>= (point) bound))
     (let ((begin (point))
-          (end (min (1+ (point-at-eol)) bound)))
-      (goto-char (point-at-bol))
+          (end (min (1+ (line-end-position)) bound)))
+      (goto-char (line-beginning-position))
       (while (and (looking-at yaml-blank-line-re)
                   (not (bobp)))
         (forward-line -1))
@@ -427,7 +426,7 @@ margin."
 otherwise do nothing."
   (interactive)
   (save-excursion
-    (goto-char (point-at-bol))
+    (goto-char (line-beginning-position))
     (while (and (looking-at-p yaml-blank-line-re) (not (bobp)))
       (forward-line -1))
     (let ((nlines yaml-block-literal-search-lines)

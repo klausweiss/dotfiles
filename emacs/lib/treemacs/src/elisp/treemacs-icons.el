@@ -1,6 +1,6 @@
 ;;; treemacs.el --- A tree style file viewer package -*- lexical-binding: t -*-
 
-;; Copyright (C) 2021 Alexander Miller
+;; Copyright (C) 2022 Alexander Miller
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -239,33 +239,38 @@ Necessary since root icons are not rectangular."
   accessible."
   (treemacs-static-assert (or (null icon) (null file))
     "FILE and ICON arguments are mutually exclusive")
-  (-let [ext-list (--map (if (stringp it) (downcase it) it)
-                         (if (symbolp extensions) (symbol-value extensions) extensions))]
-    `(let* ((fallback   ,(if (equal fallback (quote 'same-as-icon))
-                             icon
-                           fallback))
-            (icons-dir  ,(if icons-dir icons-dir `(treemacs-theme->path treemacs--current-theme)))
-            (icon-path  ,(if file `(treemacs-join-path icons-dir ,file) nil))
-            (icon-pair  ,(if file `(treemacs--create-icon-strings icon-path fallback)
-                           `(cons ,(treemacs--splice-icon icon) fallback)))
-            (gui-icons  (treemacs-theme->gui-icons treemacs--current-theme))
-            (tui-icons  (treemacs-theme->tui-icons treemacs--current-theme))
-            (gui-icon   (car icon-pair))
-            (tui-icon   (cdr icon-pair)))
-       ,(unless file
-          `(progn
-             (ignore icon-path)
-             (ignore icons-dir)))
-       ;; prefer to have icons as empty strings with a display property for compatibility
-       ;; in e.g. dired, where an actual text icon would break `dired-goto-file-1'
-       (unless (get-text-property 0 'display gui-icon)
-         (setf gui-icon (propertize " " 'display gui-icon)))
-       ,@(->> (-filter #'symbolp ext-list)
-              (--map `(progn (add-to-list 'treemacs--icon-symbols ',it)
-                             (defvar ,(intern (format "treemacs-icon-%s" it)) nil))))
-       (--each (quote ,ext-list)
-         (ht-set! gui-icons it gui-icon)
-         (ht-set! tui-icons it tui-icon)))))
+  (when (and (consp extensions) (or (symbolp (car extensions))
+                                    (stringp (car extensions))))
+    (setf extensions `(quote (,@extensions))))
+  ;; (setf extensions (--map (if (stringp it) (downcase it) it) extensions))
+  `(let* ((xs (--map (if (stringp it) (downcase it) it) ,extensions))
+          (fallback   ,(if (equal fallback (quote 'same-as-icon))
+                           icon
+                         fallback))
+          (icons-dir  ,(if icons-dir icons-dir `(treemacs-theme->path treemacs--current-theme)))
+          (icon-path  ,(if file `(treemacs-join-path icons-dir ,file) nil))
+          (icon-pair  ,(if file `(treemacs--create-icon-strings icon-path fallback)
+                         `(cons ,(treemacs--splice-icon icon) fallback)))
+          (gui-icons  (treemacs-theme->gui-icons treemacs--current-theme))
+          (tui-icons  (treemacs-theme->tui-icons treemacs--current-theme))
+          (gui-icon   (car icon-pair))
+          (tui-icon   (cdr icon-pair)))
+     ,(unless file
+        `(progn
+           (ignore icon-path)
+           (ignore icons-dir)))
+     ;; prefer to have icons as empty strings with a display property for compatibility
+     ;; in e.g. dired, where an actual text icon would break `dired-goto-file-1'
+     (unless (get-text-property 0 'display gui-icon)
+       (setf gui-icon (propertize " " 'display gui-icon)))
+     (dolist (ext xs)
+       (when (symbolp ext)
+         (-let [symbol (intern (format "treemacs-icon-%s" ext))]
+           (add-to-list 'treemacs--icon-symbols ext)
+           (set symbol nil))))
+     (--each xs
+       (ht-set! gui-icons it gui-icon)
+       (ht-set! tui-icons it tui-icon))))
 
 (treemacs-create-theme "Default"
   :icon-directory (treemacs-join-path treemacs-dir "icons/default")
@@ -282,7 +287,6 @@ Necessary since root icons are not rectangular."
     (treemacs-create-icon :file "error.png"             :extensions (error)       :fallback (propertize "• " 'face 'font-lock-string-face))
     (treemacs-create-icon :file "warning.png"           :extensions (warning)     :fallback (propertize "• " 'face 'font-lock-string-face))
     (treemacs-create-icon :file "info.png"              :extensions (info)        :fallback (propertize "• " 'face 'font-lock-string-face))
-    (treemacs-create-icon :file "mail.png"              :extensions (mail)        :fallback " ")
     (treemacs-create-icon :file "bookmark.png"          :extensions (bookmark)    :fallback " ")
     (treemacs-create-icon :file "svgrepo/screen.png"    :extensions (screen)      :fallback " ")
     (treemacs-create-icon :file "svgrepo/house.png"     :extensions (house)       :fallback " ")
@@ -292,10 +296,12 @@ Necessary since root icons are not rectangular."
     (treemacs-create-icon :file "svgrepo/close.png"     :extensions (close)       :fallback " ")
     (treemacs-create-icon :file "svgrepo/cal.png"       :extensions (calendar)    :fallback " ")
     (treemacs-create-icon :file "svgrepo/briefcase.png" :extensions (briefcase)   :fallback " ")
+    (treemacs-create-icon :file "svgrepo/mail.png"      :extensions (mail)        :fallback " ")
+    (treemacs-create-icon :file "svgrepo/mail-plus.png" :extensions (mail-plus)   :fallback " ")
 
     ;; file icons
     (treemacs-create-icon :file "txt.png"           :extensions (fallback))
-    (treemacs-create-icon :file "emacs.png"         :extensions ("el" "elc"))
+    (treemacs-create-icon :file "emacs.png"         :extensions ("el" "elc" "eln"))
     (treemacs-create-icon :file "ledger.png"        :extensions ("ledger"))
     (treemacs-create-icon :file "yaml.png"          :extensions ("yml" "yaml" "travis.yml"))
     (treemacs-create-icon
@@ -312,7 +318,7 @@ Necessary since root icons are not rectangular."
     (treemacs-create-icon :file "asciidoc.png"      :extensions ("adoc" "asciidoc"))
     (treemacs-create-icon :file "rust.png"          :extensions ("rs"))
     (treemacs-create-icon :file "image.png"         :extensions ("jpg" "jpeg" "bmp" "svg" "png" "xpm" "gif"))
-    (treemacs-create-icon :file "clojure.png"       :extensions ("clj" "cljs" "cljc"))
+    (treemacs-create-icon :file "clojure.png"       :extensions ("clj" "cljs" "cljc" "edn"))
     (treemacs-create-icon :file "ts.png"            :extensions ("ts" "tsx"))
     (treemacs-create-icon :file "vue.png"           :extensions ("vue"))
     (treemacs-create-icon :file "css.png"           :extensions ("css"))
@@ -334,7 +340,7 @@ Necessary since root icons are not rectangular."
     (treemacs-create-icon :file "json.png"          :extensions ("json"))
     (treemacs-create-icon :file "julia.png"         :extensions ("jl"))
     (treemacs-create-icon :file "elx.png"           :extensions ("ex"))
-    (treemacs-create-icon :file "elx-light.png"     :extensions ("exs" "eex" "leex"))
+    (treemacs-create-icon :file "elx-light.png"     :extensions ("exs" "eex" "leex" "heex"))
     (treemacs-create-icon :file "ocaml.png"         :extensions ("ml" "mli" "merlin" "ocaml"))
     (treemacs-create-icon :file "direnv.png"        :extensions ("envrc"))
     (treemacs-create-icon :file "puppet.png"        :extensions ("pp"))
@@ -383,7 +389,7 @@ Necessary since root icons are not rectangular."
     (treemacs-create-icon :file "vsc/cobol.png"     :extensions ("cobol"))
     (treemacs-create-icon :file "vsc/cfscript.png"  :extensions ("coffeescript"))
     (treemacs-create-icon :file "vsc/cpp.png"       :extensions ("cpp" "cxx" "tpp" "cc"))
-    (treemacs-create-icon :file "vsc/cpph.png"      :extensions ("hpp" "hh"))
+    (treemacs-create-icon :file "vsc/cpph.png"      :extensions ("hpp" "hxx" "hh"))
     (treemacs-create-icon :file "vsc/cucumber.png"  :extensions ("feature"))
     (treemacs-create-icon :file "vsc/cython.png"    :extensions ("cython"))
     (treemacs-create-icon :file "vsc/delphi.png"    :extensions ("pascal" "objectpascal"))
@@ -460,8 +466,8 @@ Uses `treemacs-icon-fallback' as fallback."
 (defun treemacs-resize-icons (size)
   "Resize the current theme's icons to the given SIZE.
 
-If SIZE is 'nil' the icons are not resized and will retain their default size of
-22 pixels.
+If SIZE is \\='nil' the icons are not resized and will retain their default size
+of 22 pixels.
 
 There is only one size, the icons are square and the aspect ratio will be
 preserved when resizing them therefore width and height are the same.
@@ -523,7 +529,7 @@ Return the fallback icons if TUI is non-nil."
 Note that treemacs has a very loose definition of what constitutes a file
 extension - it's either everything past the last period, or just the file's full
 name if there is no period.  This makes it possible to match file names like
-'.gitignore' and 'Makefile'.
+\\='.gitignore' and \\='Makefile'.
 
 Additionally FILE-EXTENSIONS are also not case sensitive and will be stored in a
 down-cased state."
@@ -552,18 +558,17 @@ should be used for."
 (defun treemacs-map-icons-with-auto-mode-alist (extensions mode-icon-alist)
   "Remaps icons for EXTENSIONS according to `auto-mode-alist'.
 EXTENSIONS should be a list of file extensions such that they match the regex
-stored in `auto-mode-alist', for example '\(\".cc\"\).
+stored in `auto-mode-alist', for example \\='(\".cc\").
 MODE-ICON-ALIST is an alist that maps which mode from `auto-mode-alist' should
 be assigned which treemacs icon, for example
-'\(\(c-mode . treemacs-icon-c\)
-  \(c++-mode . treemacs-icon-cpp\)\)"
+`((c-mode . ,(treemacs-get-icon-value \"c\"))
+  (c++-mode . ,(treemacs-get-icon-value \"cpp\")))"
   (dolist (extension extensions)
     (-when-let* ((mode (cdr (--first (s-matches? (car it) extension) auto-mode-alist)))
                  (icon (cdr (assq mode mode-icon-alist))))
-      (treemacs-log "Map %s to %s" extension (symbol-name icon))
       (ht-set! (treemacs-theme->gui-icons treemacs--current-theme)
                (substring extension 1)
-               (symbol-value icon)))))
+               icon))))
 
 (treemacs-only-during-init
   (treemacs-load-theme "Default"))

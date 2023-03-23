@@ -1,6 +1,6 @@
 ;;; treemacs.el --- A tree style file viewer package -*- lexical-binding: t -*-
 
-;; Copyright (C) 2021 Alexander Miller
+;; Copyright (C) 2022 Alexander Miller
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -105,7 +105,6 @@
   treemacs-workspace->projects
   treemacs-workspace->is-empty?
   treemacs-do-add-project-to-workspace
-  treemacs-project->is-expanded?
   treemacs-project->path
   treemacs-project->name
   treemacs-project->refresh!
@@ -119,7 +118,14 @@
 (treemacs-import-functions-from "treemacs-persistence"
   treemacs--maybe-load-workspaces)
 
+(treemacs-import-functions-from "treemacs-annotations"
+  treemacs--delete-annotation)
+
 (declare-function treemacs-mode "treemacs-mode")
+
+(defconst treemacs--empty-table (ht)
+  "Constant value of an empty hash table.
+Used to avoid creating unnecessary garbage.")
 
 (defvar treemacs--closed-node-states
   '(root-node-closed
@@ -130,7 +136,8 @@
 Used in `treemacs-is-node-collapsed?'")
 
 (defvar treemacs--open-node-states
-  '(root-node-open
+  '(project-node-open
+    root-node-open
     dir-node-open
     file-node-open
     tag-node-open)
@@ -146,6 +153,35 @@ Used in `treemacs-is-node-expanded?'")
               (eq ?/ (aref ,path (1- (length ,path)))))
          (substring ,path 0 -1)
        ,path))))
+
+(define-inline treemacs--prefix-arg-to-recurse-depth (arg)
+  "Translates prefix ARG into a number.
+Used for depth-based expansion of nodes - a numeric prefix will translate to
+itself, the default representation translates to 9999."
+  (declare (pure t) (side-effect-free t))
+  (inline-letevals (arg)
+    (inline-quote
+     (cond
+      ((null ,arg) 0)
+      ((integerp ,arg) ,arg)
+      (t 999)))))
+
+(defun treemacs--all-buttons-with-depth (depth)
+  "Get all buttons with the given DEPTH."
+  (declare (side-effect-free t))
+  (save-excursion
+    (goto-char (point-min))
+    (let ((current-btn (treemacs-current-button))
+          (result))
+      (when (and current-btn
+                 (= depth (treemacs-button-get current-btn :depth)))
+        (push current-btn result))
+      (while (= 0 (forward-line 1))
+        (setf current-btn (treemacs-current-button))
+        (when (and current-btn
+                   (= depth (treemacs-button-get current-btn :depth)))
+          (push current-btn result)))
+      result)))
 
 (define-inline treemacs--parent-dir (path)
   "Return the parent of PATH is it's a file, or PATH if it is a directory.
@@ -202,7 +238,7 @@ If STR already has a slash return it unchanged."
   "Delete the current line.
 Unlike the function `kill-whole-line' this won't pollute the kill ring."
   (inline-quote
-     (delete-region (point-at-bol) (min (point-max) (1+ (point-at-eol))))))
+    (delete-region (line-beginning-position) (min (point-max) (1+ (line-end-position))))))
 
 (define-inline treemacs-current-button ()
   "Get the button in the current line.
@@ -210,7 +246,7 @@ Returns nil when point is between projects."
   (declare (side-effect-free error-free))
   (inline-quote
    (-some->
-    (text-property-not-all (point-at-bol) (point-at-eol) 'button nil)
+    (text-property-not-all (line-beginning-position) (line-end-position) 'button nil)
     (copy-marker t))))
 (defalias 'treemacs-node-at-point #'treemacs-current-button)
 
@@ -317,7 +353,7 @@ EXCLUDE-PREFIX: File Path"
     (inline-quote
      (save-excursion
        (let ((len (length ,new-symbol)))
-         (goto-char (- (treemacs-button-start (next-button (point-at-bol) t)) len))
+         (goto-char (- (treemacs-button-start (next-button (line-beginning-position) t)) len))
          (insert ,new-symbol)
          (delete-char len))))))
 
@@ -423,6 +459,7 @@ being edited to trigger."
   (inline-letevals (path no-buffer-delete)
     (inline-quote
      (progn
+       (treemacs--delete-annotation ,path)
        (unless ,no-buffer-delete (treemacs--kill-buffers-after-deletion ,path t))
        (treemacs--stop-watching ,path t)
        ;; filewatch mode needs the node's information to be in the dom
@@ -459,7 +496,7 @@ In practice this means expand PATH and remove its final slash."
   "Determined if FILE is ignored by git by means of GIT-INFO."
   (declare (side-effect-free t))
   (inline-letevals (file git-info)
-    (inline-quote (string= "!" (ht-get ,git-info ,file)))))
+    (inline-quote (eq 'treemacs-git-ignored-face (ht-get ,git-info ,file)))))
 
 (define-inline treemacs-is-treemacs-window-selected? ()
   "Return t when the treemacs window is selected."
@@ -529,6 +566,7 @@ Add a project for ROOT and NAME if they are non-nil."
            (treemacs-do-add-project-to-workspace path name)
            (treemacs-log "Created first project.")))
        (goto-char 2)
+       (run-hooks 'treemacs-post-buffer-init-hook)
        (setf run-hook? t)))
     (when root (treemacs-do-add-project-to-workspace (treemacs-canonical-path root) name))
     (with-no-warnings (setq treemacs--ready-to-follow t))
@@ -623,7 +661,7 @@ failed.  PROJECT is used for determining whether Git actions are appropriate."
                        ;; first a plain text-based search for the current dir-part string
                        ;; then we grab the node we landed at and see what's going on
                        ;; there's a couple ways this can go
-                       (while (progn (goto-char (point-at-eol)) (search-forward dir-part nil :no-error))
+                       (while (progn (goto-char (line-end-position)) (search-forward dir-part nil :no-error))
                          (setq current-btn (treemacs-current-button))
                          (cond
                           ;; somehow we landed on a line where there isn't even anything to look at
@@ -763,39 +801,69 @@ PATH: Node Path"
 
 (defun treemacs-find-node (path &optional project)
   "Find position of node identified by PATH under PROJECT in the current buffer.
+
 In spite of the signature this function effectively supports two different
 calling conventions.
 
-The first one is for movement towards a node that identifies a file.  In this
-case the signature is applied as is, and this function diverges simply into
-`treemacs-goto-file-node'.  PATH is a filepath string while PROJECT is fully
-optional, as treemacs is able to determine which project, if any, a given file
-belongs to.  Providing the project is therefore only a matter of efficiency and
-convenience.  If PROJECT is not given it will be found with
-`treemacs--find-project-for-path'.  No attempt is made to verify that PATH falls
-under a project in the workspace.  It is assumed that this check has already
-been made.
+The first one is for movement towards a node that identifies a normal file.  In
+this case the signature is applied as is, and this function diverges simply into
+`treemacs-goto-file-node'.  PATH is a file path string while PROJECT is a
+`treemacs-project' struct instance and fully optional, as treemacs is able to
+determine which project, if any, a given file belongs to.  Providing the project
+when it happens to be available is therefore only a small optimisation.  If
+PROJECT is not given it will be found with `treemacs--find-project-for-path'.
+No attempt is made to verify that PATH actually falls under a project in the
+workspace.  It is assumed that this check has already been made.
 
 The second calling convention deals with custom nodes defined by an extension
 for treemacs.  In this case the PATH is made up of all the node keys that lead
-to the node to be moved to.
+to the node to be moved to and PROJECT is not used.
 
-For a directory extension, created with `treemacs-define-directory-extension',
-that means that the path's first element must be the filepath of its parent.
-For a project extension, created with `treemacs-define-project-extension', the
-first element of the path must instead be the keyword `:custom', followed by the
-node's unique path.  The second argument is therefore ignored in this case.
-
-Either way this function will return a marker to the moved to position if it was
+Either way this function will return a marker to the moved-to position if it was
 successful.
 
 PATH: Filepath | Node Path
 PROJECT Project Struct"
-  (treemacs-with-path path
-    :file-action (when (file-exists-p path) (treemacs-find-file-node path project))
-    :top-level-extension-action (treemacs--find-custom-top-level-node path)
-    :directory-extension-action (treemacs--find-custom-dir-node path)
-    :project-extension-action (treemacs--find-custom-project-node path)))
+  (save-excursion
+    (treemacs-with-path path
+      :file-action (when (and (eq t treemacs--in-this-buffer)
+                              (file-exists-p path))
+                     (treemacs-find-file-node path project))
+      :extension-action (treemacs--find-custom-node path))))
+
+(defun treemacs--find-custom-node (path)
+  "Specialisation to find a custom node at the given PATH."
+  (let* (;; go back here if the search fails
+         (start (point))
+         ;; (top-pos (treemacs-dom-node->position (treemacs-find-in-dom (car path))))
+         ;; making a copy since the variable is a reference to a node actual path
+         ;; and will be changed in-place here
+         (goto-path (if (listp path) (copy-sequence path) (list path)))
+         ;; manual as in to be expanded manually after we moved to the next closest node we can find
+         ;; in the dom
+         (manual-parts nil)
+         (dom-node nil))
+    (-let [continue t]
+      (while continue
+        (setf dom-node (treemacs-find-in-dom goto-path))
+        (if (or (null dom-node)
+                ;; dom node might exist, but a leaf's position is not always known
+                (null (treemacs-dom-node->position dom-node)))
+            (if (cdr goto-path)
+                (progn
+                  (push (-last-item  goto-path) manual-parts)
+                  (setf goto-path (-butlast goto-path)))
+              (setf goto-path (car goto-path)))
+          (setf continue nil))))
+    (let* ((btn (treemacs-dom-node->position dom-node))
+           ;; do the rest manually
+           (search-result (if manual-parts (treemacs--follow-path-elements btn manual-parts)
+                            (goto-char btn))))
+      (if (eq 'follow-failed search-result)
+          (prog1 nil
+            (goto-char start))
+        (treemacs-dom-node->set-position! (treemacs-find-in-dom path) search-result)
+        search-result))))
 
 (defun treemacs-goto-node (path &optional project ignore-file-exists)
   "Move point to button identified by PATH under PROJECT in the current buffer.
@@ -807,10 +875,23 @@ PATH: Filepath | Node Path
 PROJECT Project Struct
 IGNORE-FILE-EXISTS Boolean"
   (treemacs-with-path path
-    :file-action (when (or ignore-file-exists (file-exists-p path)) (treemacs-goto-file-node path project))
-    :top-level-extension-action (treemacs--goto-custom-top-level-node path)
-    :directory-extension-action (treemacs--goto-custom-dir-node path)
-    :project-extension-action (treemacs--goto-custom-project-node path)))
+    :file-action (when (or ignore-file-exists (file-exists-p path))
+                   (treemacs-goto-file-node path project))
+    :extension-action (treemacs-goto-extension-node path)))
+
+(define-inline treemacs-goto-extension-node (path)
+  "Move to an extension node at the given PATH.
+Small short-cut over `treemacs-goto-node' if you know for certain that PATH
+leads to an extension node."
+  (inline-letevals (path)
+    (inline-quote
+     (-when-let (result (treemacs--find-custom-node ,path))
+       (treemacs--evade-image)
+       (hl-line-highlight)
+       ;; Only change window point if the current buffer is actually visible
+       (-when-let (window (get-buffer-window))
+         (set-window-point window (point)))
+       result))))
 
 (defun treemacs-find-file-node (path &optional project)
   "Find position of node identified by PATH under PROJECT in the current buffer.
@@ -909,7 +990,7 @@ PROJECT: Project Struct")
   "Set the width of the treemacs buffer to WIDTH."
   (unless (one-window-p)
     (let ((window-size-fixed)
-          (w (max width window-min-width)))
+          (w (max width window-safe-min-width)))
       (cond
        ((> (window-width) w)
         (shrink-window-horizontally  (- (window-width) w)))
@@ -928,12 +1009,12 @@ The second test not apply if `treemacs-show-hidden-files' is t."
 (define-inline treemacs--std-ignore-file-predicate (file _)
   "The default predicate to detect ignored files.
 Will return t when FILE
-1) starts with '.#' (lockfiles)
-2) starts with 'flycheck_' (flycheck temp files)
-3) ends with '~' (backup files)
-4) is surrounded with # (auto save files)
-5) is '.git'
-6) is '.' or '..' (default dirs)"
+1) starts with \".#\" (lockfiles)
+2) starts with \"flycheck_\" (flycheck temp files)
+3) ends with \"~\" (backup files)
+4) is surrounded with \"#\" (auto save files)
+5) is \".git\" (see also `treemacs-hide-dot-git-directory')
+6) is \".\" or \"..\" (default dirs)"
   (declare (side-effect-free t) (pure t))
   (inline-letevals (file)
     (inline-quote
@@ -943,7 +1024,8 @@ Will return t when FILE
            (eq ?~ last)
            (string-equal ,file ".")
            (string-equal ,file "..")
-           (string-equal ,file ".git")
+           (and treemacs-hide-dot-git-directory
+                (string-equal ,file ".git"))
            (string-prefix-p "flycheck_" ,file))))))
 
 (define-inline treemacs--mac-ignore-file-predicate (file _)
@@ -957,16 +1039,21 @@ Will be added to `treemacs-ignored-file-predicates' on Macs."
 
 (defun treemacs--popup-window ()
   "Pop up a side window and buffer for treemacs."
-  (if treemacs-display-in-side-window
-      (-> (treemacs-get-local-buffer-create)
-          (display-buffer-in-side-window `((side . ,treemacs-position)))
-          (select-window))
-    (-> (selected-window)
-        (frame-root-window)
-        (split-window nil treemacs-position)
-        (select-window))
-    (-let [buf (treemacs-get-local-buffer-create)]
-      (switch-to-buffer buf))))
+  (let ((buf (treemacs-get-local-buffer-create)))
+    (display-buffer buf
+                    `(,(if treemacs-display-in-side-window
+                           'display-buffer-in-side-window
+                         'display-buffer-in-direction)
+                      . (;; for buffer in direction
+                         (direction . ,treemacs-position)
+                         (window . root)
+                         ;; for side windows
+                         (slot . -1)
+                         (side . ,treemacs-position)
+                         ;; general-purpose settings
+                         (window-width . ,treemacs-width)
+                         (dedicated . t))))
+    (select-window (get-buffer-window buf))))
 
 (defun treemacs--setup-buffer ()
   "Create and setup a buffer for treemacs in the right position and size."
@@ -978,15 +1065,12 @@ Will be added to `treemacs-ignored-file-predicates' on Macs."
         ;; workaround for LV windows like spacemacs' transient states preventing
         ;; side windows from popping up right
         ;; see https://github.com/abo-abo/hydra/issues/362
-        (setf (buffer-local-value 'window-size-fixed lv-buffer) nil)
+        (with-current-buffer lv-buffer (setf window-size-fixed nil))
         (treemacs--popup-window)
-        (setf (buffer-local-value 'window-size-fixed lv-buffer) t))
+        (with-current-buffer lv-buffer (setf window-size-fixed t)))
     (treemacs--popup-window))
   (treemacs--forget-last-highlight)
-  (set-window-dedicated-p (selected-window) t)
-  (setq-local treemacs--in-this-buffer t)
-  (let ((window-size-fixed))
-    (treemacs--set-width treemacs-width)))
+  (setq-local treemacs--in-this-buffer t))
 
 (define-inline treemacs--parent (path)
   "Parent of PATH, or PATH itself if PATH is the root directory.
@@ -997,9 +1081,8 @@ PATH: Node Path"
     (inline-quote
      (treemacs-with-path ,path
        :file-action (treemacs--parent-dir ,path)
-       :top-level-extension-action (when (> (length ,path) 2) (butlast ,path))
-       :directory-extension-action (if (> (length ,path) 2) (butlast ,path) (car ,path))
-       :project-extension-action (if (> (length ,path) 2) (butlast ,path) (treemacs-project->path (car ,path)))))))
+       :extension-action (-butlast ,path)
+       :no-match-action (user-error "Path %s appears to be neither a file nor an extension" ,path)))))
 
 (define-inline treemacs--evade-image ()
   "The cursor visibly blinks when on top of an icon.
@@ -1069,7 +1152,7 @@ through the buffer list and kill buffer if PATH is a prefix."
   "Execute the refresh process for BUFFER and PROJECT in that buffer.
 Specifically extracted with the buffer to refresh being supplied so that
 filewatch mode can refresh multiple buffers at once.
-Will refresh every project when PROJECT is 'all."
+Will refresh every project when PROJECT is \\='all."
   (with-current-buffer buffer
     (treemacs-save-position
      (progn
@@ -1146,6 +1229,20 @@ INITIAL-INPUT: String"
   (declare (pure t) (side-effect-free t))
   (inline-letevals (path)
     (inline-quote (split-string ,path "/" :omit-nulls))))
+
+(defun treemacs--jump-to-next-treemacs-window ()
+  "Jump from the current to the next treemacs-based window.
+Will do nothing and return nil if no such window exists, or if there is only one
+treemacs window."
+  (let* ((current-window (selected-window))
+         (treemacs-windows
+          (--filter
+           (buffer-local-value 'treemacs--in-this-buffer (window-buffer it))
+           (window-list))))
+    (-when-let (idx (--find-index (equal it current-window) treemacs-windows))
+      (-let [next-window (nth (% (1+ idx) (length treemacs-windows)) treemacs-windows)]
+        (unless (eq next-window current-window)
+          (select-window next-window))))))
 
 (provide 'treemacs-core-utils)
 

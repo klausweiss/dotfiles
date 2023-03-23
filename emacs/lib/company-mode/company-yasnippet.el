@@ -1,6 +1,6 @@
 ;;; company-yasnippet.el --- company-mode completion backend for Yasnippet
 
-;; Copyright (C) 2014, 2015, 2020  Free Software Foundation, Inc.
+;; Copyright (C) 2014-2015, 2020-2021  Free Software Foundation, Inc.
 
 ;; Author: Dmitry Gutov
 
@@ -116,9 +116,11 @@ It has to accept one argument: the snippet's name.")
   (let ((template (get-text-property 0 'yas-template arg))
         (mode major-mode)
         (file-name (buffer-file-name)))
+    (defvar yas-prompt-functions)
     (with-current-buffer (company-doc-buffer)
       (let ((buffer-file-name file-name))
         (yas-minor-mode 1)
+        (setq-local yas-prompt-functions '(yas-no-prompt))
         (condition-case error
             (yas-expand-snippet (yas--template-content template))
           (error

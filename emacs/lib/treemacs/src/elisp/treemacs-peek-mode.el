@@ -1,6 +1,6 @@
 ;;; treemacs.el --- A tree style file viewer package -*- lexical-binding: t -*-
 
-;; Copyright (C) 2021 Alexander Miller
+;; Copyright (C) 2022 Alexander Miller
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -44,7 +44,8 @@
 
 (defun treemacs--setup-peek-buffer (path)
   "Setup the peek buffer and window for PATH."
-  (let* ((file-buffer (get-file-buffer path))
+  (let* ((inhibit-message t)
+         (file-buffer (get-file-buffer path))
          (next-window (next-window (selected-window)))
          (window (if file-buffer
                      (or (get-buffer-window file-buffer)

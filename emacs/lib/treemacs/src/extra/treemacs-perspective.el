@@ -1,6 +1,6 @@
 ;;; treemacs-perspective.el --- Perspective integration for treemacs -*- lexical-binding: t -*-
 
-;; Copyright (C) 2021 Alexander Miller
+;; Copyright (C) 2022 Alexander Miller
 
 ;; Author: Alexander Miller <alexanderm@web.de>
 ;;   Jason Dufair <jase@dufair.org>
@@ -87,7 +87,7 @@ necessary."
 Matching happens by name.  If no workspace can be found it will be created."
   (let* ((perspective-name (treemacs-scope->current-scope-name
                       (treemacs-current-scope-type) (treemacs-current-scope)))
-         (workspace (or (treemacs--select-workspace-by-name perspective-name)
+         (workspace (or (treemacs--find-workspace-by-name perspective-name)
                         (treemacs-perspective--create-workspace perspective-name))))
     (setf (treemacs-current-workspace) workspace)
     (treemacs--invalidate-buffer-project-cache)

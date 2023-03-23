@@ -1,6 +1,6 @@
 ;;; treemacs.el --- A tree style file viewer package -*- lexical-binding: t -*-
 
-;; Copyright (C) 2021 Alexander Miller
+;; Copyright (C) 2022 Alexander Miller
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -33,7 +33,6 @@
 (require 'treemacs-customization)
 (require 'treemacs-workspaces)
 (require 'treemacs-persistence)
-(require 'treemacs-extensions)
 (require 'treemacs-logging)
 
 (eval-when-compile
@@ -41,7 +40,9 @@
   (require 'treemacs-macros))
 
 (autoload 'ansi-color-apply-on-region "ansi-color")
-(autoload 'aw-select "ace-window")
+
+(treemacs-import-functions-from "ace-window"
+  ace-select-window)
 
 (treemacs-import-functions-from "cfrs"
   cfrs-read)
@@ -122,7 +123,8 @@ them instead."
    :on-tag-node-open    (treemacs--collapse-tag-node btn arg)
    :on-tag-node-closed  (treemacs--expand-tag-node btn arg)
    :on-tag-node-leaf    (progn (other-window 1) (treemacs--goto-tag btn))
-   :on-nil              (treemacs-pulse-on-failure "There is nothing to do here.")))
+   :on-nil              (treemacs-pulse-on-failure "There is nothing to do here.")
+   :fallback            (treemacs-TAB-action)))
 
 (defun treemacs-toggle-node-prefer-tag-visit (&optional arg)
   "Same as `treemacs-toggle-node' but will visit a tag node in some conditions.
@@ -133,7 +135,7 @@ conditions:
    ends in \" definition*\". This indicates the section is the parent element in
    a nested class/function definition and can be moved to.
  * Tags belong to a .org file and the tag section element possesses a
-   'org-imenu-marker text property. This indicates that the section is a
+   \\='org-imenu-marker text property. This indicates that the section is a
    headline with further org elements below it.
 
 The prefix argument ARG is treated the same way as with `treemacs-toggle-node'."
@@ -251,7 +253,7 @@ Stay in the current window with a single prefix argument ARG, or close the
 treemacs window with a double prefix argument."
   (interactive "P")
   (treemacs--execute-button-action
-   :window (aw-select "Select window")
+   :window (ace-select-window)
    :file-action (find-file (treemacs-safe-button-get btn :path))
    :dir-action (dired (treemacs-safe-button-get btn :path))
    :tag-section-action (treemacs--visit-or-expand/collapse-tag-node btn arg nil)
@@ -282,7 +284,7 @@ treemacs window with a double prefix argument."
   (interactive "P")
   (treemacs--execute-button-action
    :split-function #'split-window-horizontally
-   :window (aw-select "Select window")
+   :window (ace-select-window)
    :file-action (find-file (treemacs-safe-button-get btn :path))
    :dir-action (dired (treemacs-safe-button-get btn :path))
    :tag-section-action (treemacs--visit-or-expand/collapse-tag-node btn arg nil)
@@ -297,7 +299,7 @@ treemacs window with a double prefix argument."
   (interactive "P")
   (treemacs--execute-button-action
    :split-function #'split-window-vertically
-   :window (aw-select "Select window")
+   :window (ace-select-window)
    :file-action (find-file (treemacs-safe-button-get btn :path))
    :dir-action (dired (treemacs-safe-button-get btn :path))
    :tag-section-action (treemacs--visit-or-expand/collapse-tag-node btn arg nil)
@@ -509,7 +511,8 @@ With a prefix ARG substract the increment value multiple times."
        "Path at point is not a file.")
      (when (file-directory-p path)
        (setf path (treemacs--add-trailing-slash path)))
-     (-let [copied (-> path (file-relative-name (treemacs-project->path project)) (kill-new))]
+     (-let [copied (-> path (file-relative-name (treemacs-project->path project)))]
+       (kill-new copied)
        (treemacs-pulse-on-success "Copied relative path: %s" (propertize copied 'face 'font-lock-string-face))))))
 
 (defun treemacs-copy-project-path-at-point ()
@@ -521,7 +524,8 @@ With a prefix ARG substract the increment value multiple times."
        "There is nothing to copy here")
      (treemacs-error-return-if (not (stringp (treemacs-project->path project)))
        "Project at point is not a file.")
-    (-let [copied (-> project (treemacs-project->path) (kill-new))]
+    (-let [copied (-> project (treemacs-project->path))]
+      (kill-new copied)
       (treemacs-pulse-on-success "Copied project path: %s" (propertize copied 'face 'font-lock-string-face))))))
 
 (defun treemacs-delete-other-windows ()
@@ -708,7 +712,7 @@ For slower scrolling see `treemacs-previous-line-other-window'"
            (treemacs--forget-last-highlight)
            ;; after renaming, delete and redisplay the project
            (goto-char (treemacs-button-end project-btn))
-           (delete-region (point-at-bol) (point-at-eol))
+           (delete-region (line-beginning-position) (line-end-position))
            (treemacs--add-root-element project)
            (when (eq state 'root-node-open)
              (treemacs--collapse-root-node (treemacs-project->position project))
@@ -748,7 +752,7 @@ auto-selected name already exists."
        (propertize (treemacs-project->path duplicate) 'face 'font-lock-string-face)))
     (`(includes-project ,project)
      (goto-char (treemacs-project->position project))
-     (treemacs-pulse-on-failure "Project '%s' is included in '%s'. Projects May not overlap."
+     (treemacs-pulse-on-failure "Project '%s' is included in '%s'. Projects may not overlap."
        (propertize (treemacs-project->name project) 'face 'font-lock-type-face)
        (propertize path 'face 'font-lock-string-face)))
     (`(duplicate-name ,duplicate)
@@ -872,8 +876,10 @@ workspaces."
   (interactive)
   (treemacs-unless-let (btn (treemacs-current-button))
       (treemacs-log-failure "There is nothing to refresh.")
-    (treemacs-without-recenter
-     (treemacs--do-refresh (current-buffer) (treemacs-project-of-node btn)))))
+    (-let [project (treemacs-project-of-node btn)]
+      (treemacs-without-recenter
+       (treemacs--do-refresh (current-buffer) project))
+      (run-hook-with-args 'treemacs-post-project-refresh-functions project))))
 
 (defun treemacs-collapse-project (&optional arg)
   "Close the project at point.
@@ -891,17 +897,19 @@ With a prefix ARG also forget about all the nodes opened in the project."
 
 (defun treemacs-collapse-all-projects (&optional arg)
   "Collapses all projects.
-With a prefix ARG also forget about all the nodes opened in the projects."
+With a prefix ARG remember which nodes were expanded."
   (interactive "P")
-  (save-excursion
-    (treemacs--forget-last-highlight)
-    (dolist (project (treemacs-workspace->projects (treemacs-current-workspace)))
-      (-when-let (pos (treemacs-project->position project))
-        (when (eq 'root-node-open (treemacs-button-get pos :state))
-          (goto-char pos)
-          (treemacs--collapse-root-node pos arg)))))
-  (treemacs--maybe-recenter 'on-distance)
-  (treemacs-pulse-on-success "Collapsed all projects"))
+  (-when-let (buffer (treemacs-get-local-buffer))
+    (with-current-buffer buffer
+      (save-excursion
+        (treemacs--forget-last-highlight)
+        (dolist (project (treemacs-workspace->projects (treemacs-current-workspace)))
+          (-when-let (pos (treemacs-project->position project))
+            (when (eq 'root-node-open (treemacs-button-get pos :state))
+              (goto-char pos)
+              (treemacs--collapse-root-node pos (not arg))))))
+      (treemacs--maybe-recenter 'on-distance)
+      (treemacs-pulse-on-success "Collapsed all projects"))))
 
 (defun treemacs-collapse-other-projects (&optional arg)
   "Collapses all projects except the project at point.
@@ -1074,7 +1082,7 @@ Only works with a single project in the workspace."
          treemacs-persist-file
          nil :silent)
         (treemacs--restore)
-        (-if-let (ws (treemacs--select-workspace-by-name
+        (-if-let (ws (treemacs--find-workspace-by-name
                       (treemacs-workspace->name (treemacs-current-workspace))))
             (setf (treemacs-current-workspace) ws)
           (treemacs--find-workspace))
@@ -1262,7 +1270,7 @@ visible."
     (save-excursion
       (goto-char (point-min))
       (while (= 0 (forward-line 1))
-        (-let [new-len (- (point-at-eol) (point-at-bol))]
+        (-let [new-len (- (line-end-position) (line-beginning-position))]
           (when (> new-len longest)
             (setf longest new-len
                   depth (treemacs--prop-at-point :depth))))))
@@ -1305,6 +1313,36 @@ With a prefix ARG switch to the previous workspace instead."
      (treemacs-pulse-on-success "Switched to workdpace '%s'"
        (propertize (treemacs-workspace->name new-ws)
                    'face 'font-lock-string-face)))))
+
+(defun treemacs-create-workspace-from-project (&optional arg)
+  "Create (and switch to) a workspace containing only the current project.
+
+By default uses the project at point in the treemacs buffer.  If there is no
+treemacs buffer, then the project of the current file is used instead.  With a
+prefix ARG it is also possible to interactively select the project."
+  (interactive "P")
+  (treemacs-block
+    (-let [project nil]
+      (if (eq t treemacs--in-this-buffer)
+          (setf project (treemacs-project-of-node (treemacs-current-button)))
+        (setf project (treemacs--find-project-for-buffer (buffer-file-name (current-buffer))))
+        (treemacs-select-window))
+      (when (or arg (null project))
+        (setf project (treemacs--select-project-by-name))
+        (treemacs-return-if (null project)))
+      (let* ((ws-name (treemacs-project->name project))
+             (new-ws (treemacs--find-workspace-by-name ws-name)))
+        (if new-ws
+            (setf (treemacs-workspace->projects new-ws) (list project))
+          (-let [ws-create-result (treemacs-do-create-workspace ws-name)]
+            (treemacs-error-return-if (not (equal 'success (car ws-create-result)))
+              "Something went wrong when creating a new workspace: %s" ws-create-result)
+            (setf new-ws (cdr ws-create-result))
+            (setf (treemacs-workspace->projects new-ws) (list project))
+            (treemacs--persist)))
+        (treemacs-do-switch-workspace new-ws)
+        (treemacs-pulse-on-success "Switched to project workspace '%s'"
+          (propertize ws-name 'face 'font-lock-type-face))))))
 
 (defun treemacs-icon-catalogue ()
   "Showcase a catalogue of all treemacs themes and their icons."

@@ -1,6 +1,6 @@
 ;;; treemacs.el --- A tree style file viewer package -*- lexical-binding: t -*-
 
-;; Copyright (C) 2021 Alexander Miller
+;; Copyright (C) 2022 Alexander Miller
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -29,8 +29,8 @@
 (defface treemacs-directory-collapsed-face
   '((t :inherit treemacs-directory-face))
   "Face used by treemacs for collapsed directories.
-This is the face used for the collapsed part of nodes, so
-if the node is 'foo/bar/baz', the face is used for 'foo/bar/'.
+This is the face used for the collapsed part of nodes, so if the node is
+\"foo/bar/baz\", the face is used for \"foo/bar/\".
 
 Using this face is incompatible with `treemacs-git-mode' (exept for the simple
 variant), so it will only be used if git-mode is disabled or set to simple."
@@ -150,6 +150,21 @@ Applies to buttons like
 (defface treemacs-peek-mode-indicator-face
   '((t :background "#669966"))
   "Face used to indicate that `treemacs-peek-mode' is enabled."
+  :group 'treemacs-faces)
+
+(defface treemacs-marked-file-face
+  '((t :foreground "#F0C674" :background "#AB3737" :bold t))
+  "Face for files marked by treemacs."
+  :group 'treemacs-faces)
+
+(defface treemacs-git-commit-diff-face
+  '((t :inherit 'font-lock-comment-face))
+  "Face for `treemacs-git-commit-diff-mode' annotations."
+  :group 'treemacs-faces)
+
+(defface treemacs-async-loading-face
+  '((t :inherit 'font-lock-comment-face :height 0.8))
+  "Face used for the \"Loading…\" string used by asynchronous extensions."
   :group 'treemacs-faces)
 
 (provide 'treemacs-faces)

@@ -2,8 +2,8 @@
 
 ;; Author: Lassi Kortela <lassi@lassi.io>
 ;; URL: https://github.com/lassik/emacs-language-id
-;; Version: 0.16.1
-;; Package-Requires: ((emacs "24") (cl-lib "0.5"))
+;; Version: 0.19
+;; Package-Requires: ((emacs "24.3"))
 ;; Keywords: languages util
 ;; SPDX-License-Identifier: ISC
 
@@ -27,6 +27,8 @@
 
 ;;; Code:
 
+(require 'cl-lib)
+
 (defvar language-id--file-name-extension nil
   "Internal variable for file name extension during lookup.")
 
@@ -40,24 +42,49 @@
     ;; In this case, the only way to correctly identify Cuda is by
     ;; looking at the extension.
     ("Cuda"
-     (c++-mode (language-id--file-name-extension ".cu"))
-     (c++-mode (language-id--file-name-extension ".cuh")))
+     (c++-mode
+      (language-id--file-name-extension ".cu"))
+     (c++-mode
+      (language-id--file-name-extension ".cuh")))
+
+    ;; mint-mode is derived from js-jsx-mode.
+    ("Mint" mint-mode)
 
     ;; json-mode is derived from javascript-mode.
+    ("JSON5"
+     (json-mode
+      (language-id--file-name-extension ".json5"))
+     (web-mode
+      (web-mode-content-type "json")
+      (web-mode-engine "none")
+      (language-id--file-name-extension ".json5")))
     ("JSON"
      json-mode
-     (web-mode (web-mode-content-type "json") (web-mode-engine "none")))
+     jsonian-mode
+     json-ts-mode
+     (web-mode
+      (web-mode-content-type "json")
+      (web-mode-engine "none")))
 
     ;; php-mode is derived from c-mode.
-    ("PHP" php-mode)
+    ("PHP"
+     php-mode
+     (web-mode
+      (web-mode-content-type "html")
+      (web-mode-engine "php")))
 
     ;; scss-mode is derived from css-mode.
     ("SCSS" scss-mode)
 
+    ;; solidity-mode is derived from c-mode.
+    ("Solidity" solidity-mode)
+
     ;; svelte-mode is derived from html-mode.
     ("Svelte"
      svelte-mode
-     (web-mode (web-mode-content-type "html") (web-mode-engine "svelte")))
+     (web-mode
+      (web-mode-content-type "html")
+      (web-mode-engine "svelte")))
 
     ;; terraform-mode is derived from hcl-mode.
     ("Terraform" terraform-mode)
@@ -69,12 +96,14 @@
     ;; buffers using TypeScript/TSX as JavaScript/JSX.
     ("TSX"
      typescript-tsx-mode
+     tsx-ts-mode
      (web-mode
       (web-mode-content-type "jsx")
       (web-mode-engine "none")
       (language-id--file-name-extension ".tsx")))
     ("TypeScript"
      typescript-mode
+     typescript-ts-mode
      (web-mode
       (web-mode-content-type "javascript")
       (web-mode-engine "none")
@@ -88,13 +117,16 @@
     ("ReScript"
      (reason-mode
       (language-id--file-name-extension ".resi")))
+    ("ReScript" rescript-mode)
     ("Reason" reason-mode)
 
     ;; vue-html-mode is derived from html-mode.
     ("Vue"
      vue-mode
      vue-html-mode
-     (web-mode (web-mode-content-type "html") (web-mode-engine "vue")))
+     (web-mode
+      (web-mode-content-type "html")
+      (web-mode-engine "vue")))
 
     ;;; The rest of the definitions are in alphabetical order.
 
@@ -103,50 +135,90 @@
     ("Awk" awk-mode)
     ("Bazel" bazel-mode)
     ("BibTeX" bibtex-mode)
-    ("C" c-mode)
-    ("C#" csharp-mode)
-    ("C++" c++-mode)
+    ("C" c-mode c-ts-mode)
+    ("C#" csharp-mode csharp-ts-mode)
+    ("C++" c++-mode c++-ts-mode)
     ("Cabal Config" haskell-cabal-mode)
     ("Clojure" clojurescript-mode clojurec-mode clojure-mode)
-    ("CMake" cmake-mode)
+    ("CMake" cmake-mode cmake-ts-mode)
     ("Common Lisp" lisp-mode)
     ("Crystal" crystal-mode)
     ("CSS"
      css-mode
-     (web-mode (web-mode-content-type "css") (web-mode-engine "none")))
+     css-ts-mode
+     (web-mode
+      (web-mode-content-type "css")
+      (web-mode-engine "none")))
     ("Cuda" cuda-mode)
     ("D" d-mode)
     ("Dart" dart-mode)
     ("Dhall" dhall-mode)
-    ("Dockerfile" dockerfile-mode)
-    ("Elixir" elixir-mode)
+    ("Dockerfile" dockerfile-mode dockerfile-ts-mode)
+    ("EJS"
+     (web-mode
+      (web-mode-content-type "html")
+      (web-mode-engine "ejs")))
+    ("Elixir" elixir-mode elixir-ts-mode)
     ("Elm" elm-mode)
     ("Emacs Lisp" emacs-lisp-mode)
+    ("Erlang" erlang-mode)
     ("F#" fsharp-mode)
     ("Fish" fish-mode)
     ("Fortran" fortran-mode)
     ("Fortran Free Form" f90-mode)
     ("GLSL" glsl-mode)
-    ("Go" go-mode)
+    ("Go" go-mode go-ts-mode)
     ("GraphQL" graphql-mode)
     ("Haskell" haskell-mode)
     ("HCL" hcl-mode)
     ("HTML"
-     html-helper-mode mhtml-mode html-mode nxhtml-mode
-     (web-mode (web-mode-content-type "html") (web-mode-engine "none")))
-    ("Java" java-mode)
+     html-helper-mode
+     mhtml-mode
+     html-mode
+     nxhtml-mode
+     (web-mode
+      (web-mode-content-type "html")
+      (web-mode-engine "none")))
+    ("HTML+EEX"
+     heex-ts-mode
+     (web-mode
+      (web-mode-content-type "html")
+      (web-mode-engine "elixir")))
+    ("HTML+ERB"
+     (web-mode
+      (web-mode-content-type "html")
+      (web-mode-engine "erb")))
+    ("Java" java-mode java-ts-mode)
     ("JavaScript"
-     (js-mode (flow-minor-mode nil))
-     (js2-mode (flow-minor-mode nil))
-     (js3-mode (flow-minor-mode nil))
-     (web-mode (web-mode-content-type "javascript") (web-mode-engine "none")))
+     js-ts-mode
+     (js-mode
+      (flow-minor-mode nil))
+     (js2-mode
+      (flow-minor-mode nil))
+     (js3-mode
+      (flow-minor-mode nil))
+     (web-mode
+      (web-mode-content-type "javascript")
+      (web-mode-engine "none")))
+    ("JavaScript+ERB"
+     (web-mode
+      (web-mode-content-type "javascript")
+      (web-mode-engine "erb")))
     ("JSON"
      json-mode
-     (web-mode (web-mode-content-type "json") (web-mode-engine "none")))
+     json-ts-mode
+     (web-mode
+      (web-mode-content-type "json")
+      (web-mode-engine "none")))
     ("Jsonnet" jsonnet-mode)
     ("JSX"
-     js2-jsx-mode jsx-mode rjsx-mode react-mode
-     (web-mode (web-mode-content-type "jsx") (web-mode-engine "none")))
+     js2-jsx-mode
+     jsx-mode
+     rjsx-mode
+     react-mode
+     (web-mode
+      (web-mode-content-type "jsx")
+      (web-mode-engine "none")))
     ("Kotlin" kotlin-mode)
     ("LaTeX" latex-mode)
     ("Less" less-css-mode)
@@ -159,30 +231,36 @@
     ("Perl" cperl-mode perl-mode)
     ("Protocol Buffer" protobuf-mode)
     ("PureScript" purescript-mode)
-    ("Python" python-mode)
-    ("R" ess-r-mode (ess-mode (ess-dialect "R")))
+    ("Python" python-mode python-ts-mode)
+    ("R"
+     ess-r-mode
+     (ess-mode
+      (ess-dialect "R")))
     ("Racket" racket-mode)
-    ("Ruby" enh-ruby-mode ruby-mode)
-    ("Rust" rust-mode rustic-mode)
+    ("Ruby" enh-ruby-mode ruby-mode ruby-ts-mode)
+    ("Rust" rust-mode rustic-mode rust-ts-mode)
     ("Scala" scala-mode)
     ("Scheme" scheme-mode)
-    ("Shell" sh-mode)
-    ("Solidity" solidity-mode)
+    ("Shell" sh-mode bash-ts-mode)
     ("SQL" sql-mode)
     ("Swift" swift-mode swift3-mode)
-    ("TOML" toml-mode conf-toml-mode)
+    ("TOML" toml-mode conf-toml-mode toml-ts-mode)
     ("V" v-mode)
     ("Verilog" verilog-mode)
     ("XML"
-     nxml-mode xml-mode
-     (web-mode (web-mode-content-type "xml") (web-mode-engine "none")))
-    ("YAML" yaml-mode))
+     nxml-mode
+     xml-mode
+     (web-mode
+      (web-mode-content-type "xml")
+      (web-mode-engine "none")))
+    ("YAML" yaml-mode yaml-ts-mode)
+    ("Zig" zig-mode))
   "Internal table of programming language definitions.")
 
 (defun language-id--mode-match-p (mode)
   "Interal helper to match current buffer against MODE."
   (let ((mode (if (listp mode) mode (list mode))))
-    (cl-destructuring-bind (wanted-major-mode . variables) mode
+    (cl-destructuring-bind (wanted-major-mode &rest variables) mode
       (and (derived-mode-p wanted-major-mode)
            (cl-every
             (lambda (variable)
@@ -213,7 +291,7 @@ returns nil."
   (let ((language-id--file-name-extension
          (downcase (file-name-extension (or (buffer-file-name) "") t))))
     (cl-some (lambda (definition)
-               (cl-destructuring-bind (language-id . modes) definition
+               (cl-destructuring-bind (language-id &rest modes) definition
                  (when (cl-some #'language-id--mode-match-p modes)
                    language-id)))
              language-id--definitions)))

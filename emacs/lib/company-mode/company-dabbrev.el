@@ -1,6 +1,6 @@
 ;;; company-dabbrev.el --- dabbrev-like company-mode completion backend  -*- lexical-binding: t -*-
 
-;; Copyright (C) 2009, 2011, 2014, 2015, 2016  Free Software Foundation, Inc.
+;; Copyright (C) 2009-2011, 2013-2018, 2021  Free Software Foundation, Inc.
 
 ;; Author: Nikolaj Schumacher
 
@@ -179,7 +179,7 @@ This variable affects both `company-dabbrev' and `company-dabbrev-code'."
     (all-completions prefix candidates)))
 
 ;;;###autoload
-(defun company-dabbrev (command &optional arg &rest ignored)
+(defun company-dabbrev (command &optional arg &rest _ignored)
   "dabbrev-like `company-mode' completion backend."
   (interactive (list 'interactive))
   (cl-case command

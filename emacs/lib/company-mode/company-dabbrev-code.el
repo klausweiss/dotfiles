@@ -1,6 +1,6 @@
 ;;; company-dabbrev-code.el --- dabbrev-like company-mode backend for code  -*- lexical-binding: t -*-
 
-;; Copyright (C) 2009, 2011, 2014  Free Software Foundation, Inc.
+;; Copyright (C) 2009-2011, 2013-2016, 2021  Free Software Foundation, Inc.
 
 ;; Author: Nikolaj Schumacher
 
@@ -76,7 +76,7 @@ also `company-dabbrev-code-time-limit'."
           "\\(\\sw\\|\\s_\\)*\\_>"))
 
 ;;;###autoload
-(defun company-dabbrev-code (command &optional arg &rest ignored)
+(defun company-dabbrev-code (command &optional arg &rest _ignored)
   "dabbrev-like `company-mode' backend for code.
 The backend looks for all symbols in the current buffer that aren't in
 comments or strings."

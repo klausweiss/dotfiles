@@ -1,6 +1,6 @@
 ;;; treemacs.el --- A tree style file viewer package -*- lexical-binding: t -*-
 
-;; Copyright (C) 2021 Alexander Miller
+;; Copyright (C) 2022 Alexander Miller
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -143,7 +143,8 @@ width of the new window when the treemacs window is visible."
       (add-hook 'org-store-link-functions #'treemacs-store-org-link))))
 
 (with-eval-after-load 'evil-escape
-  (when (boundp 'evil-escape-excluded-major-modes)
+  ;; Disable old versions of evil-escape but keep newer versions active
+  (when (and (boundp 'evil-escape-excluded-major-modes) (not (boundp 'evil-escape-version)))
     (add-to-list 'evil-escape-excluded-major-modes 'treemacs-mode)))
 
 (defun treemacs-load-all-the-icons-with-workaround-font (font)

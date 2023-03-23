@@ -1,6 +1,6 @@
 ;;; treemacs-diagnostics.el --- A tree style file viewer package -*- lexical-binding: t -*-
 
-;; Copyright (C) 2021 Alexander Miller
+;; Copyright (C) 2022 Alexander Miller
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -80,9 +80,9 @@ not expected to be a major issue.
 A basic example use would look like this:
 
 \(treemacs-apply-diagnostics
-    (thunk-delay '(\"/path/to/file/x\" 'treemacs-diagnostic-warning-face
-                   \"/path/to/file/y\" 'treemacs-diagnostic-error-face
-                   \"/path/to/file/z\" '((:underline \"green\")))))"
+    (thunk-delay \\='(\"/path/to/file/x\" \\='treemacs-diagnostic-warning-face
+                      \"/path/to/file/y\" \\='treemacs-diagnostic-error-face
+                      \"/path/to/file/z\" \\='((:underline \"green\")))))"
   (treemacs-debounce treemacs--diagnostic-timer treemacs--apply-diagnostics-delay
     (treemacs-run-in-every-buffer
      (save-excursion

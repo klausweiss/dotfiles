@@ -1,6 +1,6 @@
 ;;; company-elisp.el --- company-mode completion backend for Emacs Lisp -*- lexical-binding: t -*-
 
-;; Copyright (C) 2009, 2011-2013, 2017  Free Software Foundation, Inc.
+;; Copyright (C) 2009-2015, 2017, 2020  Free Software Foundation, Inc.
 
 ;; Author: Nikolaj Schumacher
 
@@ -193,7 +193,7 @@ first in the candidates list."
          (match-string 0 doc))))
 
 ;;;###autoload
-(defun company-elisp (command &optional arg &rest ignored)
+(defun company-elisp (command &optional arg &rest _ignored)
   "`company-mode' completion backend for Emacs Lisp."
   (interactive (list 'interactive))
   (cl-case command

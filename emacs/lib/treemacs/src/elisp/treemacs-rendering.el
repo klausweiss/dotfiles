@@ -1,6 +1,6 @@
 ;;; treemacs.el --- A tree style file viewer package -*- lexical-binding: t -*-
 
-;; Copyright (C) 2021 Alexander Miller
+;; Copyright (C) 2022 Alexander Miller
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -33,6 +33,7 @@
 (require 'treemacs-workspaces)
 (require 'treemacs-visuals)
 (require 'treemacs-logging)
+(require 'treemacs-annotations)
 
 (eval-when-compile
   (require 'cl-lib)
@@ -52,14 +53,6 @@
 (treemacs-import-functions-from "treemacs-interface"
   treemacs-add-project-to-workspace
   treemacs-TAB-action)
-
-(treemacs-import-functions-from "treemacs-extensions"
-  treemacs--apply-root-top-extensions
-  treemacs--apply-root-bottom-extensions
-  treemacs--apply-project-top-extensions
-  treemacs--apply-project-bottom-extensions
-  treemacs--apply-directory-top-extensions
-  treemacs--apply-directory-bottom-extensions)
 
 (treemacs-import-functions-from "treemacs-tags"
   treemacs--expand-file-node
@@ -92,11 +85,24 @@ is a marker pointing to POS."
   (inline-letevals (pos)
     (inline-quote (copy-marker ,pos t))))
 
+(define-inline treemacs--button-in-line (pos)
+  "Return the button in the line at POS in the current buffer, or nil.
+If the button at POS is a text property button, the return value
+is a marker pointing to POS."
+  (inline-letevals (pos)
+    (inline-quote
+     (save-excursion
+       (goto-char ,pos)
+       (copy-marker
+        (next-single-property-change
+         (line-beginning-position) 'button nil (line-end-position))
+        t)))))
+
 (define-inline treemacs--current-screen-line ()
   "Get the current screen line in the selected window."
   (declare (side-effect-free t))
   (inline-quote
-   (max 1 (count-screen-lines (window-start) (point-at-eol)))))
+   (max 1 (count-screen-lines (window-start) (line-end-position)))))
 
 (define-inline treemacs--lines-in-window ()
   "Determine the number of lines visible in the current (treemacs) window.
@@ -252,7 +258,7 @@ either OPEN-ACTION or POST-OPEN-ACTION are expected to take over insertion."
           ,@(when new-icon
               `((beginning-of-line)
                 (treemacs--button-symbol-switch ,new-icon)))
-          (goto-char (treemacs-button-end ,button))
+          (goto-char (line-end-position))
           ,@(if immediate-insert
                 `((progn
                     (insert (apply #'concat ,open-action))))
@@ -357,9 +363,11 @@ Maps ITEMS at given index INTERVAL using MAPPER function."
                    (_ (error "Interval %s is not handled yet" interval)))))
     `(let ((,l ,items))
        (while ,l
-         (setq ,l (,tail-op ,l))
-         (let ((it (pop ,l)))
-           ,@mapper)))))
+          (setq ,l (,tail-op ,l))
+          (let ((it (car ,l)))
+            (setf (car ,l) ,@mapper)
+            (pop ,l)))
+       ,items)))
 
 (define-inline treemacs--create-branch (root depth git-future collapse-process &optional parent)
   "Create a new treemacs branch under ROOT.
@@ -412,10 +420,14 @@ set to PARENT."
             (setf git-info (treemacs--get-or-parse-git-result ,git-future))
             (ht-set! treemacs--git-cache ,root git-info))
            ('deferred
-             (setq git-info (or (ht-get treemacs--git-cache ,root) (ht)))
-             (run-with-timer 0.5 nil #'treemacs--apply-deferred-git-state ,parent ,git-future (current-buffer)))
+             (setf git-info (or (ht-get treemacs--git-cache ,root) treemacs--empty-table)))
            (_
-            (setq git-info (ht))))
+            (setf git-info treemacs--empty-table)))
+
+         (run-with-timer
+          0.5 nil
+          #'treemacs--apply-annotations-deferred
+          ,parent ,root (current-buffer) ,git-future)
 
          (if treemacs-pre-file-insert-predicates
              (progn
@@ -456,28 +468,51 @@ set to PARENT."
            (treemacs-dom-node->insert-into-dom! it))
 
          (treemacs--inplace-map-when-unrolled dir-strings 2
-           (put-text-property
-            0
-            (length it)
-            'face
-            (treemacs--get-node-face (concat ,root "/" it) git-info 'treemacs-directory-face)
-            it))
+           (-if-let* ((ann (treemacs-get-annotation (concat ,root "/" it)))
+                      (face (treemacs-annotation->face-value ann)))
+               (progn
+                 (put-text-property
+                  0
+                  (length it)
+                  'face
+                  face
+                  it)
+                 (concat it (treemacs-annotation->suffix-value ann)))
+             (put-text-property
+              0
+              (length it)
+              'face
+              'treemacs-directory-face
+              it)
+             it))
          (insert (apply #'concat dir-strings))
 
          (end-of-line)
-         (treemacs--inplace-map-when-unrolled file-strings 3
-           (put-text-property
-            0
-            (length it)
-            'face
-            (treemacs--get-node-face (concat ,root "/" it) git-info 'treemacs-git-unmodified-face)
-            it))
+         (setf file-strings
+               (treemacs--inplace-map-when-unrolled file-strings 3
+                 (-if-let* ((ann (treemacs-get-annotation (concat ,root "/" it)))
+                            (face (treemacs-annotation->face-value ann)))
+                     (progn
+                       (put-text-property
+                        0
+                        (length it)
+                        'face
+                        face
+                        it)
+                       (concat it (treemacs-annotation->suffix-value ann)))
+                   (put-text-property
+                    0
+                    (length it)
+                    'face
+                    'treemacs-git-unmodified-face
+                    it)
+                   it)))
          (insert (apply #'concat file-strings))
 
          (save-excursion
            (treemacs--flatten-dirs (treemacs--parse-collapsed-dirs ,collapse-process))
            (treemacs--reentry ,root ,git-future))
-         (point-at-eol))))))
+         (line-end-position))))))
 
 (cl-defmacro treemacs--button-close (&key button new-icon new-state post-close-action)
   "Close node given by BUTTON, use NEW-ICON and BUTTON's state to NEW-STATE.
@@ -487,7 +522,7 @@ Run POST-CLOSE-ACTION after everything else is done."
       ,@(when new-icon
           `((treemacs--button-symbol-switch ,new-icon)))
       (treemacs-button-put ,button :state ,new-state)
-      (-let [next (next-button (point-at-eol))]
+      (-let [next (next-button (button-end ,button))]
         (if (or (null next)
                 (/= (1+ (treemacs-button-get ,button :depth))
                     (treemacs-button-get (copy-marker next t) :depth)))
@@ -497,7 +532,7 @@ Run POST-CLOSE-ACTION after everything else is done."
           ;; current button, making the treemacs--projects-end marker track
           ;; properly when collapsing the last project or a last directory of the
           ;; last project.
-          (let* ((pos-start (treemacs-button-end ,button))
+          (let* ((pos-start (line-end-position))
                  (next (treemacs--next-non-child-button ,button))
                  (pos-end (if next
                               (-> next (treemacs-button-start) (previous-button) (treemacs-button-end))
@@ -521,7 +556,8 @@ RECURSIVE: Bool"
       (let* ((path (treemacs-button-get btn :path))
              (git-path (if (treemacs-button-get btn :symlink) (file-truename path) path))
              (git-future (treemacs--git-status-process git-path project))
-             (collapse-future (treemacs--collapsed-dirs-process path project)))
+             (collapse-future (treemacs--collapsed-dirs-process path project))
+             (recursive (treemacs--prefix-arg-to-recurse-depth recursive)) )
         (treemacs--maybe-recenter treemacs-recenter-after-project-expand
           (treemacs--button-open
            :immediate-insert nil
@@ -533,19 +569,23 @@ RECURSIVE: Bool"
              ;; TODO(2019/10/14): go back to post open
              ;; expand first because it creates a dom node entry
              (treemacs-on-expand path btn)
-             (treemacs--apply-project-top-extensions btn project)
-             (goto-char (treemacs--create-branch path (1+ (treemacs-button-get btn :depth)) git-future collapse-future btn))
-             (treemacs--apply-project-bottom-extensions btn project)
+             (when (fboundp 'treemacs--apply-project-top-extensions)
+               (treemacs--apply-project-top-extensions btn project))
+             (when (fboundp 'treemacs--apply-project-bottom-extensions)
+               (save-excursion
+                 (treemacs--apply-project-bottom-extensions btn project)))
+             (treemacs--create-branch path (1+ (treemacs-button-get btn :depth)) git-future collapse-future btn)
              (treemacs--start-watching path)
              ;; Performing FS ops on a disconnected Tramp project
              ;; might have changed the state to connected.
              (treemacs-with-writable-buffer
               (treemacs-project->refresh-path-status! project))
-             (when (and recursive (treemacs-project->is-readable? project))
+             (when (and (> recursive 0) (treemacs-project->is-readable? project))
+               (cl-decf recursive)
                (--each (treemacs-collect-child-nodes btn)
                  (when (eq 'dir-node-closed (treemacs-button-get it :state))
                    (goto-char (treemacs-button-start it))
-                   (treemacs--expand-dir-node it :git-future git-future :recursive t)))))))))))
+                   (treemacs--expand-dir-node it :git-future git-future :recursive recursive)))))))))))
 
 (defun treemacs--collapse-root-node (btn &optional recursive)
   "Collapse the given root BTN.
@@ -573,7 +613,8 @@ RECURSIVE: Bool"
              (git-future (if (treemacs-button-get btn :symlink)
                              (treemacs--git-status-process (file-truename path) project)
                            (or git-future (treemacs--git-status-process path project))))
-             (collapse-future (treemacs--collapsed-dirs-process path project)))
+             (collapse-future (treemacs--collapsed-dirs-process path project))
+             (recursive (treemacs--prefix-arg-to-recurse-depth recursive)))
         (treemacs--button-open
          :immediate-insert nil
          :button btn
@@ -583,15 +624,18 @@ RECURSIVE: Bool"
          (progn
            ;; do on-expand first so buttons that need collapsing can quickly find their parent
            (treemacs-on-expand path btn)
-           (treemacs--apply-directory-top-extensions btn path)
+           (when (fboundp 'treemacs--apply-directory-top-extensions)
+             (treemacs--apply-directory-top-extensions btn path))
            (goto-char (treemacs--create-branch path (1+ (treemacs-button-get btn :depth)) git-future collapse-future btn))
-           (treemacs--apply-directory-bottom-extensions btn path)
+           (when (fboundp 'treemacs--apply-directory-bottom-extensions)
+             (treemacs--apply-directory-bottom-extensions btn path))
            (treemacs--start-watching path)
-           (when recursive
+           (when (> recursive 0)
+             (cl-decf recursive)
              (--each (treemacs-collect-child-nodes btn)
                (when (eq 'dir-node-closed (treemacs-button-get it :state))
                  (goto-char (treemacs-button-start it))
-                 (treemacs--expand-dir-node it :git-future git-future :recursive t))))))))))
+                 (treemacs--expand-dir-node it :git-future git-future :recursive recursive))))))))))
 
 (defun treemacs--collapse-dir-node (btn &optional recursive)
   "Close node given by BTN.
@@ -623,13 +667,14 @@ PROJECT: Project Struct"
          (path (treemacs-project->path project))
          (dom-node (treemacs-dom-node->create! :key path :position pos)))
     (treemacs-dom-node->insert-into-dom! dom-node)
-    (treemacs--set-project-position project pos)
     (insert
      (propertize (treemacs-project->name project)
                  'button '(t)
                  'category 'default-button
                  'face (treemacs--root-face project)
                  :project project
+                 :default-face 'treemacs-root-face
+                 :key path
                  :symlink (when (treemacs-project->is-readable? project)
                             (file-symlink-p path))
                  :state 'root-node-closed
@@ -643,7 +688,8 @@ PROJECT: Project Struct"
      (setq treemacs--projects-end (make-marker)))
    (let* ((projects (-reject #'treemacs-project->is-disabled? projects))
           (current-workspace (treemacs-current-workspace))
-          (has-previous (treemacs--apply-root-top-extensions current-workspace)))
+          (has-previous (when (fboundp 'treemacs--apply-root-top-extensions)
+                          (treemacs--apply-root-top-extensions current-workspace))))
 
      (--each projects
        (when has-previous (treemacs--insert-root-separator))
@@ -653,7 +699,8 @@ PROJECT: Project Struct"
      ;; Set the end marker after inserting the extensions. Otherwise, the
      ;; extensions would move the marker.
      (let ((projects-end-point (point)))
-       (treemacs--apply-root-bottom-extensions current-workspace has-previous)
+       (when (fboundp 'treemacs--apply-root-bottom-extensions)
+         (treemacs--apply-root-bottom-extensions current-workspace has-previous))
        ;; If the marker lies at the start of the buffer, expanding extensions would
        ;; move the marker. Make sure that the marker does not move when doing so.
        (set-marker-insertion-type treemacs--projects-end has-previous)
@@ -941,7 +988,7 @@ FLATTEN-INFO [Int File Path...]"
 
          ;; Insert new label
          (goto-char parent-btn)
-         (delete-region (point) (point-at-eol))
+         (delete-region (point) (line-end-position))
          (insert (apply #'propertize new-button-label properties))
 
          ;; Fixing marker probably necessary since it's also in the dom
@@ -1043,8 +1090,7 @@ parents' git status can be updated."
                (treemacs-do-delete-single-node path project))
               ('changed
                (treemacs-do-update-node path)
-               (when (memq treemacs--git-mode '(extended deferred))
-                 (treemacs-update-single-file-git-state path)))
+               (treemacs-update-single-file-git-state path))
               ('created
                (treemacs-do-insert-single-node path (treemacs-dom-node->key node)))
               ('force-refresh
@@ -1126,26 +1172,22 @@ GIT-INFO is passed through from the previous branch build."
 
 (defun treemacs--show-single-project (path name)
   "Show only a project for the given PATH and NAME in the current workspace."
-  (-let [ws (treemacs-current-workspace)]
-    (if (treemacs-workspace->is-empty?)
-        (progn
-          (treemacs-do-add-project-to-workspace path name)
-          (treemacs-select-window)
-          (treemacs-pulse-on-success))
-      (setf (treemacs-workspace->projects ws)
-            (--filter (string= path (treemacs-project->path it))
-                      (treemacs-workspace->projects ws)))
-      (unless (treemacs-workspace->projects ws)
-        (let ((treemacs--no-messages t)
-              (treemacs-pulse-on-success nil))
-          (treemacs-add-project-to-workspace path name)))
-      (treemacs-select-window)
-      (treemacs--consolidate-projects)
-      (goto-char 2)
-      (-let [btn (treemacs-current-button)]
-        (unless (treemacs-is-node-expanded? btn)
-          (treemacs--expand-root-node btn)))
-      (treemacs-pulse-on-success))))
+  (let* ((ws (treemacs-current-workspace)))
+    (setf  (treemacs-workspace->projects ws)
+           (list (treemacs-project->create!
+                  :name name
+                  :path path
+                  :path-status (treemacs--get-path-status path))))
+    (--when-let (treemacs-get-local-buffer)
+      (with-current-buffer it
+        (treemacs--consolidate-projects)))
+    (-let [treemacs-select-when-already-in-treemacs 'stay]
+      (treemacs-select-window))
+    (goto-char (point-min))
+    (-if-let (btn (treemacs-current-button))
+      (unless (treemacs-is-node-expanded? btn)
+        (treemacs--expand-root-node btn)))
+    (treemacs--evade-image)))
 
 (provide 'treemacs-rendering)
 
