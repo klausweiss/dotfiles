@@ -143,22 +143,6 @@ function mk_sound_info()
       end)
    end
 
-   function sound_info:refresh_input_volume(args)
-      local args = args or {}
-      if not args.force and self._refreshing_input_volume then return end
-      self._refreshing_input_volume = true
-
-      awful.spawn.easy_async_with_shell
-      (get_input_volume_cmd, function(out, e, r, c)
-         self.input_volume = get_volume_from_two_percents_string(out)
-
-         self._refreshing_input_volume = false
-         if not args.nonotify then
-            self:emit_changed("input::volume")
-         end
-      end)
-   end
-
    function sound_info:refresh_sink_number(force)
       if not force and self._refreshing_sink_number then return end
       self._refreshing_sink_number = true
