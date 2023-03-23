@@ -17,14 +17,21 @@ local get_sink_number_cmd =
 "pactl list sinks | grep 'Sink #.' -A1 | grep RUNNING -B1 | head -n1 | sed 's/.*\\([0-9]\\+\\).*/\\1/g' | head -n1"
 local get_all_sinks_numbers_cmd = "pactl list sinks | grep 'Sink #.' | sed 's/.*\\([0-9]\\+\\).*/\\1/g'"
 
-local set_output_type_to_headphones_cmd = function(sink_number) return "pactl set-sink-port " ..
-       sink_number .. " analog-output-headphones" end
-local set_output_type_to_speakers_cmd = function(sink_number) return "pactl set-sink-port " ..
-       sink_number .. " analog-output-speaker" end
+local set_output_type_to_headphones_cmd = function(sink_number)
+   return "pactl set-sink-port " ..
+       sink_number .. " analog-output-headphones"
+end
+local set_output_type_to_speakers_cmd = function(sink_number)
+   return "pactl set-sink-port " ..
+       sink_number .. " analog-output-speaker"
+end
 
 local set_sink_number_cmd = function(sink_number) return "pactl set-default-sink " .. sink_number end
 
-local get_output_volume_cmd = "pactl list sinks | grep -i 'volume.*front' | tail -n1"
+local get_output_volume_cmd = function(sink_number)
+   return "pactl list sinks | sed -e '1,/Sink.*" ..
+       sink_number .. "/d;/Sink/q' | grep -i 'volume.*front' | tail -n1"
+end
 local get_input_volume_cmd = "pactl list sources | grep -i 'volume.*front' | tail -n1"
 
 local volume_up = function(x) return "pactl set-sink-volume @DEFAULT_SINK@ +" .. x .. "%" end
@@ -110,7 +117,7 @@ function mk_sound_info()
       self._refreshing_output_volume = true
 
       awful.spawn.easy_async_with_shell
-      (get_output_volume_cmd, function(out, e, r, c)
+      (get_output_volume_cmd(self.sink_number), function(out, e, r, c)
          self.output_volume = get_volume_from_two_percents_string(out)
 
          self._refreshing_output_volume = false
