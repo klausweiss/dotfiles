@@ -145,7 +145,7 @@ setkey { ALT, SHIFT, "g",
 setkey { ALT, SHIFT, "d",
 	fun = run("codium") }
 setkey { ALT, SHIFT, "k",
-	fun = run("zim") }
+	fun = run("logseq") }
 -- presets
 setkey { ALT, SHIFT, "F1",
 	fun = presets.preset_web }
