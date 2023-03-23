@@ -26,7 +26,16 @@ local slack = _match_any_classname({ "Slack" })
 local zoom = _match_any_classname({ "zoom" })
 local browser = _match_any_classname({ "Google-chrome", "firefox" })
 local terminal = _match_any_classname({ "kitty" })
-local music = _match_any_windowname({ "Programy Player Polskie Radio SA - Google Chrome" })
+local music = _match_any_windowname({
+	"Player Polskie Radio",
+	"Polskie Radio",
+	"Spotify",
+	".* • .* - Google Chrome", -- another one for Spotify
+	"OPEN FM",
+	"RMF",
+	"Invidious",
+	"YouTube",
+})
 
 local left = rules.get_left_screen
 local middle = rules.get_mid_screen
