@@ -4,6 +4,7 @@ local menubar = require("menubar")
 
 local clients = require("lib/clients")
 local layouts = require("lib/layouts")
+local presets = require("presets")
 local programs = require("programs")
 local rules = require("rules")
 local run = require("lib/procedures").run
@@ -145,6 +146,13 @@ setkey { ALT, SHIFT, "d",
 	fun = run("codium") }
 setkey { ALT, SHIFT, "k",
 	fun = run("zim") }
+-- presets
+setkey { ALT, SHIFT, "F1",
+	fun = presets.preset_web }
+setkey { ALT, SHIFT, "F2",
+	fun = presets.preset_coding }
+setkey { ALT, SHIFT, "F4",
+	fun = presets.preset_meeting }
 
 
 for i, _tagname in ipairs(tags.tags) do
@@ -176,7 +184,8 @@ setkey { ALT, SHIFT, ENTER,
 
 clientkeys = gears.table.join(table.unpack(clientkeys)) -- flatten
 rules.add_rule(
-	{ rule = {},
+	{
+		rule = {},
 		properties = {
 			keys = clientkeys,
 		},
@@ -190,6 +199,5 @@ return {
 	SHIFT = SHIFT,
 	SUPER = SUPER,
 	TAB = TAB,
-
 	clients_modkey = ALT,
 }
