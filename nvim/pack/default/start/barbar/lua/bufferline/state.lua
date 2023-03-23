@@ -2,23 +2,19 @@
 -- m.lua
 --
 
+local table_insert = table.insert
 local table_remove = table.remove
 
-local buf_get_name = vim.api.nvim_buf_get_name
-local buf_get_option = vim.api.nvim_buf_get_option
-local bufadd = vim.fn.bufadd
-local get_current_buf = vim.api.nvim_get_current_buf
-local list_bufs = vim.api.nvim_list_bufs
+local buf_get_name = vim.api.nvim_buf_get_name --- @type function
+local buf_get_option = vim.api.nvim_buf_get_option --- @type function
+local bufadd = vim.fn.bufadd --- @type function
+local get_current_buf = vim.api.nvim_get_current_buf --- @type function
+local list_bufs = vim.api.nvim_list_bufs --- @type function
 local list_extend = vim.list_extend
 local tbl_filter = vim.tbl_filter
 
---- @type bufferline.buffer
 local Buffer = require'bufferline.buffer'
-
---- @type bufferline.options
 local options = require'bufferline.options'
-
---- @type bufferline.utils
 local utils = require'bufferline.utils'
 
 --------------------------------
@@ -78,22 +74,21 @@ function state.get_buffer_data(bufnr)
 end
 
 --- Get the list of buffers
+--- @return integer[] bufnrs
 function state.get_buffer_list()
-  local buffers = list_bufs()
   local result = {}
 
   local exclude_ft = options.exclude_ft()
   local exclude_name = options.exclude_name()
   local hide_extensions = options.hide().extensions
 
-  for _, buffer in ipairs(buffers) do
-    if buf_get_option(buffer, 'buflisted') then
-      local ft = buf_get_option(buffer, 'filetype')
-      if not utils.has(exclude_ft, ft) then
-        local name = utils.basename(buf_get_name(buffer), hide_extensions)
-        if not utils.has(exclude_name, name) then
-          result[#result + 1] = buffer
-        end
+  for _, bufnr in ipairs(list_bufs()) do
+    if buf_get_option(bufnr, 'buflisted') and
+      not utils.has(exclude_ft, buf_get_option(bufnr, 'filetype'))
+    then
+      local name = buf_get_name(bufnr)
+      if not utils.has(exclude_name, utils.basename(name, hide_extensions)) then
+        table_insert(result, bufnr)
       end
     end
   end
@@ -111,6 +106,7 @@ function state.is_pinned(bufnr)
 end
 
 --- Sort the pinned tabs to the left of the bufferline.
+--- @return nil
 function state.sort_pins_to_left()
   local unpinned = {}
 
@@ -119,7 +115,7 @@ function state.sort_pins_to_left()
     if state.is_pinned(state.buffers[i]) then
       i = i + 1
     else
-      unpinned[#unpinned + 1] = table_remove(state.buffers, i)
+      table_insert(unpinned, table_remove(state.buffers, i))
     end
   end
 
@@ -129,6 +125,7 @@ end
 --- Toggle the `bufnr`'s "pin" state.
 --- WARN: does not redraw the bufferline. See `Render.toggle_pin`.
 --- @param bufnr integer
+--- @return nil
 function state.toggle_pin(bufnr)
   local data = state.get_buffer_data(bufnr)
   data.pinned = not data.pinned
@@ -142,6 +139,7 @@ end
 --- WARN: does NOT close the buffer in Neovim (see `:h nvim_buf_delete`)
 --- @param bufnr integer
 --- @param do_name_update? boolean refreshes all buffer names iff `true`
+--- @return nil
 function state.close_buffer(bufnr, do_name_update)
   state.buffers = tbl_filter(function(b) return b ~= bufnr end, state.buffers)
   state.data_by_bufnr[bufnr] = nil
@@ -153,27 +151,8 @@ end
 
 -- Read/write state
 
--- Return the bufnr of the buffer to the right of `buffer_number`
--- @param buffer_number int
--- @return int|nil
-function state.find_next_buffer(buffer_number)
-  local index = utils.index_of(state.buffers, buffer_number)
-  if index == nil then
-    return
-  end
-
-  if index + 1 > #state.buffers then
-    index = index - 1
-    if index <= 0 then
-      return nil
-    end
-  else
-    index = index + 1
-  end
-  return state.buffers[index]
-end
-
 --- Update the names of all buffers in the bufferline.
+--- @return nil
 function state.update_names()
   local buffer_index_by_name = {}
   local hide_extensions = options.hide().extensions
@@ -207,14 +186,14 @@ end
 --- @param width integer
 --- @param text? string
 --- @param hl? string
+--- @return nil
 function state.set_offset(width, text, hl)
   if vim.deprecate then
     vim.deprecate('`bufferline.state.set_offset`', '`bufferline.api.set_offset`', '2.0.0', 'barbar.nvim')
   else
-    vim.notify_once(
+    utils.notify_once(
       "`bufferline.state.set_offset` is deprecated, use `bufferline.api.set_offset` instead",
-      vim.log.levels.WARN,
-      {title = 'barbar.nvim'}
+      vim.log.levels.WARN
     )
   end
 
@@ -223,9 +202,8 @@ end
 
 --- Restore the buffers
 --- @param buffer_data string[]|{name: string, pinned: boolean}[]
+--- @return nil
 function state.restore_buffers(buffer_data)
-  --- PERF: since this function is only run once (`nvim -S`) I avoided importing the called functions at top-level
-  local table_insert = table.insert
   local buf_delete = vim.api.nvim_buf_delete
   local buf_get_lines = vim.api.nvim_buf_get_lines
   local buf_line_count = vim.api.nvim_buf_line_count

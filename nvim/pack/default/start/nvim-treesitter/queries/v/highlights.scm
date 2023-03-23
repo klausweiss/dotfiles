@@ -396,6 +396,8 @@
 
 (rune_literal) @string
 
+(raw_string_literal) @string
+
 (escape_sequence) @string.escape
 
 (float_literal) @float
@@ -404,5 +406,8 @@
 
 (ERROR) @error
 
-(comment) @comment
+(comment) @comment @spell
 
+(_
+  (comment)+ @comment.documentation
+  [(function_declaration) (type_declaration) (const_spec) (enum_declaration)])

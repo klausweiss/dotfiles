@@ -22,7 +22,6 @@
 (function_declaration (simple_identifier) @method)
 (function_declaration ["init" @constructor])
 (throws) @keyword
-"async" @keyword
 (where_keyword) @keyword
 (parameter external_name: (simple_identifier) @parameter)
 (parameter name: (simple_identifier) @parameter)
@@ -46,6 +45,11 @@
   "required"
   "some"
 ] @keyword
+
+[
+  "async"
+  "await"
+] @keyword.coroutine
 
 [
   (getter_specifier)
@@ -102,6 +106,15 @@
  (comment)
  (multiline_comment)
 ] @comment @spell
+
+((comment) @comment.documentation
+  (#lua-match? @comment.documentation "^///[^/]"))
+
+((comment) @comment.documentation
+  (#lua-match? @comment.documentation "^///$"))
+
+((multiline_comment) @comment.documentation
+  (#lua-match? @comment.documentation "^/[*][*][^*].*[*]/$"))
 
 ; String literals
 (line_str_text) @string

@@ -1,27 +1,19 @@
-local command = vim.api.nvim_command
-local create_user_command = vim.api.nvim_create_user_command
-local get_current_buf = vim.api.nvim_get_current_buf
-local bufnr = vim.fn.bufnr
+local max = math.max
+local table_insert = table.insert
 
---- @type bufferline.api
+local bufnr = vim.fn.bufnr --- @type function
+local command = vim.api.nvim_command --- @type function
+local create_user_command = vim.api.nvim_create_user_command --- @type function
+local get_current_buf = vim.api.nvim_get_current_buf --- @type function
+local set_option = vim.api.nvim_set_option --- @type function
+
 local api = require'bufferline.api'
-
---- @type bbye
 local bbye = require'bufferline.bbye'
-
---- @type bufferline.highlight
 local highlight = require'bufferline.highlight'
-
---- @type bufferline.JumpMode
 local JumpMode = require'bufferline.jump_mode'
-
---- @type bufferline.options
+local notify = require'bufferline.utils'.notify
 local options = require'bufferline.options'
-
---- @type bufferline.render
 local render = require'bufferline.render'
-
---- @type bufferline.state
 local state = require'bufferline.state'
 
 -------------------------------
@@ -33,9 +25,10 @@ local bufferline = {}
 
 --- Setup this plugin.
 --- @param user_config? table
+--- @return nil
 function bufferline.setup(user_config)
   -- Show the tabline
-  vim.opt.showtabline = 2
+  set_option('showtabline', 2)
 
   -- Create all necessary commands
   create_user_command('BarbarEnable', render.enable, {desc = 'Enable barbar.nvim'})
@@ -43,20 +36,43 @@ function bufferline.setup(user_config)
 
   create_user_command(
     'BufferNext',
-    function(tbl) api.goto_buffer_relative(math.max(1, tbl.count)) end,
+    function(tbl) api.goto_buffer_relative(max(1, tbl.count)) end,
     {count = true, desc = 'Go to the next buffer'}
   )
 
   create_user_command(
     'BufferPrevious',
-    function(tbl) api.goto_buffer_relative(-math.max(1, tbl.count)) end,
+    function(tbl) api.goto_buffer_relative(-max(1, tbl.count)) end,
     {count = true, desc = 'Go to the previous buffer'}
   )
 
   create_user_command(
     'BufferGoto',
-    function(tbl) api.goto_buffer(tonumber(tbl.args) or 1) end,
-    {desc = 'Go to the buffer at the specified index', nargs = 1}
+    function(tbl)
+      local index = tonumber(tbl.args)
+      if not index then
+        return notify('Invalid argument to `:BufferGoto`', vim.log.levels.ERROR)
+      end
+      api.goto_buffer(index)
+    end,
+    {
+      complete = function()
+        local buffers = require'bufferline.state'.buffers
+        local buffer_indices = {}
+
+        for i = 1, #buffers do
+          table_insert(buffer_indices, tostring(i))
+        end
+
+        for i = -#buffers, -1 do
+          table.insert(buffer_indices, tostring(i))
+        end
+
+        return buffer_indices
+      end,
+      desc = 'Go to the buffer at the specified index',
+      nargs = 1,
+    }
   )
 
   create_user_command('BufferFirst', 'BufferGoto 1', {desc = 'Go to the first buffer'})
@@ -70,13 +86,13 @@ function bufferline.setup(user_config)
 
   create_user_command(
     'BufferMoveNext',
-    function(tbl) api.move_current_buffer(math.max(1, tbl.count)) end,
+    function(tbl) api.move_current_buffer(max(1, tbl.count)) end,
     {count = true, desc = 'Move the current buffer to the right'}
   )
 
   create_user_command(
     'BufferMovePrevious',
-    function(tbl) api.move_current_buffer(-math.max(1, tbl.count)) end,
+    function(tbl) api.move_current_buffer(-max(1, tbl.count)) end,
     {count = true, desc = 'Move the current buffer to the left'}
   )
 
@@ -116,26 +132,16 @@ function bufferline.setup(user_config)
     {desc = 'Order the bufferline by window number'}
   )
 
-  create_user_command(
-    'BufferClose',
-    function(tbl)
-      local focus_buffer = state.find_next_buffer(get_current_buf())
-      bbye.bdelete(tbl.bang, tbl.args, tbl.smods or tbl.mods, focus_buffer)
-    end,
-    {bang = true, complete = 'buffer', desc = 'Close the current buffer.', nargs = '?'}
-  )
-
-  create_user_command(
-    'BufferDelete',
-    function(tbl) bbye.bdelete(tbl.bang, tbl.args, tbl.smods or tbl.mods) end,
-    {bang = true, complete = 'buffer', desc = 'Synonym for `:BufferClose`', nargs = '?'}
-  )
-
-  create_user_command(
-    'BufferWipeout',
-    function(tbl) bbye.bwipeout(tbl.bang, tbl.args, tbl.smods or tbl.mods) end,
-    {bang = true, complete = 'buffer', desc = 'Wipe out the buffer', nargs = '?'}
-  )
+  for cmd, desc in pairs {
+    Close = 'Close the current buffer',
+    Delete = 'Synonym for `:BufferClose`',
+  } do
+    create_user_command(
+      'Buffer' .. cmd,
+      function(tbl) bbye.bdelete(tbl.bang, tbl.args, tbl.smods or tbl.mods) end,
+      {bang = true, complete = 'buffer', desc = desc, nargs = '?'}
+    )
+  end
 
   create_user_command(
     'BufferCloseAllButCurrent',
@@ -175,13 +181,13 @@ function bufferline.setup(user_config)
 
   create_user_command(
     'BufferScrollLeft',
-    function(tbl) render.scroll(-math.max(1, tbl.count)) end,
+    function(tbl) render.scroll(-max(1, tbl.count)) end,
     {count = true, desc = 'Scroll the bufferline left'}
   )
 
   create_user_command(
     'BufferScrollRight',
-    function(tbl) render.scroll(math.max(1, tbl.count)) end,
+    function(tbl) render.scroll(max(1, tbl.count)) end,
     {count = true, desc = 'Scroll the bufferline right'}
   )
 

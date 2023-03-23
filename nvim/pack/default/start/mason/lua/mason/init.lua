@@ -1,6 +1,6 @@
-local settings = require "mason.settings"
 local path = require "mason-core.path"
 local platform = require "mason-core.platform"
+local settings = require "mason.settings"
 
 local M = {}
 
@@ -18,6 +18,7 @@ function M.setup(config)
     if config then
         settings.set(config)
     end
+    vim.env.MASON = settings.current.install_root_dir
 
     if settings.current.PATH == "prepend" then
         vim.env.PATH = path.bin_prefix() .. platform.path_sep .. vim.env.PATH

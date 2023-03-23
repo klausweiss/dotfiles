@@ -124,6 +124,26 @@ keybinds which you may find in the help view by pressing `g?` when the Mason
 window is open.
 
 ==============================================================================
+REGISTRIES                                                  *mason-registries*
+
+`mason.nvim` sources package definitions from the registries it has been
+configured with (see |mason-settings|). `mason.nvim` uses the core registry,
+governed by `mason.nvim`, by default. This may be extended, or even entirely
+overridden, through additional registries, like so:
+
+>lua
+    require("mason").setup {
+        registries = {
+            "lua:my-registry",
+            "github:mason-org/mason-registry",
+        },
+    }
+<
+
+Packages are loaded from registries in the order they've been configured,
+with registries appearing first in the list having precedence.
+
+==============================================================================
 HOW TO INSTALL PACKAGES                        *mason-how-to-install-packages*
 
 You may install packages either via the command interface or via Mason's Lua
@@ -168,6 +188,13 @@ installed packages have new versions available, install, uninstall, or update
 packages, expand package information, and more. The UI comes with a set of
 keybinds which you may find in the help view by pressing `g?` when the Mason
 window is open.
+
+------------------------------------------------------------------------------
+UPDATE REGISTRIES                                               *:MasonUpdate*
+>vim
+:MasonUpdate
+<
+Updates all managed registries.
 
 ------------------------------------------------------------------------------
 INSTALLING PACKAGES                                            *:MasonInstall*
@@ -239,12 +266,6 @@ Example:
         ---@type '"prepend"' | '"append"' | '"skip"'
         PATH = "prepend",
 
-        -- The registries to source packages from. Accepts multiple entries. Should a package with the same name exist in
-        -- multiple registries, the registry listed first will be used.
-        registries = {
-            "lua:mason-registry.index",
-        },
-
         -- Controls to which degree logs are written to the log file. It's useful to set this to vim.log.levels.DEBUG when
         -- debugging issues with package installations.
         log_level = vim.log.levels.INFO,
@@ -252,6 +273,14 @@ Example:
         -- Limit for the maximum amount of packages to be installed at the same time. Once this limit is reached, any further
         -- packages that are requested to be installed will be put in a queue.
         max_concurrent_installers = 4,
+
+        -- [Advanced setting]
+        -- The registries to source packages from. Accepts multiple entries. Should a package with the same name exist in
+        -- multiple registries, the registry listed first will be used.
+        registries = {
+            "lua:mason-registry.index",
+            "github:mason-org/mason-registry",
+        },
 
         -- The provider implementations to use for resolving supplementary package metadata (e.g., all available versions).
         -- Accepts multiple entries, where later entries will be used as fallback should prior providers fail.
@@ -469,6 +498,43 @@ get_all_package_names()
 
     Returns:
         string[]
+
+                                                     *mason-registry.update()*
+update({callback})
+    Updates all managed registries.
+
+    Parameters:
+        {callback} - Callback of the signature `fun(success: boolean, updated_registries: RegistrySource[])`
+
+                                                    *mason-registry.refresh()*
+refresh({callback?})
+    Refreshes all registries if needed. This is a convenience wrapper around
+    |mason-registry.update()| that only updates registries if:
+        1) registries haven't been updated in a while
+        2) or, one or more registries are not installed
+
+    Runs in a blocking fashion if no {callback} is provided. Note that when
+    running in blocking fashion the entire editor is frozen, so prefer the
+    asynchronous variant unless absolutely needed.
+
+    Parameters:
+        {callback?} (optional) - Invoked when the registry has been refreshed.
+
+    Example:
+>lua
+        local registry = require("mason-registry")
+
+        -- 1. synchronous
+        registry.refresh()
+        local packages = registry.get_all_packages()
+        ...
+
+        -- 2. asynchronous
+        registry.refresh(function ()
+            local packages = registry.get_all_packages()
+            ...
+        end)
+<
 
 
 vim:tw=78:ft=help:norl:expandtab:sw=4

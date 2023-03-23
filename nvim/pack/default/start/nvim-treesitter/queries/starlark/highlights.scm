@@ -158,7 +158,13 @@
 ] @string.escape
 
 ; doc-strings
-(expression_statement (string) @spell)
+
+(module . (expression_statement (string) @string.documentation @spell))
+
+(function_definition
+  body:
+    (block
+      . (expression_statement (string) @string.documentation @spell)))
 
 ; Tokens
 
@@ -218,7 +224,6 @@
 ] @keyword.function
 
 [
-  "assert"
   "async"
   "await"
   "exec"
@@ -228,6 +233,11 @@
   "with"
   "as"
 ] @keyword
+
+[
+  "async"
+  "await"
+] @keyword.coroutine
 
 [
   "return"
@@ -255,6 +265,11 @@
 (ERROR) @error
 
 ;; Starlark-specific
+
+;; Assertion calls
+(assert_keyword) @keyword
+
+(assert_builtin) @function.builtin
 
 ;; Struct definitions
 ((call

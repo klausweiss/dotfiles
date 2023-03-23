@@ -10,6 +10,7 @@ LuaRegistrySource.__index = LuaRegistrySource
 ---@param spec LuaRegistrySourceSpec
 function LuaRegistrySource.new(spec)
     return setmetatable({
+        id = spec.id,
         spec = spec,
     }, LuaRegistrySource)
 end
@@ -34,9 +35,17 @@ function LuaRegistrySource:is_installed()
     return ok
 end
 
-function LuaRegistrySource:install()
-    local Result = require "mason-core.result"
-    return Result.success()
+function LuaRegistrySource:get_installer()
+    local Optional = require "mason-core.optional"
+    return Optional.empty()
+end
+
+function LuaRegistrySource:get_display_name()
+    if self:is_installed() then
+        return ("require(%q)"):format(self.spec.mod)
+    else
+        return ("require(%q) [uninstalled]"):format(self.spec.mod)
+    end
 end
 
 function LuaRegistrySource:__tostring()

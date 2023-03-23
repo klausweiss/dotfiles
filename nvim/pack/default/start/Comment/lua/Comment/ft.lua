@@ -108,6 +108,7 @@ local L = setmetatable({
     r = { M.hash }, -- R doesn't have block comments
     readline = { M.hash },
     rego = { M.hash },
+    remind = { M.hash },
     ruby = { M.hash },
     rust = { M.cxx_l, M.cxx_b },
     scala = { M.cxx_l, M.cxx_b },
@@ -135,6 +136,7 @@ local L = setmetatable({
     xml = { M.html, M.html },
     xdefaults = { '!%s' },
     yaml = { M.hash },
+    yuck = { M.lisp_l },
     zig = { M.cxx_l }, -- Zig doesn't have block comments
 }, {
     -- Support for compound filetype i.e. 'ios.swift', 'ansible.yaml' etc.

@@ -114,7 +114,7 @@
 ; Constants
 
 (this) @variable.builtin
-(nullptr) @constant
+(nullptr) @constant.builtin
 
 (true) @boolean
 (false) @boolean
@@ -143,10 +143,18 @@
  "template"
  "typename"
  "using"
- "co_await"
  "concept"
  "requires"
 ] @keyword
+
+[
+  "co_await"
+] @keyword.coroutine
+
+[
+ "co_yield"
+ "co_return"
+] @keyword.coroutine.return
 
 [
  "public"
@@ -155,11 +163,6 @@
  "virtual"
  "final"
 ] @type.qualifier
-
-[
- "co_yield"
- "co_return"
-] @keyword.return
 
 [
  "new"

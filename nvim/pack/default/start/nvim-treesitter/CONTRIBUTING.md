@@ -89,12 +89,13 @@ effect on highlighting. We will work on improving highlighting in the near futur
 #### Misc
 
 ```scheme
-@comment  ; line and block comments
-@error    ; syntax/parser errors
-@none     ; completely disable the highlight
-@preproc  ; various preprocessor directives & shebangs
-@define   ; preprocessor definition directives
-@operator ; symbolic operators (e.g. `+` / `*`)
+@comment               ; line and block comments
+@comment.documentation ; comments documenting code
+@error                 ; syntax/parser errors
+@none                  ; completely disable the highlight
+@preproc               ; various preprocessor directives & shebangs
+@define                ; preprocessor definition directives
+@operator              ; symbolic operators (e.g. `+` / `*`)
 ```
 
 #### Punctuation
@@ -108,17 +109,18 @@ effect on highlighting. We will work on improving highlighting in the near futur
 #### Literals
 
 ```scheme
-@string            ; string literals
-@string.regex      ; regular expressions
-@string.escape     ; escape sequences
-@string.special    ; other special strings (e.g. dates)
+@string               ; string literals
+@string.documentation ; string documenting code (e.g. Python docstrings)
+@string.regex         ; regular expressions
+@string.escape        ; escape sequences
+@string.special       ; other special strings (e.g. dates)
 
-@character         ; character literals
-@character.special ; special characters (e.g. wildcards)
+@character            ; character literals
+@character.special    ; special characters (e.g. wildcards)
 
-@boolean           ; boolean literals
-@number            ; numeric literals
-@float             ; floating-point number literals
+@boolean              ; boolean literals
+@number               ; numeric literals
+@float                ; floating-point number literals
 ```
 
 #### Functions
@@ -140,6 +142,7 @@ effect on highlighting. We will work on improving highlighting in the near futur
 
 ```scheme
 @keyword             ; various keywords
+@keyword.coroutine   ; keywords related to coroutines (e.g. `go` in Go, `async/await` in Python)
 @keyword.function    ; keywords that define a function (e.g. `func` in Go, `def` in Python)
 @keyword.operator    ; operators that are English words (e.g. `and` / `or`)
 @keyword.return      ; keywords like `return` and `yield`

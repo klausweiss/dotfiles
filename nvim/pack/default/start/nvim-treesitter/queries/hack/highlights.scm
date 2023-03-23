@@ -12,13 +12,14 @@
 [
   (comment)
   (heredoc)
-] @comment
+] @comment @spell
+
+((comment) @comment.documentation
+  (#lua-match? @comment.documentation "^/[*][*][^*].*[*]/$"))
 
 "function" @keyword.function
 
 [
- "async"
- "await"
  "type"
  "interface"
  "implements"
@@ -30,6 +31,11 @@
  "extends"
  "insteadof"
 ] @keyword
+
+[
+  "async"
+  "await"
+] @keyword.coroutine
 
 [
  "use"

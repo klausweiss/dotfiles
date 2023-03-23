@@ -1,6 +1,6 @@
-local log = require "mason-core.log"
-local a = require "mason-core.async"
 local Path = require "mason-core.path"
+local a = require "mason-core.async"
+local log = require "mason-core.log"
 local settings = require "mason.settings"
 
 local function make_module(uv)
@@ -144,6 +144,13 @@ local function make_module(uv)
     function M.symlink(path, new_path)
         log.trace("fs: symlink", path, new_path)
         uv.fs_symlink(path, new_path)
+    end
+
+    ---@param path string
+    ---@param mode integer
+    function M.chmod(path, mode)
+        log.trace("fs: chmod", path, mode)
+        uv.fs_chmod(path, mode)
     end
 
     return M

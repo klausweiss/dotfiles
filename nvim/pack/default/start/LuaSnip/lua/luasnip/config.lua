@@ -44,6 +44,7 @@ local lazy_snip_env = {
 	postfix = function() return require("luasnip.extras.postfix").postfix end,
 	types = function() return require("luasnip.util.types") end,
 	parse = function() return require("luasnip.util.parser").parse_snippet end,
+	ms = function() return require("luasnip.nodes.multiSnippet").new_multisnippet end,
 }
 
 local defaults = {
@@ -216,8 +217,16 @@ c = {
 
 	_setup = function()
 		local augroup = vim.api.nvim_create_augroup("luasnip", {})
-		local function ls_autocmd(event, callback)
-			vim.api.nvim_create_autocmd(event, {
+
+		-- events: string[], or string. if string[], each string is one
+		-- event-name, if string, either one event-name, or multiple delimited by `,`.
+		local function ls_autocmd(events, callback)
+			if type(events) == "string" then
+				-- split on ',' for backwards compatibility.
+				-- remove spaces from string.
+				events = vim.split(events:gsub(" ", ""), ",")
+			end
+			vim.api.nvim_create_autocmd(events, {
 				callback = callback,
 				group = augroup,
 			})

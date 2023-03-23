@@ -5,6 +5,7 @@ local Ui = require("neogit.lib.ui")
 local logger = require("neogit.logger")
 local util = require("neogit.lib.util")
 local config = require("neogit.config")
+local state = require("neogit.lib.state")
 
 local col = Ui.col
 local row = Ui.row
@@ -86,6 +87,7 @@ function M:toggle_switch(switch)
     return c.options.id == switch.id
   end)
   c.options.highlight = get_highlight_for_switch(switch)
+  state.set({ self.state.name, switch.cli }, switch.enabled)
   self.buffer.ui:update()
 end
 
@@ -100,6 +102,7 @@ function M:set_option(option)
   end)
   c.options.highlight = get_highlight_for_option(option)
   c.children[#c.children].value = option.value
+  state.set({ self.state.name, option.cli }, option.value)
   self.buffer.ui:update()
 end
 
@@ -231,20 +234,37 @@ function M:show()
     end
   end
 
+  local items = {}
+
+  if self.state.switches[1] then
+    table.insert(items, Switches { state = self.state.switches })
+  end
+
+  if self.state.options[1] then
+    table.insert(items, Options { state = self.state.options })
+  end
+
+  if self.state.actions[1] then
+    table.insert(items, Actions { state = self.state.actions })
+  end
+
   self.buffer = Buffer.create {
     name = self.state.name,
     filetype = "NeogitPopup",
     kind = config.values.popup.kind,
     mappings = mappings,
+    after = function(buffer)
+      if config.values.popup.kind == "split" then
+        vim.api.nvim_buf_call(buffer.handle, function()
+          vim.cmd([[execute "resize" . (line("$") + 1)]])
+        end)
+      end
+    end,
     render = function()
       return {
         List {
           separator = "",
-          items = {
-            Switches { state = self.state.switches },
-            Options { state = self.state.options },
-            Actions { state = self.state.actions },
-          },
+          items = items,
         },
       }
     end,

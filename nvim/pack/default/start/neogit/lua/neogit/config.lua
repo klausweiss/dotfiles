@@ -7,8 +7,11 @@ M.values = {
   disable_commit_confirmation = false,
   disable_builtin_notifications = false,
   disable_insert_on_commit = true,
+  use_per_project_settings = true,
+  remember_settings = true,
   use_magit_keybindings = false,
   auto_refresh = true,
+  sort_branches = "-committerdate",
   kind = "tab",
   -- The time after which an output console is shown for slow running commands
   console_timeout = 2000,
@@ -60,6 +63,7 @@ M.values = {
       folded = true,
     },
   },
+  ignored_settings = {},
   mappings = {
     status = {
       ["q"] = "Close",

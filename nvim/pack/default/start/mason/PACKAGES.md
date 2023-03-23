@@ -28,6 +28,7 @@
 - [brighterscript](#brighterscript)
 - [brighterscript-formatter](#brighterscript-formatter)
 - [bsl-language-server](#bsl-language-server)
+- [bslint](#bslint)
 - [buf](#buf)
 - [buf-language-server](#buf-language-server)
 - [buildifier](#buildifier)
@@ -37,9 +38,11 @@
 - [clang-format](#clang-format)
 - [clangd](#clangd)
 - [clarity-lsp](#clarity-lsp)
+- [clj-kondo](#clj-kondo)
 - [clojure-lsp](#clojure-lsp)
 - [cmake-language-server](#cmake-language-server)
 - [cmakelang](#cmakelang)
+- [cmakelint](#cmakelint)
 - [codelldb](#codelldb)
 - [codeql](#codeql)
 - [codespell](#codespell)
@@ -170,6 +173,7 @@
 - [omnisharp](#omnisharp)
 - [omnisharp-mono](#omnisharp-mono)
 - [opencl-language-server](#opencl-language-server)
+- [openedge-language-server](#openedge-language-server)
 - [openscad-lsp](#openscad-lsp)
 - [perlnavigator](#perlnavigator)
 - [php-cs-fixer](#php-cs-fixer)
@@ -191,6 +195,7 @@
 - [puppet-editor-services](#puppet-editor-services)
 - [purescript-language-server](#purescript-language-server)
 - [pydocstyle](#pydocstyle)
+- [pyflakes](#pyflakes)
 - [pylama](#pylama)
 - [pylint](#pylint)
 - [pyproject-flake8](#pyproject-flake8)
@@ -227,6 +232,7 @@
 - [shopify-theme-check](#shopify-theme-check)
 - [slint-lsp](#slint-lsp)
 - [smithy-language-server](#smithy-language-server)
+- [snakefmt](#snakefmt)
 - [solang](#solang)
 - [solargraph](#solargraph)
 - [solhint](#solhint)
@@ -577,6 +583,17 @@ Categories: `LSP`
 ```
 :MasonInstall bsl-language-server
 ```
+# bslint
+
+> A brighterscript CLI tool to lint your code without compiling your project.
+
+Homepage: [https://github.com/rokucommunity/bslint](https://github.com/rokucommunity/bslint)  
+Languages: `BrighterScript`  
+Categories: `Linter`  
+
+```
+:MasonInstall bslint
+```
 # buf
 
 > The Buf CLI is a one stop shop for your local Protocol Buffers needs. It comes with a linter that enforces good
@@ -681,6 +698,17 @@ Categories: `LSP`
 ```
 :MasonInstall clarity-lsp
 ```
+# clj-kondo
+
+> Static analyzer and linter for Clojure code that sparks joy
+
+Homepage: [https://github.com/clj-kondo/clj-kondo](https://github.com/clj-kondo/clj-kondo)  
+Languages: `Clojure` `ClojureScript`  
+Categories: `Linter`  
+
+```
+:MasonInstall clj-kondo
+```
 # clojure-lsp
 
 > A Language Server for Clojure(script). Taking a Cursive-like approach of statically analyzing code.
@@ -713,6 +741,17 @@ Categories: `Formatter` `Linter`
 
 ```
 :MasonInstall cmakelang
+```
+# cmakelint
+
+> cmakelint parses CMake files and reports style issues
+
+Homepage: [https://github.com/cmake-lint/cmake-lint](https://github.com/cmake-lint/cmake-lint)  
+Languages: `CMake`  
+Categories: `Linter`  
+
+```
+:MasonInstall cmakelint
 ```
 # codelldb
 
@@ -2183,6 +2222,17 @@ Categories: `LSP`
 ```
 :MasonInstall opencl-language-server
 ```
+# openedge-language-server
+
+> OpenEdge Language Server
+
+Homepage: [https://github.com/vscode-abl/vscode-abl](https://github.com/vscode-abl/vscode-abl)  
+Languages: `Progress`  
+Categories: `LSP`  
+
+```
+:MasonInstall openedge-language-server
+```
 # openscad-lsp
 
 > Language Server Protocol implementation for OpenSCAD, written in Rust.
@@ -2211,7 +2261,7 @@ Categories: `LSP`
 follow PHP coding standards as defined in the PSR-1, PSR-2, etc., or other community driven ones like the
 Symfony one. You can also define your (team's) style through configuration.')
 
-Homepage: [https://github.com/FriendsOfPHP/PHP-CS-Fixer](https://github.com/FriendsOfPHP/PHP-CS-Fixer)  
+Homepage: [https://github.com/PHP-CS-Fixer/PHP-CS-Fixer](https://github.com/PHP-CS-Fixer/PHP-CS-Fixer)  
 Languages: `PHP`  
 Categories: `Formatter`  
 
@@ -2421,6 +2471,20 @@ Categories: `Linter`
 
 ```
 :MasonInstall pydocstyle
+```
+# pyflakes
+
+> A simple program which checks Python source files for errors.
+
+Pyflakes analyzes programs and detects various errors. It works by parsing the source file, not importing it, so
+it is safe to use on modules with side effects. It’s also much faster.
+
+Homepage: [https://pypi.org/project/pyflakes/](https://pypi.org/project/pyflakes/)  
+Languages: `Python`  
+Categories: `Linter`  
+
+```
+:MasonInstall pyflakes
 ```
 # pylama
 
@@ -2819,6 +2883,17 @@ Categories: `LSP`
 
 ```
 :MasonInstall smithy-language-server
+```
+# snakefmt
+
+> The uncompromising Snakemake code formatter
+
+Homepage: [https://github.com/snakemake/snakefmt](https://github.com/snakemake/snakefmt)  
+Languages: `Snakemake`  
+Categories: `Formatter`  
+
+```
+:MasonInstall snakefmt
 ```
 # solang
 

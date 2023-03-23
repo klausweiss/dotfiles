@@ -24,10 +24,10 @@
  (#lua-match? @type "^[A-Z]"))
 
 ((identifier) @constant
- (#lua-match? @constant "^[A-Z_][A-Z%d_]+$"))
+ (#lua-match? @constant "^_*[A-Z][A-Z%d_]*$"))
 
 ((shorthand_property_identifier) @constant
- (#lua-match? @constant "^[A-Z_][A-Z%d_]+$"))
+ (#lua-match? @constant "^_*[A-Z][A-Z%d_]*$"))
 
 ((identifier) @variable.builtin
  (#vim-match? @variable.builtin "^(arguments|module|console|window|document)$"))
@@ -118,11 +118,12 @@
   (undefined)
 ] @constant.builtin
 
-(comment) @comment
+(comment) @comment @spell
+
+((comment) @comment.documentation
+  (#lua-match? @comment.documentation "^/[*][*][^*].*[*]/$"))
 
 (hash_bang_line) @preproc
-
-(comment) @spell
 
 (string) @string @spell
 (template_string) @string
@@ -210,15 +211,15 @@
 ;----------
 
 [
-"if"
-"else"
-"switch"
-"case"
+  "if"
+  "else"
+  "switch"
+  "case"
 ] @conditional
 
 [
-"import"
-"from"
+  "import"
+  "from"
 ] @include
 
 (export_specifier "as" @include)
@@ -227,53 +228,56 @@
 (namespace_import "as" @include)
 
 [
-"for"
-"of"
-"do"
-"while"
-"continue"
+  "for"
+  "of"
+  "do"
+  "while"
+  "continue"
 ] @repeat
 
 [
-"async"
-"await"
-"break"
-"class"
-"const"
-"debugger"
-"export"
-"extends"
-"get"
-"in"
-"instanceof"
-"let"
-"set"
-"static"
-"target"
-"typeof"
-"var"
-"with"
+  "break"
+  "class"
+  "const"
+  "debugger"
+  "export"
+  "extends"
+  "get"
+  "in"
+  "instanceof"
+  "let"
+  "set"
+  "static"
+  "target"
+  "typeof"
+  "var"
+  "with"
 ] @keyword
 
 [
-"return"
-"yield"
+  "async"
+  "await"
+] @keyword.coroutine
+
+[
+  "return"
+  "yield"
 ] @keyword.return
 
 [
- "function"
+  "function"
 ] @keyword.function
 
 [
- "new"
- "delete"
+  "new"
+  "delete"
 ] @keyword.operator
 
 [
- "throw"
- "try"
- "catch"
- "finally"
+  "throw"
+  "try"
+  "catch"
+  "finally"
 ] @exception
 
 (export_statement

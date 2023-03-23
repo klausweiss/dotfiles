@@ -123,7 +123,8 @@ Refer to the [Wiki](https://github.com/williamboman/mason.nvim/wiki/Extensions) 
 > `:h mason-commands`
 
 -   `:Mason` - opens a graphical status window
--   `:MasonInstall <package> ...` - installs/reinstalls the provided packages
+-   `:MasonUpdate` - updates all managed registries
+-   `:MasonInstall <package> ...` - installs/re-installs the provided packages
 -   `:MasonUninstall <package> ...` - uninstalls the provided packages
 -   `:MasonUninstallAll` - uninstalls all packages
 -   `:MasonLog` - opens the `mason.nvim` log file in a new tab window
@@ -163,12 +164,6 @@ local DEFAULT_SETTINGS = {
     ---@type '"prepend"' | '"append"' | '"skip"'
     PATH = "prepend",
 
-    -- The registries to source packages from. Accepts multiple entries. Should a package with the same name exist in
-    -- multiple registries, the registry listed first will be used.
-    registries = {
-        "lua:mason-registry.index",
-    },
-
     -- Controls to which degree logs are written to the log file. It's useful to set this to vim.log.levels.DEBUG when
     -- debugging issues with package installations.
     log_level = vim.log.levels.INFO,
@@ -176,6 +171,14 @@ local DEFAULT_SETTINGS = {
     -- Limit for the maximum amount of packages to be installed at the same time. Once this limit is reached, any further
     -- packages that are requested to be installed will be put in a queue.
     max_concurrent_installers = 4,
+
+    -- [Advanced setting]
+    -- The registries to source packages from. Accepts multiple entries. Should a package with the same name exist in
+    -- multiple registries, the registry listed first will be used.
+    registries = {
+        "lua:mason-registry.index",
+        "github:mason-org/mason-registry",
+    },
 
     -- The provider implementations to use for resolving supplementary package metadata (e.g., all available versions).
     -- Accepts multiple entries, where later entries will be used as fallback should prior providers fail.

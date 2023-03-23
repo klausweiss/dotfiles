@@ -155,8 +155,8 @@
 (false) @boolean
 (null_literal) @constant.builtin
 
-(documentation_comment) @comment
-(comment) @comment
+(comment) @comment @spell
+(documentation_comment) @comment.documentation @spell
 
 ; Keywords
 ; --------------------
@@ -195,14 +195,12 @@
 
 [
   "return"
-  "yield"
 ] @keyword.return
 
 
 ; Built in identifiers:
 ; alone these are marked as keywords
 [
-    "await"
     "deferred"
     "factory"
     "get"
@@ -217,16 +215,21 @@
 ] @keyword
 
 [
+  "async"
+  "async*"
+  "sync*"
+  "await"
+  "yield"
+] @keyword.coroutine
+
+[
     (const_builtin)
     (final_builtin)
     "abstract"
-    "async"
-    "async*"
     "covariant"
     "dynamic"
     "external"
     "static"
-    "sync*"
 ] @type.qualifier
 
 ; when used as an identifier:

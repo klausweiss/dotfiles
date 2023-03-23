@@ -23,27 +23,27 @@
 -- For the full copy of the GNU Affero General Public License see:
 -- http://www.gnu.org/licenses.
 
-local buflisted = vim.fn.buflisted
-local bufnr = vim.fn.bufnr
-local command = vim.api.nvim_command
-local create_augroup = vim.api.nvim_create_augroup
-local create_autocmd = vim.api.nvim_create_autocmd
-local exec_autocmds = vim.api.nvim_exec_autocmds
-local get_current_buf = vim.api.nvim_get_current_buf
-local get_current_win = vim.api.nvim_get_current_win
-local list_wins = vim.api.nvim_list_wins
+local buf_get_option = vim.api.nvim_buf_get_option --- @type function
+local buf_set_option = vim.api.nvim_buf_set_option --- @type function
+local buflisted = vim.fn.buflisted --- @type function
+local bufnr = vim.fn.bufnr --- @type function
+local command = vim.api.nvim_command --- @type function
+local create_augroup = vim.api.nvim_create_augroup --- @type function
+local create_autocmd = vim.api.nvim_create_autocmd --- @type function
+local exec_autocmds = vim.api.nvim_exec_autocmds --- @type function
+local get_current_buf = vim.api.nvim_get_current_buf --- @type function
+local get_current_win = vim.api.nvim_get_current_win --- @type function
+local get_option = vim.api.nvim_get_option --- @type function
+local list_bufs = vim.api.nvim_list_bufs --- @type function
+local list_wins = vim.api.nvim_list_wins --- @type function
 local notify = vim.notify
-local set_current_buf = vim.api.nvim_set_current_buf
-local set_current_win = vim.api.nvim_set_current_win
-local win_get_buf = vim.api.nvim_win_get_buf
-local win_is_valid = vim.api.nvim_win_is_valid
-local buf_get_option = vim.api.nvim_buf_get_option
-local buf_set_option = vim.api.nvim_buf_set_option
+local set_current_buf = vim.api.nvim_set_current_buf --- @type function
+local set_current_win = vim.api.nvim_set_current_win --- @type function
+local win_get_buf = vim.api.nvim_win_get_buf --- @type function
+local win_is_valid = vim.api.nvim_win_is_valid --- @type function
 
---- @type bufferline.state
+local options = require'bufferline.options'
 local state = require'bufferline.state'
-
---- @type bufferline.utils
 local utils = require'bufferline.utils'
 
 -------------------
@@ -66,17 +66,61 @@ local cmd = vim.api.nvim_cmd and
     command((mods or '') .. " " .. action .. (force and '!' or '') .. " " .. buffer_number)
   end
 
+--- @param closing_number integer
+--- @return nil|integer bufnr of the buffer to focus
+local function get_focus_on_close(closing_number)
+  local state_bufnrs = state.buffers
+  local focus_on_close = options.focus_on_close()
+
+  if #state_bufnrs < 1 then -- all of the buffers are excluded or unlisted
+    local open_bufnrs = list_bufs()
+    if focus_on_close == 'right' then
+      open_bufnrs = utils.reverse(open_bufnrs)
+    end
+
+    for _, nr in ipairs(open_bufnrs) do
+      if buf_get_option(nr, 'buflisted') then
+        return nr -- there was a listed buffer open, focus it.
+      end
+    end
+
+    return -- there are no listed, focusable buffers open
+  end
+
+  if focus_on_close == 'right' then
+    state_bufnrs = utils.reverse(state.buffers)
+  end
+
+  local index = utils.index_of(state_bufnrs, closing_number)
+  if index then
+    index = index - 1
+
+    local buffer_number = state_bufnrs[index]
+    if buffer_number then
+      return buffer_number
+    end
+  end
+
+  for _, buffer_number in ipairs(state_bufnrs) do
+    if buffer_number ~= closing_number then
+      return buffer_number
+    end
+  end
+end
+
 --- Use `vim.notify` to print an error `msg`
 --- @param msg string
+--- @return nil
 local function err(msg)
   notify(msg, vim.log.levels.ERROR, {title = 'bbye'})
   vim.v.errmsg = msg
 end
 
-local empty_buffer = nil
+local empty_buffer = nil --- @type nil|integer
 
 --- Create a new buffer.
 --- @param force boolean if `true`, forcefully create the new buffer
+--- @return nil
 local function new(force)
   command("enew" .. (force and '!' or ''))
 
@@ -85,11 +129,11 @@ local function new(force)
 
   -- Regular buftype warns people if they have unsaved text there.
   -- Wouldn't want to lose someone's data:
-  vim.opt_local.buftype = ''
-  vim.opt_local.swapfile = false
+  buf_set_option(0, 'buftype', '')
+  buf_set_option(0, 'swapfile', false)
 
   -- If empty and out of sight, delete it right away:
-  vim.opt_local.bufhidden = 'wipe'
+  buf_set_option(0, 'bufhidden', 'wipe')
 
   create_autocmd('BufWipeout', {
     buffer = 0,
@@ -110,8 +154,8 @@ local bbye = {}
 --- @param force boolean if true, forcefully delete the buffer
 --- @param buffer? integer|string the name of the buffer.
 --- @param mods? string|{[string]: any} the modifiers to the command (e.g. `'verbose'`)
---- @param focus_id? number the preferred buffer to focus
-function bbye.delete(action, force, buffer, mods, focus_id)
+--- @return nil
+function bbye.delete(action, force, buffer, mods)
   local buffer_number = type(buffer) == 'string' and bufnr(buffer) or tonumber(buffer) or get_current_buf()
 
   if buffer_number < 0 then
@@ -121,7 +165,7 @@ function bbye.delete(action, force, buffer, mods, focus_id)
 
   local is_modified = buf_get_option(buffer_number, 'modified')
 
-  local has_confirm = vim.o.confirm
+  local has_confirm = get_option'confirm'
   if type(mods) == 'table' then
     has_confirm = has_confirm or mods.confirm
   elseif mods then
@@ -143,26 +187,22 @@ function bbye.delete(action, force, buffer, mods, focus_id)
 
   -- For cases where adding buffers causes new windows to appear or hiding some
   -- causes windows to disappear and thereby decrement, loop backwards.
-  local window_ids = list_wins()
-  local window_ids_reversed = utils.reverse(window_ids)
-
-  for _, window_number in ipairs(window_ids_reversed) do
+  for _, window_number in ipairs(utils.reverse(list_wins())) do
     if win_get_buf(window_number) == buffer_number then
       set_current_win(window_number)
 
       -- Bprevious also wraps around the buffer list, if necessary:
-      local no_errors = pcall(function()
-        local previous_buffer = focus_id and focus_id or bufnr('#')
-        if previous_buffer > 0 and buflisted(previous_buffer) == 1 then
-          set_current_buf(previous_buffer)
+      local ok = pcall(function()
+        local focus_buffer = get_focus_on_close(buffer_number)
+        if focus_buffer then
+          set_current_buf(focus_buffer)
         else
           command 'bprevious'
         end
       end)
 
-      if not (no_errors or vim.v.errmsg:match('E85')) then
-        err(vim.v.errmsg)
-        return
+      if not (ok or vim.v.errmsg:match('E85')) then
+        return err(vim.v.errmsg)
       end
 
       -- If the buffer is still the same, we couldn't find a new buffer,
@@ -201,18 +241,18 @@ end
 --- @param force boolean if true, forcefully delete the buffer
 --- @param buffer? integer|string the name of the buffer.
 --- @param mods? string|{[string]: any} the modifiers to the command (e.g. `'verbose'`)
---- @param focus_id? number the preferred buffer to focus
-function bbye.bdelete(force, buffer, mods, focus_id)
-  bbye.delete('bdelete', force, buffer, mods, focus_id)
+--- @return nil
+function bbye.bdelete(force, buffer, mods)
+  bbye.delete('bdelete', force, buffer, mods)
 end
 
 --- 'bwipeout' a buffer
 --- @param force boolean if true, forcefully delete the buffer
 --- @param buffer? integer|string the name of the buffer.
 --- @param mods? string|{[string]: any} the modifiers to the command (e.g. `'verbose'`)
---- @param focus_id? number the preferred buffer to focus
-function bbye.bwipeout(force, buffer, mods, focus_id)
-  bbye.delete('bwipeout', force, buffer, mods, focus_id)
+--- @return nil
+function bbye.bwipeout(force, buffer, mods)
+  bbye.delete('bwipeout', force, buffer, mods)
 end
 
 return bbye

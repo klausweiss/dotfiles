@@ -28,9 +28,10 @@ nvim: | ${NVIM_PATH}
 
 OS:=$(shell uname)
 LUAJIT:=$(shell nvim -v | grep -o LuaJIT)
+LUAJIT_OSX_PATH?=/opt/homebrew/opt/luajit
 ifeq ($(LUAJIT),LuaJIT)
 	ifeq ($(OS),Darwin)
-		LUA_LDLIBS=-lluajit-5.1.2 -L/opt/homebrew/opt/luajit/lib/
+		LUA_LDLIBS=-lluajit-5.1.2 -L${LUAJIT_OSX_PATH}/lib/
 	else
 		LUA_LDLIBS=-lluajit-5.1
 	endif
@@ -52,14 +53,18 @@ install_jsregexp: jsregexp
 uninstall_jsregexp:
 	rm $(shell pwd)/lua/luasnip-jsregexp.so
 
+TEST_07?=true
+TEST_MASTER?=true
 # Expects to be run from repo-location (eg. via `make -C path/to/luasnip`).
 test: nvim jsregexp
 	# unset PATH and CPATH to prevent system-env leaking into the neovim-build,
 	# add our helper-functions to lpath.
+	# exit as soon as an error occurs.
 	unset LUA_PATH LUA_CPATH; \
 	export LUASNIP_SOURCE=$(shell pwd); \
 	export JSREGEXP_PATH=$(shell pwd)/${JSREGEXP_PATH}; \
 	export TEST_FILE=$(realpath ${TEST_FILE}); \
 	export BUSTED_ARGS=--lpath=$(shell pwd)/tests/?.lua; \
-	make -C ${NVIM_0.7_PATH} functionaltest; \
-	make -C ${NVIM_MASTER_PATH} functionaltest;
+	set -e; \
+	if ${TEST_07}; then make -C ${NVIM_0.7_PATH} functionaltest; fi; \
+	if ${TEST_MASTER}; then make -C ${NVIM_MASTER_PATH} functionaltest; fi;

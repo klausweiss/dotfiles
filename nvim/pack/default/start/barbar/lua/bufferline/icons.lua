@@ -2,29 +2,24 @@
 -- get-icon.lua
 --
 
-local buf_get_name = vim.api.nvim_buf_get_name
-local buf_get_option = vim.api.nvim_buf_get_option
-local command = vim.api.nvim_command
-local fnamemodify = vim.fn.fnamemodify
-local hlexists = vim.fn.hlexists
-local notify = vim.notify
+local table_insert = table.insert
 
---- @type bufferline.utils.hl
-local hl = require'bufferline.utils'.hl
+local buf_get_name = vim.api.nvim_buf_get_name --- @type function
+local buf_get_option = vim.api.nvim_buf_get_option --- @type function
+local command = vim.api.nvim_command --- @type function
+local fnamemodify = vim.fn.fnamemodify --- @type function
+local hlexists = vim.fn.hlexists --- @type function
+
+local utils = require'bufferline.utils'
+local hl = utils.hl
 
 --- @type boolean, {get_icon: fun(name: string, ext?: string, opts?: {default: nil|boolean}): string, string}
-local status, web = pcall(require, 'nvim-web-devicons')
-
---- @class bufferline.icons.group
---- @field buffer_status bufferline.buffer.activity.name the state of the buffer whose icon is being highlighted
---- @field icon_hl string the group to highlight an icon with
-
---- @type bufferline.icons.group[]
-local hl_groups = {}
+local ok, web = pcall(require, 'nvim-web-devicons')
 
 --- Sets the highlight group used for a type of buffer's file icon
 --- @param buffer_status bufferline.buffer.activity.name
 --- @param icon_hl string
+--- @return nil
 local function hl_buffer_icon(buffer_status, icon_hl)
   hl.set(
     icon_hl .. buffer_status,
@@ -33,28 +28,33 @@ local function hl_buffer_icon(buffer_status, icon_hl)
   )
 end
 
+--- @class bufferline.icons.group
+--- @field buffer_status bufferline.buffer.activity.name the state of the buffer whose icon is being highlighted
+--- @field icon_hl string the group to highlight an icon with
+
+--- @type bufferline.icons.group[]
+local hl_groups = {}
+
 --- @class bufferline.icons
-return {
-  -- It's not possible to purely delete an HL group when the colorscheme
-  -- changes, therefore we need to re-define colors for all groups we have
-  -- already highlighted.
-  set_highlights = function()
+local icons = {
+  --- Re-highlight all of the groups which have been set before. Checks for updated highlight groups.
+  --- @return nil
+  set_highlights = vim.schedule_wrap(function()
     for _, group in ipairs(hl_groups) do
       hl_buffer_icon(group.buffer_status, group.icon_hl)
     end
- end,
+  end),
 
   --- @param bufnr integer
   --- @param buffer_status bufferline.buffer.activity.name
   --- @return string icon, string highlight_group
   get_icon = function(bufnr, buffer_status)
-    if status == false then
-      notify(
+    if ok == false then
+      utils.notify(
         'barbar: bufferline.icons is set to v:true but "nvim-dev-icons" was not found.' ..
           '\nbarbar: icons have been disabled. Set `bufferline.icons` to `false` or ' ..
           'install "nvim-dev-icons" to disable this message.',
-        vim.log.levels.WARN,
-        {title = 'barbar.nvim'}
+        vim.log.levels.WARN
       )
 
       if type(vim.g.bufferline) == 'table' then
@@ -87,9 +87,11 @@ return {
 
     if icon_hl and hlexists(icon_hl .. buffer_status) < 1 then
       hl_buffer_icon(buffer_status, icon_hl)
-      hl_groups[#hl_groups + 1] = { buffer_status = buffer_status, icon_hl = icon_hl }
+      table_insert(hl_groups, {buffer_status = buffer_status, icon_hl = icon_hl})
     end
 
     return icon_char, icon_hl .. buffer_status
   end,
 }
+
+return icons

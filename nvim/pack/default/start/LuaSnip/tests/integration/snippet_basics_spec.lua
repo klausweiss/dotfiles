@@ -631,6 +631,46 @@ describe("snippets_basic", function()
 		]]))
 	end)
 
+	it("autocommands are registered in different formats", function()
+		local function test_combination(setting_name, overridefn_name)
+			exec_lua(([[
+					local config_events = {
+						{"InsertLeave","CursorHold"},
+						"InsertLeave,CursorHold",
+						"InsertLeave, CursorHold",
+						"InsertLeave",
+						{"InsertLeave"}
+					}
+					local check_events = {
+						{"InsertLeave","CursorHold"},
+						{"InsertLeave","CursorHold"},
+						{"InsertLeave","CursorHold"},
+						{"InsertLeave"},
+						{"InsertLeave"}
+					}
+
+					for i, config_event in ipairs(config_events) do
+						a_set = false
+						ls.%s = function() a_set = true end
+
+						ls.setup({
+							%s = config_event
+						})
+						for _, event in ipairs(check_events[i]) do
+							a_set = false
+							vim.api.nvim_exec_autocmds(event, {})
+							assert(a_set)
+						end
+					end
+				]]):format(overridefn_name, setting_name))
+		end
+
+		test_combination("region_check_events", "exit_out_of_region")
+		test_combination("delete_check_events", "unlink_current_if_deleted")
+		test_combination("update_events", "active_update_dependents")
+		test_combination("updateevents", "active_update_dependents")
+	end)
+
 	it(
 		"jump_destination works for snippets where `node.active` is important",
 		function()
@@ -643,6 +683,89 @@ describe("snippets_basic", function()
 				),
 				{ 3 }
 			)
+		end
+	)
+
+	it(
+		"wordTrig, regTrig, hidden, name, description, docstring work and default correctly",
+		function()
+			local snip_wt_val = {
+				{
+					[[ s({trig="a", wordTrig = false}, { t"justsometext" }) ]],
+					"wordTrig",
+					"false",
+				},
+				{
+					[[ s({trig="a", wordTrig = true}, { t"justsometext" }) ]],
+					"wordTrig",
+					"true",
+				},
+				{
+					[[ s({trig="a"}, { t"justsometext" }) ]],
+					"wordTrig",
+					"true",
+				},
+
+				{
+					[[ s({trig="a", regTrig = false}, { t"justsometext" }) ]],
+					"regTrig",
+					"false",
+				},
+				{
+					[[ s({trig="a", regTrig = true}, { t"justsometext" }) ]],
+					"regTrig",
+					"true",
+				},
+				{
+					[[ s({trig="a"}, { t"justsometext" }) ]],
+					"regTrig",
+					"false",
+				},
+
+				{
+					[[ s({trig="a", hidden = false}, { t"justsometext" }) ]],
+					"hidden",
+					"false",
+				},
+				{
+					[[ s({trig="a", hidden = true}, { t"justsometext" }) ]],
+					"hidden",
+					"true",
+				},
+				{ [[ s({trig="a"}, { t"justsometext" }) ]], "hidden", "false" },
+
+				{
+					[[ s({trig="a", name = "thename"}, { t"justsometext" }) ]],
+					"name",
+					[["thename"]],
+				},
+				{ [[ s({trig="a"}, { t"justsometext" }) ]], "name", [["a"]] },
+
+				{
+					[[ s({trig="a", dscr = "thedescription"}, { t"justsometext" }) ]],
+					"dscr",
+					[[{"thedescription"}]],
+				},
+				{ [[ s({trig="a"}, { t"justsometext" }) ]], "dscr", [[{"a"}]] },
+
+				{
+					[[ s({trig="a", docstring = "thedocstring"}, { t"justsometext" }) ]],
+					"docstring",
+					[[{"thedocstring"}]],
+				},
+				{
+					[[ s({trig="a"}, { t"justsometext" }) ]],
+					"docstring",
+					"nil",
+				},
+			}
+
+			for _, pair in ipairs(snip_wt_val) do
+				assert.is_true(exec_lua(([[
+				local snip = %s
+				return vim.deep_equal(snip.%s, %s)
+			]]):format(pair[1], pair[2], pair[3])))
+			end
 		end
 	)
 end)

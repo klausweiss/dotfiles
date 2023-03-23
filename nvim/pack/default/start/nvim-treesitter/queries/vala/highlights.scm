@@ -1,7 +1,9 @@
 ; highlights.scm
 
 ; highlight comments and symbols
-(comment) @comment
+(comment) @comment @spell
+((comment) @comment.documentation
+  (#lua-match? @comment.documentation "^/[*][*][^*].*[*]/$"))
 (symbol) @symbol
 (member_access_expression (_) (identifier) @symbol)
 
@@ -90,7 +92,6 @@
 
 [
  "abstract"
- "async"
  "class"
  "construct"
  "continue"
@@ -113,6 +114,11 @@
  "virtual"
  "with"
 ] @keyword
+
+[
+  "async"
+  "yield"
+] @keyword.coroutine
 
 [
  "const"
@@ -183,7 +189,6 @@
 
 [
   "return"
-  "yield"
 ] @keyword.return
 
 [

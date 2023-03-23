@@ -399,11 +399,13 @@ local function set_choice(choice_indx)
 end
 
 local function get_current_choices()
-	assert(session.active_choice_node, "No active choiceNode")
+	local node = session.active_choice_node
+	assert(node, "No active choiceNode")
 
 	local choice_lines = {}
 
-	for i, choice in ipairs(session.active_choice_node.choices) do
+	node:update_static_all()
+	for i, choice in ipairs(node.choices) do
 		choice_lines[i] = table.concat(choice:get_docstring(), "\n")
 	end
 
@@ -729,6 +731,7 @@ local ls_lazy = {
 	restore_node = function() return require("luasnip.nodes.restoreNode").R end,
 	parser = function() return require("luasnip.util.parser") end,
 	config = function() return require("luasnip.config") end,
+	multi_snippet = function() return require("luasnip.nodes.multiSnippet").new_multisnippet end,
 }
 
 ls = util.lazy_table({

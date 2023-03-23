@@ -217,11 +217,12 @@
 
 ;;; Literals
 
-(comment) @comment
+(comment) @comment @spell
+
+((comment) @comment.documentation
+  (#lua-match? @comment.documentation "^/[*][*][^*].*[*]/$"))
 
 (shebang_line) @preproc
-
-(comment) @spell
 
 (real_literal) @float
 [
@@ -307,7 +308,13 @@
 ;	"typeof" ; NOTE: It is reserved for future use
 ] @keyword
 
-("fun") @keyword.function
+[
+  "suspend"
+] @keyword.coroutine
+
+[
+  "fun"
+] @keyword.function
 
 (jump_expression) @keyword.return
 

@@ -1,21 +1,21 @@
-local registry = require "mason-registry"
-local a = require "mason-core.async"
-local _ = require "mason-core.functional"
-local installer = require "mason-core.installer"
-local InstallationHandle = require "mason-core.installer.handle"
-local Optional = require "mason-core.optional"
-local log = require "mason-core.log"
 local EventEmitter = require "mason-core.EventEmitter"
-local receipt = require "mason-core.receipt"
+local Optional = require "mason-core.optional"
+local Purl = require "mason-core.purl"
+local Result = require "mason-core.result"
+local _ = require "mason-core.functional"
+local a = require "mason-core.async"
 local fs = require "mason-core.fs"
+local log = require "mason-core.log"
 local path = require "mason-core.path"
-local linker = require "mason-core.installer.linker"
+local registry = require "mason-registry"
 
-local version_checks = require "mason-core.package.version-check"
+local is_not_nil = _.complement(_.is_nil)
+local is_registry_schema_id = _.matches "^registry%+v[1-9]+$"
+local is_registry_spec = _.prop_satisfies(_.all_pass { is_not_nil, is_registry_schema_id }, "schema")
 
 ---@class Package : EventEmitter
 ---@field name string
----@field spec PackageSpec
+---@field spec RegistryPackageSpec | PackageSpec
 ---@field private handle InstallHandle The currently associated handle.
 local Package = setmetatable({}, { __index = EventEmitter })
 
@@ -56,16 +56,50 @@ local PackageMt = { __index = Package }
 ---@field languages PackageLanguage[]
 ---@field install async fun(ctx: InstallContext)
 
----@param spec PackageSpec
+---@class RegistryPackageSourceVersionOverride : RegistryPackageSource
+---@field constraint string
+
+---@class RegistryPackageSource
+---@field id string PURL-compliant identifier.
+---@field version_overrides? RegistryPackageSourceVersionOverride[]
+
+---@class RegistryPackageSpec
+---@field schema '"registry+v1"'
+---@field name string
+---@field description string
+---@field homepage string
+---@field licenses string[]
+---@field languages string[]
+---@field categories string[]
+---@field source RegistryPackageSource
+---@field bin table<string, string>?
+---@field share table<string, string>?
+---@field opt table<string, string>?
+
+---@param spec PackageSpec | RegistryPackageSpec
 function Package.new(spec)
-    vim.validate {
-        name = { spec.name, "s" },
-        desc = { spec.desc, "s" },
-        homepage = { spec.homepage, "s" },
-        categories = { spec.categories, "t" },
-        languages = { spec.languages, "t" },
-        install = { spec.install, "f" },
-    }
+    if is_registry_spec(spec) then
+        vim.validate {
+            name = { spec.name, "s" },
+            description = { spec.description, "s" },
+            homepage = { spec.homepage, "s" },
+            licenses = { spec.licenses, "t" },
+            categories = { spec.categories, "t" },
+            languages = { spec.languages, "t" },
+            source = { spec.source, "t" },
+            bin = { spec.bin, { "t", "nil" } },
+            share = { spec.share, { "t", "nil" } },
+        }
+    else
+        vim.validate {
+            name = { spec.name, "s" },
+            desc = { spec.desc, "s" },
+            homepage = { spec.homepage, "s" },
+            categories = { spec.categories, "t" },
+            languages = { spec.languages, "t" },
+            install = { spec.install, "f" },
+        }
+    end
 
     return EventEmitter.init(setmetatable({
         name = spec.name, -- for convenient access
@@ -78,6 +112,7 @@ function Package:new_handle()
         assert(handle:is_closed(), "Cannot create new handle because existing handle is not closed.")
     end)
     log.fmt_trace("Creating new handle for %s", self)
+    local InstallationHandle = require "mason-core.installer.handle"
     local handle = InstallationHandle.new(self)
     self.handle = handle
 
@@ -107,19 +142,25 @@ function Package:install(opts)
         end)
         :or_else_get(function()
             local handle = self:new_handle()
-            -- This function is not expected to be run in async scope, so we create
-            -- a new scope here and handle the result callback-style.
             a.run(
-                function(...)
-                    -- we wrap installer.execute for testing purposes (to allow spy objects)
-                    return installer.execute(...)
-                end,
+                require("mason-core.installer").execute,
                 ---@param success boolean
                 ---@param result Result
                 function(success, result)
                     if not success then
+                        -- Installer failed abnormally (i.e. unexpected exception in the installer code itself).
                         log.error("Unexpected error", result)
+                        handle.stdio.sink.stderr(tostring(result))
+                        handle.stdio.sink.stderr "\nInstallation failed abnormally. Please report this error."
                         self:emit("install:failed", handle)
+                        registry:emit("package:install:failed", self, handle)
+
+                        -- We terminate _after_ emitting failure events because [termination -> failed] have different
+                        -- meaning than [failed -> terminate] ([termination -> failed] is interpreted as a triggered
+                        -- termination).
+                        if not handle:is_closed() and not handle.is_terminated then
+                            handle:terminate()
+                        end
                         return
                     end
                     result
@@ -153,6 +194,7 @@ function Package:unlink()
     local install_path = self:get_install_path()
     -- 1. Unlink
     self:get_receipt():if_present(function(receipt)
+        local linker = require "mason-core.installer.linker"
         linker.unlink(self, receipt):get_or_throw()
     end)
 
@@ -180,6 +222,7 @@ end
 function Package:get_receipt()
     local receipt_path = path.concat { self:get_install_path(), "mason-receipt.json" }
     if fs.sync.file_exists(receipt_path) then
+        local receipt = require "mason-core.receipt"
         return Optional.of(receipt.InstallReceipt.from_json(vim.json.decode(fs.sync.read_file(receipt_path))))
     end
     return Optional.empty()
@@ -187,18 +230,65 @@ end
 
 ---@param callback fun(success: boolean, version_or_err: string)
 function Package:get_installed_version(callback)
-    a.run(function()
-        local receipt = self:get_receipt():or_else_throw "Unable to get receipt."
-        return version_checks.get_installed_version(receipt, self:get_install_path()):get_or_throw()
-    end, callback)
+    self:get_receipt()
+        :if_present(
+            ---@param receipt InstallReceipt
+            function(receipt)
+                if is_registry_schema_id(receipt.primary_source.type) then
+                    local resolve = _.curryN(callback, 2)
+                    Purl.parse(receipt.primary_source.id)
+                        :map(_.prop "version")
+                        :on_success(resolve(true))
+                        :on_failure(resolve(false))
+                else
+                    a.run(function()
+                        local version_checks = require "mason-core.package.version-check"
+                        return version_checks.get_installed_version(receipt, self:get_install_path()):get_or_throw()
+                    end, callback)
+                end
+            end
+        )
+        :if_not_present(function()
+            callback(false, "Unable to get receipt.")
+        end)
 end
 
 ---@param callback fun(success: boolean, result_or_err: NewPackageVersion)
 function Package:check_new_version(callback)
-    a.run(function()
-        local receipt = self:get_receipt():or_else_throw "Unable to get receipt."
-        return version_checks.get_new_version(receipt, self:get_install_path()):get_or_throw()
-    end, callback)
+    if self:is_registry_spec() then
+        self:get_installed_version(function(success, installed_version)
+            if not success then
+                return callback(false, installed_version)
+            end
+            local resolve = _.curryN(callback, 2)
+            Result.try(function(try)
+                -- This is a bit goofy, but it's done to verify that a new version is supported by the
+                -- current platform (parse fails if it's not). We don't want to surface new versions that
+                -- are unsupported.
+                try(require("mason-core.installer.registry").parse(self.spec, {}))
+
+                ---@type Purl
+                local purl = try(Purl.parse(self.spec.source.id))
+                if purl.version and installed_version ~= purl.version then
+                    return {
+                        name = purl.name,
+                        current_version = installed_version,
+                        latest_version = purl.version,
+                    }
+                else
+                    return Result.failure "Package is not outdated."
+                end
+            end)
+                :on_success(resolve(true))
+                :on_failure(resolve(false))
+        end)
+    else
+        a.run(function()
+            local receipt = self:get_receipt():or_else_throw "Unable to get receipt."
+            local version_checks = require "mason-core.package.version-check"
+            return version_checks.get_new_version(receipt, self:get_install_path()):get_or_throw()
+        end, callback)
+    end
 end
 
 function Package:get_lsp_settings_schema()
@@ -207,6 +297,11 @@ function Package:get_lsp_settings_schema()
         return Optional.empty()
     end
     return Optional.of(schema)
+end
+
+---@return boolean
+function Package:is_registry_spec()
+    return is_registry_spec(self.spec)
 end
 
 function PackageMt.__tostring(self)

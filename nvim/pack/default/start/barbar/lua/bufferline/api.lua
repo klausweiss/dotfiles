@@ -5,49 +5,33 @@ local table_insert = table.insert
 local table_remove = table.remove
 local table_sort = table.sort
 
-local buf_get_name = vim.api.nvim_buf_get_name
-local buf_get_option = vim.api.nvim_buf_get_option
-local bufwinnr = vim.fn.bufwinnr
-local command = vim.api.nvim_command
-local get_current_buf = vim.api.nvim_get_current_buf
-local getchar = vim.fn.getchar
-local notify = vim.notify
-local set_current_buf = vim.api.nvim_set_current_buf
+local buf_get_name = vim.api.nvim_buf_get_name --- @type function
+local buf_get_option = vim.api.nvim_buf_get_option --- @type function
+local bufnr = vim.fn.bufnr --- @type function
+local bufwinnr = vim.fn.bufwinnr --- @type function
+local command = vim.api.nvim_command --- @type function
+local get_current_buf = vim.api.nvim_get_current_buf --- @type function
+local getchar = vim.fn.getchar --- @type function
+local set_current_buf = vim.api.nvim_set_current_buf --- @type function
 
 -- TODO: remove `vim.fs and` after 0.8 release
 local normalize = vim.fs and vim.fs.normalize
 
---- @type bufferline.animate
 local animate = require'bufferline.animate'
-
---- @type bbye
 local bbye = require'bufferline.bbye'
-
---- @type bufferline.JumpMode
-local JumpMode = require'bufferline.jump_mode'
-
---- @type bufferline.Layout
-local Layout = require'bufferline.layout'
-
---- @type bufferline.options
-local options = require'bufferline.options'
-
---- @type bufferline.render
-local render = require'bufferline.render'
-
---- @type bufferline.state
-local state = require'bufferline.state'
-
---- @type bufferline.utils
-local utils = require'bufferline.utils'
-
---- @type bufferline.buffer
 local Buffer = require'bufferline.buffer'
+local JumpMode = require'bufferline.jump_mode'
+local Layout = require'bufferline.layout'
+local options = require'bufferline.options'
+local render = require'bufferline.render'
+local state = require'bufferline.state'
+local utils = require'bufferline.utils'
 
 local ESC = vim.api.nvim_replace_termcodes('<Esc>', true, false, true)
 
 --- Initialize the buffer pick mode.
 --- @param fn fun()
+--- @return nil
 local function pick_buffer_wrap(fn)
   if JumpMode.reinitialize then
     JumpMode.initialize_indexes()
@@ -65,12 +49,12 @@ local function pick_buffer_wrap(fn)
 end
 
 --- Shows an error that `bufnr` was not among the `state.buffers`
---- @param bufnr integer
-local function notify_buffer_not_found(bufnr)
-  notify(
-    'Current buffer (' .. bufnr .. ") not found in bufferline.nvim's list of buffers: " .. vim.inspect(state.buffers),
-    vim.log.levels.ERROR,
-    {title = 'barbar.nvim'}
+--- @param buffer_number integer
+--- @return nil
+local function notify_buffer_not_found(buffer_number)
+  utils.notify(
+    'Current buffer (' .. buffer_number .. ") not found in bufferline.nvim's list of buffers: " .. vim.inspect(state.buffers),
+    vim.log.levels.ERROR
   )
 end
 
@@ -96,12 +80,13 @@ end
 local api = {}
 
 --- Close all open buffers, except the current one.
+--- @return nil
 function api.close_all_but_current()
   local current_bufnr = get_current_buf()
 
-  for _, bufnr in ipairs(state.buffers) do
-    if bufnr ~= current_bufnr then
-      bbye.bdelete(false, bufnr)
+  for _, buffer_number in ipairs(state.buffers) do
+    if buffer_number ~= current_bufnr then
+      bbye.bdelete(false, buffer_number)
     end
   end
 
@@ -109,10 +94,11 @@ function api.close_all_but_current()
 end
 
 --- Close all open buffers, except those in visible windows.
+--- @return nil
 function api.close_all_but_visible()
-  for _, bufnr in ipairs(state.buffers) do
-    if Buffer.get_activity(bufnr) < 3 then
-      bbye.bdelete(false, bufnr)
+  for _, buffer_number in ipairs(state.buffers) do
+    if Buffer.get_activity(buffer_number) < 3 then
+      bbye.bdelete(false, buffer_number)
     end
   end
 
@@ -120,10 +106,11 @@ function api.close_all_but_visible()
 end
 
 --- Close all open buffers, except pinned ones.
+--- @return nil
 function api.close_all_but_pinned()
-  for _, bufnr in ipairs(state.buffers) do
-    if not state.is_pinned(bufnr) then
-      bbye.bdelete(false, bufnr)
+  for _, buffer_number in ipairs(state.buffers) do
+    if not state.is_pinned(buffer_number) then
+      bbye.bdelete(false, buffer_number)
     end
   end
 
@@ -131,12 +118,13 @@ function api.close_all_but_pinned()
 end
 
 --- Close all open buffers, except pinned ones or the current one.
+--- @return nil
 function api.close_all_but_current_or_pinned()
   local current_bufnr = get_current_buf()
 
-  for _, bufnr in ipairs(state.buffers) do
-    if not state.is_pinned(bufnr) and bufnr ~= current_bufnr then
-      bbye.bdelete(false, bufnr)
+  for _, buffer_number in ipairs(state.buffers) do
+    if not state.is_pinned(buffer_number) and buffer_number ~= current_bufnr then
+      bbye.bdelete(false, buffer_number)
     end
   end
 
@@ -144,6 +132,7 @@ function api.close_all_but_current_or_pinned()
 end
 
 --- Close all buffers which are visually left of the current buffer.
+--- @return nil
 function api.close_buffers_left()
   local idx = utils.index_of(state.buffers, get_current_buf())
   if idx == nil or idx == 1 then
@@ -158,6 +147,7 @@ function api.close_buffers_left()
 end
 
 --- Close all buffers which are visually right of the current buffer.
+--- @return nil
 function api.close_buffers_right()
   local idx = utils.index_of(state.buffers, get_current_buf())
   if idx == nil then
@@ -173,40 +163,58 @@ end
 
 --- Set the current buffer to the `number`
 --- @param index integer
+--- @return nil
 function api.goto_buffer(index)
   if index < 0 then
     index = #state.buffers + index + 1
   else
-    index = math.min(index, #state.buffers)
+    index = min(index, #state.buffers)
   end
 
-  set_current_buf(state.buffers[math.max(1, index)])
+  index = max(1, index)
+
+  local buffer_number = state.buffers[index]
+  if buffer_number then
+    set_current_buf(buffer_number)
+  else
+    utils.notify(
+      'E86: buffer at index ' .. index .. ' in list ' .. vim.inspect(state.buffers) .. ' does not exist.',
+      vim.log.levels.ERROR
+    )
+  end
 end
 
 --- Go to the buffer a certain number of buffers away from the current buffer.
 --- Use a positive number to go "right", and a negative one to go "left".
 --- @param steps integer
+--- @return nil
 function api.goto_buffer_relative(steps)
   render.get_updated_buffers()
 
-  local current = render.set_current_win_listed_buffer()
-
-  local idx = utils.index_of(state.buffers, current)
-
-  if idx == nil then
-    print("Couldn't find buffer " .. current .. ' in the list: ' .. vim.inspect(state.buffers))
-    return
-  else
-    idx = (idx + steps - 1) % #state.buffers + 1
+  if #state.buffers < 1 then
+    return utils.notify('E85: There is no listed buffer', vim.log.levels.ERROR)
   end
 
-  set_current_buf(state.buffers[idx])
+  local current_bufnr = render.set_current_win_listed_buffer()
+  local idx = utils.index_of(state.buffers, current_bufnr)
+
+  if not idx then -- fall back to: 1. the alternate buffer, 2. the first buffer
+    idx = utils.index_of(state.buffers, bufnr'#') or 1
+    utils.notify(
+      "Couldn't find buffer #" .. current_bufnr .. ' in the list: ' .. vim.inspect(state.buffers) ..
+        '. Falling back to buffer #' .. state.buffers[idx],
+      vim.log.levels.INFO
+    )
+  end
+
+  set_current_buf(state.buffers[(idx + steps - 1) % #state.buffers + 1])
 end
 
 local move_animation = nil
 local move_animation_data = nil
 
 --- An incremental animation for `move_buffer_animated`.
+--- @return nil
 local function move_buffer_animated_tick(ratio, current_animation)
   local data = move_animation_data
 
@@ -234,9 +242,11 @@ local function move_buffer_animated_tick(ratio, current_animation)
 end
 
 local MOVE_DURATION = 150
+
 --- Move a buffer (with animation, if configured).
 --- @param from_idx integer the buffer's original index.
 --- @param to_idx integer the buffer's new index.
+--- @return nil
 local function move_buffer(from_idx, to_idx)
   to_idx = max(1, min(#state.buffers, to_idx))
   if to_idx == from_idx then
@@ -244,7 +254,7 @@ local function move_buffer(from_idx, to_idx)
   end
 
   local animation = options.animation()
-  local bufnr = state.buffers[from_idx]
+  local buffer_number = state.buffers[from_idx]
 
   local previous_positions
   if animation == true then
@@ -252,11 +262,11 @@ local function move_buffer(from_idx, to_idx)
   end
 
   table_remove(state.buffers, from_idx)
-  table_insert(state.buffers, to_idx, bufnr)
+  table_insert(state.buffers, to_idx, buffer_number)
   state.sort_pins_to_left()
 
   if animation == true then
-    local current_index = utils.index_of(Layout.buffers, bufnr)
+    local current_index = utils.index_of(Layout.buffers, buffer_number)
     local start_index = min(from_idx, current_index)
     local end_index   = max(from_idx, current_index)
 
@@ -295,6 +305,7 @@ end
 
 --- Move the current buffer to the index specified.
 --- @param idx integer
+--- @return nil
 function api.move_current_buffer_to(idx)
   render.update()
 
@@ -306,8 +317,7 @@ function api.move_current_buffer_to(idx)
   local from_idx = utils.index_of(state.buffers, current_bufnr)
 
   if from_idx == nil then
-    notify_buffer_not_found(current_bufnr)
-    return
+    return notify_buffer_not_found(current_bufnr)
   end
 
   move_buffer(from_idx, idx)
@@ -315,6 +325,7 @@ end
 
 --- Move the current buffer a certain number of times over.
 --- @param steps integer
+--- @return nil
 function api.move_current_buffer(steps)
   render.update()
 
@@ -322,20 +333,21 @@ function api.move_current_buffer(steps)
   local idx = utils.index_of(state.buffers, current_bufnr)
 
   if idx == nil then
-    notify_buffer_not_found(current_bufnr)
-    return
+    return notify_buffer_not_found(current_bufnr)
   end
 
   move_buffer(idx, idx + steps)
 end
 
 --- Order the buffers by their buffer number.
+--- @return nil
 function api.order_by_buffer_number()
   table_sort(state.buffers, function(a, b) return a < b end)
   render.update()
 end
 
 --- Order the buffers by their parent directory.
+--- @return nil
 function api.order_by_directory()
   table_sort(state.buffers, with_pin_order(function(a, b)
     local name_of_a = buf_get_name(a)
@@ -366,6 +378,7 @@ function api.order_by_directory()
 end
 
 --- Order the buffers by filetype.
+--- @return nil
 function api.order_by_language()
   table_sort(state.buffers, with_pin_order(function(a, b)
     return buf_get_option(a, 'filetype') < buf_get_option(b, 'filetype')
@@ -375,6 +388,7 @@ function api.order_by_language()
 end
 
 --- Order the buffers by their respective window number.
+--- @return nil
 function api.order_by_window_number()
   table_sort(state.buffers, with_pin_order(function(a, b)
     return bufwinnr(buf_get_name(a)) < bufwinnr(buf_get_name(b))
@@ -384,6 +398,7 @@ function api.order_by_window_number()
 end
 
 --- Activate the buffer pick mode.
+--- @return nil
 function api.pick_buffer()
   pick_buffer_wrap(function()
     local ok, byte = pcall(getchar)
@@ -394,34 +409,31 @@ function api.pick_buffer()
         if JumpMode.buffer_by_letter[letter] ~= nil then
           set_current_buf(JumpMode.buffer_by_letter[letter])
         else
-          notify("Couldn't find buffer", vim.log.levels.WARN, {title = 'barbar.nvim'})
+          utils.notify("Couldn't find buffer", vim.log.levels.WARN)
         end
       end
     else
-      notify("Invalid input", vim.log.levels.WARN, {title = 'barbar.nvim'})
+      utils.notify('Invalid input', vim.log.levels.WARN)
     end
   end)
 end
 
 --- Activate the buffer pick delete mode.
+--- @return nil
 function api.pick_buffer_delete()
   pick_buffer_wrap(function()
     while true do
-      local ok, byte = pcall(getchar)
-      if ok then
-        local letter = char(byte)
-
-        if letter ~= '' then
-          if JumpMode.buffer_by_letter[letter] ~= nil then
-            bbye.bdelete(false, JumpMode.buffer_by_letter[letter])
-          elseif letter == ESC then
-            break
-          else
-            notify("Couldn't find buffer", vim.log.levels.WARN, {title = 'barbar.nvim'})
-          end
+      local ok, letter = pcall(function() return char(getchar()) end)
+      if ok and letter ~= '' then
+        if JumpMode.buffer_by_letter[letter] ~= nil then
+          bbye.bdelete(false, JumpMode.buffer_by_letter[letter])
+        elseif letter == ESC then
+          break
+        else
+          utils.notify("Couldn't find buffer with letter '" .. letter .. "'", vim.log.levels.WARN)
         end
       else
-        notify("Invalid input", vim.log.levels.WARN, {title = 'barbar.nvim'})
+        utils.notify('Invalid input', vim.log.levels.WARN)
       end
 
       render.update()
@@ -434,6 +446,7 @@ end
 --- @param width integer the amount to offset
 --- @param text? string text to put in the offset
 --- @param hl? string
+--- @return nil
 function api.set_offset(width, text, hl)
   state.offset = width > 0 and
     {hl = hl, text = text or '', width = width} or
@@ -443,9 +456,10 @@ function api.set_offset(width, text, hl)
 end
 
 --- Toggle the `bufnr`'s "pin" state, visually.
---- @param bufnr? integer
-function api.toggle_pin(bufnr)
-  state.toggle_pin(bufnr or 0)
+--- @param buffer_number? integer
+--- @return nil
+function api.toggle_pin(buffer_number)
+  state.toggle_pin(buffer_number or 0)
   render.update()
 end
 

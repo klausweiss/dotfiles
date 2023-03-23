@@ -1,10 +1,12 @@
 ---@diagnostic disable: lowercase-global
-local util = require "luassert.util"
 local spy = require "luassert.spy"
+local util = require "luassert.util"
 
-local a = require "mason-core.async"
-local InstallHandle = require "mason-core.installer.handle"
 local InstallContext = require "mason-core.installer.context"
+local InstallHandle = require "mason-core.installer.handle"
+local Result = require "mason-core.result"
+local a = require "mason-core.async"
+local path = require "mason-core.path"
 local registry = require "mason-registry"
 
 -- selene: allow(unused_variable)
@@ -32,6 +34,21 @@ mockx = {
     end,
 }
 
+---@param opts? PackageInstallOpts
+function create_dummy_context(opts)
+    local ctx = InstallContextGenerator(InstallHandleGenerator "registry", opts)
+    ctx.cwd:set(path.package_build_prefix "registry")
+    ctx.spawn = setmetatable({}, {
+        __index = function(s, cmd)
+            s[cmd] = spy.new(function()
+                return Result.success { stdout = nil, stderr = nil }
+            end)
+            return s[cmd]
+        end,
+    })
+    return ctx
+end
+
 -- selene: allow(unused_variable)
 ---@param package_name string
 function InstallHandleGenerator(package_name)
@@ -43,10 +60,10 @@ end
 ---@param opts PackageInstallOpts?
 function InstallContextGenerator(handle, opts)
     local context = InstallContext.new(handle, opts or {})
-    context.spawn = setmetatable({}, {
-        __index = function(s, cmd)
-            s[cmd] = spy.new(mockx.just_runs())
-            return s[cmd]
+    context.spawn = setmetatable({ strict_mode = true }, {
+        __index = function(self, cmd)
+            self[cmd] = spy.new(mockx.just_runs())
+            return self[cmd]
         end,
     })
     return context

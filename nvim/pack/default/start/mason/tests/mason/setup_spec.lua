@@ -1,10 +1,13 @@
-local match = require "luassert.match"
 local mason = require "mason"
+local match = require "luassert.match"
 local path = require "mason-core.path"
+local settings = require "mason.settings"
 
 describe("mason setup", function()
     before_each(function()
+        vim.env.MASON = nil
         vim.env.PATH = "/usr/local/bin:/usr/bin"
+        settings.set(settings._DEFAULT_SETTINGS)
     end)
 
     it("should enhance the PATH environment", function()
@@ -26,6 +29,12 @@ describe("mason setup", function()
         local PATH = vim.env.PATH
         mason.setup { PATH = "skip" }
         assert.equals(PATH, vim.env.PATH)
+    end)
+
+    it("should set MASON env", function()
+        assert.is_nil(vim.env.MASON)
+        mason.setup()
+        assert.equals(vim.fn.expand "~/.local/share/nvim/mason", vim.env.MASON)
     end)
 
     it("should set up user commands", function()

@@ -83,16 +83,7 @@ local function MasonInstall(package_specifiers, opts)
     opts = opts or {}
     local Package = require "mason-core.package"
     local registry = require "mason-registry"
-    local valid_packages = filter_valid_packages(package_specifiers)
     local is_headless = #vim.api.nvim_list_uis() == 0
-
-    if is_headless and #valid_packages ~= #package_specifiers then
-        -- When executing in headless mode we don't allow any of the provided packages to be invalid.
-        -- This is to avoid things like scripts silently not erroring even if they've provided one or more invalid packages.
-        return vim.cmd [[1cq]]
-    elseif #valid_packages == 0 then
-        return
-    end
 
     local install_packages = _.map(function(pkg_specifier)
         local package_name, version = Package.Parse(pkg_specifier)
@@ -106,15 +97,25 @@ local function MasonInstall(package_specifiers, opts)
     end)
 
     if is_headless then
+        registry.refresh()
+        local valid_packages = filter_valid_packages(package_specifiers)
+        if #valid_packages ~= #package_specifiers then
+            -- When executing in headless mode we don't allow any of the provided packages to be invalid.
+            -- This is to avoid things like scripts silently not erroring even if they've provided one or more invalid packages.
+            return vim.cmd [[1cq]]
+        end
         join_handles(install_packages(valid_packages))
     else
         local ui = require "mason.ui"
         ui.open()
         -- Important: We start installation of packages _after_ opening the UI. This gives the UI components a chance to
         -- register the necessary event handlers in time, avoiding desynced state.
-        install_packages(valid_packages)
-        vim.schedule(function()
-            ui.set_sticky_cursor "installing-section"
+        registry.refresh(function()
+            local valid_packages = filter_valid_packages(package_specifiers)
+            install_packages(valid_packages)
+            vim.schedule(function()
+                ui.set_sticky_cursor "installing-section"
+            end)
         end)
     end
 end
@@ -180,6 +181,24 @@ vim.api.nvim_create_user_command("MasonUninstallAll", MasonUninstallAll, {
     desc = "Uninstall all packages.",
 })
 
+local function MasonUpdate()
+    local notify = require "mason-core.notify"
+    local registry = require "mason-registry"
+    notify "Updating registries…"
+    registry.update(vim.schedule_wrap(function(success, updated_registries)
+        if success then
+            local count = #updated_registries
+            notify(("Successfully updated %d %s."):format(count, count == 1 and "registry" or "registries"))
+        else
+            notify(("Failed to update registries: %s"):format(updated_registries), vim.log.levels.ERROR)
+        end
+    end))
+end
+
+vim.api.nvim_create_user_command("MasonUpdate", MasonUpdate, {
+    desc = "Update Mason registries.",
+})
+
 local function MasonLog()
     local log = require "mason-core.log"
     vim.cmd(([[tabnew %s]]):format(log.outfile))
@@ -193,12 +212,14 @@ vim.api.nvim_create_user_command("MasonLog", MasonLog, {
 _G.mason_completion = {
     available_package_completion = function()
         local registry = require "mason-registry"
+        registry.refresh()
         local package_names = registry.get_all_package_names()
         table.sort(package_names)
         return table.concat(package_names, "\n")
     end,
     installed_package_completion = function()
         local registry = require "mason-registry"
+        registry.refresh()
         local package_names = registry.get_installed_package_names()
         table.sort(package_names)
         return table.concat(package_names, "\n")
@@ -210,5 +231,6 @@ return {
     MasonInstall = MasonInstall,
     MasonUninstall = MasonUninstall,
     MasonUninstallAll = MasonUninstallAll,
+    MasonUpdate = MasonUpdate,
     MasonLog = MasonLog,
 }

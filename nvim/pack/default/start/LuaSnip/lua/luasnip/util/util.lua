@@ -547,7 +547,7 @@ local function no()
 end
 
 local function yes()
-	return false
+	return true
 end
 
 local function reverse_lookup(t)
@@ -581,6 +581,14 @@ local function lazy_table(lazy_t, lazy_defs)
 			return nil
 		end,
 	})
+end
+
+local function ternary(cond, if_val, else_val)
+	if cond == true then
+		return if_val
+	else
+		return else_val
+	end
 end
 
 return {
@@ -628,4 +636,5 @@ return {
 	nop = nop,
 	indx_of = indx_of,
 	lazy_table = lazy_table,
+	ternary = ternary,
 }

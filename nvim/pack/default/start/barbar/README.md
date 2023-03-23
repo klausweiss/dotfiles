@@ -1,4 +1,3 @@
-
 ![demo](./static/demo.gif)
 
 <h1 align="center">
@@ -30,16 +29,13 @@ files you can even type the letter ahead from memory.
 
 ## Install
 
-#### Using [vim-plug](https://github.com/junegunn/vim-plug)
-```vim
-Plug 'nvim-tree/nvim-web-devicons'
-Plug 'romgrk/barbar.nvim'
-```
-
 #### Using [lazy.nvim](https://github.com/folke/lazy.nvim)
 ```lua
 require('lazy').setup {
-  {'romgrk/barbar.nvim', dependencies = 'nvim-tree/nvim-web-devicons'},
+  {'romgrk/barbar.nvim',
+    dependencies = 'nvim-tree/nvim-web-devicons',
+    version = '^1.0.0', -- optional: only update when a new 1.x version is released
+  },
 }
 ```
 
@@ -47,6 +43,12 @@ require('lazy').setup {
 ```lua
 use 'nvim-tree/nvim-web-devicons'
 use {'romgrk/barbar.nvim', requires = 'nvim-web-devicons'}
+```
+
+#### Using [vim-plug](https://github.com/junegunn/vim-plug)
+```vim
+Plug 'nvim-tree/nvim-web-devicons'
+Plug 'romgrk/barbar.nvim'
 ```
 
 You can skip the dependency on `'nvim-tree/nvim-web-devicons'` if you
@@ -253,6 +255,10 @@ let bufferline.diagnostics = [
 let bufferline.exclude_ft = ['javascript']
 let bufferline.exclude_name = ['package.json']
 
+" A buffer to this direction will be focused (if it exists) when closing the current buffer.
+" Valid options are 'left' (the default) and 'right'
+let bufferline.focus_on_close = 'left'
+
 " Hide inactive buffers and file extensions. Other options are `alternate`, `current`, and `visible`.
 let bufferline.hide = {'extensions': v:true, 'inactive': v:true}
 
@@ -354,6 +360,10 @@ require'bufferline'.setup {
   -- Excludes buffers from the tabline
   exclude_ft = {'javascript'},
   exclude_name = {'package.json'},
+
+  -- A buffer to this direction will be focused (if it exists) when closing the current buffer.
+  -- Valid options are 'left' (the default) and 'right'
+  focus_on_close = 'left',
 
   -- Hide inactive buffers and file extensions. Other options are `alternate`, `current`, and `visible`.
   hide = {extensions = true, inactive = true},
@@ -501,54 +511,38 @@ To ensure tabs begin with the shown buffer you can set an offset for the tabline
 
 ![filetree-with-offset](./static/filetree-with-offset.png)
 
-Add this autocmds to your configuration.
+Add this `autocmd` to your configuration:
 
 ```lua
-vim.api.nvim_create_autocmd('BufWinEnter', {
+vim.api.nvim_create_autocmd('FileType', {
   callback = function(tbl)
-    if vim.bo[tbl.buf].filetype == 'NvimTree' then
-      require'bufferline.api'.set_offset(31, 'FileTree')
-    end
-  end
+    local set_offset = require('bufferline.api').set_offset
+
+    local bufwinid
+    local last_width
+    local autocmd = vim.api.nvim_create_autocmd('WinScrolled', {
+      callback = function()
+        bufwinid = bufwinid or vim.fn.bufwinid(tbl.buf)
+
+        local width = vim.api.nvim_win_get_width(bufwinid)
+        if width ~= last_width then
+          set_offset(width, 'FileTree')
+          last_width = width
+        end
+      end,
+    })
+
+    vim.api.nvim_create_autocmd('BufWipeout', {
+      buffer = tbl.buf,
+      callback = function()
+        vim.api.nvim_del_autocmd(autocmd)
+        set_offset(0)
+      end,
+      once = true,
+    })
+  end,
+  pattern = 'NvimTree', -- or any other filetree's `ft`
 })
-
-vim.api.nvim_create_autocmd({'BufWinLeave', 'BufWipeout'}, {
-  callback = function(tbl)
-    if vim.bo[tbl.buf].filetype == 'NvimTree' then
-      require'bufferline.api'.set_offset(0)
-    end
-  end
-})
-```
-
-And add a mapping to use the above functions:
-
-```vim
-noremap <silent> <C-n> :lua require'tree'.toggle()<CR>
-```
-
-In the case of `nvim-tree`, there is an even simpler solution because it exposes an events API.
-You can add the following functions and then use `nvim-tree` mappings:
-
-```lua
-local nvim_tree_events = require('nvim-tree.events')
-local bufferline_api = require('bufferline.api')
-
-local function get_tree_size()
-  return require'nvim-tree.view'.View.width
-end
-
-nvim_tree_events.subscribe('TreeOpen', function()
-  bufferline_api.set_offset(get_tree_size())
-end)
-
-nvim_tree_events.subscribe('Resize', function()
-  bufferline_api.set_offset(get_tree_size())
-end)
-
-nvim_tree_events.subscribe('TreeClose', function()
-  bufferline_api.set_offset(0)
-end)
 ```
 
 ## Known Issues

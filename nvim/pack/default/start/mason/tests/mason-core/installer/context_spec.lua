@@ -1,9 +1,9 @@
-local stub = require "luassert.stub"
 local match = require "luassert.match"
-local std = require "mason-core.managers.std"
 local path = require "mason-core.path"
 local pip3 = require "mason-core.managers.pip3"
 local registry = require "mason-registry"
+local std = require "mason-core.managers.std"
+local stub = require "luassert.stub"
 
 describe("installer", function()
     ---@module "mason-core.platform"
@@ -105,7 +105,6 @@ cmd.exe /C echo %GREETING% %*]]
         stub(ctx.cwd, "get")
         ctx.cwd.get.returns "/tmp/placeholder"
         stub(ctx, "write_shell_exec_wrapper")
-        stub(ctx.spawn, "python")
 
         ctx:write_pyvenv_exec_wrapper("my-wrapper-script", "my-module")
 

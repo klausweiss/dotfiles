@@ -1,13 +1,13 @@
 local Ui = require "mason-core.ui"
-local p = require "mason.ui.palette"
 local _ = require "mason-core.functional"
-local settings = require "mason.settings"
 local log = require "mason-core.log"
+local p = require "mason.ui.palette"
+local settings = require "mason.settings"
 
-local LSPHelp = require "mason.ui.components.help.lsp"
 local DAPHelp = require "mason.ui.components.help.dap"
-local LinterHelp = require "mason.ui.components.help.linter"
 local FormatterHelp = require "mason.ui.components.help.formatter"
+local LSPHelp = require "mason.ui.components.help.lsp"
+local LinterHelp = require "mason.ui.components.help.linter"
 
 ---@param state InstallerUiState
 local function Ship(state)
@@ -68,16 +68,26 @@ local function GenericHelp(state)
             { p.muted "Mason log: ", p.none(log.outfile) },
         },
         Ui.EmptyLine(),
-        Ui.Table(vim.list_extend(
+        Ui.HlTextNode {
             {
-                {
-                    p.Bold "Keyboard shortcuts",
-                },
+                p.Bold "Registries",
             },
-            _.map(function(keymap_tuple)
+            {
+                p.muted "Packages are sourced from the following registries:",
+            },
+            unpack(_.map(function(registry)
+                return { p.none(" - " .. registry) }
+            end, state.info.registries)),
+        },
+        Ui.EmptyLine(),
+        Ui.Table {
+            {
+                p.Bold "Keyboard shortcuts",
+            },
+            unpack(_.map(function(keymap_tuple)
                 return { p.muted(keymap_tuple[1]), p.highlight(keymap_tuple[2]) }
-            end, keymap_tuples)
-        )),
+            end, keymap_tuples)),
+        },
         Ui.EmptyLine(),
         Ui.HlTextNode {
             { p.Bold "Problems installing packages" },

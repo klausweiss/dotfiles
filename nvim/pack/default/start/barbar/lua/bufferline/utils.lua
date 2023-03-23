@@ -2,11 +2,15 @@
 -- utils.lua
 --
 
-local fnamemodify = vim.fn.fnamemodify
-local get_hl_by_name = vim.api.nvim_get_hl_by_name
+local table_insert = table.insert
+
+local fnamemodify = vim.fn.fnamemodify --- @type function
+local get_hl_by_name = vim.api.nvim_get_hl_by_name --- @type function
+local hlexists = vim.fn.hlexists --- @type function
 local list_slice = vim.list_slice
-local set_hl = vim.api.nvim_set_hl
-local hlexists = vim.fn.hlexists
+local notify = vim.notify
+local notify_once = vim.notify_once
+local set_hl = vim.api.nvim_set_hl --- @type function
 
 --- Generate a color.
 --- @param groups string[] the groups to source the color from.
@@ -41,14 +45,14 @@ local function index_of(list, t)
   return nil
 end
 
-  --- @param path string
+--- @param path string
 --- @return string relative_path
 local function relative(path)
   return fnamemodify(path, ':~:.')
 end
 
 --- @class bufferline.utils
-return {
+local utils = {
   --- @param path string
   --- @param hide_extension? boolean if `true`, exclude the extension of the file in the basename
   --- @return string basename
@@ -107,6 +111,7 @@ return {
     --- @param bg barbar.utils.hl.group
     --- @param fg barbar.utils.hl.group
     --- @param bold? boolean whether the highlight group should be bolded
+    --- @return nil
     set = function(group, bg, fg, bold)
       set_hl(0, group, {
         bold = bold,
@@ -122,7 +127,8 @@ return {
     --- Set the default highlight `group_name` as a link to `link_name`
     --- @param group_name string the name of the group to by-default be linked to `link_name`
     --- @param link_name string the name of the group to by-default link `group_name` to
-    set_default_link = function (group_name, link_name)
+    --- @return nil
+    set_default_link = function(group_name, link_name)
       set_hl(0, group_name, {default = true, link = link_name})
     end,
   },
@@ -144,6 +150,22 @@ return {
     return list_slice(list, #list - index_from_end + 1)
   end,
 
+  --- Use `vim.notify` with a `msg` and log `level`. Integrates with `nvim-notify`.
+  --- @param msg string
+  --- @param level 0|1|2|3|4|5
+  --- @return nil
+  notify = function(msg, level)
+    notify(msg, level, {title = 'barbar.nvim'})
+  end,
+
+  --- Use `vim.notify` with a `msg` and log `level`. Integrates with `nvim-notify`.
+  --- @param msg string
+  --- @param level 0|1|2|3|4|5
+  --- @return nil
+  notify_once = function(msg, level)
+    notify_once(msg, level, {title = 'barbar.nvim'})
+  end,
+
   relative = relative,
 
   --- Reverse the order of elements in some `list`.
@@ -152,9 +174,11 @@ return {
   --- @return T[] reversed
   reverse = function(list)
     local reversed = {}
-    while #reversed < #list do
-      reversed[#reversed + 1] = list[#list - #reversed]
+    for i = #list, 1, -1 do
+      table_insert(reversed, list[i])
     end
     return reversed
   end,
 }
+
+return utils

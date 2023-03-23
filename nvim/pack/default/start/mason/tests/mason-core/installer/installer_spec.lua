@@ -1,11 +1,12 @@
-local spy = require "luassert.spy"
-local match = require "luassert.match"
-local stub = require "luassert.stub"
-local fs = require "mason-core.fs"
-local a = require "mason-core.async"
-local path = require "mason-core.path"
-local installer = require "mason-core.installer"
 local InstallContext = require "mason-core.installer.context"
+local Result = require "mason-core.result"
+local a = require "mason-core.async"
+local fs = require "mason-core.fs"
+local installer = require "mason-core.installer"
+local match = require "luassert.match"
+local path = require "mason-core.path"
+local spy = require "luassert.spy"
+local stub = require "luassert.stub"
 
 local function timestamp()
     local seconds, microseconds = vim.loop.gettimeofday()
@@ -62,7 +63,7 @@ describe("installer", function()
             local handler = InstallHandleGenerator "dummy"
             ---@param ctx InstallContext
             handler.package.spec.install = function(ctx)
-                ctx.receipt:with_primary_source { type = "source", metadata = {} }
+                ctx.receipt:with_primary_source { type = "source", source = {} }
 
                 ctx.fs:write_file("target", "")
                 ctx.fs:write_file("file.jar", "")
@@ -85,7 +86,7 @@ describe("installer", function()
                     ---@type InstallReceipt
                     local receipt = vim.json.decode(arg)
                     assert.equals("dummy", receipt.name)
-                    assert.same({ type = "source", metadata = {} }, receipt.primary_source)
+                    assert.same({ type = "source", source = {} }, receipt.primary_source)
                     assert.same({}, receipt.secondary_sources)
                     assert.same("1.1", receipt.schema_version)
                     assert.same({
@@ -145,6 +146,25 @@ describe("installer", function()
             assert
                 .spy(fs.async.write_file)
                 .was_called_with(path.package_prefix "dummy/mason-debug.log", "Hello stdout!\nHello stderr!")
+        end)
+    )
+
+    it(
+        "should raise spawn errors in strict mode",
+        async_test(function()
+            local handle = InstallHandleGenerator "dummy"
+            stub(handle.package.spec, "install", function(ctx)
+                ctx.spawn.bash { "-c", "exit 42" }
+            end)
+            local result = installer.execute(handle, { debug = true })
+            assert.same(
+                Result.failure {
+                    exit_code = 42,
+                    signal = 0,
+                },
+                result
+            )
+            assert.equals("spawn: bash failed with exit code 42 and signal 0. ", tostring(result:err_or_nil()))
         end)
     )
 end)

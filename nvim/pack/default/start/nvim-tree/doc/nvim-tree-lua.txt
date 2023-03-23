@@ -103,23 +103,35 @@ Setup should be run in a lua file or in a |lua-heredoc| if using in a vim file.
 
 *:NvimTreeOpen*
 
-    opens the tree. Takes an optional path argument.
+    Opens the tree. See |nvim-tree.api.tree.open()|
+
+    Calls: `api.tree.open({ path = "<arg>" })`
 
 *:NvimTreeClose*
 
-    closes the tree
+    Closes the tree. See |nvim-tree.api.tree.close()|
+
+    Calls: `api.tree.close()`
 
 *:NvimTreeToggle*
 
-    open or close the tree. Takes an optional path argument.
+    Open or close the tree. See |nvim-tree.api.tree.toggle()|
+
+    Calls: `api.tree.toggle({ path = "<arg>" })`
 
 *:NvimTreeFocus*
 
-    open the tree if it is closed, and then focus on the tree
+    Open the tree if it is closed, and then focus on the tree.
+
+    See |nvim-tree.api.tree.toggle()|
+
+    Calls: `api.tree.focus()`
 
 *:NvimTreeRefresh*
 
-    refresh the tree
+    Refresh the tree. See |nvim-tree.api.tree.reload()|
+
+    Calls: `api.tree.reload()`
 
 *:NvimTreeFindFile*
 
@@ -131,6 +143,10 @@ Setup should be run in a lua file or in a |lua-heredoc| if using in a vim file.
 
     Invoke with a bang `:NvimTreeFindFile!` to update the root.
 
+    See |nvim-tree.api.tree.find_file()|
+
+    Calls: `api.tree.find_file { open = true, update_root = <bang> }`
+
 *:NvimTreeFindFileToggle*
 
     close the tree or change the cursor in the tree for the current bufname,
@@ -139,9 +155,17 @@ Setup should be run in a lua file or in a |lua-heredoc| if using in a vim file.
 
     Invoke with a bang `:NvimTreeFindFileToggle!` to update the root.
 
+    See |nvim-tree.api.tree.toggle()|
+
+    Calls: `api.tree.toggle { find_file = true, focus = true, path = "<arg>", update_root = <bang> }`
+
 *:NvimTreeClipboard*
 
     Print clipboard content for both cut and copy
+
+    See |nvim-tree.api.fs.print_clipboard()|
+
+    Calls: `api.fs.print_clipboard()`
 
 *:NvimTreeResize*
 
@@ -155,10 +179,18 @@ Setup should be run in a lua file or in a |lua-heredoc| if using in a vim file.
 
     Collapses the nvim-tree recursively.
 
+    See |nvim-tree.api.tree.collapse_all()|
+
+    Calls: `api.tree.collapse_all(false)`
+
 *:NvimTreeCollapseKeepBuffers*
 
     Collapses the nvim-tree recursively, but keep the directories open, which are
     used in an open buffer.
+
+    See |nvim-tree.api.tree.collapse_all()|
+
+    Calls: `api.tree.collapse_all(true)`
 
 *:NvimTreeGenerateOnAttach*
 
@@ -170,12 +202,17 @@ Setup should be run in a lua file or in a |lua-heredoc| if using in a vim file.
 ==============================================================================
  4. SETUP                                                    *nvim-tree-setup*
 
-You must run setup() function to initialise nvim-tree.
+You must run setup() function once to initialise nvim-tree. It may be called
+again to apply a change in configuration without restarting nvim.
 
 setup() function takes one optional argument: configuration table. If omitted
 nvim-tree will be initialised with default configuration.
+>
+The first setup() call is cheap: it does nothing more than validate / apply
+the configuration. Nothing happens until the tree is first opened.
 
-Subsequent calls to setup will replace the previous configuration.
+Subsequent setup() calls are expensive as they tear down the world before
+applying configuration.
 >
     require("nvim-tree").setup { -- BEGIN_DEFAULT_OPTS
       auto_reload_on_write = true,
@@ -1261,7 +1298,8 @@ api.tree.open({opts})                              *nvim-tree.api.tree.open()*
       • {path}           (string)         root directory for the tree
       • {current_window} (boolean, false) open the tree in the current window
       • {find_file}      (boolean, false) find the current buffer
-      • {update_root}    (boolean, false) see |nvim-tree.update_focused_file.update_root|
+      • {update_root}    (boolean, false) requires {find_file}, see
+                                          |nvim-tree.update_focused_file.update_root|
 
 api.tree.toggle({opts})                          *nvim-tree.api.tree.toggle()*
     Open or close the tree.
@@ -1273,7 +1311,8 @@ api.tree.toggle({opts})                          *nvim-tree.api.tree.toggle()*
       • {path}           (string)         root directory for the tree
       • {current_window} (boolean, false) open the tree in the current window
       • {find_file}      (boolean, false) find the current buffer
-      • {update_root}    (boolean, false) see |nvim-tree.update_focused_file.update_root|
+      • {update_root}    (boolean, false) requires {find_file}, see
+                                          |nvim-tree.update_focused_file.update_root|
       • {focus}          (boolean, true)  focus the tree when opening
 
 api.tree.close()                                   *nvim-tree.api.tree.close()*
@@ -1324,11 +1363,19 @@ api.tree.get_nodes()                           *nvim-tree.api.tree.get_nodes()*
     Return: ~
       table of nodes
 
-api.tree.find_file({path})                     *nvim-tree.api.tree.find_file()*
-    Find and focus a file or folder in the tree.
+api.tree.find_file({opts})                     *nvim-tree.api.tree.find_file()*
+    Find and focus a file or folder in the tree. Finds current buffer unless
+    otherwise specified.
 
     Parameters: ~
-      • {path} (string) absolute path
+    • {opts} (table) optional parameters with boolean defaults
+
+    Options: ~
+    • {buf}            (string|number)  absolute/relative path OR bufnr to find
+    • {open}           (boolean, false) open the tree
+    • {current_window} (boolean, false) requires {open}, open in the current window
+    • {update_root}    (boolean, false) see |nvim-tree.update_focused_file.update_root|
+    • {focus}          (boolean, false) focus the tree
 
 api.tree.search_node()                       *nvim-tree.api.tree.search_node()*
     Open the search dialogue as per the search_node action.
@@ -1425,6 +1472,13 @@ api.tree.toggle_help()                       *nvim-tree.api.tree.toggle_help()*
     - navigate.prev
     - navigate.select
 
+                           *nvim-tree.api.config.mappings.default_on_attach()*
+api.config.mappings.default_on_attach({bufnr})
+    Set all |nvim-tree-mappings-default|. Call from your |nvim-tree.on_attach|
+
+    Parameters: ~
+      • {bufnr} (number) nvim-tree buffer number passed to |nvim-tree.on_attach|
+
 api.config.mappings.active()          *nvim-tree.api.config.mappings.active()*
     Deprecated: only functions when using legacy |nvim-tree.view.mappings|
     Retrieve a clone of the currently active mappings: defaults + user.
@@ -1439,6 +1493,23 @@ api.config.mappings.default()        *nvim-tree.api.config.mappings.default()*
 
     Return: ~
         (table) as per |nvim-tree.view.mappings.list|
+
+                                  *nvim-tree.api.config.mappings.get_keymap()*
+api.config.mappings.get_keymap()
+    Retrieves all buffer local mappings for nvim-tree.
+    These are the mappings that are applied by |nvim-tree.on_attach|, which
+    may include default mappings.
+
+    Return: ~
+        (table) as per |nvim_buf_get_keymap()|
+
+                                  *nvim-tree.api.config.mappings.get_keymap_default()*
+api.config.mappings.get_keymap_default()
+    Retrieves the buffer local mappings for nvim-tree that are applied by
+    |nvim-tree.api.config.mappings.default_on_attach()|
+
+    Return: ~
+        (table) as per |nvim_buf_get_keymap()|
 
 ==============================================================================
  6. MAPPINGS                                              *nvim-tree-mappings*
@@ -1480,7 +1551,7 @@ Mouse support is defined in |KeyBindings|
 
 Single left mouse mappings can be achieved via `<LeftRelease>`.
 
-Single right / middle mouse mappings will requre changes to |mousemodel| or |mouse|.
+Single right / middle mouse mappings will require changes to |mousemodel| or |mouse|.
 
 ==============================================================================
  6.1 DEFAULT MAPPINGS                             *nvim-tree-mappings-default*
@@ -1490,67 +1561,80 @@ will be applied.
 
 You are encouraged to copy these to your own |nvim-tree.on_attach| function.
 >
-  local on_attach = function(bufnr)
+  local api = require('nvim-tree.api')
+
+  local function opts(desc)
+    return { desc = 'nvim-tree: ' .. desc, buffer = bufnr, noremap = true, silent = true, nowait = true }
+  end
+
+  -- BEGIN_DEFAULT_ON_ATTACH
+  vim.keymap.set('n', '<C-]>', api.tree.change_root_to_node,          opts('CD'))
+  vim.keymap.set('n', '<C-e>', api.node.open.replace_tree_buffer,     opts('Open: In Place'))
+  vim.keymap.set('n', '<C-k>', api.node.show_info_popup,              opts('Info'))
+  vim.keymap.set('n', '<C-r>', api.fs.rename_sub,                     opts('Rename: Omit Filename'))
+  vim.keymap.set('n', '<C-t>', api.node.open.tab,                     opts('Open: New Tab'))
+  vim.keymap.set('n', '<C-v>', api.node.open.vertical,                opts('Open: Vertical Split'))
+  vim.keymap.set('n', '<C-x>', api.node.open.horizontal,              opts('Open: Horizontal Split'))
+  vim.keymap.set('n', '<BS>',  api.node.navigate.parent_close,        opts('Close Directory'))
+  vim.keymap.set('n', '<CR>',  api.node.open.edit,                    opts('Open'))
+  vim.keymap.set('n', '<Tab>', api.node.open.preview,                 opts('Open Preview'))
+  vim.keymap.set('n', '>',     api.node.navigate.sibling.next,        opts('Next Sibling'))
+  vim.keymap.set('n', '<',     api.node.navigate.sibling.prev,        opts('Previous Sibling'))
+  vim.keymap.set('n', '.',     api.node.run.cmd,                      opts('Run Command'))
+  vim.keymap.set('n', '-',     api.tree.change_root_to_parent,        opts('Up'))
+  vim.keymap.set('n', 'a',     api.fs.create,                         opts('Create'))
+  vim.keymap.set('n', 'bmv',   api.marks.bulk.move,                   opts('Move Bookmarked'))
+  vim.keymap.set('n', 'B',     api.tree.toggle_no_buffer_filter,      opts('Toggle No Buffer'))
+  vim.keymap.set('n', 'c',     api.fs.copy.node,                      opts('Copy'))
+  vim.keymap.set('n', 'C',     api.tree.toggle_git_clean_filter,      opts('Toggle Git Clean'))
+  vim.keymap.set('n', '[c',    api.node.navigate.git.prev,            opts('Prev Git'))
+  vim.keymap.set('n', ']c',    api.node.navigate.git.next,            opts('Next Git'))
+  vim.keymap.set('n', 'd',     api.fs.remove,                         opts('Delete'))
+  vim.keymap.set('n', 'D',     api.fs.trash,                          opts('Trash'))
+  vim.keymap.set('n', 'E',     api.tree.expand_all,                   opts('Expand All'))
+  vim.keymap.set('n', 'e',     api.fs.rename_basename,                opts('Rename: Basename'))
+  vim.keymap.set('n', ']e',    api.node.navigate.diagnostics.next,    opts('Next Diagnostic'))
+  vim.keymap.set('n', '[e',    api.node.navigate.diagnostics.prev,    opts('Prev Diagnostic'))
+  vim.keymap.set('n', 'F',     api.live_filter.clear,                 opts('Clean Filter'))
+  vim.keymap.set('n', 'f',     api.live_filter.start,                 opts('Filter'))
+  vim.keymap.set('n', 'g?',    api.tree.toggle_help,                  opts('Help'))
+  vim.keymap.set('n', 'gy',    api.fs.copy.absolute_path,             opts('Copy Absolute Path'))
+  vim.keymap.set('n', 'H',     api.tree.toggle_hidden_filter,         opts('Toggle Dotfiles'))
+  vim.keymap.set('n', 'I',     api.tree.toggle_gitignore_filter,      opts('Toggle Git Ignore'))
+  vim.keymap.set('n', 'J',     api.node.navigate.sibling.last,        opts('Last Sibling'))
+  vim.keymap.set('n', 'K',     api.node.navigate.sibling.first,       opts('First Sibling'))
+  vim.keymap.set('n', 'm',     api.marks.toggle,                      opts('Toggle Bookmark'))
+  vim.keymap.set('n', 'o',     api.node.open.edit,                    opts('Open'))
+  vim.keymap.set('n', 'O',     api.node.open.no_window_picker,        opts('Open: No Window Picker'))
+  vim.keymap.set('n', 'p',     api.fs.paste,                          opts('Paste'))
+  vim.keymap.set('n', 'P',     api.node.navigate.parent,              opts('Parent Directory'))
+  vim.keymap.set('n', 'q',     api.tree.close,                        opts('Close'))
+  vim.keymap.set('n', 'r',     api.fs.rename,                         opts('Rename'))
+  vim.keymap.set('n', 'R',     api.tree.reload,                       opts('Refresh'))
+  vim.keymap.set('n', 's',     api.node.run.system,                   opts('Run System'))
+  vim.keymap.set('n', 'S',     api.tree.search_node,                  opts('Search'))
+  vim.keymap.set('n', 'U',     api.tree.toggle_custom_filter,         opts('Toggle Hidden'))
+  vim.keymap.set('n', 'W',     api.tree.collapse_all,                 opts('Collapse'))
+  vim.keymap.set('n', 'x',     api.fs.cut,                            opts('Cut'))
+  vim.keymap.set('n', 'y',     api.fs.copy.filename,                  opts('Copy Name'))
+  vim.keymap.set('n', 'Y',     api.fs.copy.relative_path,             opts('Copy Relative Path'))
+  vim.keymap.set('n', '<2-LeftMouse>',  api.node.open.edit,           opts('Open'))
+  vim.keymap.set('n', '<2-RightMouse>', api.tree.change_root_to_node, opts('CD'))
+  -- END_DEFAULT_ON_ATTACH
+<
+Alternatively, you may apply these default mappings from your |nvim-tree.on_attach| via
+|nvim-tree.api.config.mappings.default_on_attach()| e.g.
+>
+  local function my_on_attach(bufnr)
     local api = require('nvim-tree.api')
 
-    -- BEGIN_DEFAULT_ON_ATTACH
-    local opts = function(desc)
+    local function opts(desc)
       return { desc = 'nvim-tree: ' .. desc, buffer = bufnr, noremap = true, silent = true, nowait = true }
     end
 
-    vim.keymap.set('n', '<C-]>', api.tree.change_root_to_node,          opts('CD'))
-    vim.keymap.set('n', '<C-e>', api.node.open.replace_tree_buffer,     opts('Open: In Place'))
-    vim.keymap.set('n', '<C-k>', api.node.show_info_popup,              opts('Info'))
-    vim.keymap.set('n', '<C-r>', api.fs.rename_sub,                     opts('Rename: Omit Filename'))
-    vim.keymap.set('n', '<C-t>', api.node.open.tab,                     opts('Open: New Tab'))
-    vim.keymap.set('n', '<C-v>', api.node.open.vertical,                opts('Open: Vertical Split'))
-    vim.keymap.set('n', '<C-x>', api.node.open.horizontal,              opts('Open: Horizontal Split'))
-    vim.keymap.set('n', '<BS>',  api.node.navigate.parent_close,        opts('Close Directory'))
-    vim.keymap.set('n', '<CR>',  api.node.open.edit,                    opts('Open'))
-    vim.keymap.set('n', '<Tab>', api.node.open.preview,                 opts('Open Preview'))
-    vim.keymap.set('n', '>',     api.node.navigate.sibling.next,        opts('Next Sibling'))
-    vim.keymap.set('n', '<',     api.node.navigate.sibling.prev,        opts('Previous Sibling'))
-    vim.keymap.set('n', '.',     api.node.run.cmd,                      opts('Run Command'))
-    vim.keymap.set('n', '-',     api.tree.change_root_to_parent,        opts('Up'))
-    vim.keymap.set('n', 'a',     api.fs.create,                         opts('Create'))
-    vim.keymap.set('n', 'bmv',   api.marks.bulk.move,                   opts('Move Bookmarked'))
-    vim.keymap.set('n', 'B',     api.tree.toggle_no_buffer_filter,      opts('Toggle No Buffer'))
-    vim.keymap.set('n', 'c',     api.fs.copy.node,                      opts('Copy'))
-    vim.keymap.set('n', 'C',     api.tree.toggle_git_clean_filter,      opts('Toggle Git Clean'))
-    vim.keymap.set('n', '[c',    api.node.navigate.git.prev,            opts('Prev Git'))
-    vim.keymap.set('n', ']c',    api.node.navigate.git.next,            opts('Next Git'))
-    vim.keymap.set('n', 'd',     api.fs.remove,                         opts('Delete'))
-    vim.keymap.set('n', 'D',     api.fs.trash,                          opts('Trash'))
-    vim.keymap.set('n', 'E',     api.tree.expand_all,                   opts('Expand All'))
-    vim.keymap.set('n', 'e',     api.fs.rename_basename,                opts('Rename: Basename'))
-    vim.keymap.set('n', ']e',    api.node.navigate.diagnostics.next,    opts('Next Diagnostic'))
-    vim.keymap.set('n', '[e',    api.node.navigate.diagnostics.prev,    opts('Prev Diagnostic'))
-    vim.keymap.set('n', 'F',     api.live_filter.clear,                 opts('Clean Filter'))
-    vim.keymap.set('n', 'f',     api.live_filter.start,                 opts('Filter'))
-    vim.keymap.set('n', 'g?',    api.tree.toggle_help,                  opts('Help'))
-    vim.keymap.set('n', 'gy',    api.fs.copy.absolute_path,             opts('Copy Absolute Path'))
-    vim.keymap.set('n', 'H',     api.tree.toggle_hidden_filter,         opts('Toggle Dotfiles'))
-    vim.keymap.set('n', 'I',     api.tree.toggle_gitignore_filter,      opts('Toggle Git Ignore'))
-    vim.keymap.set('n', 'J',     api.node.navigate.sibling.last,        opts('Last Sibling'))
-    vim.keymap.set('n', 'K',     api.node.navigate.sibling.first,       opts('First Sibling'))
-    vim.keymap.set('n', 'm',     api.marks.toggle,                      opts('Toggle Bookmark'))
-    vim.keymap.set('n', 'o',     api.node.open.edit,                    opts('Open'))
-    vim.keymap.set('n', 'O',     api.node.open.no_window_picker,        opts('Open: No Window Picker'))
-    vim.keymap.set('n', 'p',     api.fs.paste,                          opts('Paste'))
-    vim.keymap.set('n', 'P',     api.node.navigate.parent,              opts('Parent Directory'))
-    vim.keymap.set('n', 'q',     api.tree.close,                        opts('Close'))
-    vim.keymap.set('n', 'r',     api.fs.rename,                         opts('Rename'))
-    vim.keymap.set('n', 'R',     api.tree.reload,                       opts('Refresh'))
-    vim.keymap.set('n', 's',     api.node.run.system,                   opts('Run System'))
-    vim.keymap.set('n', 'S',     api.tree.search_node,                  opts('Search'))
-    vim.keymap.set('n', 'U',     api.tree.toggle_custom_filter,         opts('Toggle Hidden'))
-    vim.keymap.set('n', 'W',     api.tree.collapse_all,                 opts('Collapse'))
-    vim.keymap.set('n', 'x',     api.fs.cut,                            opts('Cut'))
-    vim.keymap.set('n', 'y',     api.fs.copy.filename,                  opts('Copy Name'))
-    vim.keymap.set('n', 'Y',     api.fs.copy.relative_path,             opts('Copy Relative Path'))
-    vim.keymap.set('n', '<2-LeftMouse>',  api.node.open.edit,           opts('Open'))
-    vim.keymap.set('n', '<2-RightMouse>', api.tree.change_root_to_node, opts('CD'))
-    -- END_DEFAULT_ON_ATTACH
+    api.config.mappings.default_on_attach(bufnr)
+
+    -- your removals and mappings go here
   end
 <
 ==============================================================================
@@ -1800,6 +1884,8 @@ vim.keymap.set("n", "<leader>ms", require("nvim-tree.api").marks.navigate.select
 
 macOS
 - Trash is unavailable
+- Rename to different case is not possible when using a case insensitive file
+  system.
 
 Windows WSL and PowerShell
 - Trash is unavailable

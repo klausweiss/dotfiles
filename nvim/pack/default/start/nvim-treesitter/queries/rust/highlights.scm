@@ -148,6 +148,18 @@
   (block_comment)
 ] @comment @spell
 
+((line_comment) @comment.documentation
+  (#lua-match? @comment.documentation "^///[^/]"))
+((line_comment) @comment.documentation
+  (#lua-match? @comment.documentation "^///$"))
+((line_comment) @comment.documentation
+  (#lua-match? @comment.documentation "^//!"))
+
+((block_comment) @comment.documentation
+  (#lua-match? @comment.documentation "^/[*][*][^*].*[*]/$"))
+((block_comment) @comment.documentation
+  (#lua-match? @comment.documentation "^/[*][!]"))
+
 (boolean_literal) @boolean
 (integer_literal) @number
 (float_literal) @float
@@ -169,8 +181,6 @@
 (use_as_clause "as" @include)
 
 [
-  "async"
-  "await"
   "default"
   "dyn"
   "enum"
@@ -187,6 +197,11 @@
   "unsafe"
   "where"
 ] @keyword
+
+[
+  "async"
+  "await"
+] @keyword.coroutine
 
 [
  "ref"

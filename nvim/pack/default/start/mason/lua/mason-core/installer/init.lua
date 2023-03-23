@@ -1,13 +1,13 @@
-local log = require "mason-core.log"
-local _ = require "mason-core.functional"
-local path = require "mason-core.path"
-local fs = require "mason-core.fs"
-local a = require "mason-core.async"
-local Result = require "mason-core.result"
 local InstallContext = require "mason-core.installer.context"
-local settings = require "mason.settings"
-local linker = require "mason-core.installer.linker"
+local Result = require "mason-core.result"
+local _ = require "mason-core.functional"
+local a = require "mason-core.async"
 local control = require "mason-core.async.control"
+local fs = require "mason-core.fs"
+local linker = require "mason-core.installer.linker"
+local log = require "mason-core.log"
+local path = require "mason-core.path"
+local settings = require "mason.settings"
 
 local Semaphore = control.Semaphore
 
@@ -64,13 +64,19 @@ function M.prepare_installer(context)
         try(Result.pcall(fs.async.mkdirp, package_build_prefix))
         context.cwd:set(package_build_prefix)
 
-        return context.package.spec.install
+        if context.package:is_registry_spec() then
+            local registry_installer = require "mason-core.installer.registry"
+            return try(registry_installer.compile(context.handle.package.spec, context.opts))
+        else
+            return context.package.spec.install
+        end
     end)
 end
 
----@async
+---@generic T
 ---@param context InstallContext
----@param fn async fun(context: InstallContext)
+---@param fn fun(context: InstallContext): T
+---@return T
 function M.exec_in_context(context, fn)
     local thread = coroutine.create(function(...)
         -- We wrap the function to allow it to be a spy instance (in which case it's not actually a function, but a

@@ -11,12 +11,13 @@ require `nvim-lua/plenary.nvim` using your plugin manager of choice, before requ
 
 | Plugin Manager                                       | Command                                                                        |
 |------------------------------------------------------|--------------------------------------------------------------------------------|
-| [Packer](https://github.com/wbthomason/packer.nvim)  | `use { 'TimUntersberger/neogit', requires = 'nvim-lua/plenary.nvim' }`          |
+| [Packer](https://github.com/wbthomason/packer.nvim)  | `use { 'TimUntersberger/neogit', requires = 'nvim-lua/plenary.nvim' }`         |
 | [Vim-plug](https://github.com/junegunn/vim-plug)     | `Plug 'TimUntersberger/neogit'`                                                |
 | [NeoBundle](https://github.com/Shougo/neobundle.vim) | `NeoBundle 'TimUntersberger/neogit'`                                           |
 | [Vundle](https://github.com/VundleVim/Vundle.vim)    | `Bundle 'TimUntersberger/neogit'`                                              |
 | [Pathogen](https://github.com/tpope/vim-pathogen)    | `git clone https://github.com/TimUntersberger/neogit.git ~/.vim/bundle/neogit` |
 | [Dein](https://github.com/Shougo/dein.vim)           | `call dein#add('TimUntersberger/neogit')`                                      |
+| [Dep](https://github.com/chiyadev/dep)               | `{'TimUntersberger/neogit', requires = {'nvim-lua/plenary.nvim'}}`             |
 
 You also use in the built-in package manager:
 ```bash
@@ -115,6 +116,11 @@ neogit.setup {
   -- Neogit refreshes its internal state after specific events, which can be expensive depending on the repository size.
   -- Disabling `auto_refresh` will make it so you have to manually refresh the status after you open it.
   auto_refresh = true,
+  -- Value used for `--sort` option for `git branch` command
+  -- By default, branches will be sorted by commit date descending
+  -- Flag description: https://git-scm.com/docs/git-branch#Documentation/git-branch.txt---sortltkeygt
+  -- Sorting keys: https://git-scm.com/docs/git-for-each-ref#_options
+  sort_branches = "-committerdate",
   disable_builtin_notifications = false,
   use_magit_keybindings = false,
   -- Change the default way of opening neogit
@@ -123,6 +129,13 @@ neogit.setup {
   console_timeout = 2000,
   -- Automatically show console if a command takes more than console_timeout milliseconds
   auto_show_console = true,
+  -- Persist the values of switches/options within and across sessions
+  remember_settings = true,
+  -- Scope persisted settings on a per-project basis
+  use_per_project_settings = true,
+  -- Array-like table of settings to never persist. Uses format "Filetype--cli-value"
+  --   ie: `{ "NeogitCommitPopup--author", "NeogitCommitPopup--no-verify" }`
+  ignored_settings = {},
   -- Change the default way of opening the commit popup
   commit_popup = {
     kind = "split",

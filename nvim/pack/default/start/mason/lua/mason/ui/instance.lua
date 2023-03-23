@@ -1,19 +1,18 @@
-local registry = require "mason-registry"
-local display = require "mason-core.ui.display"
+local Package = require "mason-core.package"
 local Ui = require "mason-core.ui"
+local _ = require "mason-core.functional"
 local a = require "mason-core.async"
 local control = require "mason-core.async.control"
-local _ = require "mason-core.functional"
-local Package = require "mason-core.package"
-local settings = require "mason.settings"
+local display = require "mason-core.ui.display"
 local notify = require "mason-core.notify"
+local registry = require "mason-registry"
+local settings = require "mason.settings"
 
 local Header = require "mason.ui.components.header"
-local Footer = require "mason.ui.components.footer"
 local Help = require "mason.ui.components.help"
-local Tabs = require "mason.ui.components.tabs"
-local Main = require "mason.ui.components.main"
 local LanguageFilter = require "mason.ui.components.language-filter"
+local Main = require "mason.ui.components.main"
+local Tabs = require "mason.ui.components.tabs"
 
 local Semaphore = control.Semaphore
 
@@ -57,9 +56,11 @@ end
 
 ---@class InstallerUiState
 local INITIAL_STATE = {
-    stats = {
+    info = {
         ---@type string | nil
         used_disk_space = nil,
+        ---@type string[]
+        registries = {},
     },
     view = {
         is_showing_help = false,
@@ -80,6 +81,8 @@ local INITIAL_STATE = {
             total = 0,
             percentage_complete = 0,
         },
+        ---@type Package[]
+        all = {},
         ---@type table<string, boolean>
         visible = {},
         ---@type string|nil
@@ -114,7 +117,6 @@ local function remove(list, item)
 end
 
 local window = display.new_view_only_win("mason.nvim", "mason")
-local packages = _.sort_by(_.prop "name", registry.get_all_packages())
 
 window.view(
     ---@param state InstallerUiState
@@ -132,7 +134,6 @@ window.view(
                     Main(state),
                 }
             end),
-            Footer(state),
         }
     end
 )
@@ -174,7 +175,7 @@ local function mutate_package_visibility(mutate_fn)
             _.prop_satisfies(_.any(_.equals(state.view.language_filter)), "languages"),
             _.T
         )
-        for __, pkg in ipairs(packages) do
+        for __, pkg in ipairs(state.packages.all) do
             state.packages.visible[pkg.name] =
                 _.all_pass({ view_predicate[state.view.current], language_predicate }, pkg.spec)
         end
@@ -210,13 +211,17 @@ local function setup_handle(handle)
             mutate_package_grouping(handle.package, "queued", true)
         elseif handle.state == "ACTIVE" then
             mutate_package_grouping(handle.package, "installing", true)
+        elseif handle.state == "CLOSED" then
+            mutate_state(function(state)
+                state.packages.states[handle.package.name].is_terminated = false
+            end)
         end
     end
 
     local function handle_spawnhandle_change()
         mutate_state(function(state)
             state.packages.states[handle.package.name].latest_spawn =
-                handle:peek_spawn_handle():map(tostring):or_else(nil)
+                handle:peek_spawn_handle():map(tostring):map(_.gsub("\n", "\\n ")):or_else(nil)
         end)
     end
 
@@ -264,7 +269,6 @@ local function setup_handle(handle)
     handle_spawnhandle_change()
     mutate_state(function(state)
         state.packages.states[handle.package.name] = create_initial_package_state()
-        state.packages.states[handle.package.name].short_tailed_output = "Installing…"
     end)
 end
 
@@ -576,7 +580,26 @@ local effects = {
     ["UPDATE_ALL_PACKAGES"] = update_all_packages,
 }
 
-for _, pkg in ipairs(packages) do
+local registered_packages = {}
+
+---@param pkg Package
+local function setup_package(pkg)
+    if registered_packages[pkg] then
+        return
+    end
+
+    mutate_state(function(state)
+        for _, group in ipairs { state.packages.installed, state.packages.uninstalled, state.packages.failed } do
+            for i, existing_pkg in ipairs(group) do
+                if existing_pkg.name == pkg.name and pkg ~= existing_pkg then
+                    -- New package instance (i.e. from a new, updated, registry source).
+                    -- Release the old package instance.
+                    table.remove(group, i)
+                end
+            end
+        end
+    end)
+
     -- hydrate initial state
     mutate_state(function(state)
         state.packages.states[pkg.name] = create_initial_package_state()
@@ -623,7 +646,36 @@ for _, pkg in ipairs(packages) do
         end)
         mutate_package_grouping(pkg, "uninstalled")
     end)
+
+    registered_packages[pkg] = true
 end
+
+local function update_registry_info()
+    local registries = {}
+    for source in require("mason-registry.sources").iter { include_uninstalled = true } do
+        table.insert(registries, source:get_display_name())
+    end
+    mutate_state(function(state)
+        state.info.registries = registries
+    end)
+end
+
+---@param packages Package[]
+local function setup_packages(packages)
+    _.each(setup_package, _.sort_by(_.prop "name", packages))
+    mutate_state(function(state)
+        state.packages.all = packages
+    end)
+end
+
+setup_packages(registry.get_all_packages())
+
+registry:on("update", function()
+    setup_packages(registry.get_all_packages())
+    update_registry_info()
+end)
+
+update_registry_info()
 
 window.init {
     effects = effects,

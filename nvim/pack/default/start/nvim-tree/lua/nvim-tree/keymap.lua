@@ -1,14 +1,33 @@
-local api = require "nvim-tree.api"
-
 local M = {}
+
+--- Apply mappings to a scratch buffer and return buffer local mappings
+--- @param fn function(bufnr) on_attach or default_on_attach
+--- @return table as per vim.api.nvim_buf_get_keymap
+local function generate_keymap(fn)
+  -- create an unlisted scratch buffer
+  local scratch_bufnr = vim.api.nvim_create_buf(false, true)
+
+  -- apply mappings
+  fn(scratch_bufnr)
+
+  -- retrieve all
+  local keymap = vim.api.nvim_buf_get_keymap(scratch_bufnr, "")
+
+  -- delete the scratch buffer
+  vim.api.nvim_buf_delete(scratch_bufnr, { force = true })
+
+  return keymap
+end
 
 -- stylua: ignore start
 function M.default_on_attach(bufnr)
-  -- BEGIN_DEFAULT_ON_ATTACH
-  local opts = function(desc)
+  local api = require('nvim-tree.api')
+
+  local function opts(desc)
     return { desc = 'nvim-tree: ' .. desc, buffer = bufnr, noremap = true, silent = true, nowait = true }
   end
 
+  -- BEGIN_DEFAULT_ON_ATTACH
   vim.keymap.set('n', '<C-]>', api.tree.change_root_to_node,          opts('CD'))
   vim.keymap.set('n', '<C-e>', api.node.open.replace_tree_buffer,     opts('Open: In Place'))
   vim.keymap.set('n', '<C-k>', api.node.show_info_popup,              opts('Info'))
@@ -64,6 +83,14 @@ function M.default_on_attach(bufnr)
   -- END_DEFAULT_ON_ATTACH
 end
 -- stylua: ignore end
+
+function M.get_keymap()
+  return generate_keymap(M.on_attach)
+end
+
+function M.get_keymap_default()
+  return generate_keymap(M.default_on_attach)
+end
 
 function M.setup(opts)
   if type(opts.on_attach) ~= "function" then

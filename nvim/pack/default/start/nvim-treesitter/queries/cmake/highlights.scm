@@ -1,3 +1,9 @@
+(normal_command
+  (identifier)
+  (argument (unquoted_argument)) @constant
+  (#lua-match? @constant "^[%u@][%u%d_]+$")
+)
+
 [
  (quoted_argument)
  (bracket_argument)
@@ -84,6 +90,18 @@
                               "VERSION_LESS" "VERSION_GREATER" "VERSION_EQUAL" "VERSION_LESS_EQUAL" "VERSION_GREATER_EQUAL"
   )
 )
+(elseif_command
+  (elseif)
+  (argument) @keyword.operator
+  (#any-of? @keyword.operator "NOT" "AND" "OR"
+                              "COMMAND" "POLICY" "TARGET" "TEST" "DEFINED" "IN_LIST"
+                              "EXISTS" "IS_NEWER_THAN" "IS_DIRECTORY" "IS_SYMLINK" "IS_ABSOLUTE"
+                              "MATCHES"
+                              "LESS" "GREATER" "EQUAL" "LESS_EQUAL" "GREATER_EQUAL"
+                              "STRLESS" "STRGREATER" "STREQUAL" "STRLESS_EQUAL" "STRGREATER_EQUAL"
+                              "VERSION_LESS" "VERSION_GREATER" "VERSION_EQUAL" "VERSION_LESS_EQUAL" "VERSION_GREATER_EQUAL"
+  )
+)
 
 (normal_command
   (identifier) @function.builtin
@@ -99,15 +117,6 @@
 (normal_command
   (identifier) @_function
   (#match? @_function "\\c^set$")
-  (
-    (argument) @constant
-    (#any-of? @constant "PARENT_SCOPE")
-  ) .
-)
-
-(normal_command
-  (identifier) @_function
-  (#match? @_function "\\c^set$")
   . (argument)
   (
     (argument) @_cache @storageclass
@@ -117,23 +126,7 @@
     (#any-of? @_type "BOOL" "FILEPATH" "PATH" "STRING" "INTERNAL")
   )
 )
-(normal_command
-  (identifier) @_function
-  (#match? @_function "\\c^set$")
-  . (argument)
-  (argument) @_cache
-  (#any-of? @_cache "CACHE")
-  (
-    (argument) @_force @constant
-    (#any-of? @_force "FORCE")
-  ) .
-)
 
-(normal_command
-  (identifier) @_function
-  (#match? @_function "\\c^unset$")
-  . (argument) @variable
-)
 (normal_command
   (identifier) @_function
   (#match? @_function "\\c^unset$")
@@ -190,53 +183,7 @@
   (#match? @constant "OUTPUT_VARIABLE")
 )
 
-(normal_command
-  (identifier) @_function
-  (#match? @_function "\\c^add_custom_target$")
-  . (argument)
-  (argument) @constant
-  (#any-of? @constant "ALL" "COMMAND" "DEPENDS" "BYPRODUCTS" "WORKING_DIRECTORY" "COMMENT"
-                   "JOB_POOL" "VERBATIM" "USES_TERMINAL" "COMMAND_EXPAND_LISTS" "SOURCES")
-)
-
-(normal_command
-  (identifier) @_function
-  (#match? @_function "\\c^add_custom_command$")
-  (argument) @constant
-  (#any-of? @constant "OUTPUT" "COMMAND" "MAIN_DEPENDENCY" "DEPENDS" "BYPRODUCTS" "IMPLICIT_DEPENDS" "WORKING_DIRECTORY"
-                      "COMMENT" "DEPFILE" "JOB_POOL" "VERBATIM" "APPEND" "USES_TERMINAL" "COMMAND_EXPAND_LISTS")
-)
-
-(normal_command
-  (identifier) @_function
-  (#match? @_function "\\c^include$")
-  (argument) @constant
-  (#any-of? @constant "OPTIONAL" "NO_POLICY_SCOPE")
-)
-(normal_command
-  (identifier) @_function
-  (#match? @_function "\\c^include$")
-  (argument) @constant
-  .
-  (argument) @variable
-  (#match? @constant "RESULT_VARIABLE")
-)
-
-(normal_command
-  (identifier) @_function
-  (#match? @_function "\\c^project$")
-  (argument) @constant
-  (#any-of? @constant "VERSION" "DESCRIPTION" "HOMEPAGE_URL" "LANGUAGES")
-)
-
-(normal_command
-  (identifier) @_function
-  (#match? @_function "\\c^cmake_minimum_required$")
-  (argument) @constant
-  (#any-of? @constant "VERSION" "FATAL_ERROR")
-)
-
 (escape_sequence) @string.escape
 
 ((source_file . (line_comment) @preproc)
-  (#match? @preproc "^#!/"))
+  (#lua-match? @preproc "^#!/"))
