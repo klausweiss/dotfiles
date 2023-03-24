@@ -3,6 +3,7 @@ SHELL := /bin/bash
 ALL_THE_ICONS_REPO := https://github.com/domtronn/all-the-icons.el
 CMAKE_MODE_URL := https://raw.githubusercontent.com/Kitware/CMake/master/Auxiliary/cmake-mode.el
 COMPANY_REPO := https://github.com/company-mode/company-mode.git
+COMPAT_REPO := https://github.com/emacs-compat/compat
 DASHBOARD_REPO := https://github.com/emacs-dashboard/emacs-dashboard.git
 	PAGE_BREAK_LINES_URL := https://raw.githubusercontent.com/purcell/page-break-lines/master/page-break-lines.el
 DOCKERFILE_MODE_URL := https://raw.githubusercontent.com/spotify/dockerfile-mode/master/dockerfile-mode.el
@@ -124,6 +125,9 @@ update-all-the-icons:
 update-company:
 	$(call download-from-repo, $(COMPANY_REPO))
 
+update-compat:
+	$(call download-from-repo, $(COMPAT_REPO))
+
 update-cmake-mode:
 	$(call download-from-url, $(CMAKE_MODE_URL))
 
@@ -155,7 +159,9 @@ update-format-all: \
 update-flycheck:
 	$(call download-from-repo, $(FLYCHECK_REPO))
 
-update-haskell-mode:
+update-haskell-mode: \
+	update-compat
+
 	$(call clone-repo, $(HASKELL_MODE_REPO))
 	make -C $(DIR)
 	$(call update-lib-files, haskell-mode)
@@ -177,6 +183,7 @@ update-lua-mode:
 	$(call download-from-url, $(LUA_MODE_URL))
 
 update-magit: \
+	update-compat
 	update-with-editor \
 	update-transient \
 	update-dash \
@@ -219,7 +226,9 @@ update-simpleclip:
 update-smart-shift:
 	$(call download-from-url, $(SMART_SHIFT_URL))
 
-update-swiper:
+update-swiper: \
+	update-compat
+
 	$(call download-from-repo, $(SWIPER_REPO))
 
 update-transient:
@@ -248,7 +257,9 @@ update-which-key:
 update-winum:
 	$(call download-from-url, $(WINUM_URL))
 
-update-with-editor:
+update-with-editor: \
+	update-compat
+
 	$(call download-from-url, $(WITH_EDITOR_URL))
 
 update-yafolding-mode:
@@ -257,7 +268,9 @@ update-yafolding-mode:
 update-yaml-mode:
 	$(call download-from-url, $(YAML_URL))
 
-update-yasnippet:
+update-yasnippet: \
+	update-compat
+
 	$(call download-from-repo, $(YASNIPPET_REPO))
 
 update-yasnippet-snippets:
