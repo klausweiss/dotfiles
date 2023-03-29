@@ -1,0 +1,7 @@
+configuration {
+	sort: true;
+	matching: "fuzzy";
+	modi: "combi";
+}
+
+@theme "/usr/share/rofi/themes/gruvbox-dark.rasi"

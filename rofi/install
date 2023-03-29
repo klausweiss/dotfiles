@@ -1,5 +1,5 @@
 #!/usr/bin/env -S perl ${HOME}/.dotfiles/install --file
 
 [symlink]
-./Xresources.conf: ~/.Xresources.d/rofi.conf
-./theme.rasi: ~/.config/rofi/theme.rasi
+./config.rasi: ~/.config/rofi/config.rasi
+
