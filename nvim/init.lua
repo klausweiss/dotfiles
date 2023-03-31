@@ -467,7 +467,7 @@ local project_key = mk_prefix('p')
 local tab_key = mk_prefix('b')
 local window_key = mk_prefix('w')
 
-keycmd('<F1>', 'NvimTreeFindFile')
+keycmd('<F1>', 'NvimTreeOpen')
 keycmd('<S-F1>', 'NvimTreeClose')
 keycmd('<F4>', 'Trouble')
 keycmd('<S-F4>', 'TroubleClose')
