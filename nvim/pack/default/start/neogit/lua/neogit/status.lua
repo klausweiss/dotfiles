@@ -164,6 +164,11 @@ local function draw_buffer()
       string.format("Push: %s %s", M.repo.upstream.branch, M.repo.upstream.commit_message or "(no commits)")
     )
   end
+
+  if M.repo.merge.head then
+    output:append(string.format("Merge: %s", M.repo.merge.msg or "(no message)"))
+  end
+
   output:append("")
 
   local new_locations = {}
@@ -179,7 +184,11 @@ local function draw_buffer()
       return
     end
 
-    output:append(string.format("%s (%d)", header, #data.items))
+    if data.current then
+      output:append(string.format("%s (%d/%d)", header, data.current, #data.items))
+    else
+      output:append(string.format("%s (%d)", header, #data.items))
+    end
 
     local location = locations_lookup[key]
       or {
@@ -415,6 +424,13 @@ local function refresh(which, reason)
       table.insert(refreshes, function()
         logger.debug("[STATUS BUFFER]: Refreshing rebase information")
         M.repo:update_rebase_status()
+      end)
+    end
+
+    if which == true or which.rebase then
+      table.insert(refreshes, function()
+        logger.debug("[STATUS BUFFER]: Refreshing merge information")
+        M.repo:update_merge_status()
       end)
     end
 
@@ -995,6 +1011,7 @@ local cmd_func_map = function()
     ["DiffPopup"] = require("neogit.popups.diff").create,
     ["PullPopup"] = require("neogit.popups.pull").create,
     ["RebasePopup"] = require("neogit.popups.rebase").create,
+    ["MergePopup"] = require("neogit.popups.merge").create,
     ["PushPopup"] = require("neogit.popups.push").create,
     ["CommitPopup"] = require("neogit.popups.commit").create,
     ["LogPopup"] = require("neogit.popups.log").create,
@@ -1006,6 +1023,7 @@ local cmd_func_map = function()
       }
     end,
     ["BranchPopup"] = require("neogit.popups.branch").create,
+    ["FetchPopup"] = require("neogit.popups.fetch").create,
   }
 end
 

@@ -2,6 +2,7 @@ local api = require "nvim-tree.api"
 local open_file = require "nvim-tree.actions.node.open-file"
 local keymap = require "nvim-tree.keymap"
 local notify = require "nvim-tree.notify"
+local utils = require "nvim-tree.utils"
 
 local M = {
   -- only populated when legacy mappings active
@@ -383,6 +384,8 @@ function M.generate_legacy_on_attach(opts)
     return
   end
 
+  notify.info "view.mappings.list has been deprecated in favour of on_attach. Please run :NvimTreeGenerateOnAttach and visit https://github.com/nvim-tree/nvim-tree.lua/wiki/Migrating-To-on_attach"
+
   local mapped_keys = all_mapped_keys(list)
   local unmapped_keys = all_unmapped_keys(list, remove_keymaps)
 
@@ -399,7 +402,7 @@ function M.cmd_generate_on_attach()
     return
   end
 
-  local name = "/tmp/my_on_attach.lua"
+  local name = utils.path_join { vim.fn.stdpath "cache", "nvim-tree-on-attach.lua" }
   local file = io.output(name)
   io.write(M.on_attach_lua)
   io.close(file)

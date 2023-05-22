@@ -98,6 +98,12 @@ local configurations = {
       skip = "--skip",
     },
   },
+  merge = config {
+    flags = {
+      continue = "--continue",
+      abort = "--abort",
+    },
+  },
   reset = config {
     flags = {
       hard = "--hard",
@@ -221,6 +227,7 @@ local configurations = {
       end,
     },
   },
+  fetch = config {},
   ["read-tree"] = config {
     flags = {
       merge = "-m",
@@ -315,6 +322,18 @@ end
 
 local git_dir_path_sync = function()
   return util.trim(vim.fn.system("git rev-parse --git-dir"))
+end
+
+local git_is_repository_sync = function(cwd)
+  local result
+
+  if not cwd then
+    result = vim.fn.system("git rev-parse --is-inside-work-tree")
+  else
+    result = vim.fn.system(string.format("git -C %s rev-parse --is-inside-work-tree", cwd))
+  end
+
+  return vim.trim(result) == "true"
 end
 
 local history = {}
@@ -752,6 +771,7 @@ local cli = setmetatable({
   git_root = git_root,
   git_root_sync = git_root_sync,
   git_dir_path_sync = git_dir_path_sync,
+  git_is_repository_sync = git_is_repository_sync,
   in_parallel = function(...)
     local calls = { ... }
     return new_parallel_builder(calls)

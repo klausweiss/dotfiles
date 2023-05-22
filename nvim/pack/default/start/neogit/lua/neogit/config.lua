@@ -90,11 +90,13 @@ M.values = {
       ["D"] = "DiffPopup",
       ["p"] = "PullPopup",
       ["r"] = "RebasePopup",
+      ["m"] = "MergePopup",
       ["P"] = "PushPopup",
       ["c"] = "CommitPopup",
       ["L"] = "LogPopup",
       ["Z"] = "StashPopup",
       ["b"] = "BranchPopup",
+      ["f"] = "FetchPopup",
     },
   },
 }

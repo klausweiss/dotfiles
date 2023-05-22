@@ -15,9 +15,6 @@
 
 (label_name) @label
 
-((identifier) @constant
- (#eq? @constant "_"))
-
 (const_spec
   name: (identifier) @constant)
 
@@ -41,6 +38,14 @@
 (method_spec 
   name: (field_identifier) @method) 
 
+; Constructors
+
+((call_expression (identifier) @constructor)
+  (#lua-match? @constructor "^[nN]ew.+$"))
+
+((call_expression (identifier) @constructor)
+  (#lua-match? @constructor "^[mM]ake.+$"))
+
 ; Operators
 
 [
@@ -59,6 +64,8 @@
   "&"
   "&&"
   "&="
+  "&^"
+  "&^="
   "%"
   "%="
   "^"
@@ -87,15 +94,12 @@
 
 [
   "break"
-  "chan"
   "const"
   "continue"
   "default"
   "defer"
-  "go"
   "goto"
   "interface"
-  "map"
   "range"
   "select"
   "struct"
@@ -106,6 +110,7 @@
 
 "func" @keyword.function
 "return" @keyword.return
+"go" @keyword.coroutine
 
 "for" @repeat
 
@@ -129,6 +134,8 @@
            "any"
            "bool"
            "byte"
+           "chan"
+           "comparable"
            "complex128"
            "complex64"
            "error"
@@ -139,6 +146,7 @@
            "int32"
            "int64"
            "int8"
+           "map"
            "rune"
            "string"
            "uint"
@@ -201,7 +209,10 @@
  (false)
 ] @boolean
 
-(nil) @constant.builtin
+[
+ (nil)
+ (iota)
+] @constant.builtin
 
 (keyed_element
   . (literal_element (identifier) @field))

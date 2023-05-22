@@ -357,7 +357,7 @@ Built-in functions. Ready to be bound to any key you like.
 |-------------------------------------|------------------------------------------------------------------------------------------------------------|
 | `builtin.git_commits`               | Lists git commits with diff preview, checkout action `<cr>`, reset mixed `<C-r>m`, reset soft `<C-r>s` and reset hard `<C-r>h` |
 | `builtin.git_bcommits`              | Lists buffer's git commits with diff preview and checks them out on `<cr>`                                 |
-| `builtin.git_branches`              | Lists all branches with log preview, checkout action `<cr>`, track action `<C-t>` and rebase action`<C-r>` |
+| `builtin.git_branches`              | Lists all branches with log preview, checkout action `<cr>`, track action `<C-t>`, rebase action`<C-r>`, create action `<C-a>`, switch action `<C-s>`, delete action `<C-d>` and merge action `<C-y>` |
 | `builtin.git_status`                | Lists current changes per file with diff preview and add action. (Multi-selection still WIP)               |
 | `builtin.git_stash`                 | Lists stash items in current repository with ability to apply them on `<cr>`                               |
 
@@ -593,7 +593,9 @@ For writing your own picker and for information about the API please read the
 
 - [What is Telescope? (Video)](https://www.twitch.tv/teej_dv/clip/RichDistinctPlumberPastaThat)
 - [More advanced configuration (Video)](https://www.twitch.tv/videos/756229115)
-- [Example video](https://www.youtube.com/watch?v=65AVwHZflsU)
+- [telescope.nvim 0.1 reflection (Video)](https://www.youtube.com/watch?v=3WEAjCXFiiM)
+- [Why Telescope? (Video)](https://www.youtube.com/watch?v=8SqFt5h2Lsg)
+- [Telescope and Nvim 0.5 Intro (Video)](https://www.youtube.com/watch?v=guxLXcG1kzQ)
 
 ## Contributing
 

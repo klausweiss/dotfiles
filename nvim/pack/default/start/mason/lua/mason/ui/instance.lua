@@ -25,6 +25,7 @@ local function GlobalKeybinds(state)
         Ui.Keybind("q", "CLOSE_WINDOW", nil, true),
         Ui.When(not state.view.language_filter, Ui.Keybind("<Esc>", "CLOSE_WINDOW", nil, true)),
         Ui.When(state.view.language_filter, Ui.Keybind("<Esc>", "CLEAR_LANGUAGE_FILTER", nil, true)),
+        Ui.When(state.view.is_searching, Ui.Keybind("<Esc>", "CLEAR_SEARCH_MODE", nil, true)),
         Ui.Keybind(settings.current.ui.keymaps.apply_language_filter, "LANGUAGE_FILTER", nil, true),
         Ui.Keybind(settings.current.ui.keymaps.update_all_packages, "UPDATE_ALL_PACKAGES", nil, true),
 
@@ -59,10 +60,13 @@ local INITIAL_STATE = {
     info = {
         ---@type string | nil
         used_disk_space = nil,
-        ---@type string[]
+        ---@type { name: string, is_installed: boolean }[]
         registries = {},
+        ---@type string?
+        registry_update_error = nil,
     },
     view = {
+        is_searching = false,
         is_showing_help = false,
         is_current_settings_expanded = false,
         language_filter = nil,
@@ -75,6 +79,8 @@ local INITIAL_STATE = {
         title_prefix = "", -- for animation
     },
     packages = {
+        ---@type Package[]
+        outdated_packages = {},
         new_versions_check = {
             is_checking = false,
             current = 0,
@@ -139,6 +145,23 @@ window.view(
 )
 
 local mutate_state, get_state = window.state(INITIAL_STATE)
+
+window.events:on("search:enter", function()
+    mutate_state(function(state)
+        state.view.is_searching = true
+    end)
+    vim.schedule(function()
+        vim.cmd "redraw"
+    end)
+end)
+
+window.events:on("search:leave", function(search)
+    if search == "" then
+        mutate_state(function(state)
+            state.view.is_searching = false
+        end)
+    end
+end)
 
 ---@param pkg Package
 ---@param group string
@@ -269,6 +292,8 @@ local function setup_handle(handle)
     handle_spawnhandle_change()
     mutate_state(function(state)
         state.packages.states[handle.package.name] = create_initial_package_state()
+        state.packages.outdated_packages =
+            _.filter(_.complement(_.equals(handle.package)), state.packages.outdated_packages)
     end)
 end
 
@@ -424,7 +449,7 @@ local function check_new_package_version(pkg)
     mutate_state(function(state)
         state.packages.states[pkg.name].is_checking_new_version = true
     end)
-    a.wait(function(resolve, reject)
+    return a.wait(function(resolve, reject)
         pkg:check_new_version(function(success, new_version)
             mutate_state(function(state)
                 state.packages.states[pkg.name].is_checking_new_version = false
@@ -464,26 +489,37 @@ local function check_new_visible_package_versions()
         end)
     )(state.packages.installed)
 
-    if #installed_visible_packages == 0 then
-        return
-    end
-
     mutate_state(function(state)
+        state.packages.outdated_packages = {}
         state.packages.new_versions_check.is_checking = true
         state.packages.new_versions_check.current = 0
         state.packages.new_versions_check.total = #installed_visible_packages
         state.packages.new_versions_check.percentage_complete = 0
     end)
 
+    do
+        local success, err = a.wait(registry.update)
+        mutate_state(function(state)
+            if not success then
+                state.info.registry_update_error = tostring(_.gsub("\n", " ", err))
+            else
+                state.info.registry_update_error = nil
+            end
+        end)
+    end
+
     local sem = Semaphore.new(5)
     a.wait_all(_.map(function(package)
         return function()
             local permit = sem:acquire()
-            pcall(check_new_package_version, package)
+            local has_new_version = pcall(check_new_package_version, package)
             mutate_state(function(state)
                 state.packages.new_versions_check.current = state.packages.new_versions_check.current + 1
                 state.packages.new_versions_check.percentage_complete = state.packages.new_versions_check.current
                     / state.packages.new_versions_check.total
+                if has_new_version then
+                    table.insert(state.packages.outdated_packages, package)
+                end
             end)
             permit:forget()
         end
@@ -534,6 +570,12 @@ local function clear_filter()
     end)
 end
 
+local function clear_search_mode()
+    mutate_state(function(state)
+        state.view.is_searching = false
+    end)
+end
+
 local function toggle_expand_current_settings()
     mutate_state(function(state)
         state.view.is_current_settings_expanded = not state.view.is_current_settings_expanded
@@ -542,14 +584,12 @@ end
 
 local function update_all_packages()
     local state = get_state()
-    _.each(
-        function(pkg)
-            pkg:install(pkg)
-        end,
-        _.filter(function(pkg)
-            return state.packages.visible[pkg.name] and state.packages.states[pkg.name].new_version
-        end, state.packages.installed)
-    )
+    _.each(function(pkg)
+        pkg:install(pkg)
+    end, state.packages.outdated_packages)
+    mutate_state(function(state)
+        state.packages.outdated_packages = {}
+    end)
 end
 
 local function toggle_install_log(event)
@@ -564,6 +604,7 @@ local effects = {
     ["CHECK_NEW_PACKAGE_VERSION"] = a.scope(_.compose(_.partial(pcall, check_new_package_version), _.prop "payload")),
     ["CHECK_NEW_VISIBLE_PACKAGE_VERSIONS"] = a.scope(check_new_visible_package_versions),
     ["CLEAR_LANGUAGE_FILTER"] = clear_filter,
+    ["CLEAR_SEARCH_MODE"] = clear_search_mode,
     ["CLOSE_WINDOW"] = window.close,
     ["INSTALL_PACKAGE"] = install_package,
     ["LANGUAGE_FILTER"] = filter,
@@ -653,7 +694,10 @@ end
 local function update_registry_info()
     local registries = {}
     for source in require("mason-registry.sources").iter { include_uninstalled = true } do
-        table.insert(registries, source:get_display_name())
+        table.insert(registries, {
+            name = source:get_display_name(),
+            is_installed = source:is_installed(),
+        })
     end
     mutate_state(function(state)
         state.info.registries = registries

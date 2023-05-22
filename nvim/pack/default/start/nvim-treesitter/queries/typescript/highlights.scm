@@ -38,6 +38,8 @@
 
 (template_literal_type) @string
 
+(non_null_expression "!" @operator)
+
 ;; punctuation
 
 (type_arguments
@@ -53,9 +55,6 @@
   "&" @punctuation.delimiter)
 
 (type_annotation
-  ":" @punctuation.delimiter)
-
-(pair
   ":" @punctuation.delimiter)
 
 (index_signature

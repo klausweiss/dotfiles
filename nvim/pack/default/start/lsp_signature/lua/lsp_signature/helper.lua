@@ -22,7 +22,7 @@ helper.log = function(...)
 
   local arg = { ... }
   local log_path = _LSP_SIG_CFG.log_path or nil
-  local str = 'שׁ '
+  local str = '󰘫 '
 
   -- local info = debug.getinfo(2, "Sl")
 
@@ -387,7 +387,7 @@ helper.cal_pos = function(contents, opts)
   local lines_below = fn.winheight(0) - fn.winline() -- not counting current
   -- wont fit if move floating above current line
   if not _LSP_SIG_CFG.floating_window_above_cur_line or lnum <= 2 then
-    return {}, 0
+    return {}, 2
   end
   local util = vim.lsp.util
   contents = util._trim(contents, opts)
@@ -737,8 +737,6 @@ local default_border = {
   { ' ', 'NormalFloat' },
 }
 
-
-
 --- Creates a table with sensible default options for a floating window. The
 --- table can be passed to |nvim_open_win()|.
 ---
@@ -817,6 +815,5 @@ function helper.make_floating_popup_options(width, height, opts)
     noautocmd = opts.noautocmd,
   }
 end
-
 
 return helper

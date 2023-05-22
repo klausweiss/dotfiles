@@ -7,6 +7,7 @@ local events = require "nvim-tree.events"
 ---@class LibOpenOpts
 ---@field path string|nil path
 ---@field current_window boolean|nil default false
+---@field winid number|nil
 
 local M = {
   target_winid = nil,
@@ -24,11 +25,6 @@ function M.get_node_at_cursor()
 
   local cursor = vim.api.nvim_win_get_cursor(view.get_winnr())
   local line = cursor[1]
-  if view.is_help_ui() then
-    local help_lines = require("nvim-tree.renderer.help").compute_lines()
-    local help_text = utils.get_nodes_by_line(help_lines, 1)[line]
-    return { name = help_text }
-  end
 
   if line == 1 and view.is_root_folder_visible(core.get_cwd()) then
     return { name = ".." }
@@ -86,7 +82,6 @@ function M.get_last_group_node(node)
 end
 
 function M.expand_or_collapse(node)
-  node.open = not node.open
   if node.has_children then
     node.has_children = false
   end
@@ -94,6 +89,9 @@ function M.expand_or_collapse(node)
   if #node.nodes == 0 then
     core.get_explorer():expand(node)
   end
+
+  node = M.get_last_group_node(node)
+  node.open = not node.open
 
   renderer.draw()
 end
@@ -166,10 +164,13 @@ function M.open(opts)
   end
   if should_hijack_current_buf() then
     view.close_this_tab_only()
-    view.open_in_current_win()
+    view.open_in_win()
+    renderer.draw()
+  elseif opts.winid then
+    view.open_in_win { hijack_current_buf = false, resize = false, winid = opts.winid }
     renderer.draw()
   elseif opts.current_window then
-    view.open_in_current_win { hijack_current_buf = false, resize = false }
+    view.open_in_win { hijack_current_buf = false, resize = false }
     renderer.draw()
   else
     open_view_and_draw()
@@ -177,19 +178,6 @@ function M.open(opts)
   view.restore_tab_state()
   events._dispatch_on_tree_open()
 end
-
--- @deprecated: use nvim-tree.actions.tree-modifiers.collapse-all.fn
-M.collapse_all = require("nvim-tree.actions.tree-modifiers.collapse-all").fn
--- @deprecated: use nvim-tree.actions.root.dir-up.fn
-M.dir_up = require("nvim-tree.actions.root.dir-up").fn
--- @deprecated: use nvim-tree.actions.root.change-dir.fn
-M.change_dir = require("nvim-tree.actions.root.change-dir").fn
--- @deprecated: use nvim-tree.actions.reloaders.reloaders.reload_explorer
-M.refresh_tree = require("nvim-tree.actions.reloaders.reloaders").reload_explorer
--- @deprecated: use nvim-tree.actions.reloaders.reloaders.reload_git
-M.reload_git = require("nvim-tree.actions.reloaders.reloaders").reload_git
--- @deprecated: use nvim-tree.actions.finders.find-file.fn
-M.set_index_and_redraw = require("nvim-tree.actions.finders.find-file").fn
 
 function M.setup(opts)
   M.hijack_unnamed_buffer_when_opening = opts.hijack_unnamed_buffer_when_opening

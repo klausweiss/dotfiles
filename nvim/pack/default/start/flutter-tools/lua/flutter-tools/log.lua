@@ -1,5 +1,6 @@
-local ui = require("flutter-tools.ui")
-local utils = require("flutter-tools.utils")
+local lazy = require("flutter-tools.lazy")
+local ui = lazy.require("flutter-tools.ui") ---@module "flutter-tools.ui"
+local utils = lazy.require("flutter-tools.utils") ---@module "flutter-tools.utils"
 
 local api = vim.api
 local fmt = string.format
@@ -54,16 +55,19 @@ end
 ---@param buf integer
 ---@param target_win integer
 local function autoscroll(buf, target_win)
-  local win = utils.find(api.nvim_list_wins(), function(item)
-    return item == target_win
-  end)
+  local win = utils.find(
+    api.nvim_tabpage_list_wins(0),
+    function(item) return item == target_win end
+  )
   if not win then return end
   -- if the dev log is focused don't scroll it as it will block the user from perusing
   if api.nvim_get_current_win() == win then return end
   local buf_length = api.nvim_buf_line_count(buf)
   local success, err = pcall(api.nvim_win_set_cursor, win, { buf_length, 0 })
   if not success then
-    ui.notify(fmt("Failed to set cursor for log window %s: %s", win, err), ui.ERROR)
+    ui.notify(fmt("Failed to set cursor for log window %s: %s", win, err), ui.ERROR, {
+      once = true,
+    })
   end
 end
 

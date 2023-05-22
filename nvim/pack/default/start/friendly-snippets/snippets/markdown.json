@@ -31,7 +31,7 @@
   },
   "Links": {
     "prefix": ["l", "link"],
-    "body": ["[${1}](${2}) ${0}"],
+    "body": ["[${1:text}](${2:url}) ${0}"],
     "description": "Add links"
   },
   "URLS": {
@@ -41,7 +41,7 @@
   },
   "Images": {
     "prefix": "img",
-    "body": ["![${1}](${2}) ${0}"],
+    "body": ["![${1:alt text}](${2:path}) ${0}"],
     "description": "Add images"
   },
   "Insert strikethrough": {
@@ -376,5 +376,19 @@
       "${0}"
     ],
     "description": "Insert table with 5 rows and 5 columns. First row is heading."
+  },
+  "Insert subscript": {
+    "prefix": "sub",
+    "body": [
+      "${1}<sub>${0}"
+    ],
+    "description": "Create a subscript."
+  },
+  "Insert superscript": {
+    "prefix": "sup",
+    "body": [
+      "${1}<sup>${0}"
+    ],
+    "description": "Create a superscript."
   }
 }

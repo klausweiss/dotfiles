@@ -60,19 +60,19 @@
   package: (_) @namespace)
 "cl" @namespace
 
-(str_lit) @string
+(str_lit) @string @spell
 
 (num_lit) @number
 
-((sym_lit)  @boolean (#match? @boolean "^(t|T)$"))
+((sym_lit)  @boolean (#any-of? @boolean "t" "T"))
 
 (nil_lit) @constant.builtin
 
-(comment) @comment
+(comment) @comment @spell
 
 ;; dynamic variables
 ((sym_lit) @variable.builtin
- (#match? @variable.builtin "^[*].+[*]$"))
+ (#lua-match? @variable.builtin "^[*].+[*]$"))
 
 ;; quote
 "'" @string.escape
@@ -90,7 +90,7 @@
 
 ["(" ")"] @punctuation.bracket
 
-(block_comment) @comment
+(block_comment) @comment @spell
 
 
 (with_clause
@@ -147,7 +147,7 @@
 
 ;; constant
 ((sym_lit) @constant
- (#match? @constant "^[+].+[+]$"))
+ (#lua-match? @constant "^[+].+[+]$"))
 
 (var_quoting_lit
   marker: "#'" @symbol
@@ -180,7 +180,7 @@
 
 
 ((sym_lit) @symbol
-(#match? @symbol "^[&]"))
+(#lua-match? @symbol "^[&]"))
 
 [(array_dimension) "#0A" "#0a"] @number
 

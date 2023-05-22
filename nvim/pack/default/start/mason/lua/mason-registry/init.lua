@@ -10,6 +10,7 @@ local sources = require "mason-registry.sources"
 ---@field id string
 ---@field get_package fun(self: RegistrySource, pkg_name: string): Package?
 ---@field get_all_package_names fun(self: RegistrySource): string[]
+---@field get_all_package_specs fun(self: RegistrySource): PackageSpec[] | RegistryPackageSpec[]
 ---@field get_display_name fun(self: RegistrySource): string
 ---@field is_installed fun(self: RegistrySource): boolean
 ---@field get_installer fun(self: RegistrySource): Optional # Optional<async fun (): Result>
@@ -119,6 +120,15 @@ function M.get_all_packages()
     return get_packages(M.get_all_package_names())
 end
 
+---@return (RegistryPackageSpec | PackageSpec)[]
+function M.get_all_package_specs()
+    local specs = {}
+    for source in sources.iter() do
+        vim.list_extend(specs, source:get_all_package_specs())
+    end
+    return _.uniq_by(_.prop "name", specs)
+end
+
 local STATE_FILE = path.concat {
     vim.fn.stdpath((vim.fn.has "nvim-0.8.0" == 1) and "state" or "cache"),
     "mason-registry-update",
@@ -150,25 +160,8 @@ end
 ---@param callback? fun(success: boolean, updated_registries: RegistrySource[])
 function M.update(callback)
     local a = require "mason-core.async"
-    local Result = require "mason-core.result"
-    return a.run(function()
-        return Result.try(function(try)
-            local updated_sources = {}
-            for source in sources.iter { include_uninstalled = true } do
-                source:get_installer():if_present(function(installer)
-                    try(installer():map_err(function(err)
-                        return ("%s failed to install: %s"):format(source, err)
-                    end))
-                    table.insert(updated_sources, source)
-                end)
-            end
-            return updated_sources
-        end):on_success(function(updated_sources)
-            if #updated_sources > 0 then
-                M:emit("update", updated_sources)
-            end
-        end)
-    end, function(success, result)
+
+    return a.run(require("mason-registry.installer").run, function(success, result)
         if not callback then
             return
         end
@@ -193,15 +186,11 @@ function M.refresh(cb)
 
     ---@async
     local function refresh()
-        if vim.in_fast_event() then
-            a.scheduler()
-        end
+        a.scheduler()
         local is_outdated = get_store_age(os.time()) > REGISTRY_STORE_TTL
         if is_outdated or not sources.is_installed() then
             if a.wait(M.update) then
-                if vim.in_fast_event() then
-                    a.scheduler()
-                end
+                a.scheduler()
                 update_store_timestamp(os.time())
             end
         end
@@ -212,6 +201,27 @@ function M.refresh(cb)
     else
         a.run(refresh, cb)
     end
+end
+
+---@type table<string, string[]>
+local aliases = {}
+
+---Register aliases for the specified packages
+---@param new_aliases table<string, string[]>
+function M.register_package_aliases(new_aliases)
+    for pkg_name, pkg_aliases in pairs(new_aliases) do
+        aliases[pkg_name] = aliases[pkg_name] or {}
+        for _, alias in pairs(pkg_aliases) do
+            if alias ~= pkg_name then
+                table.insert(aliases[pkg_name], alias)
+            end
+        end
+    end
+end
+
+---@param name string
+function M.get_package_aliases(name)
+    return aliases[name] or {}
 end
 
 return M

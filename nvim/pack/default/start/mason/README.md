@@ -9,7 +9,12 @@
 <p align="center">
     Portable package manager for Neovim that runs everywhere Neovim runs.<br />
     Easily install and manage LSP servers, DAP servers, linters, and formatters.<br />
+</p>
+<p align="center">
     <code>:help mason.nvim</code>
+</p>
+<p align="center">
+    <sup>Latest version: v1.1.0</sup> <!-- x-release-please-version -->
 </p>
 
 # Table of Contents
@@ -22,25 +27,26 @@
 -   [Setup](#setup)
     -   [Extensions](#extensions)
 -   [Commands](#commands)
+-   [Registries](#registries)
 -   [Configuration](#configuration)
 
 # Introduction
 
-> `:h mason-introduction`
+> [`:h mason-introduction`][help-mason-introduction]
 
 `mason.nvim` is a Neovim plugin that allows you to easily manage external editor tooling such as LSP servers, DAP servers,
 linters, and formatters through a single interface. It runs everywhere Neovim runs (across Linux, macOS, Windows, etc.),
 with only a small set of [external requirements](#requirements) needed.
 
-Packages are installed in Neovim's `:h stdpath` by default. Executables are linked to a single `bin/` directory, which
-`mason.nvim` will add to Neovim's PATH during setup, allowing seamless access from Neovim builtins (shell, terminal,
-etc.) as well as other 3rd party plugins.
+Packages are installed in Neovim's data directory ([`:h standard-path`][help-standard-path]) by default. Executables are
+linked to a single `bin/` directory, which `mason.nvim` will add to Neovim's PATH during setup, allowing seamless access
+from Neovim builtins (shell, terminal, etc.) as well as other 3rd party plugins.
 
-For a list of all available packages, see [PACKAGES.md](./PACKAGES.md).
+For a list of all available packages, see https://mason-registry.dev/registry/list.
 
 ## How to use installed packages
 
-> `:h mason-how-to-use-packages`
+> [`:h mason-how-to-use-packages`][help-mason-how-to-use-packages]
 
 Although many packages are perfectly usable out of the box through Neovim builtins, it is recommended to use other 3rd
 party plugins to further integrate these. The following plugins are recommended:
@@ -66,7 +72,7 @@ party plugins to further integrate these. The following plugins are recommended:
 
 # Requirements
 
-> `:h mason-requirements`
+> [`:h mason-requirements`][help-mason-requirements]
 
 `mason.nvim` relaxes the minimum requirements by attempting multiple different utilities (for example, `wget`,
 `curl`, and `Invoke-WebRequest` are all perfect substitutes).
@@ -90,18 +96,31 @@ your personal usage, some of these will also need to be installed. Refer to `:ch
 ## [Packer](https://github.com/wbthomason/packer.nvim)
 
 ```lua
-use "williamboman/mason.nvim"
+use {
+    "williamboman/mason.nvim",
+    run = ":MasonUpdate" -- :MasonUpdate updates registry contents
+}
 ```
 
-## vim-plug
+## [lazy.nvim](https://github.com/folke/lazy.nvim)
+
+```lua
+{
+    "williamboman/mason.nvim",
+    build = ":MasonUpdate" -- :MasonUpdate updates registry contents
+}
+```
+
+## [vim-plug](https://github.com/junegunn/vim-plug)
 
 ```vim
-Plug 'williamboman/mason.nvim'
+" :MasonUpdate updates registry contents
+Plug 'williamboman/mason.nvim', { 'do': ':MasonUpdate' }
 ```
 
 # Setup
 
-> `:h mason-quickstart`
+> [`:h mason-quickstart`][help-mason-quickstart]
 
 ```lua
 require("mason").setup()
@@ -120,7 +139,7 @@ Refer to the [Wiki](https://github.com/williamboman/mason.nvim/wiki/Extensions) 
 
 # Commands
 
-> `:h mason-commands`
+> [`:h mason-commands`][help-mason-commands]
 
 -   `:Mason` - opens a graphical status window
 -   `:MasonUpdate` - updates all managed registries
@@ -129,9 +148,20 @@ Refer to the [Wiki](https://github.com/williamboman/mason.nvim/wiki/Extensions) 
 -   `:MasonUninstallAll` - uninstalls all packages
 -   `:MasonLog` - opens the `mason.nvim` log file in a new tab window
 
+
+# Registries
+
+Mason's core package registry is located at [mason-org/mason-registry](https://github.com/mason-org/mason-registry).
+Before any packages can be used, the registry needs to be downloaded. This is done automatically for you when using the
+different Mason commands (e.g. `:MasonInstall`), but can also be done manually by using the `:MasonUpdate` command.
+
+If you're utilizing Mason's Lua APIs to access packages, it's recommended to use the
+[`:h mason-registry.refresh()`][help-mason-registry-refresh] and/or [`:h mason-registry.update()`][help-mason-registry-update]
+functions to ensure you have the latest package information before retrieving packages.
+
 # Configuration
 
-> `:h mason-settings`
+> [`:h mason-settings`][help-mason-settings]
 
 You may optionally configure certain behavior of `mason.nvim` when calling the `.setup()` function. Refer to the
 [default configuration](#default-configuration) for a list of all available settings.
@@ -176,7 +206,6 @@ local DEFAULT_SETTINGS = {
     -- The registries to source packages from. Accepts multiple entries. Should a package with the same name exist in
     -- multiple registries, the registry listed first will be used.
     registries = {
-        "lua:mason-registry.index",
         "github:mason-org/mason-registry",
     },
 
@@ -265,3 +294,13 @@ local DEFAULT_SETTINGS = {
 <sup>
 👋 didn't find what you were looking for? Try looking in the <a href="./doc/mason.txt">help docs</a> <code>:help mason.nvim</code>!
 </sup>
+
+[help-mason-commands]: ./doc/mason.txt#L177
+[help-mason-how-to-use-packages]: ./doc/mason.txt#L153
+[help-mason-introduction]: ./doc/mason.txt#L11
+[help-mason-quickstart]: ./doc/mason.txt#L67
+[help-mason-registry-refresh]: ./doc/mason.txt#L516
+[help-mason-registry-update]: ./doc/mason.txt#L509
+[help-mason-requirements]: ./doc/mason.txt#L50
+[help-mason-settings]: ./doc/mason.txt#L237
+[help-standard-path]: https://neovim.io/doc/user/starting.html#standard-path

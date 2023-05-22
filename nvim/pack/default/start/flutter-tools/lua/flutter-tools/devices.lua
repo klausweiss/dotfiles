@@ -1,7 +1,9 @@
-local Job = require("plenary.job")
-local ui = require("flutter-tools.ui")
-local utils = require("flutter-tools.utils")
-local executable = require("flutter-tools.executable")
+local lazy = require("flutter-tools.lazy")
+local Job = require("plenary.job") ---@module "plenary.job"
+local ui = lazy.require("flutter-tools.ui") ---@module "flutter-tools.ui"
+local utils = lazy.require("flutter-tools.utils") ---@module "flutter-tools.utils"
+local commands = lazy.require("flutter-tools.commands") ---@module "flutter-tools.commands"
+local executable = lazy.require("flutter-tools.executable") ---@module "flutter-tools.executable"
 local fmt = string.format
 
 ---@alias Device {name: string, id: string, platform: string, system: string, type: integer}
@@ -53,13 +55,12 @@ function M.to_selection_entries(result, device_type)
   if not result or #result < 1 then return {} end
   if not device_type then device_type = DEVICE end
   local devices = get_devices(result, device_type)
-  if #devices == 0 then vim.tbl_map(function(item)
-    return { text = item }
-  end, result) end
+  if #devices == 0 then vim.tbl_map(function(item) return { text = item } end, result) end
   return vim.tbl_map(function(device)
     local has_platform = device.platform and device.platform ~= ""
     return {
       text = fmt(" %s %s ", device.name, has_platform and " • " .. device.platform or " "),
+      type = ui.entry_type.DEVICE,
       data = device,
     }
   end, devices)
@@ -67,15 +68,14 @@ end
 
 function M.select_device(device, args)
   if not device then return ui.notify("Sorry there is no device on this line") end
-  local cmd = require("flutter-tools.commands")
   if device.type == EMULATOR then
     M.launch_emulator(device)
   else
     if args then
       vim.list_extend(args, { "-d", device.id })
-      cmd.run({ cli_args = args })
+      commands.run({ cli_args = args })
     else
-      cmd.run({ device = device })
+      commands.run({ device = device })
     end
   end
 end
@@ -85,9 +85,7 @@ end
 -----------------------------------------------------------------------------//
 
 ---@param job Job
-local function handle_launch(job)
-  ui.notify(utils.join(job:result()))
-end
+local function handle_launch(job) ui.notify(utils.join(job:result())) end
 
 function M.close_emulator()
   if M.emulator_job then M.emulator_job:shutdown() end
@@ -118,12 +116,12 @@ end
 function M.list_emulators()
   executable.flutter(function(cmd)
     local job = Job:new({ command = cmd, args = { "emulators" } })
-    job:after_success(vim.schedule_wrap(function(j)
-      show_emulators(j:result())
-    end))
-    job:after_failure(vim.schedule_wrap(function(j)
-      return ui.notify(utils.join(j:stderr_result()), ui.ERROR, { timeout = 5000 })
-    end))
+    job:after_success(vim.schedule_wrap(function(j) show_emulators(j:result()) end))
+    job:after_failure(
+      vim.schedule_wrap(
+        function(j) return ui.notify(utils.join(j:stderr_result()), ui.ERROR, { timeout = 5000 }) end
+      )
+    )
     job:start()
   end)
 end

@@ -1,7 +1,7 @@
 local api = vim.api
 
 local queries = require "nvim-treesitter.query"
-local ts_query = require "vim.treesitter.query"
+local ts = require "nvim-treesitter.compat"
 local parsers = require "nvim-treesitter.parsers"
 local utils = require "nvim-treesitter.utils"
 local caching = require "nvim-treesitter.caching"
@@ -271,7 +271,7 @@ end
 ---@param lang string
 function M.edit_query_file(query_group, lang)
   lang = lang or parsers.get_buf_lang()
-  local files = ts_query.get_query_files(lang, query_group, true)
+  local files = ts.get_query_files(lang, query_group, true)
   if #files == 0 then
     utils.notify "No query file found! Creating a new one!"
     M.edit_query_file_user_after(query_group, lang)
@@ -607,6 +607,9 @@ function M.get_ignored_parser_installs()
 end
 
 function M.get_ensure_installed_parsers()
+  if type(config.ensure_installed) == "string" then
+    return { config.ensure_installed }
+  end
   return config.ensure_installed or {}
 end
 

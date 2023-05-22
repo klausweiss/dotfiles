@@ -1,8 +1,9 @@
 local Job = require("plenary.job")
 local ui = require("flutter-tools.ui")
 local dev_tools = require("flutter-tools.dev_tools")
+local utils = require("flutter-tools.utils") ---@module "flutter-tools.utils"
 
----@type FlutterRunner
+---@type flutter.Runner
 local JobRunner = {}
 
 ---@type Job
@@ -20,28 +21,20 @@ local command_keys = {
   generate = "g",
 }
 
-function JobRunner:is_running()
-  return run_job ~= nil
-end
+function JobRunner:is_running() return run_job ~= nil end
 
 function JobRunner:run(paths, args, cwd, on_run_data, on_run_exit)
   run_job = Job:new({
     command = paths.flutter_bin,
     args = args,
     cwd = cwd,
-    on_start = function()
-      vim.cmd("doautocmd User FlutterToolsAppStarted")
-    end,
+    on_start = function() utils.emit_event(utils.events.APP_STARTED) end,
     on_stdout = vim.schedule_wrap(function(_, data, _)
       on_run_data(false, data)
       dev_tools.handle_log(data)
     end),
-    on_stderr = vim.schedule_wrap(function(_, data, _)
-      on_run_data(true, data)
-    end),
-    on_exit = vim.schedule_wrap(function(j, _)
-      on_run_exit(j:result(), args)
-    end),
+    on_stderr = vim.schedule_wrap(function(_, data, _) on_run_data(true, data) end),
+    on_exit = vim.schedule_wrap(function(j, _) on_run_exit(j:result(), args) end),
   })
   run_job:start()
 end
@@ -55,8 +48,6 @@ function JobRunner:send(cmd, quiet)
   end
 end
 
-function JobRunner:cleanup()
-  run_job = nil
-end
+function JobRunner:cleanup() run_job = nil end
 
 return JobRunner

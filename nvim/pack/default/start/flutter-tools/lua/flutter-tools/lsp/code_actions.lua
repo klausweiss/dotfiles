@@ -1,3 +1,6 @@
+local ui = require("flutter-tools.ui")
+local utils = require("flutter-tools.utils")
+
 local M = {}
 
 ---@param item table
@@ -24,7 +27,7 @@ end
 ---@param on_complete function
 function M.execute(action, bufnr, on_complete)
   bufnr = bufnr or 0
-  on_complete = on_complete and require("flutter-tools.utils").lsp_handler(on_complete) or nil
+  on_complete = on_complete and utils.lsp_handler(on_complete) or nil
   -- textDocument/codeAction can return either Command[] or CodeAction[].
   -- If it is a CodeAction, it can have either an edit, a command or both.
   -- Edits should be executed first
@@ -42,20 +45,27 @@ end
 
 ---Open a code action window to select options from
 ---@param actions table[]
----@param on_create fun(buf: number, win: number)
-function M.create_popup(actions, on_create)
+---@param on_select fun(buf: number, win: number)
+function M.open(actions, on_select)
   if not actions or vim.tbl_isempty(actions) then return end
 
-  local lines = vim.tbl_map(function(action)
-    return action.title:gsub("\r\n", "\\r\\n"):gsub("\n", "\\n")
-  end, actions)
+  local lines = vim.tbl_map(
+    function(action)
+      return {
+        text = action.title:gsub("\r\n", "\\r\\n"):gsub("\n", "\\n") or "action",
+        type = ui.entry_type.CODE_ACTION,
+        data = action,
+      }
+    end,
+    actions
+  )
 
-  require("flutter-tools.ui").select({
+  ui.select({
     title = "Code actions",
     display = { winblend = 0 },
     position = { relative = "cursor", row = 1, col = 0 },
     lines = lines,
-    on_create = on_create,
+    on_select = on_select,
   })
 end
 

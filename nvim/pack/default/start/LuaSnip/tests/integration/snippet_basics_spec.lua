@@ -768,4 +768,107 @@ describe("snippets_basic", function()
 			end
 		end
 	)
+
+	it("LuaSnipListAvailable works", function()
+		helpers.clear()
+		ls_helpers.session_setup_luasnip()
+
+		screen = Screen.new(50, 40)
+		screen:attach()
+		screen:set_default_attr_ids({
+			[0] = { bold = true, foreground = Screen.colors.Blue1 },
+			[1] = { bold = true, foreground = Screen.colors.Brown },
+			[2] = { bold = true },
+			[3] = { background = Screen.colors.LightGrey },
+			[4] = { bold = true, reverse = true },
+			[5] = { bold = true, foreground = Screen.colors.SeaGreen4 },
+			[6] = { foreground = Screen.colors.Red1 },
+		})
+		exec_lua([[
+			ls.add_snippets("all", {
+				s({trig="a"}, { t"justsometexta" }),
+				s({trig="b"}, { t"justsometextb" }),
+				s({trig="c"}, { t"justsometextc" }),
+			})
+		]])
+		feed(":LuaSnipListAvailable<Cr>")
+		screen:expect({
+			grid = [[
+			                                                  |
+			{0:~                                                 }|
+			{0:~                                                 }|
+			{0:~                                                 }|
+			{0:~                                                 }|
+			{0:~                                                 }|
+			{0:~                                                 }|
+			{0:~                                                 }|
+			{0:~                                                 }|
+			{0:~                                                 }|
+			{0:~                                                 }|
+			{0:~                                                 }|
+			{0:~                                                 }|
+			{0:~                                                 }|
+			{0:~                                                 }|
+			{0:~                                                 }|
+			{4:                                                  }|
+			{                                                 |
+			  [""] = {},                                      |
+			  all = { {                                       |
+			      description = { "a" },                      |
+			      name = "a",                                 |
+			      regTrig = false,                            |
+			      trigger = "a",                              |
+			      wordTrig = true                             |
+			    }, {                                          |
+			      description = { "b" },                      |
+			      name = "b",                                 |
+			      regTrig = false,                            |
+			      trigger = "b",                              |
+			      wordTrig = true                             |
+			    }, {                                          |
+			      description = { "c" },                      |
+			      name = "c",                                 |
+			      regTrig = false,                            |
+			      trigger = "c",                              |
+			      wordTrig = true                             |
+			    } }                                           |
+			}                                                 |
+			{5:Press ENTER or type command to continue}^           |]],
+		})
+		feed("<Cr>")
+	end)
+
+	it("get_keyed_node works", function()
+		exec_lua([[
+			ls.snip_expand(s("", {
+				i(1, "a", {key = "a"}),
+				c(2, {
+					{t"asdf", i(1, "b", {key = "b"})},
+					d(nil, function()
+						return sn(nil, {i(1, "c", {key = "c"})})
+					end, {})
+				})
+			}))
+		]])
+		exec_lua("snip = ls.session.current_nodes[1].parent.snippet")
+		assert.are.same(
+			{ "a" },
+			exec_lua([[return snip:get_keyed_node("a"):get_text()]])
+		)
+		assert.are.same(
+			{ "b" },
+			exec_lua([[return snip:get_keyed_node("b"):get_text()]])
+		)
+		assert.are.same(
+			exec_lua([[return vim.NIL]]),
+			exec_lua([[return snip:get_keyed_node("c")]])
+		)
+
+		exec_lua("ls.jump(1) ls.change_choice(1)")
+
+		assert.are.same(
+			{ "c" },
+			exec_lua([[return snip:get_keyed_node("c"):get_text()]])
+		)
+	end)
 end)

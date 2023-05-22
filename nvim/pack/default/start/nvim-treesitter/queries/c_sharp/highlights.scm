@@ -298,6 +298,8 @@
  ":"
 ] @punctuation.delimiter
 
+(conditional_expression ["?" ":"] @conditional.ternary)
+
 [
  "["
  "]"
@@ -305,9 +307,9 @@
  "}"
  "("
  ")"
- "<"
- ">"
 ] @punctuation.bracket
+
+(type_argument_list ["<" ">"] @punctuation.bracket)
 
 [
  (this_expression)

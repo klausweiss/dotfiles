@@ -62,7 +62,11 @@ M.setup = function(opt)
     api.nvim_create_autocmd('BufDelete', {
         group = group, pattern = '*',
         callback = function(data)
-            M.set_buf_rule(nil, tonumber(data.buf) or 0)
+            local cur = api.nvim_get_current_buf()
+            local bufnr = tonumber(data.buf) or 0
+            if bufnr ~= cur then
+                M.set_buf_rule(nil, bufnr)
+            end
         end,
     })
     api.nvim_create_autocmd('FileType', {
@@ -76,14 +80,19 @@ M.add_rule = function(rule)
 end
 
 M.get_rule = function(start_pair)
+    local tbl = M.get_rules(start_pair)
+    if #tbl == 1 then
+        return tbl[1]
+    end
+    return tbl
+end
+
+M.get_rules = function(start_pair)
     local tbl = {}
     for _, r in pairs(M.config.rules) do
         if r.start_pair == start_pair then
             table.insert(tbl, r)
         end
-    end
-    if #tbl == 1 then
-        return tbl[1]
     end
     return tbl
 end
@@ -211,14 +220,14 @@ M.on_attach = function(bufnr)
             table.insert(rules, rule)
         end
     end
-    -- sort by length
+    -- sort by pair and keymap
     table.sort(rules, function(a, b)
         if a.start_pair == b.start_pair then
             if not b.key_map then
-                return a.key_map and 1
+                return a.key_map
             end
             if not a.key_map then
-                return b.key_map and -1
+                return b.key_map
             end
             return #a.key_map < #b.key_map
         end
@@ -623,6 +632,7 @@ M.autopairs_afterquote = function(line, key_char)
 end
 
 M.autopairs_closequote_expr = function()
+    ---@diagnostic disable-next-line: param-type-mismatch
     vim.fn.setline('.', M.state.expr_quote)
 end
 

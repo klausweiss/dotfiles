@@ -240,6 +240,12 @@ Used for XML-like tags.
 
 ### Locals
 
+Note: pay specific attention to the captures here as they are a bit different to
+those listed in the upstream [Local Variables
+docs](https://tree-sitter.github.io/tree-sitter/syntax-highlighting#local-variables).
+Some of these docs didn't exist when `nvim-treesitter` was created and the
+upstream captures are more limiting than what we have here.
+
 ```scheme
 @definition            ; various definitions
 @definition.constant   ; constants
@@ -315,14 +321,14 @@ the node describing the language and `@content` to describe the injection region
 ### Indents
 
 ```scheme
-@indent         ; indent children when matching this node
-@indent_end     ; marks the end of indented block
-@aligned_indent ; behaves like python aligned/hanging indent
-@dedent         ; dedent children when matching this node
-@branch         ; dedent itself when matching this node
-@ignore         ; do not indent in this node
-@auto           ; behaves like 'autoindent' buffer option
-@zero_indent    ; sets this node at position 0 (no indent)
+@indent.begin       ; indent children when matching this node
+@indent.end         ; marks the end of indented block
+@indent.align       ; behaves like python aligned/hanging indent
+@indent.dedent      ; dedent children when matching this node
+@indent.branch      ; dedent itself when matching this node
+@indent.ignore      ; do not indent in this node
+@indent.auto        ; behaves like 'autoindent' buffer option
+@indent.zero        ; sets this node at position 0 (no indent)
 ```
 
 [Matrix channel]: https://matrix.to/#/#nvim-treesitter:matrix.org

@@ -1,5 +1,8 @@
 local cmp = require('cmp')
 
+---@param patterns string[]
+---@param head boolean
+---@return table #regex object
 local function create_regex(patterns, head)
   local pattern = [[\%(]] .. table.concat(patterns, [[\|]]) .. [[\)]]
   if head then
@@ -39,16 +42,36 @@ local COUNT_RANGE_REGEX = create_regex({
 }, true)
 
 local OPTION_NAME_COMPLETION_REGEX = create_regex({
-  [=[se\%[tlocal]]=],
+  [=[se\%[tlocal][^=]*$]=],
 }, true)
 
+---@param word string
+---@return boolean?
+local function is_boolean_option(word)
+  local ok, opt = pcall(function()
+    return vim.opt[word]:get()
+  end)
+  if ok then
+    return type(opt) == 'boolean'
+  end
+end
+
+---@class cmp.Cmdline.Definition
+---@field ctype string
+---@field regex string
+---@field kind lsp.CompletionItemKind
+---@field isIncomplete boolean
+---@field exec fun(option: table, arglead: string, cmdline: string, force: boolean): lsp.CompletionItem[]
+---@field fallback boolean?
+
+---@type cmp.Cmdline.Definition[]
 local definitions = {
   {
     ctype = 'cmdline',
     regex = [=[[^[:blank:]]*$]=],
     kind = cmp.lsp.CompletionItemKind.Variable,
     isIncomplete = true,
-    exec = function(option, arglead, cmdline, col, force)
+    exec = function(option, arglead, cmdline, force)
       local _, parsed = pcall(function()
         local target = cmdline
         local s, e = COUNT_RANGE_REGEX:match_str(target)
@@ -70,19 +93,6 @@ local definitions = {
       if arglead ~= cmdline then
         while true do
           local s, e = MODIFIER_REGEX:match_str(cmdline)
-          if s == nil then
-            break
-          end
-          cmdline = string.sub(cmdline, e + 1)
-        end
-      end
-
-      -- Support ":'<,'>del|".
-      -- The `vim.fn.getcompletion` does not return `delete` command for this case.
-      -- We should remove `'<,'>` for `vim.fn.getcompletion` and then after add the removed prefix for each completed items.
-      if arglead == cmdline then
-        while true do
-          local s, e = COUNT_RANGE_REGEX:match_str(cmdline)
           if s == nil then
             break
           end
@@ -113,17 +123,18 @@ local definitions = {
       local escaped = cmdline:gsub([[\\]], [[\\\\]]);
       for _, word_or_item in ipairs(vim.fn.getcompletion(escaped, 'cmdline')) do
         local word = type(word_or_item) == 'string' and word_or_item or word_or_item.word
-        local item = { word = word }
+        local item = { label = word }
         table.insert(items, item)
-        if is_option_name_completion then
+        if is_option_name_completion and is_boolean_option(word) then
           table.insert(items, vim.tbl_deep_extend('force', {}, item, {
-            word = 'no' .. item.word
+            label = 'no' .. word,
+            filterText = word,
           }))
         end
       end
       for _, item in ipairs(items) do
-        if not string.find(item.word, fixed_input, 1, true) then
-          item.word = fixed_input .. item.word
+        if not string.find(item.label, fixed_input, 1, true) then
+          item.label = fixed_input .. item.label
         end
       end
       return items
@@ -154,18 +165,17 @@ source.complete = function(self, params, callback)
   local offset = 0
   local ctype = ''
   local items = {}
-  local kind = ''
+  local kind
   local isIncomplete = false
   for _, def in ipairs(definitions) do
     local s, e = vim.regex(def.regex):match_str(params.context.cursor_before_line)
     if s and e then
       offset = s
-      ctype = def.type
+      ctype = def.ctype
       items = def.exec(
         vim.tbl_deep_extend('keep', params.option or {}, DEFAULT_OPTION),
         string.sub(params.context.cursor_before_line, s + 1),
         params.context.cursor_before_line,
-        params.context.cursor.col,
         params.context:get_reason() == cmp.ContextReason.Manual
       )
       kind = def.kind
@@ -177,15 +187,10 @@ source.complete = function(self, params, callback)
   end
 
   local labels = {}
-  items = vim.tbl_map(function(item)
-    if type(item) == 'string' then
-      item = { label = item, kind = kind }
-    else
-      item = { label = item.word, kind = kind }
-    end
+  for _, item in ipairs(items) do
+    item.kind = kind
     labels[item.label] = true
-    return item
-  end, items)
+  end
 
   -- `vim.fn.getcompletion` does not handle fuzzy matches. So, we must return all items, including items that were matched in the previous input.
   local should_merge_previous_items = false

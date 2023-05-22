@@ -1,15 +1,8 @@
 local util = require 'lspconfig.util'
 
-local bin_name = 'unocss-language-server'
-local cmd = { bin_name, '--stdio' }
-
-if vim.fn.has 'win32' == 1 then
-  cmd = { 'cmd.exe', '/C', bin_name, '--stdio' }
-end
-
 return {
   default_config = {
-    cmd = cmd,
+    cmd = { 'unocss-language-server', '--stdio' },
     filetypes = {
       'html',
       'javascriptreact',
@@ -19,7 +12,7 @@ return {
       'svelte',
     },
     root_dir = function(fname)
-      return util.root_pattern('unocss.config.js', 'unocss.config.ts')(fname)
+      return util.root_pattern('unocss.config.js', 'unocss.config.ts', 'uno.config.js', 'uno.config.ts')(fname)
     end,
   },
   docs = {
@@ -32,7 +25,7 @@ npm i unocss-language-server -g
 ```
 ]],
     default_config = {
-      root_dir = [[root_pattern('unocss.config.js', 'unocss.config.ts')]],
+      root_dir = [[root_pattern('unocss.config.js', 'unocss.config.ts', 'uno.config.js', 'uno.config.ts')]],
     },
   },
 }

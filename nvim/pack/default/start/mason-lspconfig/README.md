@@ -1,6 +1,7 @@
+![Linux](https://img.shields.io/badge/Linux-%23.svg?logo=linux&color=FCC624&logoColor=black)
+![macOS](https://img.shields.io/badge/macOS-%23.svg?logo=apple&color=000000&logoColor=white)
+![Windows](https://img.shields.io/badge/Windows-%23.svg?logo=windows&color=0078D6&logoColor=white)
 [![GitHub CI](https://github.com/williamboman/mason-lspconfig.nvim/workflows/Tests/badge.svg)](https://github.com/williamboman/mason-lspconfig.nvim/actions?query=workflow%3ATests+branch%3Amain+event%3Apush)
-![Platforms](https://img.shields.io/badge/platform-linux%20macOS%20windows-blue)
-![Repository size](https://img.shields.io/github/repo-size/williamboman/mason-lspconfig.nvim)
 [![Sponsors](https://img.shields.io/github/sponsors/williamboman?style=flat-square)](https://github.com/sponsors/williamboman)
 
 # mason-lspconfig.nvim
@@ -9,8 +10,13 @@
     <code>mason-lspconfig</code> bridges <a
     href="https://github.com/williamboman/mason.nvim"><code>mason.nvim</code></a> with the <a
     href="https://github.com/neovim/nvim-lspconfig"><code>lspconfig</code></a> plugin - making it easier to use both
-    plugins together.<br />
+    plugins together.
+</p>
+<p align="center">
     <code>:help mason-lspconfig.nvim</code>
+</p>
+<p align="center">
+    <sup>Latest version: v1.5.0</sup> <!-- x-release-please-version -->
 </p>
 
 # Table of Contents
@@ -131,6 +137,7 @@ require("mason-lspconfig").setup {
 local DEFAULT_SETTINGS = {
     -- A list of servers to automatically install if they're not already installed. Example: { "rust_analyzer@nightly", "lua_ls" }
     -- This setting has no relation with the `automatic_installation` setting.
+    ---@type string[]
     ensure_installed = {},
 
     -- Whether servers that are set up (via lspconfig) should be automatically installed if they're not already installed.
@@ -140,7 +147,12 @@ local DEFAULT_SETTINGS = {
     --   - true: All servers set up via lspconfig are automatically installed.
     --   - { exclude: string[] }: All servers set up via lspconfig, except the ones provided in the list, are automatically installed.
     --       Example: automatic_installation = { exclude = { "rust_analyzer", "solargraph" } }
+    ---@type boolean
     automatic_installation = false,
+
+    -- See `:h mason-lspconfig.setup_handlers()`
+    ---@type table<string, fun(server_name: string)>?
+    handlers = nil,
 }
 ```
 
@@ -157,6 +169,7 @@ local DEFAULT_SETTINGS = {
 | Arduino                             | `arduino_language_server`         |
 | Assembly (GAS/NASM, GO)             | `asm_lsp`                         |
 | Astro                               | `astro`                           |
+| Azure Pipelines                     | `azure_pipelines_ls`              |
 | Bash                                | `bashls`                          |
 | Beancount                           | `beancount`                       |
 | Bicep                               | `bicep`                           |
@@ -199,6 +212,7 @@ local DEFAULT_SETTINGS = {
 | Flux                                | `flux_lsp`                        |
 | Foam (OpenFOAM)                     | `foam_ls`                         |
 | Fortran                             | `fortls`                          |
+| Gleam                               | `gleam`                           |
 | Glint                               | `glint`                           |
 | Go                                  | `golangci_lint_ls`                |
 | Go                                  | `gopls`                           |
@@ -209,9 +223,11 @@ local DEFAULT_SETTINGS = {
 | HTML                                | `html`                            |
 | Haskell                             | `hls`                             |
 | Haxe                                | `haxe_language_server`            |
+| Helm                                | `helm_ls`                         |
 | Hoon                                | `hoon_ls`                         |
 | JSON                                | `jsonls`                          |
 | Java                                | `jdtls`                           |
+| Java                                | `java_language_server`            |
 | JavaScript                          | `quick_lint_js`                   |
 | JavaScript                          | `tsserver`                        |
 | JavaScript                          | `vtsls`                           |
@@ -249,6 +265,7 @@ local DEFAULT_SETTINGS = {
 | Python                              | `jedi_language_server`            |
 | Python                              | `pyre`                            |
 | Python                              | `pyright`                         |
+| Python                              | `pylyzer`                         |
 | Python                              | `sourcery`                        |
 | Python [(docs)][pylsp]              | `pylsp`                           |
 | Python                              | `ruff_lsp`                        |
@@ -272,6 +289,7 @@ local DEFAULT_SETTINGS = {
 | Solidity                            | `solang`                          |
 | Solidity                            | `solc`                            |
 | Solidity                            | `solidity`                        |
+| Solidity                            | `solidity_ls_nomicfoundation`     |
 | Sphinx                              | `esbonio`                         |
 | Stylelint                           | `stylelint_lsp`                   |
 | Svelte                              | `svelte`                          |
@@ -285,6 +303,7 @@ local DEFAULT_SETTINGS = {
 | Terraform [(docs)][tflint]          | `tflint`                          |
 | TypeScript                          | `tsserver`                        |
 | TypeScript                          | `vtsls`                           |
+| Typst                               | `typst_lsp`                       |
 | V                                   | `vls`                             |
 | Vala                                | `vala_ls`                         |
 | Veryl                               | `veryl_ls`                        |

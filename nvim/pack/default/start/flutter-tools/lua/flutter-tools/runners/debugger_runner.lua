@@ -1,11 +1,13 @@
-local ui = require("flutter-tools.ui")
-local dev_tools = require("flutter-tools.dev_tools")
-local config = require("flutter-tools.config")
+local lazy = require("flutter-tools.lazy")
+local ui = lazy.require("flutter-tools.ui") ---@module "flutter-tools.ui"
+local dev_tools = lazy.require("flutter-tools.dev_tools") ---@module "flutter-tools.dev_tools"
+local config = lazy.require("flutter-tools.config") ---@module "flutter-tools.config"
+local utils = lazy.require("flutter-tools.utils") ---@module "flutter-tools.utils"
 local _, dap = pcall(require, "dap")
 
 local fmt = string.format
 
----@type FlutterRunner
+---@type flutter.Runner
 local DebuggerRunner = {}
 
 local service_extensions_isolateid = {}
@@ -25,9 +27,7 @@ local service_activation_requests = {
   visual_debug = "ext.flutter.debugPaint",
 }
 
-function DebuggerRunner:is_running()
-  return dap.session() ~= nil
-end
+function DebuggerRunner:is_running() return dap.session() ~= nil end
 
 function DebuggerRunner:run(paths, args, cwd, on_run_data, on_run_exit)
   local started = false
@@ -46,17 +46,13 @@ function DebuggerRunner:run(paths, args, cwd, on_run_data, on_run_exit)
     if next(before_start_logs) ~= nil then on_run_exit(before_start_logs, args) end
   end
 
-  dap.listeners.before["event_exited"][plugin_identifier] = function(_, _)
-    handle_termination()
-  end
-  dap.listeners.before["event_terminated"][plugin_identifier] = function(_, _)
-    handle_termination()
-  end
+  dap.listeners.before["event_exited"][plugin_identifier] = function(_, _) handle_termination() end
+  dap.listeners.before["event_terminated"][plugin_identifier] = function(_, _) handle_termination() end
 
   dap.listeners.before["event_app.started"][plugin_identifier] = function(_, _)
     started = true
     before_start_logs = {}
-    vim.cmd("doautocmd User FlutterToolsAppStarted")
+    utils.emit_event(utils.events.APP_STARTED)
   end
 
   dap.listeners.before["event_dart.debuggerUris"][plugin_identifier] = function(_, body)
@@ -80,7 +76,7 @@ function DebuggerRunner:run(paths, args, cwd, on_run_data, on_run_exit)
 
   local launch_configurations = {}
   local launch_configuration_count = 0
-  config.get().debugger.register_configurations(paths)
+  config.debugger.register_configurations(paths)
   local all_configurations = require("dap").configurations.dart
   for _, c in ipairs(all_configurations) do
     if c.request == "launch" then
@@ -99,9 +95,7 @@ function DebuggerRunner:run(paths, args, cwd, on_run_data, on_run_exit)
     launch_config = require("dap.ui").pick_one_sync(
       launch_configurations,
       "Select launch configuration",
-      function(item)
-        return fmt("%s : %s", item.name, item.program, vim.inspect(item.args))
-      end
+      function(item) return fmt("%s : %s", item.name, item.program, vim.inspect(item.args)) end
     )
   end
   if not launch_config then return end

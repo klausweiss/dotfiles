@@ -1,7 +1,8 @@
-local utils = require("flutter-tools.utils")
-local ui = require("flutter-tools.ui")
-local executable = require("flutter-tools.executable")
----@type Job
+local lazy = require("flutter-tools.lazy")
+local ui = lazy.require("flutter-tools.ui") ---@module "flutter-tools.ui"
+local config = lazy.require("flutter-tools.config") ---@module "flutter-tools.config"
+local utils = lazy.require("flutter-tools.utils") ---@module "flutter-tools.utils"
+local executable = lazy.require("flutter-tools.executable") ---@module "flutter-tools.executable"
 local Job = require("plenary.job")
 
 local M = {}
@@ -31,9 +32,7 @@ local activate_cmd = { "pub", "global", "activate", "devtools" }
 -- http://127.0.0.1:9102?uri=http%3A%2F%2F127.0.0.1%3A46051%2FNvCev-HjyX4%3D%2F
 -- NEW: The Flutter DevTools debugger and profiler on sdk gphone x86 arm is available at:
 -- http://127.0.0.1:9100?uri=http%3A%2F%2F127.0.0.1%3A35479%2FgQ0BNyM2xB8%3D%2F
-local function try_get_tools_flutter(data)
-  return data:match("(https?://127%.0%.0%.1:%d+%?uri=.+)$")
-end
+local function try_get_tools_flutter(data) return data:match("(https?://127%.0%.0%.1:%d+%?uri=.+)$") end
 
 --- Debug service listening on ws://127.0.0.1:44293/heXbxLM_lhM=/ws
 --- @param data string
@@ -43,14 +42,14 @@ local function try_get_profiler_url_chrome(data)
 end
 
 local function start_browser()
-  local auto_open_browser = require("flutter-tools.config").get("dev_tools").auto_open_browser
+  local auto_open_browser = config.dev_tools.auto_open_browser
   if not auto_open_browser then return end
   local url = M.get_profiler_url()
   local open_command = utils.open_command()
   if not open_command then
-    return vim.notify(
+    return ui.notify(
       "Sorry your Operating System is not supported, please raise an issue",
-      vim.log.levels.ERROR
+      ui.ERROR
     )
   end
   if url and open_command then vim.fn.jobstart({ open_command, url }, { detach = true }) end
@@ -76,7 +75,7 @@ end
 function M.register_profiler_url(url)
   if url then
     profiler_url = url
-    local autostart = require("flutter-tools.config").get("dev_tools").autostart
+    local autostart = config.dev_tools.autostart
     if autostart then
       M.start()
       M.handle_devtools_available()
@@ -132,9 +131,7 @@ local function handle_error(_, data, _)
 end
 
 --- @return boolean
-local function can_start()
-  return not job and not devtools_url and not devtools_profiler_url
-end
+local function can_start() return not job and not devtools_url and not devtools_profiler_url end
 
 function M.start()
   if can_start() then
@@ -168,9 +165,9 @@ function M.activate()
     job = Job:new({
       command = cmd,
       args = activate_cmd,
-      on_stderr = vim.schedule_wrap(function(_, data, _)
-        ui.notify({ "Unable to activate devtools!", vim.inspect(data) })
-      end),
+      on_stderr = vim.schedule_wrap(
+        function(_, data, _) ui.notify({ "Unable to activate devtools!", vim.inspect(data) }) end
+      ),
       on_exit = vim.schedule_wrap(function(_, return_value)
         job = nil
         if return_value == 0 then ui.notify({ "Dev tools activated" }) end
@@ -191,15 +188,11 @@ function M.stop()
   end
 end
 
----@return string devtools_url @see devtools_url
-function M.get_url()
-  return devtools_url
-end
+---@return string? devtools_url @see devtools_url
+function M.get_url() return devtools_url end
 
 ---@return boolean
-function M.is_running()
-  return devtools_profiler_url ~= nil or devtools_url ~= nil
-end
+function M.is_running() return devtools_profiler_url ~= nil or devtools_url ~= nil end
 
 ---@return string? devtools_profiler_url the url including the devtools url and the app url. Follows the format `devtools_url/?uri=app_url`
 ---@return boolean? server_running true if there is a `devtools_url` available but couldn't build the url

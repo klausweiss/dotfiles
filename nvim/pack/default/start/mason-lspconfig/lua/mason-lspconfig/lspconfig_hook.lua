@@ -1,5 +1,6 @@
 local _ = require "mason-core.functional"
 local log = require "mason-core.log"
+local notify = require "mason-lspconfig.notify"
 local path = require "mason-core.path"
 local platform = require "mason-core.platform"
 
@@ -61,6 +62,15 @@ return function()
             return
         end
 
+        if require("mason").has_setup == false then
+            notify(
+                ("Server %q is being set up before mason.nvim is set up. :h mason-lspconfig-quickstart"):format(
+                    config.name
+                ),
+                vim.log.levels.WARN
+            )
+        end
+
         if registry.is_installed(pkg_name) then
             resolve_server_config_factory(config.name):if_present(function(config_factory)
                 local mason_config = config_factory(path.package_prefix(pkg_name), config)
@@ -75,16 +85,18 @@ return function()
                 end
             end
         elseif should_auto_install(config.name) then
-            local pkg = registry.get_package(pkg_name)
-            require("mason-lspconfig.install").install(pkg):once(
-                "closed",
-                vim.schedule_wrap(function()
-                    if pkg:is_installed() then
-                        -- reload config
-                        require("lspconfig")[config.name].setup(config)
-                    end
-                end)
-            )
+            local ok, pkg = pcall(registry.get_package, pkg_name)
+            if ok then
+                require("mason-lspconfig.install").install(pkg):once(
+                    "closed",
+                    vim.schedule_wrap(function()
+                        if pkg:is_installed() then
+                            -- reload config
+                            require("lspconfig")[config.name].setup(config)
+                        end
+                    end)
+                )
+            end
         end
     end)
 end

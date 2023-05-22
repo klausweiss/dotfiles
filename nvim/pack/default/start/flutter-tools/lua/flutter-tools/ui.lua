@@ -1,9 +1,16 @@
 local utils = require("flutter-tools.utils")
 local fmt = string.format
 
----@generic T
----@alias SelectionEntry {text: string, data: T}
+---@enum EntryType
+local entry_type = {
+  CODE_ACTION = 1,
+  DEVICE = 2,
+}
 
+---@generic T
+---@alias SelectionEntry {text: string, type: EntryType, data: T}
+
+---@enum
 local M = {
   ERROR = vim.log.levels.ERROR,
   DEBUG = vim.log.levels.DEBUG,
@@ -14,6 +21,7 @@ local M = {
 
 local api = vim.api
 local namespace_id = api.nvim_create_namespace("flutter_tools_popups")
+M.entry_type = entry_type
 
 function M.clear_highlights(buf_id, ns_id, line_start, line_end)
   line_start = line_start or 0
@@ -53,18 +61,22 @@ end
 ---Post a message to UI so the user knows something has occurred.
 ---@param msg string | string[]
 ---@param level integer
----@param opts {timeout: number}?
+---@param opts {timeout: number, once: boolean}?
 M.notify = function(msg, level, opts)
-  opts = opts or {}
-  level = level or M.INFO
+  opts, level = opts or {}, level or M.INFO
   msg = type(msg) == "table" and utils.join(msg) or msg
   if msg == "" then return end
-  vim.notify(msg, level, {
-    title = "Flutter tools",
-    timeout = opts.timeout,
-    icon = "",
-  })
+  local args = { title = "Flutter tools", timeout = opts.timeout, icon = "" }
+  if opts.once then
+    vim.notify_once(msg, level, args)
+  else
+    vim.notify(msg, level, args)
+  end
 end
+
+---@param opts table
+---@param on_confirm function
+M.input = function(opts, on_confirm) vim.ui.input(opts, on_confirm) end
 
 --- @param items SelectionEntry[]
 --- @param title string
@@ -72,23 +84,32 @@ end
 local function get_telescope_picker_config(items, title, on_select)
   local ok = pcall(require, "telescope")
   if not ok then return end
+
+  local filtered = vim.tbl_filter(function(value) return value.data ~= nil end, items) --[[@as SelectionEntry[]]
+
   return require("flutter-tools.menu").get_config(
     vim.tbl_map(function(item)
       local data = item.data
-      return {
-        id = data.id,
-        label = data.name,
-        hint = data.platform,
-        command = function()
-          on_select(data)
-        end,
-      }
-    end, items),
+      if item.type == entry_type.CODE_ACTION then
+        return {
+          id = data.title,
+          label = data.title,
+          command = function() on_select(data) end,
+        }
+      elseif item.type == entry_type.DEVICE then
+        return {
+          id = data.id,
+          label = data.name,
+          hint = data.platform,
+          command = function() on_select(data) end,
+        }
+      end
+    end, filtered),
     { title = title }
   )
 end
 
----@alias PopupOpts {title:string, lines: SelectionEntry[], on_select: fun(device: table)}
+---@alias PopupOpts {title:string, lines: SelectionEntry[], on_select: fun(item: SelectionEntry)}
 ---@param opts PopupOpts
 function M.select(opts)
   assert(opts ~= nil, "An options table must be passed to popup create!")
@@ -98,9 +119,7 @@ function M.select(opts)
   vim.ui.select(lines, {
     prompt = title,
     kind = "flutter-tools",
-    format_item = function(item)
-      return item.text
-    end,
+    format_item = function(item) return item.text end,
     -- custom key for dressing.nvim
     telescope = get_telescope_picker_config(lines, title, on_select),
   }, function(item)
@@ -117,11 +136,11 @@ function M.open_win(opts, on_open)
   local open_cmd = opts.open_cmd or "botright 30vnew"
   local name = opts.filename or "__Flutter_Tools_Unknown__"
   open_cmd = fmt("%s %s", open_cmd, name)
-  vim.cmd(open_cmd)
-  vim.cmd(fmt("setfiletype %s", opts.filetype))
 
+  vim.cmd(open_cmd)
   local win = api.nvim_get_current_win()
   local buf = api.nvim_get_current_buf()
+  vim.bo[buf].filetype = opts.filetype
   vim.bo[buf].swapfile = false
   vim.bo[buf].buftype = "nofile"
   if on_open then on_open(buf, win) end

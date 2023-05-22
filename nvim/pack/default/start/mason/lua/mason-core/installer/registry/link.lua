@@ -79,6 +79,13 @@ local bin_delegates = {
             return ctx:write_node_exec_wrapper(bin, target)
         end)
     end,
+    ["ruby"] = function(target, bin)
+        local installer = require "mason-core.installer"
+        local ctx = installer.context()
+        return Result.pcall(function()
+            return ctx:write_ruby_exec_wrapper(bin, target)
+        end)
+    end,
     ["exec"] = function(target, bin)
         local installer = require "mason-core.installer"
         local ctx = installer.context()
@@ -149,7 +156,10 @@ end
 local function expand_bin(ctx, spec, purl, source)
     log.debug("Registering bin links", ctx.package, spec.bin)
     return Result.try(function(try)
-        local expr_ctx = { version = purl.version, source = source }
+        local expr_ctx = {
+            version = purl.version,
+            source = source,
+        }
 
         local bin_table = spec.bin
         if not bin_table then
@@ -214,9 +224,7 @@ local function expand_file_spec(ctx, purl, source, file_spec_table)
                     return Result.failure(("Cannot link file %q to dir %q."):format(source_path, dest))
                 end
 
-                if vim.in_fast_event() then
-                    a.scheduler()
-                end
+                a.scheduler()
 
                 local glob = path.concat { cwd, source_path } .. "**/*"
                 log.fmt_trace("Symlink glob for %s: %s", ctx.package, glob)
@@ -269,9 +277,10 @@ end
 ---@param spec RegistryPackageSpec
 ---@param purl Purl
 ---@param source ParsedPackageSource
+---@nodiscard
 M.bin = function(ctx, spec, purl, source)
     return expand_bin(ctx, spec, purl, source):on_success(function(links)
-        ctx.links.bin = links
+        ctx.links.bin = vim.tbl_extend("force", ctx.links.bin, links)
     end)
 end
 
@@ -280,9 +289,10 @@ end
 ---@param spec RegistryPackageSpec
 ---@param purl Purl
 ---@param source ParsedPackageSource
+---@nodiscard
 M.share = function(ctx, spec, purl, source)
     return expand_file_spec(ctx, purl, source, spec.share):on_success(function(links)
-        ctx.links.share = links
+        ctx.links.share = vim.tbl_extend("force", ctx.links.share, links)
     end)
 end
 
@@ -291,9 +301,10 @@ end
 ---@param spec RegistryPackageSpec
 ---@param purl Purl
 ---@param source ParsedPackageSource
+---@nodiscard
 M.opt = function(ctx, spec, purl, source)
     return expand_file_spec(ctx, purl, source, spec.opt):on_success(function(links)
-        ctx.links.opt = links
+        ctx.links.opt = vim.tbl_extend("force", ctx.links.opt, links)
     end)
 end
 

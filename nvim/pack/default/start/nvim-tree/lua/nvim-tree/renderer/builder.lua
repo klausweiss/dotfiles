@@ -131,13 +131,7 @@ end
 function Builder:_build_folder(node)
   local has_children = #node.nodes ~= 0 or node.has_children
   local icon = icons.get_folder_icon(node.open, node.link_to ~= nil, has_children)
-
   local foldername = get_folder_name(node) .. self.trailing_slash
-  if node.link_to and self.symlink_destination then
-    local arrow = icons.i.symlink_arrow
-    local link_to = utils.path_relative(node.link_to, core.get_cwd())
-    foldername = foldername .. arrow .. link_to
-  end
 
   local icon_hl
   if #icon > 0 then
@@ -149,7 +143,14 @@ function Builder:_build_folder(node)
   end
 
   local foldername_hl = "NvimTreeFolderName"
-  if vim.tbl_contains(self.special_files, node.absolute_path) or vim.tbl_contains(self.special_files, node.name) then
+  if node.link_to and self.symlink_destination then
+    local arrow = icons.i.symlink_arrow
+    local link_to = utils.path_relative(node.link_to, core.get_cwd())
+    foldername = foldername .. arrow .. link_to
+    foldername_hl = "NvimTreeSymlinkFolderName"
+  elseif
+    vim.tbl_contains(self.special_files, node.absolute_path) or vim.tbl_contains(self.special_files, node.name)
+  then
     foldername_hl = "NvimTreeSpecialFolderName"
   elseif node.open then
     foldername_hl = "NvimTreeOpenedFolderName"
@@ -172,8 +173,9 @@ function Builder:_build_symlink(node)
   end
 
   local link_highlight = "NvimTreeSymlink"
+  local icon_hl = "NvimTreeSymlinkIcon"
 
-  return { str = icon }, { str = symlink_formatted, hl = link_highlight }
+  return { str = icon, hl = icon_hl }, { str = symlink_formatted, hl = link_highlight }
 end
 
 ---@param node table
@@ -339,6 +341,8 @@ function Builder:_build_line(node, idx, num_children, unloaded_bufnr)
   self:_insert_line(self:_unwrap_highlighted_strings(line))
 
   self.index = self.index + 1
+
+  node = require("nvim-tree.lib").get_last_group_node(node)
 
   if node.open then
     self.depth = self.depth + 1

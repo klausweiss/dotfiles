@@ -70,6 +70,7 @@ _.index_by = list.index_by
 ---@module "mason-core.functional.relation"
 local relation = lazy_require "mason-core.functional.relation"
 _.equals = relation.equals
+_.not_equals = relation.not_equals
 _.prop_eq = relation.prop_eq
 _.prop_satisfies = relation.prop_satisfies
 _.path_satisfies = relation.path_satisfies
@@ -151,6 +152,27 @@ end
 
 _.lazy_when = function(condition, value)
     return condition and value() or nil
+end
+
+---@param fn fun()
+_.scheduler = function(fn)
+    if vim.in_fast_event() then
+        vim.schedule(fn)
+    else
+        fn()
+    end
+end
+
+---@generic T : fun(...)
+---@param fn T
+---@return T
+_.scheduler_wrap = function(fn)
+    return function(...)
+        local args = _.table_pack(...)
+        _.scheduler(function()
+            fn(unpack(args, 1, args.n + 1))
+        end)
+    end
 end
 
 return _

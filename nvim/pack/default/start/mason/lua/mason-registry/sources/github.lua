@@ -6,11 +6,9 @@ local fetch = require "mason-core.fetch"
 local fs = require "mason-core.fs"
 local log = require "mason-core.log"
 local path = require "mason-core.path"
-local platform = require "mason-core.platform"
 local providers = require "mason-core.providers"
 local registry_installer = require "mason-core.installer.registry"
 local settings = require "mason.settings"
-local spawn = require "mason-core.spawn"
 
 -- Parse sha256sum text output to a table<filename: string, sha256sum: string> structure
 local parse_checksums = _.compose(_.from_pairs, _.map(_.compose(_.reverse, _.split "  ")), _.split "\n", _.trim)
@@ -45,46 +43,59 @@ function GitHubRegistrySource.new(spec)
 end
 
 function GitHubRegistrySource:is_installed()
-    return fs.sync.file_exists(self.data_file)
+    return fs.sync.file_exists(self.data_file) and fs.sync.file_exists(self.info_file)
+end
+
+---@return RegistryPackageSpec[]
+function GitHubRegistrySource:get_all_package_specs()
+    if not self:is_installed() then
+        return {}
+    end
+    local data = vim.json.decode(fs.sync.read_file(self.data_file)) --[[@as RegistryPackageSpec[] ]]
+    return _.filter_map(
+        ---@param spec RegistryPackageSpec
+        function(spec)
+            -- registry+v1 specifications doesn't include a schema property, so infer it
+            spec.schema = spec.schema or "registry+v1"
+
+            if not registry_installer.SCHEMA_CAP[spec.schema] then
+                log.fmt_debug("Excluding package=%s with unsupported schema_version=%s", spec.name, spec.schema)
+                return Optional.empty()
+            end
+
+            -- XXX: this is for compatibilty with the PackageSpec structure
+            spec.desc = spec.description
+            return Optional.of(spec)
+        end,
+        data
+    )
 end
 
 function GitHubRegistrySource:reload()
     if not self:is_installed() then
         return
     end
-    local data = vim.json.decode(fs.sync.read_file(self.data_file))
     self.buffer = _.compose(
         _.index_by(_.prop "name"),
-        _.filter_map(
+        _.map(
             ---@param spec RegistryPackageSpec
             function(spec)
-                -- registry+v1 specifications doesn't include a schema property, so infer it
-                spec.schema = spec.schema or "registry+v1"
-
-                if not registry_installer.SCHEMA_CAP[spec.schema] then
-                    log.fmt_debug("Excluding package=%s with unsupported schema_version=%s", spec.name, spec.schema)
-                    return Optional.empty()
-                end
-
                 -- hydrate Pkg.Lang index
                 _.each(function(lang)
                     local _ = Pkg.Lang[lang]
                 end, spec.languages)
-
-                -- XXX: this is for compatibilty with the PackageSpec structure
-                spec.desc = spec.description
 
                 local pkg = self.buffer and self.buffer[spec.name]
                 if pkg then
                     -- Apply spec to the existing Package instance. This is important as to not have lingering package
                     -- instances.
                     pkg.spec = spec
-                    return Optional.of(pkg)
+                    return pkg
                 end
-                return Optional.of(Pkg.new(spec))
+                return Pkg.new(spec)
             end
         )
-    )(data)
+    )(self:get_all_package_specs())
     return self.buffer
 end
 
@@ -99,7 +110,7 @@ function GitHubRegistrySource:get_package(pkg)
 end
 
 function GitHubRegistrySource:get_all_package_names()
-    return _.keys(self:get_buffer())
+    return _.map(_.prop "name", self:get_all_package_specs())
 end
 
 function GitHubRegistrySource:get_installer()
@@ -108,10 +119,12 @@ end
 
 ---@async
 function GitHubRegistrySource:install()
+    local zzlib = require "mason-vendor.zzlib"
+
     return Result.try(function(try)
         local version = self.spec.version
-        if self:is_installed() and version ~= nil then
-            -- Fixed version - nothing to update
+        if self:is_installed() and self:get_info().version == version then
+            -- Fixed version is already installed - nothing to update
             return
         end
 
@@ -123,49 +136,39 @@ function GitHubRegistrySource:install()
         if version == nil then
             log.trace("Resolving latest version for registry", self)
             ---@type GitHubRelease
-            local release = try(providers.github.get_latest_release(self.spec.repo))
+            local release = try(
+                providers.github
+                    .get_latest_release(self.spec.repo)
+                    :map_err(_.always "Failed to fetch latest registry version from GitHub API.")
+            )
             version = release.tag_name
             log.trace("Resolved latest registry version", self, version)
         end
 
+        local zip_file = path.concat { self.root_dir, "registry.json.zip" }
         try(fetch(settings.current.github.download_url_template:format(self.spec.repo, version, "registry.json.zip"), {
-            out_file = path.concat { self.root_dir, "registry.json.zip" },
-        }):map_err(_.always "Failed to download registry.json.zip."))
+            out_file = zip_file,
+        }):map_err(_.always "Failed to download registry archive."))
+        local zip_buffer = fs.async.read_file(zip_file)
+        local registry_contents = try(
+            Result.pcall(zzlib.unzip, zip_buffer, "registry.json")
+                :on_failure(_.partial(log.error, "Failed to unpack registry archive."))
+                :map_err(_.always "Failed to unpack registry archive.")
+        )
+        pcall(fs.async.unlink, zip_file)
 
         local checksums = try(
             fetch(settings.current.github.download_url_template:format(self.spec.repo, version, "checksums.txt")):map_err(
                 _.always "Failed to download checksums.txt."
             )
         )
-        local parsed_checksums = parse_checksums(checksums)
 
-        platform.when {
-            unix = function()
-                try(spawn.unzip({ "-o", "registry.json.zip", cwd = self.root_dir }):map_err(function(err)
-                    return ("Failed to unpack registry contents: %s"):format(err.stderr)
-                end))
-            end,
-            win = function()
-                local powershell = require "mason-core.managers.powershell"
-                powershell
-                    .command(
-                        ("Microsoft.PowerShell.Archive\\Expand-Archive -Force -Path %q -DestinationPath ."):format "registry.json.zip",
-                        {
-                            cwd = self.root_dir,
-                        }
-                    )
-                    :map_err(function(err)
-                        return ("Failed to unpack registry contents: %s"):format(err.stderr)
-                    end)
-            end,
-        }
-        pcall(fs.async.unlink, path.concat { self.root_dir, "registry.json.zip" })
-
+        try(Result.pcall(fs.async.write_file, self.data_file, registry_contents))
         try(Result.pcall(
             fs.async.write_file,
             self.info_file,
             vim.json.encode {
-                checksums = parsed_checksums,
+                checksums = parse_checksums(checksums),
                 version = version,
                 download_timestamp = os.time(),
             }

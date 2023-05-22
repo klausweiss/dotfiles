@@ -3,21 +3,15 @@
   (map)
   (imap)
   (array)
-] @indent
+] @indent.begin
 
 [
   "]"
   "}"
   ">"
-] @indent_end
-
-[ "{" "}" ] @branch
-
-[ "[" "]" ] @branch
-
-[ "<" ">" ] @branch
+] @indent.end @indent.branch
 
 [
   (ERROR)
   (comment)
-] @auto
+] @indent.auto

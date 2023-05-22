@@ -1,5 +1,19 @@
-local path = require("flutter-tools.utils.path")
+local lazy = require("flutter-tools.lazy")
+local path = lazy.require("flutter-tools.utils.path") ---@module "flutter-tools.utils.path"
+local ui = lazy.require("flutter-tools.ui") ---@module "flutter-tools.ui"
+
+---@class flutter.ProjectConfig
+---@field name string?
+---@field device string
+---@field flavor string
+---@field target string
+---@field dart_define {[string]: string}
+---@field dart_define_from_file string
+
 local M = {}
+
+---@type flutter.ProjectConfig[]
+local project_config = {}
 
 local fn = vim.fn
 local fmt = string.format
@@ -7,12 +21,14 @@ local fmt = string.format
 --- @param prefs table user preferences
 local function validate_prefs(prefs)
   if prefs.flutter_path and prefs.flutter_lookup_cmd then
-    vim.schedule(function()
-      vim.notify(
-        'Only one of "flutter_path" and "flutter_lookup_cmd" are required. Please remove one of the keys',
-        vim.log.levels.ERROR
-      )
-    end)
+    vim.schedule(
+      function()
+        ui.notify(
+          'Only one of "flutter_path" and "flutter_lookup_cmd" are required. Please remove one of the keys',
+          ui.ERROR
+        )
+      end
+    )
   end
   vim.validate({
     outline = { prefs.outline, "table", true },
@@ -26,7 +42,7 @@ end
 ---@param fallback number
 ---@return string
 local function get_split_cmd(percentage, fallback)
-  return string.format("botright %dvnew", math.max(vim.o.columns * percentage, fallback))
+  return ("botright %dvnew"):format(math.max(vim.o.columns * percentage, fallback))
 end
 
 local function get_default_lookup()
@@ -48,16 +64,9 @@ local config = {
     enabled = false,
     debug = false,
   },
-  ui = setmetatable({
+  ui = {
     border = "single",
-  }, {
-    __index = function(_, k)
-      if k == "notification_style" then
-        local ok = pcall(require, "notify")
-        return ok and "native" or "plugin"
-      end
-    end,
-  }),
+  },
   decorations = {
     statusline = {
       app_version = false,
@@ -110,16 +119,13 @@ local config = {
   outline = setmetatable({
     auto_open = false,
   }, {
-    __index = function(_, k)
-      return k == "open_cmd" and get_split_cmd(0.3, 40) or nil
-    end,
+    __index = function(_, k) return k == "open_cmd" and get_split_cmd(0.3, 40) or nil end,
   }),
   dev_log = setmetatable({
     enabled = true,
+    notify_errors = false,
   }, {
-    __index = function(_, k)
-      return k == "open_cmd" and get_split_cmd(0.4, 50) or nil
-    end,
+    __index = function(_, k) return k == "open_cmd" and get_split_cmd(0.4, 50) or nil end,
   }),
   dev_tools = {
     autostart = false,
@@ -137,19 +143,17 @@ local deprecations = {
 local function handle_deprecation(key, value, conf)
   local deprecation = deprecations[key]
   if not deprecation then return end
-  vim.defer_fn(function()
-    local ui = require("flutter-tools.ui")
-    ui.notify(fmt("%s is deprecated: %s", key, deprecation.message), ui.WARN)
-  end, 1000)
+  vim.defer_fn(
+    function() ui.notify(fmt("%s is deprecated: %s", key, deprecation.message), ui.WARN) end,
+    1000
+  )
   if deprecation.fallback then conf[deprecation.fallback] = value end
 end
 
----Get the configuration or just a key of the config
----@param key string?
----@return any
-function M.get(key)
-  if key then return config[key] end
-  return config
+---@param project flutter.ProjectConfig | flutter.ProjectConfig[]
+function M.setup_project(project)
+  if not vim.tbl_islist(project) then project = { project } end
+  project_config = project
 end
 
 function M.set(user_config)
@@ -158,8 +162,14 @@ function M.set(user_config)
   for key, value in pairs(user_config) do
     handle_deprecation(key, value, user_config)
   end
-  config = require("flutter-tools.utils").merge(config, user_config)
+  config = vim.tbl_deep_extend("force", config, user_config)
   return config
 end
 
-return M
+---@module "flutter-tools.config"
+return setmetatable(M, {
+  __index = function(_, k)
+    if k == "project" then return project_config end
+    return config[k]
+  end,
+})

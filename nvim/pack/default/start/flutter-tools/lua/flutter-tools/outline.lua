@@ -31,22 +31,21 @@ local markers = {
 local icons = setmetatable({
   TOP_LEVEL_VARIABLE = "",
   CLASS = "",
-  FIELD = "綠",
+  FIELD = "󰐾",
   CONSTRUCTOR = "",
-  CONSTRUCTOR_INVOCATION = "ﰪ",
+  CONSTRUCTOR_INVOCATION = "󰜬",
   FUNCTION = "ƒ",
-  METHOD = "",
-  GETTER = "ྟ",
-  ENUM = "",
+  METHOD = "󰆧",
+  GETTER = "󰆧",
+  ENUM = "󰉺",
   ENUM_CONSTANT = "",
   DEFAULT = "",
 }, {
-  __index = function(t, _)
-    return t.DEFAULT
-  end,
+  __index = function(t, _) return t.DEFAULT end,
 })
 
-local hl_prefix = "FlutterToolsOutline"
+local HL_PREFIX = "FlutterToolsOutline"
+local MARKER_HL = "FlutterToolsOutlineIndentGuides"
 
 local icon_highlights = {
   [icons.TOP_LEVEL_VARIABLE] = { name = "TopLevelVar", link = "Identifier" },
@@ -61,6 +60,8 @@ local icon_highlights = {
   [icons.ENUM_CONSTANT] = { name = "EnumConstant", link = "Type" },
   [icons.DEFAULT] = { name = "Default", link = "Comment" },
 }
+
+api.nvim_set_hl(0, MARKER_HL, { default = true, link = "NonText" })
 
 -----------------------------------------------------------------------------//
 -- State
@@ -82,22 +83,18 @@ local state = setmetatable({
 })
 
 M.outlines = setmetatable({}, {
-  __index = function()
-    return {}
-  end,
+  __index = function() return {} end,
 })
 -----------------------------------------------------------------------------//
 ---@param name string
 ---@param group string
-local function hl_link(name, group)
-  api.nvim_set_hl(0, hl_prefix .. name, { link = group })
-end
+local function hl_link(name, group) api.nvim_set_hl(0, HL_PREFIX .. name, { link = group }) end
 
 ---@param name string
 ---@param value string
 ---@param group string
 local function highlight_item(name, value, group)
-  vim.cmd(fmt("syntax match %s%s /%s/", hl_prefix, name, value))
+  vim.cmd(fmt("syntax match %s%s /%s/", HL_PREFIX, name, value))
   hl_link(name, group)
 end
 
@@ -106,7 +103,7 @@ local function set_outline_highlights()
   highlight_item("String", [[\v(''|""|(['"]).{-}[^\\]\2)]], "String")
 
   for key, value in pairs(markers) do
-    highlight_item(key, value, "Whitespace")
+    highlight_item(key:gsub("^%l", string.upper), value, MARKER_HL)
   end
   for icon, hl in pairs(icon_highlights) do
     highlight_item(hl.name, icon, hl.link)
@@ -121,8 +118,7 @@ end
 ---@param position integer?
 local function add_segment(list, highlights, item, hl, length, position)
   if item and item ~= "" then
-    --- NOTE highlights are byte indexed
-    --- so use "#" operator to get the byte count
+    --- NOTE: highlights are byte indexed so use "#" operator to get the byte count
     local item_length = #item
     local new_length = item_length + length
     table.insert(highlights, {
@@ -285,7 +281,7 @@ local function setup_autocommands()
   local autocmd = api.nvim_create_autocmd
   autocmd({ "User" }, {
     group = AUGROUP,
-    pattern = "FlutterOutlineChanged",
+    pattern = utils.events.OUTLINE_CHANGED,
     callback = function()
       if not utils.buf_valid(state.outline_buf) then return end
       local ok, lines, highlights = get_outline_content()
@@ -301,7 +297,7 @@ local function setup_autocommands()
   autocmd({ "BufEnter" }, {
     group = AUGROUP,
     pattern = { "*.dart" },
-    command = "doautocmd User FlutterOutlineChanged",
+    command = "doautocmd User " .. utils.events.OUTLINE_CHANGED,
   })
 end
 
@@ -316,17 +312,12 @@ local function select_code_action(actions, action_win, code_buf, code_win, outli
   return function()
     local ln = api.nvim_get_current_line()
     --- TODO: improve this once popup create returns a mapping of data to lines
-    local action = utils.find(actions, function(ca)
-      return ln:match(ca.title)
-    end)
+    local action = utils.find(actions, function(ca) return ln:match(ca.title) end)
     if action then
       code_actions.execute(action, code_buf, function()
-        -- HACK: figure out how to automatically refresh the code window so the new widget appears
-        -- in the outline window
+        -- HACK: figure out how to automatically refresh the code window so the new widget appears in the outline window
         api.nvim_set_current_win(code_win)
-        vim.defer_fn(function()
-          api.nvim_set_current_win(outline_win)
-        end, 500)
+        vim.defer_fn(function() api.nvim_set_current_win(outline_win) end, 500)
       end)
     end
     if api.nvim_win_is_valid(action_win) then api.nvim_win_close(action_win, true) end
@@ -349,6 +340,7 @@ local function request_code_actions()
   if not uri then return ui.notify("Sorry! code actions not available") end
   local outline = M.outlines[uri]
   local item = outline[line]
+  if not item then return end
   local params = code_actions.get_action_params(item, uri)
   if not params then return end
 
@@ -363,14 +355,10 @@ local function request_code_actions()
     "textDocument/codeAction",
     params,
     utils.lsp_handler(function(_, actions, _)
-      code_actions.create_popup(actions, function(buf, win)
-        vim.keymap.set(
-          "n",
-          "<CR>",
-          select_code_action(actions, win, code_buf, code_win, outline_win),
-          { buffer = buf }
-        )
-      end)
+      code_actions.open(
+        actions,
+        function(_, win) select_code_action(actions, win, code_buf, code_win, outline_win) end
+      )
       api.nvim_win_set_cursor(code_win, { item.start_line + 1, item.start_col + 1 })
     end)
   )
@@ -441,15 +429,13 @@ function M.open(opts)
     return
   end
   local parent_win = api.nvim_get_current_win()
-  local options = config.get("outline")
+  local options = config.outline
   if not utils.buf_valid(state.outline_buf) and not vim.tbl_isempty(lines) then
     ui.open_win({
       open_cmd = options.open_cmd,
       filetype = outline_filetype,
       filename = outline_filename,
-    }, function(buf, win)
-      setup_outline_window(buf, win, lines, highlights, opts.go_back)
-    end)
+    }, function(buf, win) setup_outline_window(buf, win, lines, highlights, opts.go_back) end)
   else
     refresh_outline(state.outline_buf, lines, highlights)
   end
@@ -469,9 +455,8 @@ function M.document_outline(_, data, _, _)
   end
   result.uri = data.uri
   M.outlines[data.uri] = result
-  vim.cmd("doautocmd User FlutterOutlineChanged")
-  local conf = config.get("outline")
-  if conf.auto_open and not state.outline_buf then M.open({ go_back = true }) end
+  utils.emit_event(utils.events.OUTLINE_CHANGED)
+  if config.outline.auto_open and not state.outline_buf then M.open({ go_back = true }) end
 end
 
 return M

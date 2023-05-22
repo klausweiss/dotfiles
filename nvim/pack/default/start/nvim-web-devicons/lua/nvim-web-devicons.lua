@@ -1,7 +1,7 @@
 -- exact match by file name
 local icons_by_filename = {
   [".babelrc"] = {
-    icon = "ﬥ",
+    icon = "",
     color = "#cbcb41",
     cterm_color = "185",
     name = "Babelrc",
@@ -175,7 +175,7 @@ local icons_by_filename = {
     name = "License",
   },
   ["r"] = {
-    icon = "ﳒ",
+    icon = "󰟔",
     color = "#358a5b",
     cterm_color = "29",
     name = "R",
@@ -263,7 +263,7 @@ local icons_by_filename = {
     name = "Gulpfile",
   },
   ["webpack"] = {
-    icon = "ﰩ",
+    icon = "󰜫",
     color = "#519aba",
     cterm_color = "74",
     name = "Webpack",
@@ -285,6 +285,18 @@ local icons_by_filename = {
     color = "#458ee6",
     cterm_color = "68",
     name = "Dockerfile",
+  },
+  ["build"] = {
+    icon = "",
+    color = "#89e051",
+    cterm_color = "113",
+    name = "BazelBuild",
+  },
+  ["workspace"] = {
+    icon = "",
+    color = "#89e051",
+    cterm_color = "113",
+    name = "BazelWorkspace",
   },
 }
 
@@ -313,6 +325,18 @@ local icons_by_file_extension = {
     color = "#C1F12E",
     cterm_color = "191",
     name = "Bat",
+  },
+  ["bazel"] = {
+    icon = "",
+    color = "#89e051",
+    cterm_color = "113",
+    name = "Bazel",
+  },
+  ["bzl"] = {
+    icon = "",
+    color = "#89e051",
+    cterm_color = "113",
+    name = "Bzl",
   },
   ["bmp"] = {
     icon = "",
@@ -349,6 +373,12 @@ local icons_by_file_extension = {
     color = "#ECECEC",
     cterm_color = "255",
     name = "Configuration",
+  },
+  ["cjs"] = {
+    icon = "",
+    color = "#cbcb41",
+    cterm_color = "185",
+    name = "Cjs",
   },
   ["clj"] = {
     icon = "",
@@ -435,7 +465,7 @@ local icons_by_file_extension = {
     name = "Crystal",
   },
   ["cs"] = {
-    icon = "",
+    icon = "󰌛",
     color = "#596706",
     cterm_color = "58",
     name = "Cs",
@@ -459,7 +489,7 @@ local icons_by_file_extension = {
     name = "Css",
   },
   ["csv"] = {
-    icon = "",
+    icon = "󰈙",
     color = "#89e051",
     cterm_color = "113",
     name = "Csv",
@@ -501,13 +531,13 @@ local icons_by_file_extension = {
     name = "Diff",
   },
   ["doc"] = {
-    icon = "",
+    icon = "󰈬",
     color = "#185abd",
     cterm_color = "26",
     name = "Doc",
   },
   ["docx"] = {
-    icon = "",
+    icon = "󰈬",
     color = "#185abd",
     cterm_color = "26",
     name = "Docx",
@@ -818,7 +848,7 @@ local icons_by_file_extension = {
     name = "Json",
   },
   ["json5"] = {
-    icon = "ﬥ",
+    icon = "",
     color = "#cbcb41",
     cterm_color = "185",
     name = "Json5",
@@ -920,7 +950,7 @@ local icons_by_file_extension = {
     name = "Markdown",
   },
   ["material"] = {
-    icon = "",
+    icon = "󰔉",
     color = "#B83998",
     cterm_color = "163",
     name = "Material",
@@ -938,7 +968,7 @@ local icons_by_file_extension = {
     name = "Mdx",
   },
   ["mint"] = {
-    icon = "",
+    icon = "󰌪",
     color = "#87c095",
     cterm_color = "108",
     name = "Mint",
@@ -974,7 +1004,7 @@ local icons_by_file_extension = {
     name = "Mustache",
   },
   ["nim"] = {
-    icon = "👑",
+    icon = "",
     color = "#f3d400",
     cterm_color = "220",
     name = "Nim",
@@ -986,7 +1016,7 @@ local icons_by_file_extension = {
     name = "Nix",
   },
   ["opus"] = {
-    icon = "",
+    icon = "󰈣",
     color = "#F88A02",
     cterm_color = "208",
     name = "OPUS",
@@ -1010,7 +1040,7 @@ local icons_by_file_extension = {
     name = "PackedResource",
   },
   ["pdf"] = {
-    icon = "",
+    icon = "",
     color = "#b30b00",
     cterm_color = "124",
     name = "Pdf",
@@ -1045,7 +1075,7 @@ local icons_by_file_extension = {
     name = "Pp",
   },
   ["ppt"] = {
-    icon = "",
+    icon = "󰈧",
     color = "#cb4a32",
     cterm_color = "214",
     name = "Ppt",
@@ -1117,7 +1147,7 @@ local icons_by_file_extension = {
     name = "Query",
   },
   ["r"] = {
-    icon = "ﳒ",
+    icon = "󰟔",
     color = "#358a5b",
     cterm_color = "29",
     name = "R",
@@ -1134,6 +1164,18 @@ local icons_by_file_extension = {
     cterm_color = "52",
     name = "Rb",
   },
+  ["res"] = {
+    icon = "",
+    color = "#cc3e44",
+    cterm_color = "167",
+    name = "ReScript",
+  },
+  ["resi"] = {
+    icon = "",
+    color = "#f55385",
+    cterm_color = "204",
+    name = "ReScriptInterface",
+  },
   ["rlib"] = {
     icon = "",
     color = "#dea584",
@@ -1147,7 +1189,7 @@ local icons_by_file_extension = {
     name = "Rmd",
   },
   ["rproj"] = {
-    icon = "鉶",
+    icon = "󰗆",
     color = "#358a5b",
     cterm_color = "29",
     name = "Rproj",
@@ -1183,7 +1225,7 @@ local icons_by_file_extension = {
     name = "Scala",
   },
   ["scm"] = {
-    icon = "ﬦ",
+    icon = "󰘧",
     color = "#000000",
     cterm_color = "16",
     name = "Scheme",
@@ -1261,7 +1303,7 @@ local icons_by_file_extension = {
     name = "Suo",
   },
   ["sv"] = {
-    icon = "",
+    icon = "󰍛",
     color = "#019833",
     cterm_color = "28",
     name = "SystemVerilog",
@@ -1273,13 +1315,13 @@ local icons_by_file_extension = {
     name = "Svelte",
   },
   ["svh"] = {
-    icon = "",
+    icon = "󰍛",
     color = "#019833",
     cterm_color = "28",
     name = "SystemVerilog",
   },
   ["svg"] = {
-    icon = "ﰟ",
+    icon = "󰜡",
     color = "#FFB13B",
     cterm_color = "214",
     name = "Svg",
@@ -1297,13 +1339,13 @@ local icons_by_file_extension = {
     name = "Tor",
   },
   ["tbc"] = {
-    icon = "﯑",
+    icon = "󰛓",
     color = "#1e5cb3",
     cterm_color = "25",
     name = "Tcl",
   },
   ["tcl"] = {
-    icon = "﯑",
+    icon = "󰛓",
     color = "#1e5cb3",
     cterm_color = "25",
     name = "Tcl",
@@ -1315,7 +1357,7 @@ local icons_by_file_extension = {
     name = "Terminal",
   },
   ["tex"] = {
-    icon = "ﭨ",
+    icon = "󰙩",
     color = "#3D6117",
     cterm_color = "22",
     name = "Tex",
@@ -1363,7 +1405,7 @@ local icons_by_file_extension = {
     name = "SpecTs",
   },
   ["tscn"] = {
-    icon = "",
+    icon = "󰎁",
     color = "#a074c4",
     cterm_color = "140",
     name = "TextScene",
@@ -1393,13 +1435,13 @@ local icons_by_file_extension = {
     name = "Twig",
   },
   ["txt"] = {
-    icon = "",
+    icon = "󰈙",
     color = "#89e051",
     cterm_color = "113",
     name = "Txt",
   },
   ["v"] = {
-    icon = "",
+    icon = "󰍛",
     color = "#019833",
     cterm_color = "28",
     name = "Verilog",
@@ -1411,19 +1453,19 @@ local icons_by_file_extension = {
     name = "Vala",
   },
   ["vh"] = {
-    icon = "",
+    icon = "󰍛",
     color = "#019833",
     cterm_color = "28",
     name = "Verilog",
   },
   ["vhd"] = {
-    icon = "",
+    icon = "󰍛",
     color = "#019833",
     cterm_color = "28",
     name = "VHDL",
   },
   ["vhdl"] = {
-    icon = "",
+    icon = "󰍛",
     color = "#019833",
     cterm_color = "28",
     name = "VHDL",
@@ -1435,7 +1477,7 @@ local icons_by_file_extension = {
     name = "Vim",
   },
   ["vue"] = {
-    icon = "﵂",
+    icon = "",
     color = "#8dc149",
     cterm_color = "113",
     name = "Vue",
@@ -1453,7 +1495,7 @@ local icons_by_file_extension = {
     name = "Webp",
   },
   ["webpack"] = {
-    icon = "ﰩ",
+    icon = "󰜫",
     color = "#519aba",
     cterm_color = "74",
     name = "Webpack",
@@ -1465,19 +1507,19 @@ local icons_by_file_extension = {
     name = "XcPlayground",
   },
   ["xls"] = {
-    icon = "",
+    icon = "󰈛",
     color = "#207245",
     cterm_color = "29",
     name = "Xls",
   },
   ["xlsx"] = {
-    icon = "",
+    icon = "󰈛",
     color = "#207245",
     cterm_color = "29",
     name = "Xlsx",
   },
   ["xml"] = {
-    icon = "謹",
+    icon = "󰗀",
     color = "#e37933",
     cterm_color = "166",
     name = "Xml",
@@ -1513,13 +1555,13 @@ local icons_by_file_extension = {
     name = "Zsh",
   },
   ["sol"] = {
-    icon = "ﲹ",
+    icon = "󰞻",
     color = "#519aba",
     cterm_color = "74",
     name = "Solidity",
   },
   ["prisma"] = {
-    icon = "卑",
+    icon = "󰔶",
     color = "#ffffff",
     cterm_color = "231",
     name = "Prisma",
@@ -1531,7 +1573,7 @@ local icons_by_file_extension = {
     name = "Lock",
   },
   ["log"] = {
-    icon = "",
+    icon = "󰌱",
     color = "#ffffff",
     cterm_color = "231",
     name = "Log",
@@ -1568,6 +1610,7 @@ end
 
 -- Map of filetypes -> icon names
 local filetypes = {
+  ["bzl"] = "bzl",
   ["brewfile"] = "brewfile",
   ["commit"] = "commit_editmsg",
   ["copying"] = "copying",
@@ -1695,6 +1738,8 @@ local filetypes = {
   ["python"] = "py",
   ["query"] = "query",
   ["r"] = "r",
+  ["res"] = "rescript",
+  ["resi"] = "rescript",
   ["rlib"] = "rlib",
   ["rmd"] = "rmd",
   ["rproj"] = "rproj",
@@ -1795,7 +1840,7 @@ local function highlight_exists(group)
   return ok and not (hl or {})[true]
 end
 
-local function set_up_highlights()
+local function set_up_highlights(allow_override)
   if not global_opts.color_icons then
     set_up_highlight(default_icon)
     return
@@ -1803,8 +1848,9 @@ local function set_up_highlights()
 
   for _, icon_data in pairs(icons) do
     local has_color = icon_data.color or icon_data.cterm_color
-    local name_valid = icon_data.name and not highlight_exists(get_highlight_name(icon_data))
-    if has_color and name_valid then
+    local name_valid = icon_data.name
+    local defined_before = highlight_exists(get_highlight_name(icon_data))
+    if has_color and name_valid and (allow_override or not defined_before) then
       set_up_highlight(icon_data)
     end
   end
@@ -2014,7 +2060,13 @@ end
 refresh_icons()
 
 -- Change icon set on background change
-vim.api.nvim_create_autocmd("OptionSet", { pattern = "background", callback = refresh_icons })
+vim.api.nvim_create_autocmd("OptionSet", {
+  pattern = "background",
+  callback = function()
+    refresh_icons()
+    set_up_highlights(true) -- Force update highlights
+  end,
+})
 
 return {
   get_icon = get_icon,

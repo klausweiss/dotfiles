@@ -26,6 +26,7 @@ local M = {
     fsharp_b = '(*%s*)',
     html = '<!--%s-->',
     latex = '%%s',
+    semicolon = ';%s',
     lisp_l = ';;%s',
     lisp_b = '#|%s|#',
     twig = '{#%s#}',
@@ -38,7 +39,7 @@ local M = {
 local L = setmetatable({
     arduino = { M.cxx_l, M.cxx_b },
     applescript = { M.hash },
-    autohotkey = { ";%s", M.cxx_b },
+    autohotkey = { M.semicolon, M.cxx_b },
     bash = { M.hash },
     bib = { M.latex },
     c = { M.cxx_l, M.cxx_b },
@@ -54,13 +55,14 @@ local L = setmetatable({
     dhall = { M.dash, M.haskell_b },
     dosbatch = { 'REM%s' },
     dot = { M.cxx_l, M.cxx_b },
+    dts = { M.cxx_l, M.cxx_b },
     editorconfig = { M.hash },
     eelixir = { M.html, M.html },
     elixir = { M.hash },
     elm = { M.dash, M.haskell_b },
     elvish = { M.hash },
-	faust = { M.cxx_l, M.cxx_b },
-    fennel = { ';%s' },
+    faust = { M.cxx_l, M.cxx_b },
+    fennel = { M.semicolon },
     fish = { M.hash },
     fsharp = { M.cxx_l, M.fsharp_b },
     gdb = { M.hash },
@@ -95,15 +97,18 @@ local L = setmetatable({
     make = { M.hash },
     mbsyncrc = { M.dbl_hash },
     meson = { M.hash },
+    nextflow = { M.cxx_l, M.cxx_b },
     nim = { M.hash, '#[%s]#' },
     nix = { M.hash, M.cxx_b },
     nu = { M.hash },
     ocaml = { M.fsharp_b, M.fsharp_b },
+    odin = { M.cxx_l, M.cxx_b },
     plantuml = { "'%s", "/'%s'/" },
     purescript = { M.dash, M.haskell_b },
     python = { M.hash }, -- Python doesn't have block comments
     php = { M.cxx_l, M.cxx_b },
     prisma = { M.cxx_l },
+    proto = { M.cxx_l, M.cxx_b },
     quarto = { M.html, M.html },
     r = { M.hash }, -- R doesn't have block comments
     readline = { M.hash },
@@ -130,6 +135,7 @@ local L = setmetatable({
     twig = { M.twig, M.twig },
     typescript = { M.cxx_l, M.cxx_b },
     typescriptreact = { M.cxx_l, M.cxx_b },
+    v = { M.cxx_l, M.cxx_b },
     vim = { M.vim },
     vifm = { M.vim },
     vue = { M.html, M.html },
@@ -148,13 +154,6 @@ local L = setmetatable({
         return this[base] or this[fallback]
     end,
 })
-
----Maps a filteype to a parsername for filetypes
----that don't have their own parser (yet).
----From: <https://github.com/nvim-treesitter/nvim-treesitter/blob/cda8b291ef6fc4e04036e2ea6cf0de8aa84c2656/lua/nvim-treesitter/parsers.lua#L4-L23>.
-local filetype_to_parsername = {
-  quarto = "markdown",
-}
 
 local ft = {}
 
@@ -187,8 +186,7 @@ end
 ---@param lang string Filetype/Language of the buffer
 ---@param ctype? integer See |comment.utils.ctype|. If given `nil`, it'll
 ---return a copy of { line, block } commentstring.
----@return nil|string|string[] #Returns stored commentstring, if {lang} is not
----recognized then returns native |commentstring|
+---@return nil|string|string[] #Returns stored commentstring
 ---@usage [[
 ---local ft = require('Comment.ft')
 ---local U = require('Comment.utils')
@@ -206,7 +204,7 @@ end
 function ft.get(lang, ctype)
     local tuple = L[lang]
     if not tuple then
-        return vim.bo.commentstring
+        return nil
     end
     if not ctype then
         return vim.deepcopy(tuple)
@@ -247,10 +245,7 @@ end
 ---@return nil|string #Commentstring
 ---@see comment.utils.CommentCtx
 function ft.calculate(ctx)
-    local buf = A.nvim_get_current_buf()
-    local filetype = vim.bo.filetype
-    local parsername = filetype_to_parsername[filetype] or filetype
-    local ok, parser = pcall(vim.treesitter.get_parser, buf, parsername)
+    local ok, parser = pcall(vim.treesitter.get_parser, A.nvim_get_current_buf())
 
     if not ok then
         return ft.get(vim.bo.filetype, ctx.ctype) --[[ @as string ]]

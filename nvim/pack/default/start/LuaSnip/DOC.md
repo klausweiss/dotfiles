@@ -45,6 +45,7 @@ local postfix = require("luasnip.extras.postfix").postfix
 local types = require("luasnip.util.types")
 local parse = require("luasnip.util.parser").parse_snippet
 local ms = ls.multi_snippet
+local k = require("luasnip.nodes.key_indexer").new_key
 ```
 
 As noted in the [Loaders-Lua](#lua)-section:
@@ -120,10 +121,20 @@ It is possible to make snippets from one filetype available to another using
 # Node
 
 Every node accepts, as its last parameter, an optional table of arguments.
-There are some common ones (e.g. `node_ext_opts`, described in
-[ext_opts](#ext_opts)), and some that only apply to some nodes (`user_args`
-for both function and dynamicNode). These `opts` are only mentioned if they
-accept options that are not common to all nodes.
+There are some common ones (which are listed here), and some that only apply to
+some nodes (`user_args` for function/dynamicNode). These `opts` are
+only mentioned if they accept options that are not common to all nodes.
+
+Common opts:
+* `node_ext_opts` and `merge_node_ext_opts`: Control `ext_opts` (most likely
+  highlighting) of the node. Described in detail in [ext_opts](#ext_opts)
+* `key`: The node can be reffered to by this key. Useful for either [Key
+  Indexer](#key-indexer) or for finding the node at runtime (See
+  [Snippets-api](#snippets-api)), for example inside a `dynamicNode`. The keys
+  do not have to be unique across the entire lifetime of the snippet, but at any
+  point in time, the snippet may contain each key only once. This means it is
+  fine to return a keyed node from a `dynamicNode`, because even if it will be
+  generated multiple times, those will not be valid at the same time.
 
 ## Api
 
@@ -251,6 +262,7 @@ which is passed to the function.
 (in most cases `parent == parent.snippet`, but the `parent` of the dynamicNode
 is not always the surrounding snippet, it could be a `snippetNode`).
 
+<a id="snippets-api"></a>
 ## Api
 
 - `invalidate()`: call this method to effectively remove the snippet. The
@@ -258,6 +270,8 @@ is not always the surrounding snippet, it could be a `snippetNode`).
   will also be hidden from lists (at least if the plugin creating the list
   respects the `hidden`-key), but it might be necessary to call
   `ls.refresh_notify(ft)` after invalidating snippets.
+- `get_keyed_node(key)`: Returns the currently visible node associated with
+  `key`.
 
 
 # TextNode
@@ -536,17 +550,24 @@ For example, argnodes in functionNode, dynamicNode or lambda are
 node references.  
 These references can be either of:
   - `number`: the jump-index of the node.
-  This will be resolved relative to the parent of the node this is passed to.
-  (So, only nodes with the same parent can be referenced. This is very easy to
-  grasp, but also limiting)
-  - `absolute_indexer`: the absolute position of the
-  node. This will come in handy if the node that is being referred to is not in the same
-  snippet/snippetNode as the one the node reference is passed to (More in
-  [Absolute Indexer](#absolute-indexer)).
+    This will be resolved relative to the parent of the node this is passed to.
+    (So, only nodes with the same parent can be referenced. This is very easy to
+    grasp, but also limiting)
+  - `key_indexer`: the key of the node, if it is present. This will come in
+    handy if the node that is being referred to is not in the same
+    snippet/snippetNode as the one the node reference is passed to.
+    Also, it is the proper way to refer to a non-interactive node (a
+    functionNode, for example)
+  - `absolute_indexer`: the absolute position of the node. Just like
+    `key_indexer`, it allows addressing non-sibling nodes, but is a bit more
+    awkward to handle since a path from root to node has to be determined,
+    whereas `key_indexer` just needs the key to match.  
+    Due to this, `key_indexer` should be generally preferred.
+    (More information in [Absolute Indexer](#absolute-indexer)).
   - `node`: just the node. Usage of this is discouraged since it can lead to
-  subtle errors (for example, if the node passed here is captured in a closure
-  and therefore not copied with the remaining tables in the snippet; there's a
-  big comment about just this in commit 8bfbd61).
+    subtle errors (for example, if the node passed here is captured in a closure
+    and therefore not copied with the remaining tables in the snippet; there's a
+    big comment about just this in commit 8bfbd61).
 
 # ChoiceNode
 
@@ -928,33 +949,50 @@ that really bothers you feel free to open an issue.
 
 <!-- panvimdoc-ignore-end -->
 
-# Absolute Indexer
+# Key Indexer
 
-The most capable way of referencing nodes ([Node Reference](#node-reference)).  
-Using only a [Jump-Index](#jump-index), accessing an outer `i(1)` isn't possible
-from inside e.g. a snippetNode, since only nodes with the same parent can be
-referenced (jump indices are interpreted relative to the parent of the node
-that's passed the reference).  
-The `absolute_indexer` can be used to reference nodes based on their absolute
-position in the snippet, which lifts this restriction.  
+A very flexible way of referencing nodes ([Node Reference](#node-reference)).  
+While the straightforward way of addressing nodes via their
+[Jump-Index](#jump-index) suffices in most cases, a `dynamic/functionNode` can
+only depend on nodes in the same snippet(Node), its siblings (since the index is
+interpreted as relative to their parent). Accessing a node with a different
+parent is thus not possible. Secondly, and less relevant, only nodes that
+actually have a jump-index can be referred to (a `functionNode`, for example,
+cannot be depended on).  
+Both of these restrictions are lifted with `key_indexer`:  
+It allows addressing nodes by their key, which can be set when the node is
+constructed, and is wholly independent of the nodes' position in the snippet,
+thus enabling descriptive labeling.
 
+The following snippets demonstrate the issue and the solution by using
+`key_indexer`:
+
+First, the addressed problem of referring to nodes outside the `functionNode`s
+parent:
 ```lua
 s("trig", {
 	i(1), c(2, {
 		sn(nil, {
-			t"cannot access the argnode :(", f(function(args) return args[1] end, {???})
+			t"cannot access the argnode :(",
+			f(function(args)
+			    return args[1]
+            end, {???}) -- can't refer to i(1), since it isn't a sibling of `f`.
 		}),
 		t"sample_text"
 	})
 })
 ```
 
-Using `absolute_indexer`, it's possible to do so:
+And the solution: first give the node we want to refer to a key, and then pass
+the same to the `functionNode`.
 ```lua
 s("trig", {
-	i(1), c(2, {
+	i(1, "", {key = "i1-key"}), c(2, {
 		sn(nil, { i(1),
-			t"can access the argnode :)", f(function(args) return args[1] end, ai[1])
+			t"can access the argnode :)",
+			f(function(args)
+                return args[1]
+            end, k("i1-key") )
 		}),
 		t"sample_text"
 	})
@@ -963,9 +1001,35 @@ s("trig", {
 
 <!-- panvimdoc-ignore-start -->
 
-![AbsoluteIndexer](https://user-images.githubusercontent.com/25300418/184359369-3bbd2b30-33d1-4a5d-9474-19367867feff.gif)
+![Key/AbsoluteIndexer](https://user-images.githubusercontent.com/25300418/184359369-3bbd2b30-33d1-4a5d-9474-19367867feff.gif)
 
 <!-- panvimdoc-ignore-end -->
+
+
+# Absolute Indexer
+
+`absolute_indexer` allows accessing nodes by their unique jump-index path from
+the snippet-root. This makes it almost as powerful as [Key
+Indexer](#key-indexer), but again removes the possibility of referring to
+non-jumpable nodes and makes it all a bit more error-prone since the jump-index
+paths are hard to follow, and (unfortunately) have to be a bit verbose (see the
+long example of `absolute_indexer`-positions below). Consider just using [Key
+Indexer](#key-indexer) instead.  
+
+(The solution-snippet from [Key Indexer](#key-indexer), but using `ai` instead.)
+```lua
+s("trig", {
+	i(1), c(2, {
+		sn(nil, { i(1),
+			t"can access the argnode :)",
+			f(function(args)
+                return args[1]
+            end, ai(1) )
+		}),
+		t"sample_text"
+	})
+})
+```
 
 There are some quirks in addressing nodes:
 ```lua
@@ -1355,6 +1419,8 @@ a snippet's `condition` or `show_condition`. These are grouped accordingly into
 
 **`show`**:
 - `line_end`: only expand at the end of the line.
+- `has_selected_text`: only expand if there's selected text stored after pressing
+  `store_selection_keys`. 
 
 Additionally, `expand` contains all conditions provided by `show`.
 
@@ -1761,6 +1827,29 @@ sl.open({display = modified_default_display})
 
 <!-- panvimdoc-ignore-end -->
 
+## Snippet Location
+
+This module can consume a snippets [source](#source), more specifically, jump to
+the location referred by it.  
+This is primarily implemented for snippet which got their source from one of the
+loaders, but might also work for snippets where the source was set manually.  
+
+`require("luasnip.extras.snip_location")`:
+* `snip_location.jump_to_snippet(snip, opts)`
+  Jump to the definition of `snip`.
+  * `snip`: a snippet with attached source-data.
+  * `opts`: `nil|table`, optional arguments, valid keys are:
+    * `hl_duration_ms`: `number`, duration for which the definition should be highlighted,
+      in milliseconds. 0 disables the highlight.
+    * `edit_fn`: `function(file)`, this function will be called with the file
+      the snippet is located in, and is responsible for jumping to it.  
+      We assume that after it has returned, the current buffer contains `file`.
+* `snip_location.jump_to_active_snippet(opts)`
+  Jump to definition of active snippet.
+  * `opts`: `nil|table`, accepts the same keys as the `opts`-parameter of
+    `jump_to_snippet`.
+
+
 # Extend Decorator
 
 Most of luasnip's functions have some arguments to control their behaviour.  
@@ -1920,6 +2009,16 @@ This process can be automated by `packer.nvim`:
 ```lua
 use { "L3MON4D3/LuaSnip", run = "make install_jsregexp" }
 ```
+
+If you are on MacOS and not using Homebrew then you will need to specify the
+location of your LuaJIT dylib via the `LUAJIT_OSX_PATH` variable without adding */lib/*
+at the end. So `/opt/local/lib/` becomes `/opt/local`.
+
+When using MacPorts for example:
+```lua
+use { "L3MON4D3/LuaSnip", run = "make install_jsregexp LUAJIT_OSX_PATH=/opt/local" }
+```
+
 If this fails, first open an issue :P, and then try installing the
 `jsregexp`-luarock. This is also possible via 
 `packer.nvim`, although actual usage may require a small workaround, see
@@ -2849,6 +2948,38 @@ there already exists a `luasnip.log.old`, it will be deleted.
 `ls.log.ping()` can be used to verify the log is working correctly: it will
 print a short message to the log.
 
+# Source
+It is possible to attach, to a snippet, information about its source. This can
+be done either by the various loaders (if it is enabled in `ls.setup`
+([Config-Options](#config-options), `loaders_store_source`)), or manually. The
+attached data can be used by [Extras-Snippet-Location](#snippet-location) to
+jump to the definition of a snippet.  
+
+It is also possible to get/set the source of a snippet via API:
+
+`ls.snippet_source`:
+
+* `get(snippet) -> source_data`:
+  Retrieve the source-data of `snippet`. `source_data` always contains the key
+  `file`, the file in which the snippet was defined, and may additionally
+  contain `line` or `line_end`, the first and last line of the definition.
+* `set(snippet, source)`:
+  Set the source of a snippet.
+  * `snippet`: a snippet which was added via `ls.add_snippets`.
+  * `source`: a `source`-object, obtained from either `from_debuginfo` or
+    `from_location`.
+* `from_location(file, opts) -> source`:
+  * `file`: `string`, The path to the file in which the snippet is defined.
+  * `opts`: `table|nil`, optional parameters for the source.
+    * `line`: `number`, the first line of the definition. 1-indexed.
+    * `line_end`: `number`, the final line of the definition. 1-indexed.
+* `from_debuginfo(debuginfo) -> source`:
+  Generates source from the table returned by `debug.getinfo` (from now on
+  referred to as `debuginfo`). `debuginfo` has to be of a frame of a function
+  which is backed by a file, and has to contain this information, ie. has to be
+  generated by `debug.get_info(*, "Sl")` (at least `"Sl"`, it may also contain
+  more info).
+
 # Config-Options
 
 These are the settings you can provide to `luasnip.setup()`:
@@ -2919,6 +3050,12 @@ These are the settings you can provide to `luasnip.setup()`:
   warnings, consider adding the undefined globals to the globals recognized by
   `lua-language-server` or add `---@diagnostic disable: undefined-global`
   somewhere in the affected files.
+
+- `loaders_store_source`, boolean, whether loaders should store the source of
+  the loaded snippets.  
+  Enabling this means that the definition of any snippet can be jumped to via
+  [Extras-Snippet-Location](#snippet-location), but also entails slightly
+  increased memory consumption (and load-time, but it's not really noticeable).
 
 # API
 

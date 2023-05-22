@@ -3,10 +3,12 @@ local utils = require "nvim-tree.utils"
 local events = require "nvim-tree.events"
 local notify = require "nvim-tree.notify"
 
+local find_file = require("nvim-tree.actions.finders.find-file").fn
+
 local M = {}
 
 local ALLOWED_MODIFIERS = {
-  [":p"] = true,
+  [":p:h"] = true,
   [":t"] = true,
   [":t:r"] = true,
 }
@@ -68,6 +70,9 @@ function M.fn(default_modifier)
       local extension = vim.fn.fnamemodify(node.name, ":e")
       append = extension:len() == 0 and "" or "." .. extension
     end
+    if modifier == ":p:h" then
+      default_path = default_path .. "/"
+    end
 
     local input_opts = { prompt = "Rename to ", default = default_path, completion = "file" }
 
@@ -81,6 +86,8 @@ function M.fn(default_modifier)
       if M.enable_reload then
         require("nvim-tree.actions.reloaders.reloaders").reload_explorer()
       end
+
+      find_file(utils.path_remove_trailing(new_file_path))
     end)
   end
 end

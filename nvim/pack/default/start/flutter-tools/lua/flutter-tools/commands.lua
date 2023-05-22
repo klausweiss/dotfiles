@@ -1,32 +1,35 @@
+local lazy = require("flutter-tools.lazy")
 local Job = require("plenary.job")
-local ui = require("flutter-tools.ui")
-local utils = require("flutter-tools.utils")
-local devices = require("flutter-tools.devices")
-local config = require("flutter-tools.config")
-local executable = require("flutter-tools.executable")
-local dev_tools = require("flutter-tools.dev_tools")
-local lsp = require("flutter-tools.lsp")
-local job_runner = require("flutter-tools.runners.job_runner")
-local debugger_runner = require("flutter-tools.runners.debugger_runner")
-local dev_log = require("flutter-tools.log")
-local dap_ok, dap = pcall(require, "dap")
+local ui = lazy.require("flutter-tools.ui") ---@module "flutter-tools.ui"
+local utils = lazy.require("flutter-tools.utils") ---@module "flutter-tools.utils"
+local devices = lazy.require("flutter-tools.devices") ---@module "flutter-tools.devices"
+local config = lazy.require("flutter-tools.config") ---@module "flutter-tools.config"
+local executable = lazy.require("flutter-tools.executable") ---@module "flutter-tools.executable"
+local dev_tools = lazy.require("flutter-tools.dev_tools") ---@module   "flutter-tools.dev_tools"
+local lsp = lazy.require("flutter-tools.lsp") ---@module "flutter-tools.lsp"
+local job_runner = lazy.require("flutter-tools.runners.job_runner") ---@module "flutter-tools.runners.job_runner"
+local debugger_runner = lazy.require("flutter-tools.runners.debugger_runner") ---@module "flutter-tools.runners.debugger_runner"
+local dev_log = lazy.require("flutter-tools.log") ---@module "flutter-tools.log"
 
 local M = {}
+
+---@alias RunOpts {cli_args: string[]?, args: string[]?, device: Device?}
 
 ---@type table?
 local current_device = nil
 
----@class FlutterRunner
----@field is_running fun(runner: FlutterRunner):boolean
----@field run fun(runner: FlutterRunner, paths:table, args:table, cwd:string, on_run_data:fun(is_err:boolean, data:string), on_run_exit:fun(data:string[], args: table))
----@field cleanup fun(funner: FlutterRunner)
----@field send fun(runner: FlutterRunner, cmd:string, quiet: boolean?)
+---@class flutter.Runner
+---@field is_running fun(runner: flutter.Runner):boolean
+---@field run fun(runner: flutter.Runner, paths:table, args:table, cwd:string, on_run_data:fun(is_err:boolean, data:string), on_run_exit:fun(data:string[], args: table))
+---@field cleanup fun(funner: flutter.Runner)
+---@field send fun(runner: flutter.Runner, cmd:string, quiet: boolean?)
 
----@type FlutterRunner?
+---@type flutter.Runner?
 local runner = nil
 
-function M.use_debugger_runner()
-  if not config.get("debugger").run_via_dap then return false end
+local function use_debugger_runner()
+  local dap_ok, dap = pcall(require, "dap")
+  if not config.debugger.run_via_dap then return false end
   if dap_ok then return true end
   ui.notify(
     utils.join({ "debugger runner was request but nvim-dap is not installed!", dap }),
@@ -35,13 +38,9 @@ function M.use_debugger_runner()
   return false
 end
 
-function M.current_device()
-  return current_device
-end
+function M.current_device() return current_device end
 
-function M.is_running()
-  return runner ~= nil and runner:is_running()
-end
+function M.is_running() return runner ~= nil and runner:is_running() end
 
 local function match_error_string(line)
   if not line then return false end
@@ -67,15 +66,15 @@ end
 ---Handle output from flutter run command
 ---@param is_err boolean if this is stdout or stderr
 local function on_run_data(is_err, data)
-  local dev_log_conf = config.get("dev_log")
-  if is_err then ui.notify(data, ui.ERROR, { timeout = 5000 }) end
-  dev_log.log(data, dev_log_conf)
+  if is_err and config.dev_log.notify_errors then ui.notify(data, ui.ERROR, { timeout = 5000 }) end
+  dev_log.log(data, config.dev_log)
 end
 
 local function shutdown()
-  if runner ~= nil then runner:cleanup() end
+  if runner then runner:cleanup() end
   runner = nil
   current_device = nil
+  utils.emit_event(utils.events.PROJECT_CONFIG_CHANGED)
   dev_tools.on_flutter_shutdown()
 end
 
@@ -86,11 +85,9 @@ local function on_run_exit(result, cli_args)
   if matched_error then
     local lines = devices.to_selection_entries(result)
     ui.select({
-      title = "Flutter run (" .. msg .. ") ",
+      title = ("Flutter run (%s)"):format(msg),
       lines = lines,
-      on_select = function(device)
-        devices.select_device(device, cli_args)
-      end,
+      on_select = function(device) devices.select_device(device, cli_args) end,
     })
   end
   shutdown()
@@ -104,40 +101,74 @@ function M.run_command(args)
   M.run({ args = args })
 end
 
-local function check_if_web(args)
-  for _, arg in ipairs(args) do
-    local formatted = arg:lower()
-    if formatted:match("chrome") or formatted:match("web") then return true end
+---@param callback fun(project_config: flutter.ProjectConfig?)
+local function select_project_config(callback)
+  local project_config = config.project --[=[@as flutter.ProjectConfig[]]=]
+  if #project_config <= 1 then
+    utils.emit_event(utils.events.PROJECT_CONFIG_CHANGED, { data = project_config[1] })
+    return callback(project_config[1])
   end
-  return false
+  vim.ui.select(project_config, {
+    prompt = "Select a project configuration",
+    format_item = function(item)
+      if item.name then return item.name end
+      return vim.inspect(item)
+    end,
+  }, function(selected)
+    if selected then
+      utils.emit_event(utils.events.PROJECT_CONFIG_CHANGED, { data = selected })
+      callback(selected)
+    end
+  end)
+end
+
+---@param opts RunOpts
+---@param conf flutter.ProjectConfig?
+---@return string[]
+local function get_run_args(opts, conf)
+  local args = {}
+  local cmd_args = opts.args
+  local device = conf and conf.device or (opts.device and opts.device.id)
+  local flavor = conf and conf.flavor
+  local target = conf and conf.target
+  local dart_defines = conf and conf.dart_define
+  local dart_define_from_file = conf and conf.dart_define_from_file
+  local dev_url = dev_tools.get_url()
+
+  if not use_debugger_runner() then vim.list_extend(args, { "run" }) end
+  if not cmd_args and device then vim.list_extend(args, { "-d", device }) end
+  if cmd_args then vim.list_extend(args, cmd_args) end
+  if flavor then vim.list_extend(args, { "--flavor", flavor }) end
+  if target then vim.list_extend(args, { "--target", target }) end
+  if dart_define_from_file then
+    vim.list_extend(args, { "--dart-define-from-file", dart_define_from_file })
+  end
+  if dart_defines then
+    for key, value in pairs(dart_defines) do
+      vim.list_extend(args, { "--dart-define", ("%s=%s"):format(key, value) })
+    end
+  end
+  if dev_url then vim.list_extend(args, { "--devtools-server-address", dev_url }) end
+  return args
+end
+
+---@param opts RunOpts
+---@param project_conf flutter.ProjectConfig?
+local function run(opts, project_conf)
+  opts = opts or {}
+  executable.get(function(paths)
+    local args = opts.cli_args or get_run_args(opts, project_conf)
+    ui.notify("Starting flutter project...")
+    runner = use_debugger_runner() and debugger_runner or job_runner
+    runner:run(paths, args, lsp.get_lsp_root_dir(), on_run_data, on_run_exit)
+  end)
 end
 
 ---Run the flutter application
----@param opts table
+---@param opts RunOpts
 function M.run(opts)
   if M.is_running() then return ui.notify("Flutter is already running!") end
-  opts = opts or {}
-  local device = opts.device
-  local cmd_args = opts.args
-  local cli_args = opts.cli_args
-  executable.get(function(paths)
-    local args = cli_args or {}
-    if not cli_args then
-      if not M.use_debugger_runner() then vim.list_extend(args, { "run" }) end
-      if not cmd_args and device and device.id then vim.list_extend(args, { "-d", device.id }) end
-
-      if cmd_args then vim.list_extend(args, cmd_args) end
-
-      local dev_url = dev_tools.get_url()
-      if dev_url then vim.list_extend(args, { "--devtools-server-address", dev_url }) end
-    end
-    -- NOTE: debugging does not currently work with flutter web
-    local is_web = check_if_web(args)
-    if not vim.tbl_contains(args, "run") and is_web then table.insert(args, 1, "run") end
-    ui.notify("Starting flutter project...")
-    runner = (M.use_debugger_runner() and not is_web) and debugger_runner or job_runner
-    runner:run(paths, args, lsp.get_lsp_root_dir(), on_run_data, on_run_exit)
-  end)
+  select_project_config(function(project_conf) run(opts, project_conf) end)
 end
 
 ---@param cmd string
@@ -153,9 +184,7 @@ local function send(cmd, quiet, on_send)
 end
 
 ---@param quiet boolean?
-function M.reload(quiet)
-  send("reload", quiet)
-end
+function M.reload(quiet) send("reload", quiet) end
 
 ---@param quiet boolean?
 function M.restart(quiet)
@@ -175,14 +204,10 @@ function M.quit(quiet)
 end
 
 ---@param quiet boolean?
-function M.visual_debug(quiet)
-  send("visual_debug", quiet)
-end
+function M.visual_debug(quiet) send("visual_debug", quiet) end
 
 ---@param quiet boolean?
-function M.detach(quiet)
-  send("detach", quiet)
-end
+function M.detach(quiet) send("detach", quiet) end
 
 function M.copy_profiler_url()
   if not M.is_running() then
@@ -203,24 +228,16 @@ function M.copy_profiler_url()
 end
 
 ---@param quiet boolean?
-function M.open_dev_tools(quiet)
-  send("open_dev_tools", quiet)
-end
+function M.open_dev_tools(quiet) send("open_dev_tools", quiet) end
 
 ---@param quiet boolean
-function M.generate(quiet)
-  send("generate", quiet)
-end
+function M.generate(quiet) send("generate", quiet) end
 
 ---@param quiet boolean
-function M.widget_inspector(quiet)
-  send("inspect", quiet)
-end
+function M.widget_inspector(quiet) send("inspect", quiet) end
 
 ---@param quiet boolean
-function M.construction_lines(quiet)
-  send("construction_lines", quiet)
-end
+function M.construction_lines(quiet) send("construction_lines", quiet) end
 
 -----------------------------------------------------------------------------//
 -- Pub commands
@@ -348,7 +365,7 @@ function M.fvm_use(sdk_name)
       ui.notify(utils.join(j:result()))
       shutdown()
       executable.reset_paths()
-      require("flutter-tools.lsp").restart()
+      lsp.restart()
 
       fvm_use_job = nil
     end))
@@ -360,6 +377,11 @@ function M.fvm_use(sdk_name)
 
     fvm_use_job:start()
   end
+end
+
+if __TEST then
+  M.__run = run
+  M.__get_run_args = get_run_args
 end
 
 return M

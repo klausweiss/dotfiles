@@ -5,6 +5,7 @@ local _ = require "mason-core.functional"
 local a = require "mason-core.async"
 local link = require "mason-core.installer.registry.link"
 local log = require "mason-core.log"
+local schemas = require "mason-core.installer.registry.schemas"
 
 local M = {}
 
@@ -40,7 +41,7 @@ end
 
 ---@class InstallerProvider
 ---@field parse fun(source: RegistryPackageSource, purl: Purl, opts: PackageInstallOpts): Result
----@field install async fun(ctx: InstallContext, source: ParsedPackageSource): Result
+---@field install async fun(ctx: InstallContext, source: ParsedPackageSource, purl: Purl): Result
 
 ---@class ParsedPackageSource
 
@@ -132,6 +133,8 @@ function M.parse(spec, opts)
             source = parsed_source,
             purl = purl,
         }
+    end):on_failure(function(err)
+        log.debug("Failed to parse spec spec", spec.name, err)
     end)
 end
 
@@ -141,10 +144,8 @@ end
 function M.compile(spec, opts)
     log.debug("Compiling installer.", spec.name, opts)
     return Result.try(function(try)
-        if vim.in_fast_event() then
-            -- Parsers run synchronously and may access API functions, so we schedule before-hand.
-            a.scheduler()
-        end
+        -- Parsers run synchronously and may access API functions, so we schedule before-hand.
+        a.scheduler()
 
         local map_parse_err = _.cond {
             {
@@ -168,7 +169,17 @@ function M.compile(spec, opts)
         return function(ctx)
             return Result.try(function(try)
                 -- Run installer
-                try(parsed.provider.install(ctx, parsed.source))
+                try(parsed.provider.install(ctx, parsed.source, parsed.purl))
+
+                if spec.schemas then
+                    local result = schemas.download(ctx, spec, parsed.purl, parsed.source):on_failure(function(err)
+                        log.error("Failed to download schemas", ctx.package, err)
+                    end)
+                    if opts.strict then
+                        -- schema download sources are not considered stable nor a critical feature, so we only fail in strict mode
+                        try(result)
+                    end
+                end
 
                 -- Expand & register links
                 if spec.bin then

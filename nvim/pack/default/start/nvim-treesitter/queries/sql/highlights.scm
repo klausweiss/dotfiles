@@ -14,10 +14,6 @@
   (keyword_group_concat)
 ] @function.call
 
-(count
-  name: (keyword_count) @function.call
-  parameter: [(field)]? @parameter)
-
 (table_reference
   name: (identifier) @type)
 
@@ -68,8 +64,8 @@
  (keyword_collate)
  (keyword_concurrently)
  (keyword_engine)
- (keyword_character)
- (keyword_concurrently)
+ (keyword_always)
+ (keyword_generated)
  (keyword_preceding)
  (keyword_following)
  (keyword_first)
@@ -120,6 +116,7 @@
   (keyword_right)
   (keyword_outer)
   (keyword_inner)
+  (keyword_full)
   (keyword_order)
   (keyword_partition)
   (keyword_group)
@@ -130,6 +127,8 @@
   (keyword_offset)
   (keyword_table)
   (keyword_key)
+  (keyword_references)
+  (keyword_foreign)
   (keyword_constraint)
   (keyword_force)
   (keyword_use)
@@ -160,6 +159,8 @@
   (keyword_owner)
   (keyword_union)
   (keyword_all)
+  (keyword_any)
+  (keyword_some)
   (keyword_except)
   (keyword_intersect)
   (keyword_returning)
@@ -223,6 +224,8 @@
   (keyword_boolean)
   (keyword_binary)
   (keyword_bit)
+  (keyword_inet)
+  (keyword_character)
   (keyword_smallserial)
   (keyword_serial)
   (keyword_bigserial)
@@ -245,6 +248,7 @@
   (keyword_jsonb)
   (keyword_xml)
   (keyword_bytea)
+  (keyword_enum)
   (keyword_date)
   (keyword_datetime)
   (keyword_timestamp)

@@ -115,6 +115,8 @@ local function ExpandedPackageInfo(state, pkg, is_installed)
     })
 end
 
+local get_package_search_keywords = _.compose(_.join ", ", _.map(_.to_lower), _.path { "spec", "languages" })
+
 ---@param state InstallerUiState
 ---@param pkg Package
 ---@param opts { keybinds: KeybindHandlerNode[], icon: string[], is_installed: boolean, sticky: StickyCursorNode? }
@@ -124,7 +126,16 @@ local function PackageComponent(state, pkg, opts)
     local label = (is_expanded or pkg_state.has_transitioned) and p.Bold(" " .. pkg.name) or p.none(" " .. pkg.name)
 
     return Ui.Node {
-        Ui.HlTextNode { { opts.icon, label } },
+        Ui.HlTextNode {
+            {
+                opts.icon,
+                label,
+                p.none " ",
+                p.Comment(table.concat(pkg:get_aliases(), ", ")),
+                state.view.is_searching and p.Comment(" // keywords: " .. get_package_search_keywords(pkg))
+                    or p.none "",
+            },
+        },
         opts.sticky or Ui.Node {},
         Ui.When(pkg_state.is_checking_new_version, function()
             return Ui.VirtualTextNode { p.Comment " checking for new version…" }
@@ -148,6 +159,20 @@ local function PackageComponent(state, pkg, opts)
     }
 end
 
+local get_outdated_packages_preview = _.if_else(
+    _.compose(_.lte(4), _.size),
+    _.compose(_.join ", ", _.map(_.prop "name")),
+    _.compose(
+        _.join ", ",
+        _.converge(_.concat, {
+            _.compose(_.map(_.prop "name"), _.take(3)),
+            function(pkgs)
+                return { ("and %d more…"):format(#pkgs - 3) }
+            end,
+        })
+    )
+)
+
 ---@param state InstallerUiState
 local function Installed(state)
     return Ui.Node {
@@ -170,6 +195,19 @@ local function Installed(state)
                         styling((" "):rep(new_versions_check.percentage_complete * 15)),
                     }
                 end),
+                Ui.When(
+                    not state.packages.new_versions_check.is_checking and #state.packages.outdated_packages > 0,
+                    function()
+                        return Ui.VirtualTextNode {
+                            p.muted "Press ",
+                            p.highlight(settings.current.ui.keymaps.update_all_packages),
+                            p.muted " to update ",
+                            p.highlight(tostring(#state.packages.outdated_packages)),
+                            p.muted(#state.packages.outdated_packages > 1 and " packages " or " package "),
+                            p.Comment(("(%s)"):format(get_outdated_packages_preview(state.packages.outdated_packages))),
+                        }
+                    end
+                ),
             },
             packages = state.packages.installed,
             ---@param pkg Package
@@ -217,7 +255,7 @@ local function InstallingPackageComponent(pkg, state)
         Ui.Keybind(settings.current.ui.keymaps.install_package, "INSTALL_PACKAGE", pkg),
         Ui.CascadingStyleNode({ "INDENT" }, {
             Ui.HlTextNode(pkg_state.is_log_expanded and p.Bold "▼ Displaying full log" or p.muted(tail)),
-            Ui.Keybind("<CR>", "TOGGLE_INSTALL_LOG", pkg),
+            Ui.Keybind(settings.current.ui.keymaps.toggle_package_install_log, "TOGGLE_INSTALL_LOG", pkg),
             Ui.StickyCursor { id = ("%s-toggle-install-log"):format(pkg.name) },
         }),
         Ui.When(pkg_state.is_log_expanded, function()
@@ -282,7 +320,6 @@ local function Failed(state)
         state = state,
         heading = Ui.HlTextNode(p.heading "Failed"),
         packages = packages,
-        ---@param pkg Package
         list_item_renderer = InstallingPackageComponent,
     }
 end

@@ -30,10 +30,65 @@
  (#lua-match? @constant "^_*[A-Z][A-Z%d_]*$"))
 
 ((identifier) @variable.builtin
- (#vim-match? @variable.builtin "^(arguments|module|console|window|document)$"))
+ (#any-of? @variable.builtin
+           "arguments"
+           "module"
+           "console"
+           "window"
+           "document"))
+
+((identifier) @type.builtin
+ (#any-of? @type.builtin
+           "Object"
+           "Function"
+           "Boolean"
+           "Symbol"
+           "Number"
+           "Math"
+           "Date"
+           "String"
+           "RegExp"
+           "Map"
+           "Set"
+           "WeakMap"
+           "WeakSet"
+           "Promise"
+           "Array"
+           "Int8Array"
+           "Uint8Array"
+           "Uint8ClampedArray"
+           "Int16Array"
+           "Uint16Array"
+           "Int32Array"
+           "Uint32Array"
+           "Float32Array"
+           "Float64Array"
+           "ArrayBuffer"
+           "DataView"
+           "Error"
+           "EvalError"
+           "InternalError"
+           "RangeError"
+           "ReferenceError"
+           "SyntaxError"
+           "TypeError"
+           "URIError"))
+
+((identifier) @namespace.builtin
+ (#eq? @namespace.builtin "Intl"))
 
 ((identifier) @function.builtin
- (#eq? @function.builtin "require"))
+ (#any-of? @function.builtin
+           "eval"
+           "isFinite"
+           "isNaN"
+           "parseFloat"
+           "parseInt"
+           "decodeURI"
+           "decodeURIComponent"
+           "encodeURI"
+           "encodeURIComponent"
+           "require"))
 
 ; Function and method definitions
 ;--------------------------------
@@ -48,6 +103,9 @@
   name: (identifier) @function)
 (method_definition
   name: [(property_identifier) (private_property_identifier)] @method)
+(method_definition
+  name: (property_identifier) @constructor
+  (#eq? @constructor "constructor"))
 
 (pair
   key: (property_identifier) @method
@@ -125,6 +183,9 @@
 
 (hash_bang_line) @preproc
 
+((string_fragment) @preproc
+ (#eq? @preproc "use strict"))
+
 (string) @string @spell
 (template_string) @string
 (escape_sequence) @string.escape
@@ -146,6 +207,7 @@
 
 (pair ":" @punctuation.delimiter)
 (pair_pattern ":" @punctuation.delimiter)
+(switch_case ":" @punctuation.delimiter)
 
 [
   "--"

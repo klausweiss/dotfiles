@@ -2,8 +2,8 @@
 
 [![CI](https://github.com/nvim-tree/nvim-tree.lua/actions/workflows/ci.yml/badge.svg)](https://github.com/nvim-tree/nvim-tree.lua/actions/workflows/ci.yml)
 
-<img align="left" width="149" height="484" src="https://user-images.githubusercontent.com/17254073/195207026-f3434ba1-dc86-4c48-8ab3-b2efc3b85227.png">
-<img align="left" width="149" height="484" src="https://user-images.githubusercontent.com/17254073/195207023-7b709e35-7f10-416b-aafb-5bb61268c7d3.png">
+<img align="left" width="199" height="598" src="https://user-images.githubusercontent.com/1505378/232662694-8dc494e0-24da-497a-8541-29344293378c.png">
+<img align="left" width="199" height="598" src="https://user-images.githubusercontent.com/1505378/232662698-2f321315-c67a-486b-85d8-8c391de52392.png">
 
    Automatic updates
 
@@ -24,11 +24,7 @@
 
 Take a look at the [wiki](https://github.com/nvim-tree/nvim-tree.lua/wiki) for Showcases, Tips, Recipes and more.
 
-[Join us on matrix](https://matrix.to/#/#nvim-tree:matrix.org)
-
-## Breaking Change 2023-01-30
-
-Existing `*_on_setup*` mechanisms have been removed in favour of [Open At Startup](https://github.com/nvim-tree/nvim-tree.lua/wiki/Open-At-Startup)
+Community support: [matrix](https://matrix.to/#/#nvim-tree:matrix.org)
 
 ## New Mapping Method 2023-02-27
 
@@ -48,13 +44,11 @@ Please install via your preferred package manager. See [Installation](https://gi
 
 `nvim-tree/nvim-web-devicons` optional, for file icons
 
-## Setup
+## Quick Start
 
-Setup should be run in a lua file or in a lua heredoc [:help lua-heredoc](https://neovim.io/doc/user/lua.html) if using in a vim file.
+Setup the plugin in your `init.lua`
 
 ```lua
--- examples for your init.lua
-
 -- disable netrw at the very start of your init.lua (strongly advised)
 vim.g.loaded_netrw = 1
 vim.g.loaded_netrwPlugin = 1
@@ -68,6 +62,9 @@ require("nvim-tree").setup()
 -- OR setup with some options
 require("nvim-tree").setup({
   sort_by = "case_sensitive",
+  view = {
+    width = 30,
+  },
   renderer = {
     group_empty = true,
   },
@@ -76,6 +73,10 @@ require("nvim-tree").setup({
   },
 })
 ```
+
+Open the tree:  `:NvimTreeOpen`
+
+Show the mappings:  `g?`
 
 For complete list of available configuration options see [:help nvim-tree-setup](doc/nvim-tree-lua.txt)
 

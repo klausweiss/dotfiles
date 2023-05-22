@@ -5,7 +5,8 @@
 (
   (style_element
     (start_tag) @_no_type_lang
-      (#not-match? @_no_type_lang "\\s(lang|type)\\s*\\=")
+      (#not-lua-match? @_no_type_lang "%slang%s*=")
+      (#not-lua-match? @_no_type_lang "%stype%s*=")
     (raw_text) @css))
 
 (
@@ -24,7 +25,8 @@
 (
   (script_element
     (start_tag) @_no_type_lang
-      (#not-match? @_no_type_lang "\\s(lang|type)\\s*\\=")
+      (#not-lua-match? @_no_type_lang "%slang%s*=")
+      (#not-lua-match? @_no_type_lang "%stype%s*=")
     (raw_text) @javascript))
 
 ; <script type="mimetype-or-well-known-script-type">
@@ -46,11 +48,11 @@
 ; <a @click="${e => console.log(e)}">
 ((attribute
   (quoted_attribute_value (attribute_value) @javascript))
-  (#match? @javascript "\\$\\{")
+  (#lua-match? @javascript "%${")
   (#offset! @javascript 0 2 0 -1))
 ((attribute
   (attribute_value) @javascript)
-  (#match? @javascript "\\$\\{")
+  (#lua-match? @javascript "%${")
   (#offset! @javascript 0 2 0 -2))
 
 (comment) @comment
@@ -64,3 +66,9 @@
       (attribute_value) @regex
     ] (#eq? @_attr "pattern")))
 ))
+
+; <input type="checkbox" onchange="this.closest('form').elements.output.value = this.checked">
+(attribute
+  (attribute_name) @_name
+  (#lua-match? @_name "^on[a-z]+$")
+  (quoted_attribute_value (attribute_value) @javascript))

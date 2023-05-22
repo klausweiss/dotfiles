@@ -124,12 +124,9 @@ exports.run_blocking = function(suspend_fn, ...)
         result = b
     end, ...)
 
-    if
-        resolved
-        or vim.wait(60 * 60 * 1000, function() -- the wait time is completely arbitrary
-            return resolved == true
-        end, 50)
-    then
+    if resolved or vim.wait(0x7FFFFFFF, function()
+        return resolved == true
+    end, 50) then
         if not ok then
             error(result, 2)
         end
@@ -150,44 +147,19 @@ exports.sleep = function(ms)
 end
 
 exports.scheduler = function()
-    await(vim.schedule)
-end
-
----Creates a oneshot channel that can only send once.
-local function oneshot_channel()
-    local has_sent = false
-    local sent_value
-    local saved_callback
-
-    return {
-        is_closed = function()
-            return has_sent
-        end,
-        send = function(...)
-            assert(not has_sent, "Oneshot channel can only send once.")
-            has_sent = true
-            sent_value = { ... }
-            if saved_callback then
-                saved_callback(unpack(sent_value))
-            end
-        end,
-        receive = function()
-            return await(function(resolve)
-                if has_sent then
-                    resolve(unpack(sent_value))
-                else
-                    saved_callback = resolve
-                end
-            end)
-        end,
-    }
+    if vim.in_fast_event() then
+        await(vim.schedule)
+    end
 end
 
 ---@async
 ---@param suspend_fns async fun()[]
 ---@param mode '"first"' | '"all"'
 local function wait(suspend_fns, mode)
-    local channel = oneshot_channel()
+    local channel = require("mason-core.async.control").OneShotChannel.new()
+    if #suspend_fns == 0 then
+        return
+    end
 
     do
         local results = {}
@@ -205,9 +177,9 @@ local function wait(suspend_fns, mode)
             thread_cancellations[i] = exports.run(suspend_fn, function(success, result)
                 completed = completed + 1
                 if not success then
-                    if not channel.is_closed() then
+                    if not channel:is_closed() then
                         cancel()
-                        channel.send(false, result)
+                        channel:send(false, result)
                         results = nil
                         thread_cancellations = {}
                     end
@@ -215,7 +187,7 @@ local function wait(suspend_fns, mode)
                     results[i] = result
                     if mode == "first" or completed >= count then
                         cancel()
-                        channel.send(true, mode == "first" and { result } or results)
+                        channel:send(true, mode == "first" and { result } or results)
                         results = nil
                         thread_cancellations = {}
                     end
@@ -224,7 +196,7 @@ local function wait(suspend_fns, mode)
         end
     end
 
-    local ok, results = channel.receive()
+    local ok, results = channel:receive()
     if not ok then
         error(results, 2)
     end

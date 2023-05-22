@@ -41,7 +41,7 @@ some basic setup might look like.
 
 ## Prerequisites
 
-- neovim 0.7.0+
+- neovim 0.8.0+
 
 ## Installation
 
@@ -163,6 +163,7 @@ require("flutter-tools").setup {} -- use defaults
 - `FlutterLspRestart` - This command restarts the dart language server, and is intended for situations where it begins to work incorrectly.
 - `FlutterSuper` - Go to super class, method using custom LSP method `dart/textDocument/super`.
 - `FlutterReanalyze` - Forces LSP server reanalyze using custom LSP method `dart/reanalyze`.
+- `FlutterRename` - Renames and updates imports if `lsp.settings.renameFilesWithClasses == "always"`
 
 <hr/>
 
@@ -212,6 +213,9 @@ require("flutter-tools").setup {
       -- this will show the currently running device if an application was started with a specific
       -- device
       device = false,
+      -- set to true to be able use the 'flutter_tools_decorations.project_config' in your statusline
+      -- this will show the currently selected project configuration
+      project_config = false,
     }
   },
   debugger = { -- integrate with nvim dap + install dart code debugger
@@ -239,6 +243,7 @@ require("flutter-tools").setup {
   },
   dev_log = {
     enabled = true,
+    notify_errors = false, -- if there is an error whilst running then notify the user
     open_cmd = "tabedit", -- command to use to open the log buffer
   },
   dev_tools = {
@@ -273,6 +278,7 @@ require("flutter-tools").setup {
       analysisExcludedFolders = {"<path-to-flutter-sdk-packages>"},
       renameFilesWithClasses = "prompt", -- "always"
       enableSnippets = true,
+      updateImportsOnRename = true, -- Whether to update imports and other directives when files are renamed. Required for `FlutterRename` command.
     }
   }
 }
@@ -291,6 +297,49 @@ You cannot/should not edit the files in the sdk directly so diagnostic analysis 
 To ignore packages installed with pub, consider adding `vim.fn.expand("$HOME/AppData/Local/Pub/Cache")` to
 `analysisExcludedFolders` if you are using PowerShell.
 
+#### Project Configuration
+
+It is possible to configure how each project is run using neovim's `exrc` functionality (see `:help exrc`).
+This allows you to create an exrc file e.g. `.nvim.lua` and put the project configurations inside it.
+This is similar _conceptually_ to vscode's `launch.json` file.
+
+```lua
+-- .nvim.lua
+-- If you have more than one setup configured you will be prompted when you run
+-- your app to select which one you want to use
+require('flutter-tools').setup_project({
+  {
+    name = 'Development', -- an arbitrary name that you provide so you can recognise this config
+    flavor = 'DevFlavor', -- your flavour
+    target = 'lib/main_dev.dart', -- your target
+    device = 'pixel6pro', -- the device ID, which you can get by running `flutter devices`
+    dart_define = {
+      API_URL = 'https://dev.example.com/api',
+      IS_DEV = true,
+    },
+    dart_define_from_file = 'config.json' -- the path to a JSON configuration file
+  },
+  {
+    name = 'Web',
+    device = 'chrome',
+    flavor = 'WebApp'
+  }
+})
+```
+
+you can also specify the configuration as an object if there is only one
+
+```lua
+require('flutter-tools').setup_project({
+  name = 'Development',
+  flavor = 'DevFlavor',
+  device = 'pixel6pro',
+  target = 'lib/main_dev.dart',
+  dart_define = { ... },
+  dart_define_from_file = 'config.json'
+})
+```
+
 #### Flutter binary
 
 In order to run flutter commands you _might_ need to pass either a _path_ or a _command_ to the plugin so it can find your
@@ -306,6 +355,10 @@ was added, you can set your `flutter_path` to `"<INSERT-HOME-DIRECTORY>/snap/flu
 which is where this is usually installed by `snap`.
 
 ### Highlights
+
+Highlight groups that are user configurable to change the appearance of certain UI elements.
+
+- `FlutterToolsOutlineIndentGuides` - indent guides for the outline window
 
 #### Widget guides
 

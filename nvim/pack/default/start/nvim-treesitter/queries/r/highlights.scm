@@ -13,7 +13,7 @@
 (comment) @comment @spell
 
 ((program . (comment) @preproc)
-  (#match? @preproc "^#!/"))
+  (#lua-match? @preproc "^#!/"))
 
 (identifier) @variable
 
@@ -127,7 +127,7 @@
 
 "function" @keyword.function
 
-; Functions/Methos
+; Functions/Methods
 
 (call function: (identifier) @function.call)
 

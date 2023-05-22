@@ -519,7 +519,8 @@ internal.oldfiles = function(opts)
   end
 
   for _, file in ipairs(vim.v.oldfiles) do
-    if vim.loop.fs_stat(file) and not vim.tbl_contains(results, file) and file ~= current_file then
+    local file_stat = vim.loop.fs_stat(file)
+    if file_stat and file_stat.type == "file" and not vim.tbl_contains(results, file) and file ~= current_file then
       table.insert(results, file)
     end
   end
@@ -574,7 +575,7 @@ internal.command_history = function(opts)
       sorter = conf.generic_sorter(opts),
 
       attach_mappings = function(_, map)
-        map({ "i", "n" }, "<CR>", actions.set_command_line)
+        actions.select_default:replace(actions.set_command_line)
         map({ "i", "n" }, "<C-e>", actions.edit_command_line)
 
         -- TODO: Find a way to insert the text... it seems hard.
@@ -604,7 +605,7 @@ internal.search_history = function(opts)
       sorter = conf.generic_sorter(opts),
 
       attach_mappings = function(_, map)
-        map({ "i", "n" }, "<CR>", actions.set_search_line)
+        actions.select_default:replace(actions.set_search_line)
         map({ "i", "n" }, "<C-e>", actions.edit_search_line)
 
         -- TODO: Find a way to insert the text... it seems hard.
