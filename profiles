@@ -25,6 +25,7 @@ void
 awesome
 fonts
 gtk
+polybar
 rofi
 vscodium
 xmonad
