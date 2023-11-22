@@ -1,19 +1,21 @@
 local Ui = require("neogit.lib.ui")
 local Component = require("neogit.lib.ui.component")
 local util = require("neogit.lib.util")
+local git = require("neogit.lib.git")
 
 local text = Ui.text
 local col = Ui.col
 local row = Ui.row
 local map = util.map
+local flat_map = util.flat_map
 local filter = util.filter
 local intersperse = util.intersperse
 local range = util.range
 
 local M = {}
 
-local diff_add_matcher = vim.regex("^+")
-local diff_delete_matcher = vim.regex("^-")
+local diff_add_start = "+"
+local diff_delete_start = "-"
 
 M.Diff = Component.new(function(diff)
   local hunk_props = map(diff.hunks, function(hunk)
@@ -30,7 +32,7 @@ M.Diff = Component.new(function(diff)
   end)
 
   return col.tag("Diff") {
-    text(diff.kind .. " " .. diff.file, { sign = "NeogitDiffHeader" }),
+    text(string.format("%s %s", diff.kind, diff.file), { sign = "NeogitDiffHeader" }),
     col.tag("DiffContent") {
       col.tag("DiffInfo")(map(diff.info, text)),
       col.tag("HunkList")(map(hunk_props, M.Hunk)),
@@ -41,10 +43,12 @@ end)
 local HunkLine = Component.new(function(line)
   local sign
 
-  if diff_add_matcher:match_str(line) then
+  if string.sub(line, 1, 1) == diff_add_start then
     sign = "NeogitDiffAdd"
-  elseif diff_delete_matcher:match_str(line) then
+  elseif string.sub(line, 1, 1) == diff_delete_start then
     sign = "NeogitDiffDelete"
+  else
+    sign = "NeogitDiffContext"
   end
 
   return text(line, { sign = sign })
@@ -75,13 +79,159 @@ M.List = Component.new(function(props)
   return container.tag("List")(children)
 end)
 
+local function build_graph(graph)
+  if type(graph) == "table" then
+    return util.map(graph, function(g)
+      return text(g.text, { highlight = string.format("NeogitGraph%s", g.color) })
+    end)
+  else
+    return { text(graph, { highlight = "Include" }) }
+  end
+end
+
+-- - '%G?': show "G" for a good (valid) signature,
+--   "B" for a bad signature,
+--   "U" for a good signature with unknown validity,
+--   "X" for a good signature that has expired,
+--   "Y" for a good signature made by an expired key,
+--   "R" for a good signature made by a revoked key,
+--   "E" if the signature cannot be checked (e.g. missing key)
+--   and "N" for no signature
+local highlight_for_signature = {
+  G = "NeogitSignatureGood",
+  B = "NeogitSignatureBad",
+  U = "NeogitSignatureGoodUnknown",
+  X = "NeogitSignatureGoodExpired",
+  Y = "NeogitSignatureGoodExpiredKey",
+  R = "NeogitSignatureGoodRevokedKey",
+  E = "NeogitSignatureMissing",
+  N = "NeogitSignatureNone",
+}
+
+M.CommitEntry = Component.new(function(commit, args)
+  local ref = {}
+
+  -- Parse out ref names
+  if args.decorate and commit.ref_name ~= "" then
+    local ref_name, _ = commit.ref_name:gsub("HEAD %-> ", "")
+    local is_head = string.match(commit.ref_name, "HEAD %->") ~= nil
+    local branch_highlight = is_head and "NeogitBranchHead" or "NeogitBranch"
+
+    local info = git.log.branch_info(ref_name, git.remote.list())
+    for _, branch in ipairs(info.untracked) do
+      table.insert(ref, text(branch, { highlight = "NeogitBranch" }))
+      table.insert(ref, text(" "))
+    end
+    for branch, remotes in pairs(info.tracked) do
+      if #remotes == 1 then
+        table.insert(ref, text(remotes[1] .. "/", { highlight = "NeogitRemote" }))
+      end
+      if #remotes > 1 then
+        table.insert(ref, text("{" .. table.concat(remotes, ",") .. "}/", { highlight = "NeogitRemote" }))
+      end
+      table.insert(ref, text(branch, { highlight = branch_highlight }))
+      table.insert(ref, text(" "))
+    end
+    for _, tag in pairs(info.tags) do
+      table.insert(ref, text(tag, { highlight = "NeogitTagName" }))
+      table.insert(ref, text(" "))
+    end
+  end
+
+  if commit.rel_date:match(" years?,") then
+    commit.rel_date, _ = commit.rel_date:gsub(" years?,", "y")
+    commit.rel_date = commit.rel_date .. " "
+  elseif commit.rel_date:match("^%d ") then
+    commit.rel_date = " " .. commit.rel_date
+  end
+
+  local graph = args.graph and build_graph(commit.graph) or { text("") }
+
+  local details
+  if args.details then
+    details = col.hidden(true).padding_left(8) {
+      row(util.merge(graph, {
+        text(" "),
+        text("Author:     ", { highlight = "NeogitGraphAuthor" }),
+        text(commit.author_name),
+        text(" <"),
+        text(commit.author_email),
+        text(">"),
+      })),
+      row(util.merge(graph, {
+        text(" "),
+        text("AuthorDate: ", { highlight = "Comment" }),
+        text(commit.author_date),
+      })),
+      row(util.merge(graph, {
+        text(" "),
+        text("Commit:     ", { highlight = "Comment" }),
+        text(commit.committer_name),
+        text(" <"),
+        text(commit.committer_email),
+        text(">"),
+      })),
+      row(util.merge(graph, {
+        text(" "),
+        text("CommitDate: ", { highlight = "Comment" }),
+        text(commit.committer_date),
+      })),
+      row(graph),
+      col(
+        flat_map(commit.description, function(line)
+          local lines = map(util.str_wrap(line, vim.o.columns * 0.6), function(l)
+            return row(util.merge(graph, { text(" "), text(l) }))
+          end)
+
+          if #lines > 2 then
+            return util.merge({ row(graph) }, lines, { row(graph) })
+          elseif #lines > 1 then
+            return util.merge({ row(graph) }, lines)
+          else
+            return lines
+          end
+        end),
+        { highlight = "String" }
+      ),
+    }
+  end
+
+  return col({
+    row(
+      util.merge({
+        text(commit.oid:sub(1, 7), {
+          highlight = commit.signature_code and highlight_for_signature[commit.signature_code] or "Comment",
+        }),
+        text(" "),
+      }, graph, { text(" ") }, ref, { text(commit.description[1]) }),
+      {
+        virtual_text = {
+          { " ", "Constant" },
+          {
+            util.str_clamp(commit.author_name, 30 - (#commit.rel_date > 10 and #commit.rel_date or 10)),
+            "NeogitGraphAuthor",
+          },
+          { util.str_min_width(commit.rel_date, 10), "Special" },
+        },
+      }
+    ),
+    details,
+  }, { oid = commit.oid })
+end)
+
+M.CommitGraph = Component.new(function(commit, _)
+  return col.padding_left(8) { row(build_graph(commit.graph)) }
+end)
+
 M.Grid = Component.new(function(props)
   props = vim.tbl_extend("force", {
+    -- Gap between columns
     gap = 0,
     columns = true, -- whether the items represents a list of columns instead of a list of row
     items = {},
   }, props)
 
+  --- Transpose
   if props.columns then
     local new_items = {}
     local row_count = 0
@@ -110,11 +260,13 @@ M.Grid = Component.new(function(props)
   for i = 1, #props.items do
     local children = {}
 
-    if i ~= 1 then
-      children = map(range(props.gap), function()
-        return text("")
-      end)
-    end
+    -- TODO: seems to be a leftover from when the grid was column major
+    -- if i ~= 1 then
+    --   children = map(range(props.gap), function()
+    --     return text("")
+    --   end)
+    -- end
+
     -- current row
     local r = props.items[i]
 
@@ -129,6 +281,7 @@ M.Grid = Component.new(function(props)
       local c_width = c:get_width()
       children[j] = c
 
+      -- Compute the maximum element width of each column to pad all columns to the same vertical line
       if c_width > (column_widths[j] or 0) then
         column_widths[j] = c_width
       end
@@ -141,11 +294,13 @@ M.Grid = Component.new(function(props)
     -- current row
     local r = rendered[i]
 
+    -- Draw each column of the current row
     for j = 1, #r.children do
       local item = r.children[j]
       local gap_str = ""
-      local column_width = column_widths[j]
+      local column_width = column_widths[j] or 0
 
+      -- Intersperse each column item with a gap
       if j ~= 1 then
         gap_str = string.rep(" ", props.gap)
       end

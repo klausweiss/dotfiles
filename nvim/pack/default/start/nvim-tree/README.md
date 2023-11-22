@@ -26,10 +26,6 @@ Take a look at the [wiki](https://github.com/nvim-tree/nvim-tree.lua/wiki) for S
 
 Community support: [matrix](https://matrix.to/#/#nvim-tree:matrix.org)
 
-## New Mapping Method 2023-02-27
-
-[:help nvim-tree.view.mappings](doc/nvim-tree-lua.txt) have been deprecated in favour of [:help nvim-tree.on_attach](doc/nvim-tree-lua.txt). Please visit [Migrating To on_attach](https://github.com/nvim-tree/nvim-tree.lua/wiki/Migrating-To-on_attach) to transition.
-
 ## Requirements
 
 [neovim >=0.8.0](https://github.com/neovim/neovim/wiki/Installing-Neovim)
@@ -44,12 +40,16 @@ Please install via your preferred package manager. See [Installation](https://gi
 
 `nvim-tree/nvim-web-devicons` optional, for file icons
 
+Disabling [netrw](https://neovim.io/doc/user/pi_netrw.html) is strongly advised, see [:help nvim-tree-netrw](doc/nvim-tree-lua.txt)
+
 ## Quick Start
+
+### Setup
 
 Setup the plugin in your `init.lua`
 
 ```lua
--- disable netrw at the very start of your init.lua (strongly advised)
+-- disable netrw at the very start of your init.lua
 vim.g.loaded_netrw = 1
 vim.g.loaded_netrwPlugin = 1
 
@@ -61,7 +61,9 @@ require("nvim-tree").setup()
 
 -- OR setup with some options
 require("nvim-tree").setup({
-  sort_by = "case_sensitive",
+  sort = {
+    sorter = "case_sensitive",
+  },
   view = {
     width = 30,
   },
@@ -74,13 +76,39 @@ require("nvim-tree").setup({
 })
 ```
 
+### Help
+
 Open the tree:  `:NvimTreeOpen`
 
 Show the mappings:  `g?`
 
-For complete list of available configuration options see [:help nvim-tree-setup](doc/nvim-tree-lua.txt)
+### Custom Mappings
 
-Each option is documented in `:help nvim-tree.OPTION_NAME`. Nested options can be accessed by appending `.`, for example [:help nvim-tree.filters.dotfiles](doc/nvim-tree-lua.txt)
+[:help nvim-tree-mappings-default](doc/nvim-tree-lua.txt) are applied by default however you may customise via |nvim-tree.on_attach| e.g.
+
+```lua
+local function my_on_attach(bufnr)
+  local api = require "nvim-tree.api"
+
+  local function opts(desc)
+    return { desc = "nvim-tree: " .. desc, buffer = bufnr, noremap = true, silent = true, nowait = true }
+  end
+
+  -- default mappings
+  api.config.mappings.default_on_attach(bufnr)
+
+  -- custom mappings
+  vim.keymap.set('n', '<C-t>', api.tree.change_root_to_parent,        opts('Up'))
+  vim.keymap.set('n', '?',     api.tree.toggle_help,                  opts('Help'))
+end
+
+-- pass to setup along with your other options
+require("nvim-tree").setup {
+  ---
+  on_attach = my_on_attach,
+  ---
+}
+```
 
 ## Commands
 
@@ -95,12 +123,6 @@ Basic commands:
 `:NvimTreeFindFile` Move the cursor in the tree for the current buffer, opening folders if needed.
 
 `:NvimTreeCollapse` Collapses the nvim-tree recursively.
-
-## Mappings
-
-`g?` toggles help, showing all the mappings and their actions.
-
-To customise your mappings see [:help nvim-tree.on_attach](doc/nvim-tree-lua.txt) and [:help nvim-tree-mappings](doc/nvim-tree-lua.txt)
 
 ## Roadmap
 
@@ -131,23 +153,15 @@ PRs are always welcome. See [wiki](https://github.com/nvim-tree/nvim-tree.lua/wi
 
 See [bug](https://github.com/nvim-tree/nvim-tree.lua/issues?q=is%3Aissue+is%3Aopen+label%3Abug) and [PR Please](https://github.com/nvim-tree/nvim-tree.lua/issues?q=is%3Aopen+is%3Aissue+label%3A%22PR+please%22) issues if you are looking for some work to get you started.
 
-### Help Wanted
-
-Developers with the following environments:
-
-* Apple macOS
-* Windows
-  * WSL
-  * msys
-  * powershell
-
-Help triaging, diagnosing and fixing issues specific to those environments is needed, as the nvim-tree developers do not have access to or expertise in these environments.
-
-Let us know you're interested by commenting on issues and raising PRs.
-
 ## Screenshots
 
 See [Showcases](https://github.com/nvim-tree/nvim-tree.lua/wiki/Showcases) wiki page for examples of user's configurations with sources.
 
 Please add your own!
 
+## Team
+
+* [@alex-courtis](https://github.com/alex-courtis) Arch Linux
+* [@gegoune](https://github.com/gegoune) macOS
+* [@Akmadan23](https://github.com/Akmadan23) Linux
+* [@dependabot[bot]](https://github.com/apps/dependabot) Ubuntu Linux

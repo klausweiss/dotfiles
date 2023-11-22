@@ -5,9 +5,12 @@ local notify = require "nvim-tree.notify"
 
 local find_file = require("nvim-tree.actions.finders.find-file").fn
 
-local M = {}
+local M = {
+  config = {},
+}
 
 local ALLOWED_MODIFIERS = {
+  [":p"] = true,
   [":p:h"] = true,
   [":t"] = true,
   [":t:r"] = true,
@@ -18,17 +21,20 @@ local function err_fmt(from, to, reason)
 end
 
 function M.rename(node, to)
+  local notify_from = notify.render_path(node.absolute_path)
+  local notify_to = notify.render_path(to)
+
   if utils.file_exists(to) then
-    notify.warn(err_fmt(node.absolute_path, to, "file already exists"))
+    notify.warn(err_fmt(notify_from, notify_to, "file already exists"))
     return
   end
 
   events._dispatch_will_rename_node(node.absolute_path, to)
   local success, err = vim.loop.fs_rename(node.absolute_path, to)
   if not success then
-    return notify.warn(err_fmt(node.absolute_path, to, err))
+    return notify.warn(err_fmt(notify_from, notify_to, err))
   end
-  notify.info(node.absolute_path .. " ➜ " .. to)
+  notify.info(string.format("%s -> %s", notify_from, notify_to))
   utils.rename_loaded_buffers(node.absolute_path, to)
   events._dispatch_node_renamed(node.absolute_path, to)
 end
@@ -47,9 +53,7 @@ function M.fn(default_modifier)
 
     -- support for only specific modifiers have been implemented
     if not ALLOWED_MODIFIERS[modifier] then
-      return notify.warn(
-        "Modifier " .. vim.inspect(modifier) .. " is not in allowed list : " .. table.concat(ALLOWED_MODIFIERS, ",")
-      )
+      return notify.warn("Modifier " .. vim.inspect(modifier) .. " is not in allowed list : " .. table.concat(ALLOWED_MODIFIERS, ","))
     end
 
     node = lib.get_last_group_node(node)
@@ -74,7 +78,11 @@ function M.fn(default_modifier)
       default_path = default_path .. "/"
     end
 
-    local input_opts = { prompt = "Rename to ", default = default_path, completion = "file" }
+    local input_opts = {
+      prompt = "Rename to ",
+      default = default_path,
+      completion = "file",
+    }
 
     vim.ui.input(input_opts, function(new_file_path)
       utils.clear_prompt()
@@ -83,7 +91,7 @@ function M.fn(default_modifier)
       end
 
       M.rename(node, prepend .. new_file_path .. append)
-      if M.enable_reload then
+      if not M.config.filesystem_watchers.enable then
         require("nvim-tree.actions.reloaders.reloaders").reload_explorer()
       end
 
@@ -93,7 +101,7 @@ function M.fn(default_modifier)
 end
 
 function M.setup(opts)
-  M.enable_reload = not opts.filesystem_watchers.enable
+  M.config.filesystem_watchers = opts.filesystem_watchers
 end
 
 return M

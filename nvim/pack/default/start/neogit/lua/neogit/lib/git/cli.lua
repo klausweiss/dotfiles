@@ -1,4 +1,4 @@
-local notif = require("neogit.lib.notification")
+local notification = require("neogit.lib.notification")
 local logger = require("neogit.logger")
 local a = require("plenary.async")
 local process = require("neogit.process")
@@ -18,6 +18,7 @@ local configurations = {
     flags = {
       stat = "--stat",
       oneline = "--oneline",
+      no_patch = "--no-patch",
     },
     options = {
       format = "--format",
@@ -31,6 +32,8 @@ local configurations = {
     },
   },
 
+  init = config {},
+
   status = config {
     flags = {
       short = "-s",
@@ -41,6 +44,7 @@ local configurations = {
       porcelain = "--porcelain",
     },
   },
+
   log = config {
     flags = {
       oneline = "--oneline",
@@ -48,6 +52,7 @@ local configurations = {
       remotes = "--remotes",
       all = "--all",
       graph = "--graph",
+      color = "--color",
     },
     options = {
       pretty = "--pretty",
@@ -62,11 +67,28 @@ local configurations = {
       end,
     },
   },
+
   config = config {
     flags = {
+      _local = "--local",
+      global = "--global",
+      list = "--list",
       _get = "--get",
+      _add = "--add",
+      _unset = "--unset",
+      null = "--null",
     },
     aliases = {
+      set = function(tbl)
+        return function(key, value)
+          return tbl.arg_list { key, value }
+        end
+      end,
+      unset = function(tbl)
+        return function(key)
+          return tbl._unset.args(key)
+        end
+      end,
       get = function(tbl)
         return function(path)
           return tbl._get.args(path)
@@ -74,6 +96,14 @@ local configurations = {
       end,
     },
   },
+
+  describe = config {
+    flags = {
+      long = "--long",
+      tags = "--tags",
+    },
+  },
+
   diff = config {
     flags = {
       cached = "--cached",
@@ -81,15 +111,27 @@ local configurations = {
       patch = "--patch",
       name_only = "--name-only",
       no_ext_diff = "--no-ext-diff",
+      no_index = "--no-index",
     },
   },
+
   stash = config {
     flags = {
       apply = "apply",
       drop = "drop",
+      push = "push",
       index = "--index",
     },
   },
+
+  tag = config {
+    flags = {
+      n = "-n",
+      list = "--list",
+      delete = "--delete",
+    },
+  },
+
   rebase = config {
     flags = {
       interactive = "-i",
@@ -98,15 +140,27 @@ local configurations = {
       skip = "--skip",
     },
   },
+
   merge = config {
     flags = {
       continue = "--continue",
       abort = "--abort",
     },
   },
+
+  ["merge-base"] = config {
+    flags = {
+      is_ancestor = "--is-ancestor",
+    },
+  },
+
   reset = config {
     flags = {
       hard = "--hard",
+      mixed = "--mixed",
+      soft = "--soft",
+      keep = "--keep",
+      merge = "--merge",
     },
     aliases = {
       commit = function(tbl)
@@ -116,14 +170,43 @@ local configurations = {
       end,
     },
   },
+
+  revert = config {
+    flags = {
+      no_commit = "--no-commit",
+      continue = "--continue",
+      skip = "--skip",
+      abort = "--abort",
+    },
+  },
+
   checkout = config {
     short_opts = {
       b = "-b",
     },
+    flags = {
+      _track = "--track",
+      detach = "--detach",
+    },
     aliases = {
+      track = function(tbl)
+        return function(branch)
+          return tbl._track.args(branch)
+        end
+      end,
+      rev = function(tbl)
+        return function(rev)
+          return tbl.args(rev)
+        end
+      end,
       branch = function(tbl)
         return function(branch)
           return tbl.args(branch)
+        end
+      end,
+      commit = function(tbl)
+        return function(commit)
+          return tbl.args(commit)
         end
       end,
       new_branch = function(tbl)
@@ -138,19 +221,24 @@ local configurations = {
       end,
     },
   },
+
   remote = config {
     flags = {
       push = "--push",
+      add = "add",
+      rm = "rm",
+      rename = "rename",
+      prune = "prune",
     },
     aliases = {
       get_url = function(tbl)
         return function(remote)
-          tbl.prefix("get-url")
-          return tbl.args(remote)
+          return tbl.args("get-url", remote)
         end
       end,
     },
   },
+
   apply = config {
     flags = {
       cached = "--cached",
@@ -163,23 +251,36 @@ local configurations = {
       end,
     },
   },
+
   add = config {
     flags = {
       update = "-u",
       all = "-A",
     },
   },
+
   commit = config {
     flags = {
+      all = "--all",
+      no_verify = "--no-verify",
       amend = "--amend",
       only = "--only",
       dry_run = "--dry-run",
       no_edit = "--no-edit",
+      edit = "--edit",
+    },
+    aliases = {
+      with_message = function(tbl)
+        return function(message)
+          return tbl.args("-F", "-").input(message)
+        end
+      end,
     },
     options = {
       commit_message_file = "--file",
     },
   },
+
   push = config {
     flags = {
       delete = "--delete",
@@ -197,6 +298,7 @@ local configurations = {
       end,
     },
   },
+
   pull = config {
     flags = {
       no_commit = "--no-commit",
@@ -205,12 +307,21 @@ local configurations = {
       flags = {},
     },
   },
+
+  cherry = config {
+    flags = {
+      verbose = "-v",
+    },
+  },
+
   branch = config {
     flags = {
       all = "-a",
       delete = "-d",
       remotes = "-r",
+      force = "--force",
       current = "--show-current",
+      edit_description = "--edit-description",
       very_verbose = "-vv",
       move = "-m",
     },
@@ -227,7 +338,21 @@ local configurations = {
       end,
     },
   },
-  fetch = config {},
+
+  fetch = config {
+    options = {
+      recurse_submodules = "--recurse-submodules",
+      verbose = "--verbose",
+    },
+    aliases = {
+      jobs = function(tbl)
+        return function(n)
+          return tbl.args("--jobs=" .. tostring(n))
+        end
+      end,
+    },
+  },
+
   ["read-tree"] = config {
     flags = {
       merge = "-m",
@@ -243,7 +368,9 @@ local configurations = {
       end,
     },
   },
+
   ["write-tree"] = config {},
+
   ["commit-tree"] = config {
     flags = {
       no_gpg_sign = "--no-gpg-sign",
@@ -268,6 +395,7 @@ local configurations = {
       end,
     },
   },
+
   ["update-index"] = config {
     flags = {
       add = "--add",
@@ -275,30 +403,101 @@ local configurations = {
       refresh = "--refresh",
     },
   },
+
   ["show-ref"] = config {
     flags = {
       verify = "--verify",
     },
   },
+
+  ["show-branch"] = config {
+    flags = {
+      all = "--all",
+    },
+  },
+
+  reflog = config {
+    flags = {
+      show = "show",
+    },
+    options = {
+      format = "--format",
+    },
+    aliases = {
+      date = function(tbl)
+        return function(mode)
+          return tbl.args("--date=" .. mode)
+        end
+      end,
+    },
+  },
+
   ["update-ref"] = config {
     flags = {
       create_reflog = "--create-reflog",
     },
-    short_opts = {
-      message = "-m",
+    aliases = {
+      message = function(tbl)
+        return function(text)
+          local escaped_text, _ = text:gsub([["]], [[\"]])
+          return tbl.args("-m", string.format([["%s"]], escaped_text))
+        end
+      end,
     },
   },
+
   ["ls-files"] = config {
     flags = {
       others = "--others",
       deleted = "--deleted",
       modified = "--modified",
       cached = "--cached",
+      deduplicate = "--deduplicate",
+      exclude_standard = "--exclude-standard",
       full_name = "--full-name",
     },
   },
+
+  ["ls-tree"] = config {
+    flags = {
+      full_tree = "--full-tree",
+      name_only = "--name-only",
+      recursive = "-r",
+    },
+  },
+
+  ["ls-remote"] = config {
+    flags = {
+      tags = "--tags",
+    },
+    aliases = {
+      remote = function(tbl)
+        return function(remote)
+          return tbl.args(remote)
+        end
+      end,
+    },
+  },
+
+  ["for-each-ref"] = config {
+    options = {
+      format = "--format",
+    },
+  },
+
+  ["rev-list"] = config {
+    flags = {
+      parents = "--parents",
+    },
+    options = {
+      max_count = "--max-count",
+    },
+  },
+
   ["rev-parse"] = config {
     flags = {
+      verify = "--verify",
+      short = "--short",
       revs_only = "--revs-only",
       no_revs = "--no-revs",
       flags = "--flags",
@@ -310,30 +509,41 @@ local configurations = {
       abbrev_ref = "--abbrev-ref",
     },
   },
+
+  ["cherry-pick"] = config {
+    flags = {
+      no_commit = "--no-commit",
+      continue = "--continue",
+      skip = "--skip",
+      abort = "--abort",
+    },
+  },
+  ["verify-commit"] = config {},
 }
 
-local function git_root()
-  return process.new({ cmd = { "git", "rev-parse", "--show-toplevel" } }):spawn_blocking().stdout[1]
-end
+-- NOTE: Use require("neogit.lib.git.repository").git_root instead of calling this function.
+-- repository.git_root is used by all other library functions, so it's most likely the one you want to use.
+-- git_root_of_cwd() returns the git repo of the cwd, which can change anytime
+-- after git_root_of_cwd() has been called.
+local function git_root_of_cwd()
+  local process =
+    process.new({ cmd = { "git", "rev-parse", "--show-toplevel" }, ignore_code = true }):spawn_blocking()
 
-local git_root_sync = function()
-  return util.trim(vim.fn.system("git rev-parse --show-toplevel"))
-end
-
-local git_dir_path_sync = function()
-  return util.trim(vim.fn.system("git rev-parse --git-dir"))
-end
-
-local git_is_repository_sync = function(cwd)
-  local result
-
-  if not cwd then
-    result = vim.fn.system("git rev-parse --is-inside-work-tree")
+  if process ~= nil and process.code == 0 then
+    return process.stdout[1]
   else
-    result = vim.fn.system(string.format("git -C %s rev-parse --is-inside-work-tree", cwd))
+    return ""
+  end
+end
+
+local is_inside_worktree = function(cwd)
+  if not cwd then
+    vim.fn.system("git rev-parse --is-inside-work-tree")
+  else
+    vim.fn.system(string.format("git -C %q rev-parse --is-inside-work-tree", cwd))
   end
 
-  return vim.trim(result) == "true"
+  return vim.v.shell_error == 0
 end
 
 local history = {}
@@ -353,23 +563,28 @@ local function handle_new_cmd(job, popup, hidden_text)
   })
 
   do
-    local log_fn = logger.debug
+    local log_fn = logger.trace
     if job.code > 0 then
       log_fn = logger.error
     end
-    log_fn(string.format("Execution of '%s'", job.cmd))
     if job.code > 0 then
-      log_fn(string.format("  failed with code %d", job.code))
+      log_fn(
+        string.format("[CLI] Execution of '%s' failed with code %d after %d ms", job.cmd, job.code, job.time)
+      )
+
+      for _, line in ipairs(job.stderr) do
+        if line ~= "" then
+          log_fn(string.format("[CLI] [STDERR] %s", line))
+        end
+      end
+    else
+      log_fn(string.format("[CLI] Execution of '%s' succeeded in %d ms", job.cmd, job.time))
     end
-    log_fn(string.format("  took %d ms", job.time))
   end
 
   if popup and job.code ~= 0 then
     vim.schedule(function()
-      notif.create(
-        "Git Error (" .. job.code .. "), press $ to see the git command history",
-        vim.log.levels.ERROR
-      )
+      notification.error("Git Error (" .. job.code .. "), press $ to see the git command history")
     end)
   end
 end
@@ -388,6 +603,7 @@ local mt_builder = {
         return tbl
       end
     end
+
     if action == "arg_list" then
       return function(args)
         for _, v in ipairs(args) do
@@ -409,13 +625,6 @@ local mt_builder = {
     if action == "input" or action == "stdin" then
       return function(value)
         tbl[k_state].input = value
-        return tbl
-      end
-    end
-
-    if action == "cwd" then
-      return function(cwd)
-        tbl[k_state].cwd = cwd
         return tbl
       end
     end
@@ -570,16 +779,16 @@ local function new_builder(subcommand)
     input = nil,
     show_popup = true,
     in_pty = false,
-    cwd = nil,
     env = {},
   }
 
-  local function to_process(verbose, external_errors)
-    -- Disable the pager so that the commands don't stop and wait for pagination
-    local cmd = { "git", "--no-pager", "-c", "color.ui=always", "--no-optional-locks", subcommand }
+  local function to_process(verbose, suppress_error, ignore_code)
+    local cmd = {}
+
     for _, o in ipairs(state.options) do
       table.insert(cmd, o)
     end
+
     for _, arg in ipairs(state.arguments) do
       if arg ~= "" then
         table.insert(cmd, arg)
@@ -588,25 +797,30 @@ local function new_builder(subcommand)
 
     if #state.files > 0 then
       table.insert(cmd, "--")
-    end
 
-    for _, f in ipairs(state.files) do
-      table.insert(cmd, f)
+      for _, f in ipairs(state.files) do
+        table.insert(cmd, f)
+      end
     end
 
     if state.prefix then
       table.insert(cmd, 1, state.prefix)
     end
 
-    logger.debug(string.format("[CLI]: Executing '%s %s'", subcommand, table.concat(cmd, " ")))
+    -- Disable the pager so that the commands don't stop and wait for pagination
+    cmd = util.merge({ "git", "--no-pager", "-c", "color.ui=always", "--no-optional-locks", subcommand }, cmd)
 
+    logger.trace(string.format("[CLI]: Executing '%s': '%s'", subcommand, table.concat(cmd, " ")))
+
+    local repo = require("neogit.lib.git.repository")
     return process.new {
       cmd = cmd,
-      cwd = state.cwd,
+      cwd = repo.git_root,
       env = state.env,
       pty = state.in_pty,
       verbose = verbose,
-      external_errors = external_errors,
+      ignore_code = ignore_code,
+      on_error = suppress_error,
     }
   end
 
@@ -645,6 +859,22 @@ local function new_builder(subcommand)
 
       return result
     end,
+    call_ignoring_exit_code = function(verbose)
+      local p = to_process(verbose, false, true)
+      local result = p:spawn_async()
+
+      assert(result, "Command did not complete")
+
+      handle_new_cmd({
+        cmd = table.concat(p.cmd, " "),
+        stdout = result.stdout,
+        stderr = result.stderr,
+        code = 0,
+        time = result.time,
+      }, state.show_popup, state.hide_text)
+
+      return result
+    end,
     call = function(verbose)
       local p = to_process(verbose, not state.show_popup)
       local result = p:spawn_async(function()
@@ -672,7 +902,7 @@ local function new_builder(subcommand)
     end,
     call_sync = function(verbose, external_errors)
       local p = to_process(verbose, external_errors)
-      logger.debug(string.format("[CLI]: Executing '%s %s'", subcommand, table.concat(p.cmd, " ")))
+
       if not p:spawn() then
         error("Failed to run command")
         return nil
@@ -691,6 +921,27 @@ local function new_builder(subcommand)
 
       return result
     end,
+    call_sync_ignoring_exit_code = function(verbose, external_errors)
+      local p = to_process(verbose, external_errors, true)
+
+      if not p:spawn() then
+        error("Failed to run command")
+        return nil
+      end
+
+      local result = p:wait()
+      assert(result, "Command did not complete")
+
+      handle_new_cmd({
+        cmd = table.concat(p.cmd, " "),
+        stdout = result.stdout,
+        stderr = result.stderr,
+        code = 0,
+        time = result.time,
+      }, state.show_popup, state.hide_text)
+
+      return result
+    end,
   }, mt_builder)
 end
 
@@ -699,7 +950,6 @@ local function new_parallel_builder(calls)
     calls = calls,
     show_popup = true,
     in_pty = true,
-    cwd = nil,
   }
 
   local function call()
@@ -707,15 +957,13 @@ local function new_parallel_builder(calls)
       return
     end
 
-    if not state.cwd then
-      state.cwd = git_root()
-    end
-    if not state.cwd or state.cwd == "" then
+    local repo = require("neogit.lib.git.repository")
+    if not repo.git_root then
       return
     end
 
     for _, c in ipairs(state.calls) do
-      c.cwd(state.cwd).show_popup(state.show_popup)
+      c.show_popup(state.show_popup)
     end
 
     local processes = {}
@@ -730,13 +978,6 @@ local function new_parallel_builder(calls)
     call = call,
   }, {
     __index = function(tbl, action)
-      if action == "cwd" then
-        return function(cwd)
-          state.cwd = cwd
-          return tbl
-        end
-      end
-
       if action == "show_popup" then
         return function(show_popup)
           state.show_popup = show_popup
@@ -761,17 +1002,15 @@ local meta = {
       return new_builder(key)
     end
 
-    error("unknown field")
+    error("unknown field: " .. key)
   end,
 }
 
 local cli = setmetatable({
   history = history,
   insert = handle_new_cmd,
-  git_root = git_root,
-  git_root_sync = git_root_sync,
-  git_dir_path_sync = git_dir_path_sync,
-  git_is_repository_sync = git_is_repository_sync,
+  git_root_of_cwd = git_root_of_cwd,
+  is_inside_worktree = is_inside_worktree,
   in_parallel = function(...)
     local calls = { ... }
     return new_parallel_builder(calls)

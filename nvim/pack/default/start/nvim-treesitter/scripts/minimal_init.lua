@@ -5,9 +5,15 @@ vim.cmd.runtime { "plugin/nvim-treesitter.lua", bang = true }
 vim.filetype.add {
   extension = {
     conf = "hocon",
+    cmm = "t32",
+    hurl = "hurl",
     ncl = "nickel",
+    textproto = "textproto",
+    tig = "tiger",
     usd = "usd",
     usda = "usd",
+    wgsl = "wgsl",
+    w = "wing",
   },
 }
 

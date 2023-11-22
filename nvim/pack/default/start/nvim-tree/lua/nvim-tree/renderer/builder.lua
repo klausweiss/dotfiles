@@ -1,10 +1,15 @@
 local utils = require "nvim-tree.utils"
 local core = require "nvim-tree.core"
+local notify = require "nvim-tree.notify"
 
 local git = require "nvim-tree.renderer.components.git"
 local pad = require "nvim-tree.renderer.components.padding"
 local icons = require "nvim-tree.renderer.components.icons"
 local modified = require "nvim-tree.renderer.components.modified"
+local diagnostics = require "nvim-tree.renderer.components.diagnostics"
+local bookmarks = require "nvim-tree.renderer.components.bookmarks"
+
+local HL_POSITION = require("nvim-tree.enum").HL_POSITION
 
 local Builder = {}
 Builder.__index = Builder
@@ -72,6 +77,22 @@ function Builder:configure_git_icons_placement(where)
   return self
 end
 
+function Builder:configure_diagnostics_icon_placement(where)
+  if where ~= "after" and where ~= "before" and where ~= "signcolumn" then
+    where = "before" -- default before
+  end
+  self.diagnostics_placement = where
+  return self
+end
+
+function Builder:configure_bookmark_icon_placement(where)
+  if where ~= "after" and where ~= "before" and where ~= "signcolumn" then
+    where = "before" -- default before
+  end
+  self.bookmarks_placement = where
+  return self
+end
+
 function Builder:configure_modified_placement(where)
   if where ~= "after" and where ~= "before" and where ~= "signcolumn" then
     where = "after" -- default after
@@ -85,6 +106,13 @@ function Builder:configure_symlink_destination(show)
   return self
 end
 
+function Builder:configure_group_name_modifier(group_name_modifier)
+  if type(group_name_modifier) == "function" then
+    self.group_name_modifier = group_name_modifier
+  end
+  return self
+end
+
 function Builder:_insert_highlight(group, start, end_)
   table.insert(self.highlights, { group, self.index, start, end_ or -1 })
 end
@@ -93,19 +121,29 @@ function Builder:_insert_line(line)
   table.insert(self.lines, line)
 end
 
-local function get_folder_name(node)
+function Builder:_get_folder_name(node)
   local name = node.name
   local next = node.group_next
   while next do
     name = name .. "/" .. next.name
     next = next.group_next
   end
-  return name
+
+  if node.group_next and self.group_name_modifier then
+    local new_name = self.group_name_modifier(name)
+    if type(new_name) == "string" then
+      name = new_name
+    else
+      notify.warn(string.format("Invalid return type for field renderer.group_empty. Expected string, got %s", type(new_name)))
+    end
+  end
+
+  return name .. self.trailing_slash
 end
 
 ---@class HighlightedString
 ---@field str string
----@field hl string|nil
+---@field hl string[]
 
 ---@param highlighted_strings HighlightedString[]
 ---@return string
@@ -117,7 +155,7 @@ function Builder:_unwrap_highlighted_strings(highlighted_strings)
   local string = ""
   for _, v in ipairs(highlighted_strings) do
     if #v.str > 0 then
-      if v.hl then
+      if v.hl and type(v.hl) == "table" then
         self:_insert_highlight(v.hl, #string, #string + #v.str)
       end
       string = string .. v.str
@@ -127,14 +165,14 @@ function Builder:_unwrap_highlighted_strings(highlighted_strings)
 end
 
 ---@param node table
----@return HighlightedString icon, HighlightedString name
+---@return HighlightedString icon
+---@return HighlightedString name
 function Builder:_build_folder(node)
   local has_children = #node.nodes ~= 0 or node.has_children
-  local icon = icons.get_folder_icon(node.open, node.link_to ~= nil, has_children)
-  local foldername = get_folder_name(node) .. self.trailing_slash
+  local icon, icon_hl = icons.get_folder_icon(node, has_children)
+  local foldername = self:_get_folder_name(node)
 
-  local icon_hl
-  if #icon > 0 then
+  if #icon > 0 and icon_hl == nil then
     if node.open then
       icon_hl = "NvimTreeOpenedFolderIcon"
     else
@@ -148,9 +186,7 @@ function Builder:_build_folder(node)
     local link_to = utils.path_relative(node.link_to, core.get_cwd())
     foldername = foldername .. arrow .. link_to
     foldername_hl = "NvimTreeSymlinkFolderName"
-  elseif
-    vim.tbl_contains(self.special_files, node.absolute_path) or vim.tbl_contains(self.special_files, node.name)
-  then
+  elseif vim.tbl_contains(self.special_files, node.absolute_path) or vim.tbl_contains(self.special_files, node.name) then
     foldername_hl = "NvimTreeSpecialFolderName"
   elseif node.open then
     foldername_hl = "NvimTreeOpenedFolderName"
@@ -158,11 +194,12 @@ function Builder:_build_folder(node)
     foldername_hl = "NvimTreeEmptyFolderName"
   end
 
-  return { str = icon, hl = icon_hl }, { str = foldername, hl = foldername_hl }
+  return { str = icon, hl = { icon_hl } }, { str = foldername, hl = { foldername_hl } }
 end
 
 ---@param node table
----@return HighlightedString icon, HighlightedString name
+---@return HighlightedString icon
+---@return HighlightedString name
 function Builder:_build_symlink(node)
   local icon = icons.i.symlink
   local arrow = icons.i.symlink_arrow
@@ -172,21 +209,19 @@ function Builder:_build_symlink(node)
     symlink_formatted = symlink_formatted .. arrow .. link_to
   end
 
-  local link_highlight = "NvimTreeSymlink"
-  local icon_hl = "NvimTreeSymlinkIcon"
-
-  return { str = icon, hl = icon_hl }, { str = symlink_formatted, hl = link_highlight }
+  return { str = icon, hl = { "NvimTreeSymlinkIcon" } }, { str = symlink_formatted, hl = { "NvimTreeSymlink" } }
 end
 
 ---@param node table
 ---@return HighlightedString icon
 function Builder:_build_file_icon(node)
   local icon, hl_group = icons.get_file_icon(node.name, node.extension)
-  return { str = icon, hl = hl_group }
+  return { str = icon, hl = { hl_group } }
 end
 
 ---@param node table
----@return HighlightedString icon, HighlightedString name
+---@return HighlightedString icon
+---@return HighlightedString name
 function Builder:_build_file(node)
   local icon = self:_build_file_icon(node)
 
@@ -199,7 +234,7 @@ function Builder:_build_file(node)
     hl = "NvimTreeImageFile"
   end
 
-  return icon, { str = node.name, hl = hl }
+  return icon, { str = node.name, hl = { hl } }
 end
 
 ---@param node table
@@ -207,11 +242,29 @@ end
 function Builder:_get_git_icons(node)
   local git_icons = git.get_icons(node)
   if git_icons and #git_icons > 0 and self.git_placement == "signcolumn" then
-    local sign = git_icons[1]
-    table.insert(self.signs, { sign = sign.hl, lnum = self.index + 1, priority = 1 })
+    table.insert(self.signs, {
+      sign = git_icons[1].hl[1],
+      lnum = self.index + 1,
+      priority = 1,
+    })
     git_icons = nil
   end
   return git_icons
+end
+
+---@param node table
+---@return HighlightedString[]|nil icon
+function Builder:_get_diagnostics_icon(node)
+  local diagnostics_icon = diagnostics.get_icon(node)
+  if diagnostics_icon and self.diagnostics_placement == "signcolumn" then
+    table.insert(self.signs, {
+      sign = diagnostics_icon.hl[1],
+      lnum = self.index + 1,
+      priority = 2,
+    })
+    diagnostics_icon = nil
+  end
+  return diagnostics_icon
 end
 
 ---@param node table
@@ -219,18 +272,35 @@ end
 function Builder:_get_modified_icon(node)
   local modified_icon = modified.get_icon(node)
   if modified_icon and self.modified_placement == "signcolumn" then
-    local sign = modified_icon
-    table.insert(self.signs, { sign = sign.hl, lnum = self.index + 1, priority = 3 })
+    table.insert(self.signs, {
+      sign = modified_icon.hl[1],
+      lnum = self.index + 1,
+      priority = 3,
+    })
     modified_icon = nil
   end
   return modified_icon
 end
 
 ---@param node table
----@return string icon_highlight, string name_highlight
+---@return HighlightedString[]|nil icon
+function Builder:_get_bookmark_icon(node)
+  local bookmark_icon = bookmarks.get_icon(node)
+  if bookmark_icon and self.bookmarks_placement == "signcolumn" then
+    table.insert(self.signs, {
+      sign = bookmark_icon.hl[1],
+      lnum = self.index + 1,
+      priority = 4,
+    })
+    bookmark_icon = nil
+  end
+  return bookmark_icon
+end
+
+---@param node table
+---@return string|nil icon_hl
+---@return string|nil name_hl
 function Builder:_get_highlight_override(node, unloaded_bufnr)
-  -- highlights precedence:
-  -- original < git < opened_file < modified
   local name_hl, icon_hl
 
   -- git
@@ -240,16 +310,12 @@ function Builder:_get_highlight_override(node, unloaded_bufnr)
   end
 
   -- opened file
-  if
-    self.highlight_opened_files
-    and vim.fn.bufloaded(node.absolute_path) > 0
-    and vim.fn.bufnr(node.absolute_path) ~= unloaded_bufnr
-  then
+  if self.highlight_opened_files and vim.fn.bufloaded(node.absolute_path) > 0 and vim.fn.bufnr(node.absolute_path) ~= unloaded_bufnr then
     if self.highlight_opened_files == "all" or self.highlight_opened_files == "name" then
       name_hl = "NvimTreeOpenedFile"
     end
     if self.highlight_opened_files == "all" or self.highlight_opened_files == "icon" then
-      icon_hl = "NvimTreeOpenedFile"
+      icon_hl = "NvimTreeOpenedFileIcon"
     end
   end
 
@@ -267,13 +333,33 @@ function Builder:_get_highlight_override(node, unloaded_bufnr)
   return icon_hl, name_hl
 end
 
----@param padding HighlightedString
+---Append optional highlighting to icon or name.
+---@param node table
+---@param get_hl fun(node: table): HL_POSITION, string
+---@param icon_hl string[] icons to append to
+---@param name_hl string[] names to append to
+function Builder:_append_highlight(node, get_hl, icon_hl, name_hl)
+  local pos, hl = get_hl(node)
+  if pos ~= HL_POSITION.none and hl then
+    if pos == HL_POSITION.all or pos == HL_POSITION.icon then
+      table.insert(icon_hl, hl)
+    end
+    if pos == HL_POSITION.all or pos == HL_POSITION.name then
+      table.insert(name_hl, hl)
+    end
+  end
+end
+
+---@param indent_markers HighlightedString[]
+---@param arrows HighlightedString[]|nil
 ---@param icon HighlightedString
 ---@param name HighlightedString
 ---@param git_icons HighlightedString[]|nil
+---@param diagnostics_icon HighlightedString|nil
 ---@param modified_icon HighlightedString|nil
+---@param bookmark_icon HighlightedString|nil
 ---@return HighlightedString[]
-function Builder:_format_line(padding, icon, name, git_icons, modified_icon)
+function Builder:_format_line(indent_markers, arrows, icon, name, git_icons, diagnostics_icon, modified_icon, bookmark_icon)
   local added_len = 0
   local function add_to_end(t1, t2)
     for _, v in ipairs(t2) do
@@ -291,7 +377,7 @@ function Builder:_format_line(padding, icon, name, git_icons, modified_icon)
     end
   end
 
-  local line = { padding }
+  local line = { indent_markers, arrows }
   add_to_end(line, { icon })
   if git_icons and self.git_placement == "before" then
     add_to_end(line, git_icons)
@@ -299,22 +385,43 @@ function Builder:_format_line(padding, icon, name, git_icons, modified_icon)
   if modified_icon and self.modified_placement == "before" then
     add_to_end(line, { modified_icon })
   end
+  if diagnostics_icon and self.diagnostics_placement == "before" then
+    add_to_end(line, { diagnostics_icon })
+  end
+  if bookmark_icon and self.bookmarks_placement == "before" then
+    add_to_end(line, { bookmark_icon })
+  end
+
   add_to_end(line, { name })
+
   if git_icons and self.git_placement == "after" then
     add_to_end(line, git_icons)
   end
   if modified_icon and self.modified_placement == "after" then
     add_to_end(line, { modified_icon })
   end
+  if diagnostics_icon and self.diagnostics_placement == "after" then
+    add_to_end(line, { diagnostics_icon })
+  end
+  if bookmark_icon and self.bookmarks_placement == "after" then
+    add_to_end(line, { bookmark_icon })
+  end
 
   return line
 end
 
 function Builder:_build_line(node, idx, num_children, unloaded_bufnr)
+  local copy_paste = require "nvim-tree.actions.fs.copy-paste"
+
   -- various components
-  local padding = pad.get_padding(self.depth, idx, num_children, node, self.markers)
+  local indent_markers = pad.get_indent_markers(self.depth, idx, num_children, node, self.markers)
+  local arrows = pad.get_arrows(node)
+
+  -- adds icons to signcolumn
+  local bookmark_icon = self:_get_bookmark_icon(node)
   local git_icons = self:_get_git_icons(node)
   local modified_icon = self:_get_modified_icon(node)
+  local diagnostics_icon = self:_get_diagnostics_icon(node)
 
   -- main components
   local is_folder = node.nodes ~= nil
@@ -329,15 +436,20 @@ function Builder:_build_line(node, idx, num_children, unloaded_bufnr)
   end
 
   -- highlight override
-  local icon_hl, name_hl = self:_get_highlight_override(node, unloaded_bufnr)
-  if icon_hl then
-    icon.hl = icon_hl
+  local icon_hl_override, name_hl_override = self:_get_highlight_override(node, unloaded_bufnr)
+  if icon_hl_override then
+    icon.hl = { icon_hl_override }
   end
-  if name_hl then
-    name.hl = name_hl
+  if name_hl_override then
+    name.hl = { name_hl_override }
   end
 
-  local line = self:_format_line(padding, icon, name, git_icons, modified_icon)
+  -- extra highighting
+  self:_append_highlight(node, bookmarks.get_highlight, icon.hl, name.hl)
+  self:_append_highlight(node, diagnostics.get_highlight, icon.hl, name.hl)
+  self:_append_highlight(node, copy_paste.get_highlight, icon.hl, name.hl)
+
+  local line = self:_format_line(indent_markers, arrows, icon, name, git_icons, diagnostics_icon, modified_icon, bookmark_icon)
   self:_insert_line(self:_unwrap_highlighted_strings(line))
 
   self.index = self.index + 1
@@ -394,7 +506,7 @@ function Builder:build_header(show_header)
   if show_header then
     local root_name = format_root_name(self.root_cwd, self.root_folder_label)
     self:_insert_line(root_name)
-    self:_insert_highlight("NvimTreeRootFolder", 0, string.len(root_name))
+    self:_insert_highlight({ "NvimTreeRootFolder" }, 0, string.len(root_name))
     self.index = 1
   end
 
@@ -402,8 +514,8 @@ function Builder:build_header(show_header)
     local filter_line = self.filter_prefix .. "/" .. self.filter .. "/"
     self:_insert_line(filter_line)
     local prefix_length = string.len(self.filter_prefix)
-    self:_insert_highlight("NvimTreeLiveFilterPrefix", 0, prefix_length)
-    self:_insert_highlight("NvimTreeLiveFilterValue", prefix_length, string.len(filter_line))
+    self:_insert_highlight({ "NvimTreeLiveFilterPrefix" }, 0, prefix_length)
+    self:_insert_highlight({ "NvimTreeLiveFilterValue" }, prefix_length, string.len(filter_line))
     self.index = self.index + 1
   end
 

@@ -15,6 +15,35 @@ local function is_special(ch)
   return contains(special_chars, ch)
 end
 
+local function fs_write(path, data)
+  local uv = vim.uv or vim.loop
+
+  -- Open the file in append mode
+  uv.fs_open(path, 'a', tonumber('644', 8), function(open_err, fd)
+    if open_err then
+      -- Handle error in opening file
+      print('Error opening file: ' .. open_err)
+      return
+    end
+
+    -- Write data to the file
+    uv.fs_write(fd, data, -1, function(write_err)
+      if write_err then
+        -- Handle error in writing to file
+        print('Error writing to file: ' .. write_err)
+      end
+
+      -- Close the file descriptor
+      uv.fs_close(fd, function(close_err)
+        if close_err then
+          -- Handle error in closing file
+          print('Error closing file: ' .. close_err)
+        end
+      end)
+    end)
+  end)
+end
+
 helper.log = function(...)
   if _LSP_SIG_CFG.debug ~= true and _LSP_SIG_CFG.verbose ~= true then
     return
@@ -24,14 +53,11 @@ helper.log = function(...)
   local log_path = _LSP_SIG_CFG.log_path or nil
   local str = '󰘫 '
 
-  -- local info = debug.getinfo(2, "Sl")
-
   if _LSP_SIG_CFG.verbose == true then
     local info = debug.getinfo(2, 'Sl')
     local lineinfo = info.short_src .. ':' .. info.currentline
     str = str .. lineinfo
   end
-
   for i, v in ipairs(arg) do
     if type(v) == 'table' then
       str = str .. ' |' .. tostring(i) .. ': ' .. vim.inspect(v) .. '\n'
@@ -41,13 +67,7 @@ helper.log = function(...)
   end
   if #str > 4 then
     if log_path ~= nil and #log_path > 3 then
-      local f = io.open(log_path, 'a+')
-      if f == nil then
-        return
-      end
-      io.output(f)
-      io.write(str .. '\n')
-      io.close(f)
+      fs_write(log_path, str .. '\n')
     else
       print(str .. '\n')
     end
@@ -232,13 +252,10 @@ helper.check_trigger_char = function(line_to_cursor, trigger_characters)
   local excludes = [[^]]
 
   for _, ch in pairs(trigger_characters) do
-    log(ch, is_special(ch))
     if is_special(ch) then
-      log(ch)
       includes = includes .. '%' .. ch
       excludes = excludes .. '%' .. ch
     else
-      log('not special', ch)
       includes = includes .. ch
       excludes = excludes .. ch
     end
@@ -338,7 +355,7 @@ helper.cleanup = function(close_float_win)
 end
 
 helper.cleanup_async = function(close_float_win, delay, force)
-  log(debug.traceback())
+  -- log(debug.traceback())
   vim.validate({ delay = { delay, 'number' } })
   vim.defer_fn(function()
     local mode = api.nvim_get_mode().mode
@@ -390,7 +407,7 @@ helper.cal_pos = function(contents, opts)
     return {}, 2
   end
   local util = vim.lsp.util
-  contents = util._trim(contents, opts)
+  contents = vim.split(table.concat(contents, '\n'), '\n', { trimempty = true })
   -- there are 2 cases:
   -- 1. contents[1] = "```{language_id}", and contents[#contents] = "```", the code fences will be removed
   --    and return language_id
@@ -399,14 +416,13 @@ helper.cal_pos = function(contents, opts)
   log(vim.inspect(contents))
 
   local width, height = util._make_floating_popup_size(contents, opts)
-  local float_option = util.make_floating_popup_options(width, height, opts)
-
   -- if the filetype returned is "markdown", and contents contains code fences, the height should minus 2,
   -- because the code fences won't be display
   local code_block_flag = contents[1]:match('^```')
   if filetype == 'markdown' and code_block_flag ~= nil then
     height = height - 2
   end
+  local float_option = util.make_floating_popup_options(width, height, opts)
 
   log('popup size:', width, height, float_option)
   local off_y = 0
@@ -522,7 +538,7 @@ function helper.truncate_doc(lines, num_sigs)
     end
   end
 
-  lines = vim.lsp.util.trim_empty_lines(lines)
+  lines = helper.trim_empty_lines(lines)
 
   -- remove trailing space
   for i, line in ipairs(lines) do
@@ -546,7 +562,7 @@ function helper.update_config(config)
   if config.max_height <= 3 then
     config.separator = false
   end
-  config.max_width = math.max(_LSP_SIG_CFG.max_width, 60)
+  config.max_width = math.max(_LSP_SIG_CFG.max_width, 40)
 
   config.focus_id = 'lsp_signature' .. id
   config.stylize_markdown = true
@@ -649,8 +665,20 @@ helper.highlight_parameter = function(s, l)
     end
     local line = 0
 
-    if _LSP_SIG_CFG.noice then
-      line = 1
+    if vim.fn.has('nvim-0.10') == 1 then
+      local lines = vim.api.nvim_buf_get_lines(_LSP_SIG_CFG.bufnr, 0, 3, false)
+      if lines[1]:find([[```]]) then -- it is strange that the first line is not signatures, it is ```language_id
+        -- open_floating_preview changed display ```language_id
+        log(
+          'Check: first line is ```language_id, it may not be behavior of release version of nvim'
+        )
+        log('first two lines: ', lines)
+        line = 1
+      end
+    end
+    if line == 1 then
+      -- scroll to top
+      vim.api.nvim_win_set_cursor(_LSP_SIG_CFG.winnr, { 2, 0 })
     end
     if _LSP_SIG_CFG.bufnr and api.nvim_buf_is_valid(_LSP_SIG_CFG.bufnr) then
       log('extmark', _LSP_SIG_CFG.bufnr, s, l, #_LSP_SIG_CFG.padding)
@@ -697,7 +725,10 @@ end
 helper.completion_visible = function()
   local hascmp, cmp = pcall(require, 'cmp')
   if hascmp then
-    return cmp.visible()
+    -- reduce timeout from cmp's hardcoded 1000ms:
+    -- https://github.com/ray-x/lsp_signature.nvim/issues/288
+    cmp.core.filter:sync(42)
+    return cmp.core.view:visible() or fn.pumvisible() == 1
   end
 
   return fn.pumvisible() ~= 0
@@ -723,6 +754,46 @@ helper.change_focus = function()
   end
 
   -- vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes(_LSP_SIG_CFG.move_cursor_key, true, true, true), "i", true)
+end
+
+-- from vim.lsp.util deprecated function
+helper.trim_empty_lines = function(lines)
+  local new_list = {}
+  for i, str in ipairs(lines) do
+    if str ~= '' and str then
+      table.insert(new_list, str)
+    end
+  end
+  return new_list
+end
+
+helper.get_mardown_syntax = function(lines)
+  local language_id = lines[1]:match('^```(.*)')
+  if language_id then
+    return language_id
+  end
+  return 'markdown'
+end
+
+function helper.try_trim_markdown_code_blocks(lines)
+  local language_id = lines[1]:match('^```(.*)')
+  if language_id then
+    local has_inner_code_fence = false
+    for i = 2, (#lines - 1) do
+      local line = lines[i]
+      if line:sub(1, 3) == '```' then
+        has_inner_code_fence = true
+        break
+      end
+    end
+    -- No inner code fences + starting with code fence = hooray.
+    if not has_inner_code_fence then
+      table.remove(lines, 1)
+      table.remove(lines)
+      return language_id
+    end
+  end
+  return 'markdown'
 end
 
 local validate = vim.validate

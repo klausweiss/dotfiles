@@ -7,6 +7,7 @@ local RestoreNode = Node:new()
 local types = require("luasnip.util.types")
 local events = require("luasnip.util.events")
 local util = require("luasnip.util.util")
+local node_util = require("luasnip.nodes.util")
 local mark = require("luasnip.util.mark").mark
 local extend_decorator = require("luasnip.util.extend_decorator")
 
@@ -129,7 +130,8 @@ function RestoreNode:put_initial(pos)
 	tmp:put_initial(pos)
 	tmp.mark = mark(old_pos, pos, mark_opts)
 
-	-- no need to call update here, will be done by function calling put_initial.
+	-- no need to call update here, will be done by function calling this
+	-- function.
 
 	self.snip = tmp
 	self.visible = true
@@ -214,12 +216,6 @@ function RestoreNode:get_docstring()
 	return self.docstring
 end
 
-function RestoreNode:set_mark_rgrav(val_begin, val_end)
-	Node.set_mark_rgrav(self, val_begin, val_end)
-	-- snip is set in put_initial, before calls to that set_mark_rgrav() won't be called.
-	self.snip:set_mark_rgrav(val_begin, val_end)
-end
-
 function RestoreNode:store() end
 
 -- will be restored through other means.
@@ -281,6 +277,24 @@ function RestoreNode:is_interactive()
 	-- shouldn't be called, but revisit this once is_interactive is used in
 	-- places other than lsp-snippets.
 	return true
+end
+
+function RestoreNode:subtree_set_pos_rgrav(pos, direction, rgrav)
+	self.mark:set_rgrav(-direction, rgrav)
+	if self.snip then
+		self.snip:subtree_set_pos_rgrav(pos, direction, rgrav)
+	end
+end
+
+function RestoreNode:subtree_set_rgrav(rgrav)
+	self.mark:set_rgravs(rgrav, rgrav)
+	if self.snip then
+		self.snip:subtree_set_rgrav(rgrav)
+	end
+end
+
+function RestoreNode:extmarks_valid()
+	return node_util.generic_extmarks_valid(self, self.snip)
 end
 
 return {

@@ -26,6 +26,7 @@ function Previewer:new(opts)
     _teardown_func = opts.teardown,
     _send_input = opts.send_input,
     _scroll_fn = opts.scroll_fn,
+    _scroll_horizontal_fn = opts.scroll_horizontal_fn,
     preview_fn = opts.preview_fn,
     _empty_bufnr = nil,
   }, Previewer)
@@ -38,7 +39,7 @@ function Previewer:preview(entry, status)
     end
 
     if vim.api.nvim_buf_is_valid(self._empty_bufnr) then
-      vim.api.nvim_win_set_buf(status.preview_win, self._empty_bufnr)
+      vim.api.nvim_win_set_buf(status.layout.preview.winid, self._empty_bufnr)
     end
     return
   end
@@ -92,6 +93,14 @@ function Previewer:scroll_fn(direction)
     self:_scroll_fn(direction)
   else
     vim.api.nvim_err_writeln "scroll_fn is not defined for this previewer"
+  end
+end
+
+function Previewer:scroll_horizontal_fn(direction)
+  if self._scroll_horizontal_fn then
+    self:_scroll_horizontal_fn(direction)
+  else
+    vim.api.nvim_err_writeln "scroll_horizontal_fn is not defined for this previewer"
   end
 end
 

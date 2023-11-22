@@ -1,9 +1,10 @@
-local InsertNode = require("luasnip.nodes.node").Node:new()
+local Node = require("luasnip.nodes.node")
+local InsertNode = Node.Node:new()
 local ExitNode = InsertNode:new()
 local util = require("luasnip.util.util")
+local node_util = require("luasnip.nodes.util")
 local types = require("luasnip.util.types")
 local events = require("luasnip.util.events")
-local session = require("luasnip.session")
 local extend_decorator = require("luasnip.util.extend_decorator")
 
 local function I(pos, static_text, opts)
@@ -42,24 +43,44 @@ function ExitNode:input_enter(no_move, dry_run)
 		InsertNode.input_enter(self, no_move, dry_run)
 	else
 		-- -1-node:
-		self:set_mark_rgrav(true, true)
-		if not no_move then
-			local mark_begin_pos = self.mark:pos_begin_raw()
+		-- set rgrav true on left side of snippet. Text inserted now pushes the
+		-- snippet, and is not contained in it.
+		local begin_pos = self.mark:pos_begin_raw()
+		self.parent:subtree_set_pos_rgrav(begin_pos, 1, true)
 
+		if not no_move then
 			if vim.fn.mode() == "i" then
-				util.insert_move_on(mark_begin_pos)
+				util.insert_move_on(begin_pos)
 			else
 				vim.api.nvim_feedkeys(
 					vim.api.nvim_replace_termcodes("<Esc>", true, false, true),
 					"n",
 					true
 				)
-				util.normal_move_on_insert(mark_begin_pos)
+				util.normal_move_on_insert(begin_pos)
 			end
 		end
 
 		self:event(events.enter)
 	end
+end
+
+function ExitNode:focus()
+	local lrgrav, rrgrav
+	local snippet = self.parent
+	-- if last of first node of the snippet, make inserted text move out of snippet.
+	if snippet.nodes[#snippet.nodes] == self then
+		lrgrav = false
+		rrgrav = false
+	elseif snippet.nodes[1] == self then
+		lrgrav = true
+		rrgrav = true
+	else
+		lrgrav = false
+		rrgrav = true
+	end
+
+	Node.focus_node(self, lrgrav, rrgrav)
 end
 
 function ExitNode:input_leave(no_move, dry_run)
@@ -71,24 +92,6 @@ function ExitNode:input_leave(no_move, dry_run)
 		InsertNode.input_leave(self, no_move, dry_run)
 	else
 		self:event(events.leave)
-	end
-end
-
-function ExitNode:jump_into(dir, no_move, dry_run)
-	if not session.config.history then
-		self:input_enter(no_move, dry_run)
-		if (dir == 1 and not self.next) or (dir == -1 and not self.prev) then
-			if self.pos == 0 then
-				-- leave instantly, self won't be active snippet.
-				self:input_leave(no_move, dry_run)
-			end
-			return nil
-		else
-			return self
-		end
-	else
-		-- if no next node, return self as next current node.
-		return InsertNode.jump_into(self, dir, no_move, dry_run) or self
 	end
 end
 
@@ -111,9 +114,11 @@ function InsertNode:input_enter(no_move, dry_run)
 	self.visited = true
 	self.mark:update_opts(self.ext_opts.active)
 
-	if not no_move then
-		self.parent:enter_node(self.indx)
+	-- no_move only prevents moving the cursor, but the active node should
+	-- still be focused.
+	self:focus()
 
+	if not no_move then
 		-- SELECT snippet text only when there is text to select (more oft than not there isnt).
 		local mark_begin_pos, mark_end_pos = self.mark:pos_begin_end_raw()
 		if not util.pos_equal(mark_begin_pos, mark_end_pos) then
@@ -132,8 +137,6 @@ function InsertNode:input_enter(no_move, dry_run)
 				util.normal_move_on_insert(mark_begin_pos)
 			end
 		end
-	else
-		self.parent:enter_node(self.indx)
 	end
 
 	self:event(events.enter)
@@ -159,16 +162,7 @@ function InsertNode:jump_into(dir, no_move, dry_run)
 	if self:is_inner_active(dry_run) then
 		if dir == 1 then
 			if self.next then
-				if not dry_run then
-					self.inner_active = false
-					if not session.config.history then
-						self.inner_first = nil
-						self.inner_last = nil
-					end
-				else
-					dry_run.active[self] = false
-				end
-
+				self:input_leave_children(dry_run)
 				self:input_leave(no_move, dry_run)
 				return self.next:jump_into(dir, no_move, dry_run)
 			else
@@ -176,16 +170,7 @@ function InsertNode:jump_into(dir, no_move, dry_run)
 			end
 		else
 			if self.prev then
-				if not dry_run then
-					self.inner_active = false
-					if not session.config.history then
-						self.inner_first = nil
-						self.inner_last = nil
-					end
-				else
-					dry_run.active[self] = false
-				end
-
+				self:input_leave_children(dry_run)
 				self:input_leave(no_move, dry_run)
 				return self.prev:jump_into(dir, no_move, dry_run)
 			else
@@ -198,45 +183,71 @@ function InsertNode:jump_into(dir, no_move, dry_run)
 	end
 end
 
+function ExitNode:jump_from(dir, no_move, dry_run)
+	self:init_dry_run_inner_active(dry_run)
+
+	local next_node = util.ternary(dir == 1, self.next, self.prev)
+	local next_inner_node =
+		util.ternary(dir == 1, self.inner_first, self.inner_last)
+
+	if next_inner_node then
+		self:input_enter_children(dry_run)
+		return next_inner_node:jump_into(dir, no_move, dry_run)
+	else
+		if next_node then
+			local next_node_dry_run = { active = {} }
+			-- don't have to `init_dry_run_inner_active` since this node does
+			-- not have children active if jump_from is called.
+
+			-- true: don't move
+			local target_node =
+				next_node:jump_into(dir, true, next_node_dry_run)
+			-- if there is no node that can serve as jump-target, just remain
+			-- here.
+			-- Regular insertNodes don't have to handle this, since there is
+			-- always an exitNode or another insertNode at their endpoints.
+			if not target_node then
+				return self
+			end
+
+			self:input_leave(no_move, dry_run)
+			return next_node:jump_into(dir, no_move, dry_run) or self
+		else
+			return self
+		end
+	end
+end
+
 function InsertNode:jump_from(dir, no_move, dry_run)
 	self:init_dry_run_inner_active(dry_run)
 
-	if dir == 1 then
-		if self.inner_first then
-			if not dry_run then
-				self.inner_active = true
-			else
-				dry_run.active[self] = true
-			end
+	local next_node = util.ternary(dir == 1, self.next, self.prev)
+	local next_inner_node =
+		util.ternary(dir == 1, self.inner_first, self.inner_last)
 
-			return self.inner_first:jump_into(dir, no_move, dry_run)
-		else
-			if self.next then
-				self:input_leave(no_move, dry_run)
-				return self.next:jump_into(dir, no_move, dry_run)
-			else
-				-- only happens for exitNodes, but easier to include here
-				-- and reuse this impl for them.
-				return self
-			end
-		end
+	if next_inner_node then
+		self:input_enter_children(dry_run)
+		return next_inner_node:jump_into(dir, no_move, dry_run)
 	else
-		if self.inner_last then
-			if not dry_run then
-				self.inner_active = true
-			else
-				dry_run.active[self] = true
-			end
-
-			return self.inner_last:jump_into(dir, no_move, dry_run)
-		else
-			if self.prev then
-				self:input_leave(no_move, dry_run)
-				return self.prev:jump_into(dir, no_move, dry_run)
-			else
-				return self
-			end
+		if next_node then
+			self:input_leave(no_move, dry_run)
+			return next_node:jump_into(dir, no_move, dry_run)
 		end
+	end
+end
+
+function InsertNode:input_enter_children(dry_run)
+	if dry_run then
+		dry_run.active[self] = true
+	else
+		self.inner_active = true
+	end
+end
+function InsertNode:input_leave_children(dry_run)
+	if dry_run then
+		dry_run.active[self] = false
+	else
+		self.inner_active = false
 	end
 end
 
@@ -269,6 +280,49 @@ end
 
 function InsertNode:is_interactive()
 	return true
+end
+
+function InsertNode:child_snippets()
+	local own_child_snippets = {}
+	for _, child_snippet in ipairs(self.parent.snippet.child_snippets) do
+		if child_snippet.parent_node == self then
+			table.insert(own_child_snippets, child_snippet)
+		end
+	end
+	return own_child_snippets
+end
+
+function InsertNode:subtree_set_pos_rgrav(pos, direction, rgrav)
+	self.mark:set_rgrav(-direction, rgrav)
+
+	local own_child_snippets = self:child_snippets()
+
+	local child_from_indx
+	if direction == 1 then
+		child_from_indx = 1
+	else
+		child_from_indx = #own_child_snippets
+	end
+
+	node_util.nodelist_adjust_rgravs(
+		own_child_snippets,
+		child_from_indx,
+		pos,
+		direction,
+		rgrav,
+		-- don't assume that the child-snippets are all adjacent.
+		false
+	)
+end
+
+function InsertNode:subtree_set_rgrav(rgrav)
+	self.mark:set_rgravs(rgrav, rgrav)
+
+	local own_child_snippets = self:child_snippets()
+
+	for _, child_snippet in ipairs(own_child_snippets) do
+		child_snippet:subtree_set_rgrav(rgrav)
+	end
 end
 
 return {

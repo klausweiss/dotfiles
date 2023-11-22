@@ -19,6 +19,9 @@ M.View = {
   tabpages = {},
   cursors = {},
   hide_root_folder = false,
+  live_filter = {
+    prev_focused_node = nil,
+  },
   winopts = {
     relativenumber = false,
     number = false,
@@ -327,7 +330,11 @@ function M.resize(size)
   local new_size = get_width()
   vim.api.nvim_win_set_width(M.get_winnr(), new_size)
 
-  events._dispatch_on_tree_resize(new_size)
+  -- TODO #1545 remove similar check from setup_autocommands
+  -- We let nvim handle sending resize events after 0.9
+  if vim.fn.has "nvim-0.9" == 0 then
+    events._dispatch_on_tree_resize(new_size)
+  end
 
   if not M.View.preserve_window_proportions then
     vim.cmd ":wincmd ="
@@ -420,6 +427,21 @@ function M.focus(winnr, open_if_closed)
   vim.api.nvim_set_current_win(wnr)
 end
 
+--- Retrieve the winid of the open tree.
+--- @param opts ApiTreeWinIdOpts|nil
+--- @return number|nil winid unlike get_winnr(), this returns nil if the nvim-tree window is not visible
+function M.winid(opts)
+  local tabpage = opts and opts.tabpage
+  if tabpage == 0 then
+    tabpage = vim.api.nvim_get_current_tabpage()
+  end
+  if M.is_visible { tabpage = tabpage } then
+    return M.get_winnr(tabpage)
+  else
+    return nil
+  end
+end
+
 --- Restores the state of a NvimTree window if it was initialized before.
 function M.restore_tab_state()
   local tabpage = vim.api.nvim_get_current_tabpage()
@@ -506,7 +528,7 @@ function M.setup(opts)
   M.View.centralize_selection = options.centralize_selection
   M.View.side = (options.side == "right") and "right" or "left"
   M.View.height = options.height
-  M.View.hide_root_folder = options.hide_root_folder or opts.renderer.root_folder_label == false
+  M.View.hide_root_folder = opts.renderer.root_folder_label == false
   M.View.tab = opts.tab
   M.View.preserve_window_proportions = options.preserve_window_proportions
   M.View.winopts.cursorline = options.cursorline

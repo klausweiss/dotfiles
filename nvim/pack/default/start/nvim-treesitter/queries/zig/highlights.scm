@@ -45,10 +45,8 @@ parameter: (IDENTIFIER) @parameter
   (#lua-match? @constant "^%u[%u%d_]+$")
 )
 
-[
-  function_call: (IDENTIFIER)
-  function: (IDENTIFIER)
-] @function
+function: (IDENTIFIER) @function
+function_call: (IDENTIFIER) @function.call
 
 exception: "!" @exception
 
@@ -229,6 +227,3 @@ field_constant: (IDENTIFIER) @constant
   (PtrPayload "|")
   (PtrIndexPayload "|")
 ] @punctuation.bracket
-
-; Error
-(ERROR) @error

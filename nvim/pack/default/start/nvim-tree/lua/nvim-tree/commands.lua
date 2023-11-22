@@ -1,4 +1,3 @@
-local keymap_legacy = require "nvim-tree.keymap-legacy"
 local api = require "nvim-tree.api"
 local view = require "nvim-tree.view"
 
@@ -34,7 +33,12 @@ local CMDS = {
       complete = "dir",
     },
     command = function(c)
-      api.tree.toggle { find_file = false, focus = true, path = c.args, update_root = false }
+      api.tree.toggle {
+        find_file = false,
+        focus = true,
+        path = c.args,
+        update_root = false,
+      }
     end,
   },
   {
@@ -75,7 +79,11 @@ local CMDS = {
       bar = true,
     },
     command = function(c)
-      api.tree.find_file { open = true, focus = true, update_root = c.bang }
+      api.tree.find_file {
+        open = true,
+        focus = true,
+        update_root = c.bang,
+      }
     end,
   },
   {
@@ -87,7 +95,12 @@ local CMDS = {
       complete = "dir",
     },
     command = function(c)
-      api.tree.toggle { find_file = true, focus = true, path = c.args, update_root = c.bang }
+      api.tree.toggle {
+        find_file = true,
+        focus = true,
+        path = c.args,
+        update_root = c.bang,
+      }
     end,
   },
   {
@@ -119,15 +132,6 @@ local CMDS = {
     },
     command = function()
       api.tree.collapse_all(true)
-    end,
-  },
-  {
-    name = "NvimTreeGenerateOnAttach",
-    opts = {
-      desc = "nvim-tree: generate on_attach function from deprecated view.mappings",
-    },
-    command = function()
-      keymap_legacy.cmd_generate_on_attach()
     end,
   },
 }

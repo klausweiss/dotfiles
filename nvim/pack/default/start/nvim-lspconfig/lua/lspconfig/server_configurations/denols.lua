@@ -43,7 +43,7 @@ local function virtual_text_document(uri, client)
   virtual_text_document_handler(uri, result, client)
 end
 
-local function denols_handler(err, result, ctx)
+local function denols_handler(err, result, ctx, config)
   if not result or vim.tbl_isempty(result) then
     return nil
   end
@@ -58,7 +58,7 @@ local function denols_handler(err, result, ctx)
     end
   end
 
-  lsp.handlers[ctx.method](err, result, ctx)
+  lsp.handlers[ctx.method](err, result, ctx, config)
 end
 
 return {
@@ -74,19 +74,29 @@ return {
       'typescript.tsx',
     },
     root_dir = util.root_pattern('deno.json', 'deno.jsonc', '.git'),
-    init_options = {
-      enable = true,
-      unstable = false,
+    settings = {
+      deno = {
+        enable = true,
+        suggest = {
+          imports = {
+            hosts = {
+              ['https://deno.land'] = true,
+              ['https://crux.land'] = true,
+              ['https://x.nest.land'] = true,
+            },
+          },
+        },
+      },
     },
     handlers = {
       ['textDocument/definition'] = denols_handler,
       ['textDocument/typeDefinition'] = denols_handler,
       ['textDocument/references'] = denols_handler,
-      ['workspace/executeCommand'] = function(err, result, context)
+      ['workspace/executeCommand'] = function(err, result, context, config)
         if context.params.command == 'deno.cache' then
           buf_cache(context.bufnr, vim.lsp.get_client_by_id(context.client_id))
         else
-          lsp.handlers[context.method](err, result, context)
+          lsp.handlers[context.method](err, result, context, config)
         end
       end,
     },

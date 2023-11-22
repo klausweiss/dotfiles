@@ -1,4 +1,5 @@
 local _ = require "mason-core.functional"
+local platform = require "mason-core.platform"
 
 local function Mason()
     require("mason.ui").open()
@@ -83,7 +84,6 @@ local function MasonInstall(package_specifiers, opts)
     opts = opts or {}
     local Package = require "mason-core.package"
     local registry = require "mason-registry"
-    local is_headless = #vim.api.nvim_list_uis() == 0
 
     local install_packages = _.map(function(pkg_specifier)
         local package_name, version = Package.Parse(pkg_specifier)
@@ -92,11 +92,12 @@ local function MasonInstall(package_specifiers, opts)
             version = version,
             debug = opts.debug,
             force = opts.force,
+            strict = opts.strict,
             target = opts.target,
         }
     end)
 
-    if is_headless then
+    if platform.is_headless then
         registry.refresh()
         local valid_packages = filter_valid_packages(package_specifiers)
         if #valid_packages ~= #package_specifiers then
@@ -145,7 +146,52 @@ vim.api.nvim_create_user_command("MasonInstall", function(opts)
 end, {
     desc = "Install one or more packages.",
     nargs = "+",
-    complete = "custom,v:lua.mason_completion.available_package_completion",
+    ---@param arg_lead string
+    complete = function(arg_lead)
+        local registry = require "mason-registry"
+        registry.refresh()
+        if _.starts_with("--", arg_lead) then
+            return _.filter(_.starts_with(arg_lead), {
+                "--debug",
+                "--force",
+                "--strict",
+                "--target=",
+            })
+        elseif _.matches("^.+@", arg_lead) then
+            local pkg_name, version = unpack(_.match("^(.+)@(.*)", arg_lead))
+            local ok, pkg = pcall(registry.get_package, pkg_name)
+            if not ok then
+                return {}
+            end
+            if pkg:is_registry_spec() then
+                local a = require "mason-core.async"
+                local registry_installer = require "mason-core.installer.registry"
+                return a.run_blocking(function()
+                    return a.wait_first {
+                        function()
+                            return registry_installer
+                                .get_versions(pkg.spec --[[@as RegistryPackageSpec]])
+                                :map(
+                                    _.compose(
+                                        _.map(_.concat(arg_lead)),
+                                        _.map(_.strip_prefix(version)),
+                                        _.filter(_.starts_with(version))
+                                    )
+                                )
+                                :get_or_else {}
+                        end,
+                        function()
+                            a.sleep(4000)
+                            return {}
+                        end,
+                    }
+                end)
+            end
+        end
+
+        local all_pkg_names = registry.get_all_package_names()
+        return _.sort_by(_.identity, _.filter(_.starts_with(arg_lead), all_pkg_names))
+    end,
 })
 
 ---@param package_names string[]
@@ -166,7 +212,11 @@ vim.api.nvim_create_user_command("MasonUninstall", function(opts)
 end, {
     desc = "Uninstall one or more packages.",
     nargs = "+",
-    complete = "custom,v:lua.mason_completion.installed_package_completion",
+    ---@param arg_lead string
+    complete = function(arg_lead)
+        local registry = require "mason-registry"
+        return _.sort_by(_.identity, _.filter(_.starts_with(arg_lead), registry.get_installed_package_names()))
+    end,
 })
 
 local function MasonUninstallAll()
@@ -185,14 +235,28 @@ local function MasonUpdate()
     local notify = require "mason-core.notify"
     local registry = require "mason-registry"
     notify "Updating registries…"
-    registry.update(vim.schedule_wrap(function(success, updated_registries)
+
+    ---@param success boolean
+    ---@param updated_registries RegistrySource[]
+    local function handle_result(success, updated_registries)
         if success then
             local count = #updated_registries
             notify(("Successfully updated %d %s."):format(count, count == 1 and "registry" or "registries"))
         else
             notify(("Failed to update registries: %s"):format(updated_registries), vim.log.levels.ERROR)
         end
-    end))
+    end
+
+    if platform.is_headless then
+        local a = require "mason-core.async"
+        a.run_blocking(function()
+            local success, updated_registries = a.wait(registry.update)
+            a.scheduler()
+            handle_result(success, updated_registries)
+        end)
+    else
+        registry.update(_.scheduler_wrap(handle_result))
+    end
 end
 
 vim.api.nvim_create_user_command("MasonUpdate", MasonUpdate, {
@@ -207,24 +271,6 @@ end
 vim.api.nvim_create_user_command("MasonLog", MasonLog, {
     desc = "Opens the mason.nvim log.",
 })
-
--- selene: allow(global_usage)
-_G.mason_completion = {
-    available_package_completion = function()
-        local registry = require "mason-registry"
-        registry.refresh()
-        local package_names = registry.get_all_package_names()
-        table.sort(package_names)
-        return table.concat(package_names, "\n")
-    end,
-    installed_package_completion = function()
-        local registry = require "mason-registry"
-        registry.refresh()
-        local package_names = registry.get_installed_package_names()
-        table.sort(package_names)
-        return table.concat(package_names, "\n")
-    end,
-}
 
 return {
     Mason = Mason,

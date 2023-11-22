@@ -112,7 +112,7 @@
   ] @keyword.function)
 
 (number) @number
-(comment) @comment
+(comment) @comment @spell
 (string) @string
 (cstring) @string
 (label) @label
@@ -162,5 +162,3 @@
   "none"
   "zeroinitializer"
 ] @constant.builtin
-
-(ERROR) @error

@@ -28,15 +28,15 @@ use "nvim-lua/plenary.nvim"
 
 ## Modules
 
-- `plenary.async`
-- `plenary.async_lib`
-- `plenary.job`
-- `plenary.path`
-- `plenary.scandir`
-- `plenary.context_manager`
-- `plenary.test_harness`
-- `plenary.filetype`
-- `plenary.strings`
+- [plenary.async](#plenaryasync)
+- [plenary.async_lib](#plenaryasync_lib)
+- [plenary.job](#plenaryjob)
+- [plenary.path](#plenarypath)
+- [plenary.scandir](#plenaryscandir)
+- [plenary.context_manager](#plenarycontext_manager)
+- [plenary.test_harness](#plenarytest_harness)
+- [plenary.filetype](#plenaryfiletype)
+- [plenary.strings](#plenarystrings)
 
 ### plenary.async
 
@@ -99,7 +99,6 @@ end
 #### Plugins using this
 
 - [telescope.nvim](https://github.com/nvim-telescope/telescope.nvim)
-- [gitsigns.nvim](https://github.com/lewis6991/gitsigns.nvim)
 - [vgit.nvim](https://github.com/tanvirtin/vgit.nvim)
 - [neogit](https://github.com/TimUntersberger/neogit)
 - [neo-tree.nvim](https://github.com/nvim-neo-tree/neo-tree.nvim)
@@ -212,6 +211,8 @@ assert(result == "# plenary.nvim")
 
 ### plenary.test_harness
 
+`:help plenary-test`
+
 Supports (simple) busted-style testing. It implements a mock-ed busted interface, that will allow you to run simple
 busted style tests in separate neovim instances.
 
@@ -220,20 +221,23 @@ To run the current spec file in a floating window, you can use the keymap `<Plug
 ```
 nmap <leader>t <Plug>PlenaryTestFile
 ```
+In this case, the test is run with a minimal configuration, that includes in
+its runtimepath only plenary.nvim and the current working directory.
 
 To run a whole directory from the command line, you could do something like:
 
 ```
-nvim --headless -c "PlenaryBustedDirectory tests/plenary/ {minimal_init = 'tests/minimal_init.vim'}"
+nvim --headless -c "PlenaryBustedDirectory tests/plenary/ {options}"
 ```
 
 Where the first argument is the directory you'd like to test. It will search for files with
 the pattern `*_spec.lua` and execute them in separate neovim instances.
 
-The second argument is a Lua option table with the following fields:
+Without second argument, `PlenaryBustedDirectory` is also run with a minimal
+configuration. Otherwise it is a Lua option table with the following fields:
 - `nvim_cmd`: specify the command to launch this neovim instance (defaults to `vim.v.progpath`)
-- `minimal_init`: specify an init.vim to use for this instance, uses `--noplugin`
-- `minimal`: uses `--noplugin` without an init script (overrides `minimal_init`)
+- `init`: specify an init.vim to use for this instance
+- `minimal_init`: as for `init`, but also run the neovim instance with `--noplugin`
 - `sequential`: whether to run tests sequentially (default is to run in parallel)
 - `keep_going`: if `sequential`, whether to continue on test failure (default true)
 - `timeout`: controls the maximum time allotted to each job in parallel or
@@ -386,8 +390,9 @@ DELETED: Please use packer.nvim or other lua-rocks wrapper instead. This no long
 ### FAQ
 
 1. Error: Too many open files
+
 - \*nix systems have a setting to configure the maximum amount of open file
-  handles. It can occur that the default value is pretty low and that you end
-  up getting this error after opening a couple of files. You can see the
-  current limit with `ulimit -n` and set it with `ulimit -n 4096`. (macos might
-  work different)
+  handles. It can occur that the default value is pretty low and that you end up
+  getting this error after opening a couple of files. On Linux you can see the
+  current limit with `ulimit -n` and set it with `ulimit -n 4096`. If you're on
+  macOS the command is `sudo launchctl limit maxfiles 4096 4096`.

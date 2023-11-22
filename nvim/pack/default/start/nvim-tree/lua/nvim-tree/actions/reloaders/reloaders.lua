@@ -4,23 +4,27 @@ local renderer = require "nvim-tree.renderer"
 local explorer_module = require "nvim-tree.explorer"
 local core = require "nvim-tree.core"
 local explorer_node = require "nvim-tree.explorer.node"
+local Iterator = require "nvim-tree.iterators.node-iterator"
 
 local M = {}
 
 local function refresh_nodes(node, projects, unloaded_bufnr)
-  local cwd = node.cwd or node.link_to or node.absolute_path
-  local project_root = git.get_project_root(cwd)
-  explorer_module.reload(node, projects[project_root] or {}, unloaded_bufnr)
-  for _, _node in ipairs(node.nodes) do
-    if _node.nodes and _node.open then
-      refresh_nodes(_node, projects, unloaded_bufnr)
-    end
-  end
+  Iterator.builder({ node })
+    :applier(function(n)
+      if n.nodes then
+        local toplevel = git.get_toplevel(n.cwd or n.link_to or n.absolute_path)
+        explorer_module.reload(n, projects[toplevel] or {}, unloaded_bufnr)
+      end
+    end)
+    :recursor(function(n)
+      return n.group_next and { n.group_next } or (n.open and n.nodes)
+    end)
+    :iterate()
 end
 
 function M.reload_node_status(parent_node, projects)
-  local project_root = git.get_project_root(parent_node.absolute_path)
-  local status = projects[project_root] or {}
+  local toplevel = git.get_toplevel(parent_node.absolute_path)
+  local status = projects[toplevel] or {}
   for _, node in ipairs(parent_node.nodes) do
     explorer_node.update_git_status(node, explorer_node.is_git_ignored(parent_node), status)
     if node.nodes and #node.nodes > 0 then

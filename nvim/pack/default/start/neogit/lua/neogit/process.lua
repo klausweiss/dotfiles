@@ -21,7 +21,7 @@ end
 ---@field stdin number|nil
 ---@field pty boolean
 ---@field on_partial_line fun(process: Process, data: string, raw: string) callback on complete lines
----@field on_error fun(res: ProcessResult): boolean
+---@field on_error (fun(res: ProcessResult): boolean)|boolean|nil Intercept the error externally, returning true prevents the error from being logged
 local Process = {}
 Process.__index = Process
 
@@ -30,6 +30,7 @@ local processes = {}
 
 ---@class ProcessResult
 ---@field stdout string[]
+---@field stdout_raw string[]
 ---@field stderr string[]
 ---@field output string[]
 ---@field code number
@@ -65,7 +66,7 @@ local function create_preview_buffer()
   -- May be called multiple times due to scheduling
   if preview_buffer then
     if preview_buffer.buffer then
-      logger.debug("Preview buffer already exists. Focusing the existing one")
+      logger.trace("[PROCESS] Preview buffer already exists. Focusing the existing one")
       preview_buffer.buffer:focus()
     end
     return
@@ -88,6 +89,9 @@ local function create_preview_buffer()
         ["q"] = function(buffer)
           buffer:hide(true)
         end,
+        ["<esc>"] = function(buffer)
+          buffer:hide(true)
+        end,
       },
     },
     autocmds = {
@@ -97,53 +101,26 @@ local function create_preview_buffer()
     },
   }
 
-  local chan = vim.api.nvim_open_term(buffer.handle, {})
-
   preview_buffer = {
-    chan = chan,
     buffer = buffer,
     current_span = nil,
+    content = "",
   }
-end
-
---from https://github.com/stevearc/overseer.nvim/blob/82ed207195b58a73b9f7d013d6eb3c7d78674ac9/lua/overseer/util.lua#L119
----@param win number
-local function scroll_to_end(win)
-  local bufnr = vim.api.nvim_win_get_buf(win)
-  local lnum = vim.api.nvim_buf_line_count(bufnr)
-  local last_line = vim.api.nvim_buf_get_lines(bufnr, -2, -1, true)[1]
-  -- Hack: terminal buffers add a bunch of empty lines at the end. We need to ignore them so that
-  -- we don't end up scrolling off the end of the useful output.
-  -- This has the unfortunate effect that we may not end up tailing the output as more arrives
-  if vim.bo[bufnr].buftype == "terminal" then
-    local half_height = math.floor(vim.api.nvim_win_get_height(win) / 2)
-    for i = lnum, 1, -1 do
-      local prev_line = vim.api.nvim_buf_get_lines(bufnr, i - 1, i, true)[1]
-      if prev_line ~= "" then
-        -- Only scroll back if we detect a lot of padding lines, and the total real output is
-        -- small. Otherwise the padding may be legit
-        if lnum - i >= half_height and i < half_height then
-          lnum = i
-          last_line = prev_line
-        end
-        break
-      end
-    end
-  end
-  vim.api.nvim_win_set_cursor(win, { lnum, vim.api.nvim_strwidth(last_line) })
 end
 
 function Process.show_console()
   create_preview_buffer()
 
-  local win = preview_buffer.buffer:show()
-  scroll_to_end(win)
+  vim.api.nvim_chan_send(vim.api.nvim_open_term(preview_buffer.buffer.handle, {}), preview_buffer.content)
+  preview_buffer.buffer:show()
+  -- Scroll to the end of viewable text
+  vim.cmd.startinsert()
+  vim.defer_fn(vim.cmd.stopinsert, 50)
+
   -- vim.api.nvim_win_call(win, function()
   --   vim.cmd.normal("G")
   -- end)
 end
-
-local nvim_chan_send = vim.api.nvim_chan_send
 
 ---@param process Process
 ---@param data string
@@ -154,11 +131,12 @@ local function append_log(process, data)
     end
 
     if preview_buffer.current_span ~= process.job then
-      nvim_chan_send(preview_buffer.chan, string.format("> %s\r\n", table.concat(process.cmd, " ")))
+      preview_buffer.content = preview_buffer.content
+        .. string.format("> %s\r\n", table.concat(process.cmd, " "))
       preview_buffer.current_span = process.job
     end
 
-    nvim_chan_send(preview_buffer.chan, data .. "\r\n")
+    preview_buffer.content = preview_buffer.content .. data .. "\r\n"
   end
 
   vim.schedule(function()
@@ -190,9 +168,7 @@ function Process:start_timer()
         if not self.timer then
           return
         end
-        self.timer = nil
-        timer:stop()
-        timer:close()
+        self:stop_timer()
         if not self.result or (self.result.code ~= 0) then
           local message = string.format(
             "Command %q running for more than: %.1f seconds",
@@ -204,7 +180,7 @@ function Process:start_timer()
           if config.values.auto_show_console then
             Process.show_console()
           else
-            notification.create(message .. "\n\nOpen the console for details", vim.log.levels.WARN)
+            notification.warn(message .. "\n\nOpen the console for details")
           end
         end
       end)
@@ -218,7 +194,9 @@ function Process:stop_timer()
     local timer = self.timer
     self.timer = nil
     timer:stop()
-    timer:close()
+    if not timer:is_closing() then
+      timer:close()
+    end
   end
 end
 
@@ -284,6 +262,7 @@ function Process:spawn(cb)
   ---@type ProcessResult
   local res = setmetatable({
     stdout = {},
+    stdout_raw = {},
     stderr = {},
     output = {},
   }, ProcessResult)
@@ -292,9 +271,6 @@ function Process:spawn(cb)
   -- An empty table is treated as an array
   self.env = self.env or {}
   self.env.TERM = "xterm-256color"
-  if self.cwd == "<current>" then
-    self.cwd = nil
-  end
 
   local start = vim.loop.now()
   self.start = start
@@ -326,6 +302,7 @@ function Process:spawn(cb)
     end
   end, function(line, raw)
     table.insert(res.stdout, line)
+    table.insert(res.stdout_raw, raw)
     if self.verbose then
       table.insert(res.output, line)
       append_log(self, raw)
@@ -350,22 +327,25 @@ function Process:spawn(cb)
     stdout_cleanup()
     stderr_cleanup()
 
-    if code ~= 0 and not hide_console then
-      append_log(self, string.format("Process exited with code: %d", code))
+    -- TODO: Replace ignore_code with on_error callback
+    if code ~= 0 and not hide_console and not self.ignore_code then
+      if not self.on_error or (type(self.on_error) == "function" and not self.on_error(res)) then
+        append_log(self, string.format("Process exited with code: %d", code))
 
-      local output = {}
-      local start = math.max(#res.output - 16, 1)
-      for i = start, math.min(#res.output, start + 16) do
-        table.insert(output, "    " .. res.output[i])
+        local output = {}
+        local start = math.max(#res.output - 16, 1)
+        for i = start, math.min(#res.output, start + 16) do
+          table.insert(output, "    " .. res.output[i])
+        end
+
+        local message = string.format(
+          "%s:\n\n%s\n\nOpen the console for details",
+          table.concat(self.cmd, " "),
+          table.concat(output, "\n")
+        )
+
+        notification.error(message)
       end
-
-      local message = string.format(
-        "%s:\n\n%s\n\nOpen the console for details",
-        table.concat(self.cmd, " "),
-        table.concat(output, "\n")
-      )
-
-      notification.create(message, vim.log.levels.ERROR)
       -- vim.schedule(Process.show_console)
     end
 
@@ -377,7 +357,7 @@ function Process:spawn(cb)
     end
   end
 
-  logger.debug("Spawning: " .. vim.inspect(self.cmd))
+  logger.trace("[PROCESS] Spawning: " .. vim.inspect(self.cmd))
   local job = vim.fn.jobstart(self.cmd, {
     cwd = self.cwd,
     env = self.env,

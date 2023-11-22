@@ -29,6 +29,7 @@
   "if"
   "elsif"
   "else"
+  "unless"
   "case"
 ] @conditional
 
@@ -188,7 +189,3 @@
 ; Comments
 
 (comment) @comment @spell
-
-; Errors
-
-(ERROR) @error

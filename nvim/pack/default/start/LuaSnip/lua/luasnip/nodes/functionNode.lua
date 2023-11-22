@@ -42,14 +42,20 @@ function FunctionNode:update()
 	if not args or vim.deep_equal(args, self.last_args) then
 		return
 	end
+
+	if not self.parent.snippet:extmarks_valid() then
+		error("Refusing to update inside a snippet with invalid extmarks")
+	end
+
 	self.last_args = args
 	local text =
 		util.to_string_table(self.fn(args, self.parent, unpack(self.user_args)))
 	if vim.bo.expandtab then
 		util.expand_tabs(text, util.tab_width(), #self.parent.indentstr)
 	end
+
 	-- don't expand tabs in parent.indentstr, use it as-is.
-	self.parent:set_text(self, util.indent(text, self.parent.indentstr))
+	self:set_text(util.indent(text, self.parent.indentstr))
 	self:update_dependents()
 end
 
@@ -89,13 +95,13 @@ end
 function FunctionNode:update_restore()
 	-- only if args still match.
 	if self.static_text and vim.deep_equal(self:get_args(), self.last_args) then
-		self.parent:set_text(self, self.static_text)
+		self:set_text(self.static_text)
 	else
 		self:update()
 	end
 end
 
--- FunctionNode's don't have static text, nop these.
+-- FunctionNode's don't have static text, only set visibility.
 function FunctionNode:put_initial(_)
 	self.visible = true
 end

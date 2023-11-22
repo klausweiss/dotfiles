@@ -225,6 +225,7 @@ describe("github provider :: release :: parsing", function()
 
         assert.is_true(result:is_success())
         assert.same({
+            id = "pkg:github/owner/repo@1.2.3",
             asset = {
                 target = "darwin_x64",
                 file = "old-asset.tar.gz",
@@ -233,6 +234,17 @@ describe("github provider :: release :: parsing", function()
                 {
                     download_url = "https://github.com/owner/repo/releases/download/1.0.0/old-asset.tar.gz",
                     out_file = "old-asset.tar.gz",
+                },
+            },
+            version_overrides = {
+                {
+                    constraint = "semver:<=1.0.0",
+                    asset = {
+                        {
+                            target = "darwin_x64",
+                            file = "old-asset.tar.gz",
+                        },
+                    },
                 },
             },
             repo = "owner/repo",
@@ -351,34 +363,5 @@ describe("github provider :: release :: installing", function()
         assert.spy(std.unpack).was_called(1)
         assert.is_true(match.matches "out/dir$"(unpack_cwd))
         assert.spy(std.unpack).was_called_with "file.zip"
-    end)
-
-    it("should install ensure valid version when installing release asset", function()
-        local ctx = create_dummy_context {
-            version = "1.42.0",
-        }
-        local std = require "mason-core.installer.managers.std"
-        local providers = require "mason-core.providers"
-        stub(std, "download_file")
-        stub(providers.github, "get_all_release_versions", mockx.returns(Result.success { "2023-03-09" }))
-
-        local result = installer.exec_in_context(ctx, function()
-            return github.install(ctx, {
-                repo = "namespace/name",
-                asset = {
-                    file = "file.zip",
-                },
-                downloads = {
-                    {
-                        out_file = "out/dir/file.zip",
-                        download_url = "https://github.com/namespace/name/releases/download/2023-03-09/file.zip",
-                    },
-                },
-            })
-        end)
-
-        assert.is_true(result:is_failure())
-        assert.same(Result.failure [[Version "1.42.0" is not available.]], result)
-        assert.spy(std.download_file).was_called(0)
     end)
 end)

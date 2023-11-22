@@ -1,5 +1,91 @@
 # Changelog
 
+## [2.10.0](https://github.com/folke/trouble.nvim/compare/v2.9.1...v2.10.0) (2023-10-18)
+
+
+### Features
+
+* `open({focus=false})` now works as intended ([600fe24](https://github.com/folke/trouble.nvim/commit/600fe24ad04f130030fa54f0c70949ff084810a3))
+
+
+### Bug Fixes
+
+* **auto_open:** dont steal focus on auto open. Fixes [#344](https://github.com/folke/trouble.nvim/issues/344) ([1f00b6f](https://github.com/folke/trouble.nvim/commit/1f00b6f730c5ef6bcfeb829a5659ed3780778087))
+
+## [2.9.1](https://github.com/folke/trouble.nvim/compare/v2.9.0...v2.9.1) (2023-10-09)
+
+
+### Bug Fixes
+
+* **preview:** skip non-existing. Fixes [#87](https://github.com/folke/trouble.nvim/issues/87). Fixes [#188](https://github.com/folke/trouble.nvim/issues/188). Fixes [#336](https://github.com/folke/trouble.nvim/issues/336). ([#338](https://github.com/folke/trouble.nvim/issues/338)) ([5e78824](https://github.com/folke/trouble.nvim/commit/5e7882429ee2e235148ab759a6159950afd8021a))
+
+## [2.9.0](https://github.com/folke/trouble.nvim/compare/v2.8.0...v2.9.0) (2023-10-07)
+
+
+### Features
+
+* Make floating window configuration customizable ([#310](https://github.com/folke/trouble.nvim/issues/310)) ([ef0336a](https://github.com/folke/trouble.nvim/commit/ef0336a818e562439e25638b866cb4638a0fdc26))
+
+
+### Bug Fixes
+
+* check that view is valid before render and focus ([#319](https://github.com/folke/trouble.nvim/issues/319)) ([81e1643](https://github.com/folke/trouble.nvim/commit/81e1643a7c6b426535cf23ebdb28baec4ab7428e))
+* only filter msg if sev is hardcoded ([#328](https://github.com/folke/trouble.nvim/issues/328)) ([0ccc43d](https://github.com/folke/trouble.nvim/commit/0ccc43d61e0f9278056a8eeefbe022ce71707a85))
+* **qf:** properly deal with invalid qf entries. Fixes [#87](https://github.com/folke/trouble.nvim/issues/87). Fixes [#188](https://github.com/folke/trouble.nvim/issues/188). Fixes [#336](https://github.com/folke/trouble.nvim/issues/336) ([46b60e9](https://github.com/folke/trouble.nvim/commit/46b60e9fb942d60740c647f61fd779f05e7b9392))
+
+## [2.8.0](https://github.com/folke/trouble.nvim/compare/v2.7.0...v2.8.0) (2023-07-25)
+
+
+### Features
+
+* Create Configuration for IncludeDeclaration ([#312](https://github.com/folke/trouble.nvim/issues/312)) ([7691d93](https://github.com/folke/trouble.nvim/commit/7691d93131be9c4ef7788892a9c52374642beb89))
+
+## [2.7.0](https://github.com/folke/trouble.nvim/compare/v2.6.0...v2.7.0) (2023-07-25)
+
+
+### Features
+
+* Expose help action ([#311](https://github.com/folke/trouble.nvim/issues/311)) ([467dc20](https://github.com/folke/trouble.nvim/commit/467dc204af863a9f11bc3444b8f89af286fbf6b2))
+* Use code descriptions for opening URIs with extra information ([#309](https://github.com/folke/trouble.nvim/issues/309)) ([d2b0f1d](https://github.com/folke/trouble.nvim/commit/d2b0f1de1fe6f013d38234f7557c7935a9f97655))
+
+## [2.6.0](https://github.com/folke/trouble.nvim/compare/v2.5.0...v2.6.0) (2023-07-22)
+
+
+### Features
+
+* make multiline the default ([1f2eb71](https://github.com/folke/trouble.nvim/commit/1f2eb71948b8d08cd8fe0947f9dae95c441baf6d))
+
+## [2.5.0](https://github.com/folke/trouble.nvim/compare/v2.4.0...v2.5.0) (2023-07-22)
+
+
+### Features
+
+* add multiline diagnostic support ([#305](https://github.com/folke/trouble.nvim/issues/305)) ([7a6abd7](https://github.com/folke/trouble.nvim/commit/7a6abd7ed811def9494316d4217d1dcc80b05048))
+* Map double click to jump action ([#158](https://github.com/folke/trouble.nvim/issues/158)) ([ef53b9a](https://github.com/folke/trouble.nvim/commit/ef53b9a1401919a9a3ae5b2949068c456ce23085))
+* use markdown to render hover ([835b87d](https://github.com/folke/trouble.nvim/commit/835b87d93537a3cc403b961c084ca8c2998758cd))
+* **util:** trigger TroubleJump on jump. Closes [#248](https://github.com/folke/trouble.nvim/issues/248) ([d91f3b3](https://github.com/folke/trouble.nvim/commit/d91f3b3d588b0259060780c73dd4c93a8f158f38))
+
+## [2.4.0](https://github.com/folke/trouble.nvim/compare/v2.3.0...v2.4.0) (2023-07-16)
+
+
+### Features
+
+* add option to control cycling of result list ([#302](https://github.com/folke/trouble.nvim/issues/302)) ([e7805dc](https://github.com/folke/trouble.nvim/commit/e7805dc3448f28599e022dc7a0e58060dfdeeb9a))
+* rendering messages from provider ([#304](https://github.com/folke/trouble.nvim/issues/304)) ([a66a78b](https://github.com/folke/trouble.nvim/commit/a66a78b8878780e3b3154e9812ff040ec9b0f1d6))
+
+
+### Bug Fixes
+
+* Check parent window is valid before setting active ([#291](https://github.com/folke/trouble.nvim/issues/291)) ([c14786d](https://github.com/folke/trouble.nvim/commit/c14786d5e88f3e66360c70bab56694abd0e60af6))
+* move end of doc pos to last line. Fixes [#151](https://github.com/folke/trouble.nvim/issues/151) ([cb4da04](https://github.com/folke/trouble.nvim/commit/cb4da0401abe7ae6f368bf79d2ed6c2571b1e7ba))
+
+## [2.3.0](https://github.com/folke/trouble.nvim/compare/v2.2.3...v2.3.0) (2023-05-25)
+
+
+### Features
+
+* filter diagnostics by severity level ([#285](https://github.com/folke/trouble.nvim/issues/285)) ([b1f607f](https://github.com/folke/trouble.nvim/commit/b1f607ff0f2c107faf8b0c26d09877028b549d63))
+
 ## [2.2.3](https://github.com/folke/trouble.nvim/compare/v2.2.2...v2.2.3) (2023-05-22)
 
 

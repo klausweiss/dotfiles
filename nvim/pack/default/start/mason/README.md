@@ -14,7 +14,7 @@
     <code>:help mason.nvim</code>
 </p>
 <p align="center">
-    <sup>Latest version: v1.1.0</sup> <!-- x-release-please-version -->
+    <sup>Latest version: v1.8.3</sup> <!-- x-release-please-version -->
 </p>
 
 # Table of Contents
@@ -42,7 +42,7 @@ Packages are installed in Neovim's data directory ([`:h standard-path`][help-sta
 linked to a single `bin/` directory, which `mason.nvim` will add to Neovim's PATH during setup, allowing seamless access
 from Neovim builtins (shell, terminal, etc.) as well as other 3rd party plugins.
 
-For a list of all available packages, see https://mason-registry.dev/registry/list.
+For a list of all available packages, see <https://mason-registry.dev/registry/list>.
 
 ## How to use installed packages
 
@@ -52,7 +52,7 @@ Although many packages are perfectly usable out of the box through Neovim builti
 party plugins to further integrate these. The following plugins are recommended:
 
 -   LSP: [`lspconfig`][lspconfig] & [`mason-lspconfig.nvim`][mason-lspconfig.nvim]
--   DAP: [`nvim-dap`][nvim-dap]
+-   DAP: [`nvim-dap`][nvim-dap] & [`nvim-dap-ui`][nvim-dap-ui]
 -   Linters: [`null-ls.nvim`][null-ls.nvim] or [`nvim-lint`][nvim-lint]
 -   Formatters: [`null-ls.nvim`][null-ls.nvim] or [`formatter.nvim`][formatter.nvim]
 
@@ -61,6 +61,7 @@ party plugins to further integrate these. The following plugins are recommended:
 [mason-lspconfig.nvim]: https://github.com/williamboman/mason-lspconfig.nvim
 [null-ls.nvim]: https://github.com/jose-elias-alvarez/null-ls.nvim
 [nvim-dap]: https://github.com/mfussenegger/nvim-dap
+[nvim-dap-ui]: https://github.com/rcarriga/nvim-dap-ui
 [nvim-lint]: https://github.com/mfussenegger/nvim-lint
 
 ## Screenshots
@@ -79,8 +80,22 @@ party plugins to further integrate these. The following plugins are recommended:
 The _minimum_ recommended requirements are:
 
 -   neovim `>= 0.7.0`
--   For Unix systems: `git(1)`, `curl(1)` or `wget(1)`, `unzip(1)`, `tar(1)`, `gzip(1)`
--   For Windows systems: pwsh or powershell, git, tar, and [7zip][7zip] or [peazip][peazip] or [archiver][archiver] or [winzip][winzip] or [WinRAR][winrar]
+-   For Unix systems:
+    -   `git(1)`
+    -   `curl(1)` or `wget(1)`
+    -   `unzip(1)`
+    -   GNU tar (`tar(1)` or `gtar(1)` depending on platform)
+    -   `gzip(1)`
+-   For Windows systems:
+    -   pwsh or powershell
+    -   git
+    -   GNU tar
+    -   One of the following:
+        -   [7zip][7zip]
+        -   [peazip][peazip]
+        -   [archiver][archiver]
+        -   [winzip][winzip]
+        -   [WinRAR][winrar]
 
 Note that `mason.nvim` will regularly shell out to external package managers, such as `cargo` and `npm`. Depending on
 your personal usage, some of these will also need to be installed. Refer to `:checkhealth mason` for a full list.
@@ -97,8 +112,7 @@ your personal usage, some of these will also need to be installed. Refer to `:ch
 
 ```lua
 use {
-    "williamboman/mason.nvim",
-    run = ":MasonUpdate" -- :MasonUpdate updates registry contents
+    "williamboman/mason.nvim"
 }
 ```
 
@@ -106,16 +120,14 @@ use {
 
 ```lua
 {
-    "williamboman/mason.nvim",
-    build = ":MasonUpdate" -- :MasonUpdate updates registry contents
+    "williamboman/mason.nvim"
 }
 ```
 
 ## [vim-plug](https://github.com/junegunn/vim-plug)
 
 ```vim
-" :MasonUpdate updates registry contents
-Plug 'williamboman/mason.nvim', { 'do': ':MasonUpdate' }
+Plug 'williamboman/mason.nvim'
 ```
 
 # Setup
@@ -147,7 +159,6 @@ Refer to the [Wiki](https://github.com/williamboman/mason.nvim/wiki/Extensions) 
 -   `:MasonUninstall <package> ...` - uninstalls the provided packages
 -   `:MasonUninstallAll` - uninstalls all packages
 -   `:MasonLog` - opens the `mason.nvim` log file in a new tab window
-
 
 # Registries
 
@@ -183,10 +194,13 @@ require("mason").setup({
 ## Default configuration
 
 ```lua
+---@class MasonSettings
 local DEFAULT_SETTINGS = {
+    ---@since 1.0.0
     -- The directory in which to install packages.
     install_root_dir = path.concat { vim.fn.stdpath "data", "mason" },
 
+    ---@since 1.0.0
     -- Where Mason should put its bin location in your PATH. Can be one of:
     -- - "prepend" (default, Mason's bin location is put first in PATH)
     -- - "append" (Mason's bin location is put at the end of PATH)
@@ -194,14 +208,17 @@ local DEFAULT_SETTINGS = {
     ---@type '"prepend"' | '"append"' | '"skip"'
     PATH = "prepend",
 
+    ---@since 1.0.0
     -- Controls to which degree logs are written to the log file. It's useful to set this to vim.log.levels.DEBUG when
     -- debugging issues with package installations.
     log_level = vim.log.levels.INFO,
 
+    ---@since 1.0.0
     -- Limit for the maximum amount of packages to be installed at the same time. Once this limit is reached, any further
     -- packages that are requested to be installed will be put in a queue.
     max_concurrent_installers = 4,
 
+    ---@since 1.0.0
     -- [Advanced setting]
     -- The registries to source packages from. Accepts multiple entries. Should a package with the same name exist in
     -- multiple registries, the registry listed first will be used.
@@ -209,6 +226,7 @@ local DEFAULT_SETTINGS = {
         "github:mason-org/mason-registry",
     },
 
+    ---@since 1.0.0
     -- The provider implementations to use for resolving supplementary package metadata (e.g., all available versions).
     -- Accepts multiple entries, where later entries will be used as fallback should prior providers fail.
     -- Builtin providers are:
@@ -220,6 +238,7 @@ local DEFAULT_SETTINGS = {
     },
 
     github = {
+        ---@since 1.0.0
         -- The template URL to use when downloading assets from GitHub.
         -- The placeholders are the following (in order):
         -- 1. The repository (e.g. "rust-lang/rust-analyzer")
@@ -229,9 +248,11 @@ local DEFAULT_SETTINGS = {
     },
 
     pip = {
+        ---@since 1.0.0
         -- Whether to upgrade pip to the latest version in the virtual environment before installing packages.
         upgrade_pip = false,
 
+        ---@since 1.0.0
         -- These args will be added to `pip install` calls. Note that setting extra args might impact intended behavior
         -- and is not recommended.
         --
@@ -240,50 +261,72 @@ local DEFAULT_SETTINGS = {
     },
 
     ui = {
+        ---@since 1.0.0
         -- Whether to automatically check for new versions when opening the :Mason window.
         check_outdated_packages_on_open = true,
 
+        ---@since 1.0.0
         -- The border to use for the UI window. Accepts same border values as |nvim_open_win()|.
         border = "none",
 
+        ---@since 1.0.0
         -- Width of the window. Accepts:
         -- - Integer greater than 1 for fixed width.
         -- - Float in the range of 0-1 for a percentage of screen width.
         width = 0.8,
 
+        ---@since 1.0.0
         -- Height of the window. Accepts:
         -- - Integer greater than 1 for fixed height.
         -- - Float in the range of 0-1 for a percentage of screen height.
         height = 0.9,
 
         icons = {
+            ---@since 1.0.0
             -- The list icon to use for installed packages.
             package_installed = "◍",
+            ---@since 1.0.0
             -- The list icon to use for packages that are installing, or queued for installation.
             package_pending = "◍",
+            ---@since 1.0.0
             -- The list icon to use for packages that are not installed.
             package_uninstalled = "◍",
         },
 
         keymaps = {
+            ---@since 1.0.0
             -- Keymap to expand a package
             toggle_package_expand = "<CR>",
+            ---@since 1.0.0
             -- Keymap to install the package under the current cursor position
             install_package = "i",
+            ---@since 1.0.0
             -- Keymap to reinstall/update the package under the current cursor position
             update_package = "u",
+            ---@since 1.0.0
             -- Keymap to check for new version for the package under the current cursor position
             check_package_version = "c",
+            ---@since 1.0.0
             -- Keymap to update all installed packages
             update_all_packages = "U",
+            ---@since 1.0.0
             -- Keymap to check which installed packages are outdated
             check_outdated_packages = "C",
+            ---@since 1.0.0
             -- Keymap to uninstall a package
             uninstall_package = "X",
+            ---@since 1.0.0
             -- Keymap to cancel a package installation
             cancel_installation = "<C-c>",
+            ---@since 1.0.0
             -- Keymap to apply language filter
             apply_language_filter = "<C-f>",
+            ---@since 1.1.0
+            -- Keymap to toggle viewing package installation log
+            toggle_package_install_log = "<CR>",
+            ---@since 1.8.0
+            -- Keymap to toggle the help view
+            toggle_help = "g?",
         },
     },
 }
@@ -295,12 +338,12 @@ local DEFAULT_SETTINGS = {
 👋 didn't find what you were looking for? Try looking in the <a href="./doc/mason.txt">help docs</a> <code>:help mason.nvim</code>!
 </sup>
 
-[help-mason-commands]: ./doc/mason.txt#L177
+[help-mason-commands]: ./doc/mason.txt#L178
 [help-mason-how-to-use-packages]: ./doc/mason.txt#L153
 [help-mason-introduction]: ./doc/mason.txt#L11
 [help-mason-quickstart]: ./doc/mason.txt#L67
-[help-mason-registry-refresh]: ./doc/mason.txt#L516
-[help-mason-registry-update]: ./doc/mason.txt#L509
+[help-mason-registry-refresh]: ./doc/mason.txt#L549
+[help-mason-registry-update]: ./doc/mason.txt#L542
 [help-mason-requirements]: ./doc/mason.txt#L50
-[help-mason-settings]: ./doc/mason.txt#L237
+[help-mason-settings]: ./doc/mason.txt#L238
 [help-standard-path]: https://neovim.io/doc/user/starting.html#standard-path

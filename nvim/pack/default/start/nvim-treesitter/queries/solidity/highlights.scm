@@ -116,6 +116,7 @@
   "var"
   "let"
   "emit"
+  "error"
   "fallback"
   "receive"
   (virtual)
@@ -257,7 +258,3 @@
 
 ((comment) @comment.documentation
   (#lua-match? @comment.documentation "^/[*][*][^*].*[*]/$"))
-
-; Errors
-
-(ERROR) @error

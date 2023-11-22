@@ -9,7 +9,6 @@ local text = Ui.text
 local col = Ui.col
 local row = Ui.row
 local map = util.map
-local intersperse = util.intersperse
 
 function M.OverviewFile(file)
   return row.tag("OverviewFile") {
@@ -22,26 +21,45 @@ function M.OverviewFile(file)
   }
 end
 
+local function commit_header_arg(info)
+  if info.oid ~= info.commit_arg then
+    return row { text(info.commit_arg .. " "), text.highlight("Comment")(info.oid) }
+  else
+    return row {}
+  end
+end
+
 function M.CommitHeader(info)
   return col {
-    text.sign("NeogitCommitViewHeader")("Commit " .. info.oid),
-    text("Author:     " .. info.author_name .. " <" .. info.author_email .. ">"),
-    text("AuthorDate: " .. info.author_date),
-    text("Commit:     " .. info.committer_name .. " <" .. info.committer_email .. ">"),
-    text("CommitDate: " .. info.committer_date),
+    text.sign("NeogitCommitViewHeader")("Commit " .. info.commit_arg),
+    commit_header_arg(info),
+    row {
+      text.highlight("Comment")("Author:     "),
+      text((info.author_name or "") .. " <" .. (info.author_email or "") .. ">"),
+    },
+    row { text.highlight("Comment")("AuthorDate: "), text(info.author_date) },
+    row {
+      text.highlight("Comment")("Committer:  "),
+      text((info.committer_name or "") .. " <" .. (info.committer_email or "") .. ">"),
+    },
+    row { text.highlight("Comment")("CommitDate: "), text(info.committer_date) },
   }
 end
 
-function M.CommitView(info, overview)
+function M.CommitView(info, overview, signature_block)
+  local hide_signature = vim.tbl_isempty(signature_block)
+
   return {
     M.CommitHeader(info),
     text(""),
     col(map(info.description, text), { sign = "NeogitCommitViewDescription", tag = "Description" }),
     text(""),
+    col(map(signature_block or {}, text), { tag = "Signature", hidden = hide_signature }),
+    text("", { hidden = hide_signature }),
     text(overview.summary),
     col(map(overview.files, M.OverviewFile), { tag = "OverviewFileList" }),
     text(""),
-    col(intersperse(map(info.diffs, Diff), text("")), { tag = "DiffList" }),
+    col(map(info.diffs, Diff), { tag = "DiffList" }),
   }
 end
 

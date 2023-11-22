@@ -23,7 +23,7 @@ https://user-images.githubusercontent.com/41961280/122515860-5179fa00-d00e-11eb-
 - Snippets that make use of the entire functionality of this plugin have to be defined in Lua (but 95% of snippets can be written in lsp-syntax).
 
 # Requirements
-Neovim >= 0.5 (extmarks)
+Neovim >= 0.7 (extmarks)
 `jsregexp` for lsp-snippet-transformations (see [here](https://github.com/L3MON4D3/LuaSnip/blob/master/DOC.md#transformations) for some tips on installing it).
 
 # Setup
@@ -34,7 +34,7 @@ Neovim >= 0.5 (extmarks)
   use({
   	"L3MON4D3/LuaSnip",
   	-- follow latest release.
-  	tag = "v<CurrentMajor>.*", -- Replace <CurrentMajor> by the latest released major (first number of latest release)
+  	tag = "v2.*", -- Replace <CurrentMajor> by the latest released major (first number of latest release)
   	-- install jsregexp (optional!:).
   	run = "make install_jsregexp"
   })
@@ -44,7 +44,7 @@ Neovim >= 0.5 (extmarks)
   {
   	"L3MON4D3/LuaSnip",
   	-- follow latest release.
-  	version = "<CurrentMajor>.*", -- Replace <CurrentMajor> by the latest released major (first number of latest release)
+  	version = "v2.*", -- Replace <CurrentMajor> by the latest released major (first number of latest release)
   	-- install jsregexp (optional!).
   	build = "make install_jsregexp"
   }
@@ -52,7 +52,7 @@ Neovim >= 0.5 (extmarks)
   **vim-plug**:
   ```vim
   " follow latest release and install jsregexp.
-  Plug 'L3MON4D3/LuaSnip', {'tag': 'v<CurrentMajor>.*', 'do': 'make install_jsregexp'} " Replace <CurrentMajor> by the latest released major (first number of latest release)
+  Plug 'L3MON4D3/LuaSnip', {'tag': 'v2.*', 'do': 'make install_jsregexp'} " Replace <CurrentMajor> by the latest released major (first number of latest release)
   ```
   Check the `Releases`-section to the right for the latest major version.
 
@@ -61,6 +61,9 @@ Neovim >= 0.5 (extmarks)
   Consider watching the repos releases so you're notified when a new version becomes available.
 
 ## Keymaps
+In vimscript, with `<Tab>` for jumping forward/expanding a snippet, `<Shift-Tab>` for
+jumping backward, and `<Ctrl-E>` for changing the current choice when in a
+choiceNode...
 ```vim
 " press <Tab> to expand or jump in a snippet. These can also be mapped separately
 " via <Plug>luasnip-expand-snippet and <Plug>luasnip-jump-next.
@@ -75,6 +78,23 @@ snoremap <silent> <S-Tab> <cmd>lua require('luasnip').jump(-1)<Cr>
 imap <silent><expr> <C-E> luasnip#choice_active() ? '<Plug>luasnip-next-choice' : '<C-E>'
 smap <silent><expr> <C-E> luasnip#choice_active() ? '<Plug>luasnip-next-choice' : '<C-E>'
 ```
+
+... or in lua, with a different set of keys: `<Ctrl-K>` for expanding, `<Ctrl-L>`
+for jumping forward, `<Ctrl-J>` for jumping backward, and `<Ctrl-E>` for
+changing the active choice.
+
+```lua
+vim.keymap.set({"i"}, "<C-K>", function() ls.expand() end, {silent = true})
+vim.keymap.set({"i", "s"}, "<C-L>", function() ls.jump( 1) end, {silent = true})
+vim.keymap.set({"i", "s"}, "<C-J>", function() ls.jump(-1) end, {silent = true})
+
+vim.keymap.set({"i", "s"}, "<C-E>", function()
+	if ls.choice_active() then
+		ls.change_choice(1)
+	end
+end, {silent = true})
+```
+
 `nvim-cmp`'s wiki also contains [an example](https://github.com/hrsh7th/nvim-cmp/wiki/Example-mappings#luasnip) for
 setting up a super-tab-like mapping.
 
@@ -127,7 +147,7 @@ Here are some suggestions for getting started in either case:
   Of those two, SnipMate is definitely the more comfortable way of writing snippets.
 * **Lua snippets**: we suggest first watching or reading one of the introductory guides in the [Resources for new users](#resources-for-new-users) section below.
   After getting familiar with the basics, you should check out the important LuaSnip features in the following list:
-  * [`config`](https://github.com/L3MON4D3/LuaSnip/blob/master/DOC.md#config-reference): Notable: `region_check_events` for jumping to the end of snippets the cursor is no longer inside of,
+  * [`config`](https://github.com/L3MON4D3/LuaSnip/blob/master/DOC.md#config-options): Notable: `region_check_events` for jumping to the end of snippets the cursor is no longer inside of,
     `delete_check_events` for cleaning up snippets whose text was deleted,
     and `enable_autosnippets` to enable automatic snippet expansion.
   * [`extras`](https://github.com/L3MON4D3/LuaSnip/blob/master/DOC.md#extras): This module contains many functions that make writing snippets
@@ -139,7 +159,7 @@ Here are some suggestions for getting started in either case:
     current buffer](https://github.com/L3MON4D3/LuaSnip/blob/master/DOC.md#edit_snippets).
   * Advanced nodes:
     [`functionNode`](https://github.com/L3MON4D3/LuaSnip/blob/master/DOC.md#functionnode),
-    [`dynamicNode`](https://github.com/L3MON4D3/LuaSnip/blob/master/DOC.md#functionnode),
+    [`dynamicNode`](https://github.com/L3MON4D3/LuaSnip/blob/master/DOC.md#dynamicnode),
     [`choiceNode`](https://github.com/L3MON4D3/LuaSnip/blob/master/DOC.md#choicenode) and [`restoreNode`](https://github.com/L3MON4D3/LuaSnip/blob/master/DOC.md#restorenode).  
     Instead of reading about them in the doc, the first three are explained very
     well in [this video](https://www.youtube.com/watch?v=KtQZRAkgLqo) by TJ
@@ -153,7 +173,7 @@ Note: instead of immediately reading the official documentation, you may want to
 - `:help luasnip.txt` is a plain text version of `DOC.md` available with Neovim's `:help` feature.
 - The file [`Examples/snippets.lua`](https://github.com/L3MON4D3/LuaSnip/blob/master/Examples/snippets.lua) contains many example snippets written in Lua—we highly recommend looking through (or better yet, `:luafile`ing) these example snippets before using LuaSnip's advanced features.
 - The [Wiki](https://github.com/L3MON4D3/LuaSnip/wiki) contains some useful LuaSnip extensions and some examples of advanced snippets and configs.
-- Configuration is documented [in `DOC.md`](https://github.com/L3MON4D3/LuaSnip/blob/master/DOC.md#config-reference) as well.
+- Configuration is documented [in `DOC.md`](https://github.com/L3MON4D3/LuaSnip/blob/master/DOC.md#config-options) as well.
 
 【中文版】DOC in Chinese is [here](https://zjp-cn.github.io/neovim0.6-blogs/nvim/luasnip/doc1.html). 
 

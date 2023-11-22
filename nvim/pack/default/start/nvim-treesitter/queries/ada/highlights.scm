@@ -96,7 +96,7 @@
    "raise"
 ] @exception
 (comment) @comment @spell
-(string_literal) @string @spell
+(string_literal) @string
 (character_literal) @string
 (numeric_literal) @number
 
@@ -188,9 +188,3 @@
 (enumeration_type_definition 
   (identifier)
   . (comment) @comment.documentation)
-
-;; Highlight errors in red. This is not very useful in practice, as text will
-;; be highlighted as user types, and the error could be elsewhere in the code.
-;; This also requires defining    :hi @error guifg=Red    for instance.
-(ERROR) @error
-

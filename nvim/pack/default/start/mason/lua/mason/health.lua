@@ -23,7 +23,7 @@ local report_error = _.scheduler_wrap(health.error or health.report_error)
 local sem = Semaphore.new(5)
 
 ---@async
----@param opts {cmd:string, args:string[], name: string, use_stderr: boolean?, version_check: (fun(version: string): string?), relaxed: boolean?}
+---@param opts {cmd:string, args:string[], name: string, use_stderr: boolean?, version_check: (fun(version: string): string?), relaxed: boolean?, advice: string[]}
 local function check(opts)
     local get_first_non_empty_line = _.compose(_.head, _.filter(_.complement(_.matches "^%s*$")), _.split "\n")
 
@@ -60,7 +60,7 @@ local function check(opts)
         report_ok(("%s: `%s`"):format(opts.name, version or "Ok"))
     end):on_failure(function(err)
         local report = opts.relaxed and report_warn or report_error
-        report(("%s: not available"):format(opts.name), { tostring(err) })
+        report(("%s: not available"):format(opts.name), opts.advice or { tostring(err) })
     end)
     permit:forget()
 end
@@ -143,7 +143,10 @@ local function check_core_utils()
         use_stderr = platform.is.mac, -- Apple gzip prints version string to stderr
         relaxed = platform.is.win,
     }
-    check { cmd = "tar", args = { "--version" }, name = "tar" }
+
+    a.scheduler()
+    local tar = vim.fn.executable "gtar" == 1 and "gtar" or "tar"
+    check { cmd = tar, args = { "--version" }, name = tar }
 
     if platform.is.unix then
         check { cmd = "bash", args = { "--version" }, name = "bash" }
@@ -226,9 +229,10 @@ local function check_languages()
             version_check = function(version)
                 -- Parses output such as "8.1.2" into major, minor, patch components
                 local _, _, major = version:find "(%d+)%.(%d+)%.(%d+)"
-                -- Based off of general observations of feature parity
-                if tonumber(major) < 6 then
-                    return "npm version must be >= 6"
+                -- Based off of general observations of feature parity.
+                -- In npm v7, peerDependencies are now automatically installed.
+                if tonumber(major) < 7 then
+                    return "npm version must be >= 7"
                 end
             end,
         },
@@ -249,13 +253,20 @@ local function check_languages()
         check_thunk { cmd = "java", args = { "-version" }, name = "java", use_stderr = true, relaxed = true },
         check_thunk { cmd = "julia", args = { "--version" }, name = "julia", relaxed = true },
         function()
-            if platform.is.win then
-                check { cmd = "python", args = { "--version" }, name = "python", relaxed = true }
-                check { cmd = "python", args = { "-m", "pip", "--version" }, name = "pip", relaxed = true }
-            else
-                check { cmd = "python3", args = { "--version" }, name = "python3", relaxed = true }
-                check { cmd = "python3", args = { "-m", "pip", "--version" }, name = "pip3", relaxed = true }
-            end
+            local python = platform.is.win and "python" or "python3"
+            check { cmd = python, args = { "--version" }, name = "python", relaxed = true }
+            check { cmd = python, args = { "-m", "pip", "--version" }, name = "pip", relaxed = true }
+            check {
+                cmd = python,
+                args = { "-c", "import venv" },
+                name = "python venv",
+                relaxed = true,
+                advice = {
+                    [[On Debian/Ubuntu systems, you need to install the python3-venv package using the following command:
+
+    apt-get install python3-venv]],
+                },
+            }
         end,
         function()
             a.scheduler()

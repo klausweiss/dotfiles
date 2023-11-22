@@ -3,6 +3,7 @@ local fetch = require "mason-core.fetch"
 local match = require "luassert.match"
 local spawn = require "mason-core.spawn"
 local stub = require "luassert.stub"
+local version = require "mason.version"
 
 describe("fetch", function()
     it(
@@ -21,7 +22,9 @@ describe("fetch", function()
             assert.spy(spawn.curl).was_called(1)
             assert.spy(spawn.wget).was_called_with {
                 {
-                    "--header=User-Agent: mason.nvim (+https://github.com/williamboman/mason.nvim)",
+                    ("--header=User-Agent: mason.nvim %s (+https://github.com/williamboman/mason.nvim)"):format(
+                        version.VERSION
+                    ),
                     "--header=X-Custom-Header: here",
                 },
                 "-nv",
@@ -29,6 +32,7 @@ describe("fetch", function()
                 "/dev/null",
                 "-O",
                 "-",
+                "--timeout=30",
                 "--method=GET",
                 vim.NIL, -- body-data
                 "https://api.github.com",
@@ -38,7 +42,9 @@ describe("fetch", function()
                 match.same {
                     {
                         "-H",
-                        "User-Agent: mason.nvim (+https://github.com/williamboman/mason.nvim)",
+                        ("User-Agent: mason.nvim %s (+https://github.com/williamboman/mason.nvim)"):format(
+                            version.VERSION
+                        ),
                     },
                     {
                         "-H",
@@ -49,6 +55,7 @@ describe("fetch", function()
                 match.same { "-X", "GET" },
                 vim.NIL, -- data
                 vim.NIL, -- out file
+                match.same { "--connect-timeout", 30 },
                 "https://api.github.com",
                 on_spawn = match.is_function(),
             })
@@ -79,13 +86,16 @@ describe("fetch", function()
 
             assert.spy(spawn.wget).was_called_with {
                 {
-                    "--header=User-Agent: mason.nvim (+https://github.com/williamboman/mason.nvim)",
+                    ("--header=User-Agent: mason.nvim %s (+https://github.com/williamboman/mason.nvim)"):format(
+                        version.VERSION
+                    ),
                 },
                 "-nv",
                 "-o",
                 "/dev/null",
                 "-O",
                 "/test.json",
+                "--timeout=30",
                 "--method=GET",
                 vim.NIL, -- body-data
                 "https://api.github.com/data",
@@ -95,13 +105,16 @@ describe("fetch", function()
                 match.same {
                     {
                         "-H",
-                        "User-Agent: mason.nvim (+https://github.com/williamboman/mason.nvim)",
+                        ("User-Agent: mason.nvim %s (+https://github.com/williamboman/mason.nvim)"):format(
+                            version.VERSION
+                        ),
                     },
                 },
                 "-fsSL",
                 match.same { "-X", "GET" },
                 vim.NIL, -- data
                 match.same { "-o", "/test.json" },
+                match.same { "--connect-timeout", 30 },
                 "https://api.github.com/data",
                 on_spawn = match.is_function(),
             })

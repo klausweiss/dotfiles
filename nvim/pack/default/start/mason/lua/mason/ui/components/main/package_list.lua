@@ -52,6 +52,9 @@ end
 local function ExpandedPackageInfo(state, pkg, is_installed)
     local pkg_state = state.packages.states[pkg.name]
     return Ui.CascadingStyleNode({ "INDENT" }, {
+        Ui.When(not is_installed and pkg.spec.deprecation, function()
+            return Ui.HlTextNode(p.warning(("Deprecation message: %s"):format(pkg.spec.deprecation.message)))
+        end),
         Ui.HlTextNode(_.map(function(line)
             return { p.Comment(line) }
         end, _.split("\n", pkg.spec.desc))),
@@ -125,26 +128,39 @@ local function PackageComponent(state, pkg, opts)
     local is_expanded = state.packages.expanded == pkg.name
     local label = (is_expanded or pkg_state.has_transitioned) and p.Bold(" " .. pkg.name) or p.none(" " .. pkg.name)
 
+    local package_line = {
+        opts.icon,
+        label,
+    }
+
+    local pkg_aliases = pkg:get_aliases()
+    if #pkg_aliases > 0 then
+        package_line[#package_line + 1] = p.Comment(" " .. table.concat(pkg:get_aliases(), ", "))
+    end
+    if state.view.is_searching then
+        package_line[#package_line + 1] = p.Comment((" (keywords: %s)"):format(get_package_search_keywords(pkg)))
+    end
+    if not opts.is_installed and pkg.spec.deprecation ~= nil then
+        package_line[#package_line + 1] = p.warning " deprecated"
+    end
+
     return Ui.Node {
-        Ui.HlTextNode {
-            {
-                opts.icon,
-                label,
-                p.none " ",
-                p.Comment(table.concat(pkg:get_aliases(), ", ")),
-                state.view.is_searching and p.Comment(" // keywords: " .. get_package_search_keywords(pkg))
-                    or p.none "",
-            },
-        },
+        Ui.HlTextNode { package_line },
         opts.sticky or Ui.Node {},
+        Ui.When(opts.is_installed and pkg.spec.deprecation ~= nil, function()
+            return Ui.DiagnosticsNode {
+                message = ("deprecated: %s"):format(pkg.spec.deprecation.message),
+                severity = vim.diagnostic.severity.WARN,
+                source = ("Deprecated since version %s"):format(pkg.spec.deprecation.since),
+            }
+        end),
         Ui.When(pkg_state.is_checking_new_version, function()
             return Ui.VirtualTextNode { p.Comment " checking for new version…" }
         end),
         Ui.Keybind(settings.current.ui.keymaps.check_package_version, "CHECK_NEW_PACKAGE_VERSION", pkg),
         Ui.When(pkg_state.new_version ~= nil, function()
             return Ui.DiagnosticsNode {
-                message = ("new version available: %s %s -> %s"):format(
-                    pkg_state.new_version.name,
+                message = ("new version available: %s -> %s"):format(
                     pkg_state.new_version.current_version,
                     pkg_state.new_version.latest_version
                 ),

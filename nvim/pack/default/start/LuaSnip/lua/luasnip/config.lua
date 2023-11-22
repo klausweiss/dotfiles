@@ -48,7 +48,11 @@ local lazy_snip_env = {
 }
 
 local defaults = {
-	history = false,
+	-- corresponds to legacy "history=false".
+	keep_roots = false,
+	link_roots = false,
+	link_children = false,
+
 	update_events = "InsertLeave",
 	-- see :h User, event should never be triggered(except if it is `doautocmd`'d)
 	region_check_events = nil,
@@ -208,6 +212,16 @@ c = {
 
 		set_snip_env(conf, user_config)
 
+		-- handle legacy-key history.
+		if user_config.history ~= nil then
+			conf.keep_roots = user_config.history
+			conf.link_roots = user_config.history
+			conf.link_children = user_config.history
+
+			-- unset key to prevent handling twice.
+			conf.history = nil
+		end
+
 		for k, v in pairs(user_config) do
 			conf[k] = v
 		end
@@ -250,10 +264,10 @@ c = {
 			end)
 		end
 		-- Remove buffers' nodes on deletion+wipeout.
-		ls_autocmd({ "BufDelete", "BufWipeout" }, function()
+		ls_autocmd({ "BufDelete", "BufWipeout" }, function(event)
 			local current_nodes = require("luasnip").session.current_nodes
 			if current_nodes then
-				current_nodes[tonumber(vim.fn.expand("<abuf>"))] = nil
+				current_nodes[event.buf] = nil
 			end
 		end)
 		if session.config.enable_autosnippets then
@@ -271,8 +285,9 @@ c = {
 		if session.config.store_selection_keys then
 			vim.cmd(
 				string.format(
-					[[xnoremap <silent>  %s  :lua require('luasnip.util.util').store_selection()<cr>gv"_s]],
-					session.config.store_selection_keys
+					[[xnoremap <silent>  %s  %s]],
+					session.config.store_selection_keys,
+					require("luasnip.util.select").select_keys
 				)
 			)
 		end

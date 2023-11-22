@@ -1,4 +1,4 @@
-(comment) @comment
+(comment) @comment @spell
 
 "@media" @keyword
 "@import" @include
@@ -78,5 +78,3 @@
 (environ_value "env" @function.builtin (identifier) @variable)
 
 (property_name) @variable
-
-(ERROR) @error

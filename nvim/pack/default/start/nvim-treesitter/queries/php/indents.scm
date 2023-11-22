@@ -10,7 +10,6 @@
   (switch_block)
   (match_block)
   (case_statement)
-  "["
 ] @indent.begin
 
 [
@@ -25,4 +24,13 @@
 
 (compound_statement "}" @indent.end)
 
-(ERROR) @indent.auto
+(ERROR
+  "(" @indent.align
+  . (_)
+  (#set! indent.open_delimiter "(")
+  (#set! indent.close_delimiter ")"))
+(ERROR
+  "[" @indent.align
+  . (_)
+  (#set! indent.open_delimiter "[")
+  (#set! indent.close_delimiter "]"))

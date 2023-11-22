@@ -1,4 +1,5 @@
 local cli = require("neogit.lib.git.cli")
+local log = require("neogit.lib.git.log")
 local util = require("neogit.lib.util")
 
 local M = {}
@@ -10,15 +11,22 @@ function M.pull_interactive(remote, branch, args)
 end
 
 local function update_unpulled(state)
-  if not state.upstream.branch then
+  state.upstream.unpulled.items = {}
+  state.pushRemote.unpulled.items = {}
+
+  if state.head.branch == "(detached)" then
     return
   end
 
-  local result = cli.log.oneline.for_range("..@{upstream}").show_popup(false).call():trim().stdout
+  if state.upstream.ref then
+    state.upstream.unpulled.items = util.filter_map(log.list { "..@{upstream}" }, log.present_commit)
+  end
 
-  state.unpulled.items = util.map(result, function(x)
-    return { name = x }
-  end)
+  local pushRemote = require("neogit.lib.git").branch.pushRemote_ref()
+  if pushRemote then
+    state.pushRemote.unpulled.items =
+      util.filter_map(log.list { string.format("..%s", pushRemote) }, log.present_commit)
+  end
 end
 
 function M.register(meta)

@@ -60,7 +60,12 @@ function Trouble.open(...)
   if opts.mode and (opts.mode ~= config.options.mode) then
     config.options.mode = opts.mode
   end
-  opts.focus = true
+
+  if opts.severity and (opts.severity ~= config.options.severity) then
+    config.options.severity = opts.severity
+  end
+
+  opts.focus = (opts.focus == nil and not opts.auto) and true or opts.focus
   opts.on_open = true
 
   if Trouble.is_open() then
@@ -105,12 +110,7 @@ function Trouble.help()
     height = height + 1
   end
   -- help
-  vim.lsp.util.open_floating_preview(lines, "markdown", {
-    border = "single",
-    height = 20,
-    offset_y = -2,
-    offset_x = 2,
-  })
+  vim.lsp.util.open_floating_preview(lines, "markdown", config.options.win_config)
 end
 
 local updater = util.debounce(100, function()
@@ -165,6 +165,17 @@ function Trouble.action(action)
       config.options.mode = "workspace_diagnostics"
     elseif config.options.mode == "workspace_diagnostics" then
       config.options.mode = "document_diagnostics"
+    end
+    action = "refresh"
+  end
+
+  if action == "switch_severity" then
+    if config.options.severity == nil then
+      config.options.severity = vim.diagnostic.severity.ERROR
+    elseif config.options.severity < 4 then
+      config.options.severity = config.options.severity + 1
+    else
+      config.options.severity = nil
     end
     action = "refresh"
   end
@@ -239,6 +250,9 @@ function Trouble.action(action)
   end
   if action == "preview" then
     view:preview()
+  end
+  if action == "open_code_href" then
+    view:open_code_href()
   end
 
   if Trouble[action] then

@@ -55,6 +55,7 @@ local function wipe_rogue_buffer()
   end
 end
 
+---@return TroubleView
 function View:new(opts)
   opts = opts or {}
 
@@ -78,7 +79,7 @@ end
 
 function View:set_option(name, value, win)
   if win then
-    return vim.api.nvim_set_option_value(name, value, { win = self.win, scope = 'local' })
+    return vim.api.nvim_set_option_value(name, value, { win = self.win, scope = "local" })
   else
     return vim.api.nvim_set_option_value(name, value, { buf = self.buf })
   end
@@ -86,6 +87,10 @@ end
 
 ---@param text Text
 function View:render(text)
+  if not self:is_valid() then
+    return
+  end
+
   self:unlock()
   self:set_lines(text.lines)
   self:lock()
@@ -137,6 +142,7 @@ function View:setup(opts)
   self:set_option("bufhidden", "wipe")
   self:set_option("buftype", "nofile")
   self:set_option("swapfile", false)
+  self:set_option("cursorline", true, true)
   self:set_option("buflisted", false)
   self:set_option("winfixwidth", true, true)
   self:set_option("wrap", false, true)
@@ -156,11 +162,17 @@ function View:setup(opts)
       keys = { keys }
     end
     for _, key in pairs(keys) do
-      vim.api.nvim_buf_set_keymap(self.buf, "n", key, [[<cmd>lua require("trouble").action("]] .. action .. [[")<cr>]], {
-        silent = true,
-        noremap = true,
-        nowait = true,
-      })
+      vim.api.nvim_buf_set_keymap(
+        self.buf,
+        "n",
+        key,
+        [[<cmd>lua require("trouble").action("]] .. action .. [[")<cr>]],
+        {
+          silent = true,
+          noremap = true,
+          nowait = true,
+        }
+      )
     end
   end
 
@@ -308,6 +320,10 @@ function View:on_win_enter()
 end
 
 function View:focus()
+  if not self:is_valid() then
+    return
+  end
+
   View.switch_to(self.win, self.buf)
   local line = self:get_line()
   if line == 1 then
@@ -335,7 +351,9 @@ end
 function View:close()
   util.debug("close")
   if vim.api.nvim_win_is_valid(self.win) then
-    vim.api.nvim_set_current_win(self.parent)
+    if vim.api.nvim_win_is_valid(self.parent) then
+      vim.api.nvim_set_current_win(self.parent)
+    end
     vim.api.nvim_win_close(self.win, {})
   end
   if vim.api.nvim_buf_is_valid(self.buf) then
@@ -345,21 +363,26 @@ end
 
 function View.create(opts)
   opts = opts or {}
-  if opts.win then
-    View.switch_to(opts.win)
-    vim.cmd("enew")
-  else
-    vim.cmd("below new")
-    local pos = { bottom = "J", top = "K", left = "H", right = "L" }
-    vim.cmd("wincmd " .. (pos[config.options.position] or "K"))
-  end
-  local buffer = View:new(opts)
-  buffer:setup(opts)
+  ---@type TroubleView
+  local view
+  vim.api.nvim_win_call(0, function()
+    if opts.win then
+      View.switch_to(opts.win)
+      vim.cmd("enew")
+    else
+      vim.cmd("below new")
+      local pos = { bottom = "J", top = "K", left = "H", right = "L" }
+      vim.cmd("wincmd " .. (pos[config.options.position] or "K"))
+    end
+    view = View:new(opts)
+    view:setup(opts)
+  end)
 
-  if opts and opts.auto then
-    buffer:switch_to_parent()
+  if opts.focus == true then
+    view:focus()
   end
-  return buffer
+
+  return view
 end
 
 function View:get_cursor()
@@ -383,7 +406,9 @@ function View:next_item(opts)
   local line = opts.first and 0 or self:get_line() + 1
 
   if line > #self.items then
-    self:first_item(opts)
+    if config.options.cycle_results then
+      self:first_item(opts)
+    end
   else
     for i = line, vim.api.nvim_buf_line_count(self.buf), 1 do
       if self.items[i] and not (opts.skip_groups and self.items[i].is_file) then
@@ -404,7 +429,9 @@ function View:previous_item(opts)
   for i = 0, vim.api.nvim_buf_line_count(self.buf), 1 do
     if self.items[i] then
       if line < i + (opts.skip_groups and 1 or 0) then
-        self:last_item(opts)
+        if config.options.cycle_results then
+          self:last_item(opts)
+        end
         return
       end
       break
@@ -440,13 +467,7 @@ function View:hover(opts)
   if not (item and item.full_text) then
     return
   end
-
-  local lines = {}
-  for line in item.full_text:gmatch("([^\n]*)\n?") do
-    table.insert(lines, line)
-  end
-
-  vim.lsp.util.open_floating_preview(lines, "plaintext", { border = "single" })
+  vim.lsp.util.open_floating_preview(vim.split(item.full_text, "\n"), "markdown", config.options.win_config)
 end
 
 function View:jump(opts)
@@ -473,16 +494,26 @@ function View:_preview()
   if not vim.api.nvim_win_is_valid(self.parent) then
     return
   end
+  if not vim.api.nvim_win_is_valid(self.win) then
+    return
+  end
 
   local item = self:current_item()
   if not item then
     return
   end
+  if item.bufnr == 0 then
+    return
+  end
+
   util.debug("preview")
 
   if item.is_file ~= true then
     vim.api.nvim_win_set_buf(self.parent, item.bufnr)
-    vim.api.nvim_win_set_cursor(self.parent, { item.start.line + 1, item.start.character })
+    local pos = { item.start.line + 1, item.start.character }
+    local line_count = vim.api.nvim_buf_line_count(item.bufnr)
+    pos[1] = math.min(pos[1], line_count)
+    vim.api.nvim_win_set_cursor(self.parent, pos)
 
     vim.api.nvim_buf_call(item.bufnr, function()
       -- Center preview line on screen and open enough folds to show it
@@ -511,5 +542,40 @@ end
 -- View.preview = View._preview
 
 View.preview = util.throttle(50, View._preview)
+
+function View:open_code_href()
+  if not vim.api.nvim_win_is_valid(self.parent) then
+    return
+  end
+
+  local item = self:current_item()
+  if not item then
+    return
+  end
+  util.debug("open code href")
+
+  if item.is_file ~= true and item.code_href then
+    local cmd
+    if vim.fn.has("win32") == 1 then
+      cmd = "explorer"
+    elseif vim.fn.executable("xdg-open") == 1 then
+      cmd = "xdg-open"
+    elseif vim.fn.executable("wslview") == 1 then
+      cmd = "wslview"
+    else
+      cmd = "open"
+    end
+
+    local ret = vim.fn.jobstart({ cmd, item.code_href }, { detach = true })
+    if ret <= 0 then
+      local msg = {
+        "Failed to open code href",
+        ret,
+        vim.inspect(cmd),
+      }
+      vim.notify(table.concat(msg, "\n"), vim.log.levels.ERROR)
+    end
+  end
+end
 
 return View

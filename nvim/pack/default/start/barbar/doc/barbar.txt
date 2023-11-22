@@ -129,7 +129,7 @@ Highlight groups are created in this way: `Buffer<STATUS><PART>`.
 
   Lua example: >
     require'barbar'.setup {
-      auto_hide = true,
+      auto_hide = 1,
       clickable = false,
       icons = {current = {filetype = {enabled = false}}},
       maximum_padding = math.huge,
@@ -139,7 +139,7 @@ Highlight groups are created in this way: `Buffer<STATUS><PART>`.
   Vimscript example (see |:lua-heredoc| for more details): >
     lua << EOF
     require'barbar'.setup {
-      auto_hide = true,
+      auto_hide = 1,
       clickable = false,
       icons = {current = {filetype = {enabled = false}}},
       maximum_padding = math.huge,
@@ -153,8 +153,13 @@ animation ~
 
                                                       *barbar-setup.auto_hide*
 auto_hide ~
-  `boolean`  (default: `false`)
-  Enable/disable auto-hiding the tab bar when there is a single buffer.
+  `false|integer`  (default: `-1`)
+  Automatically hide the 'tabline' when there are this many buffers left. Set
+  to any value less than `0` to disable.
+
+  For example: `auto_hide = 0` hides the 'tabline' when there would be zero
+  buffers shown, `auto_hide  = 1` hides the 'tabline' when there would only be
+  one, etc.
 
                                                       *barbar-setup.clickable*
 clickable ~
@@ -246,7 +251,7 @@ icons ~
 
                                                    *barbar-setup.icons.button*
   icons.button ~
-    `false | string`  (default: `''`)
+    `false | string`  (default: `''`)
     The button which is clicked to close / save a buffer, or indicate that
     it is pinned. Use `false` to disable it.
 
@@ -262,7 +267,7 @@ icons ~
 
                                       *barbar-setup.icons.diagnostics.icon*
      icons.diagnostics.icon ~
-       `boolean`  (defaults: `'Ⓧ '`, `'💡'`, `'ⓘ '`, and `'⚠️ '`)
+       `boolean`  (defaults: `' '`, `'󰌶 '`, `' '`, and `' '`)
        The icon which accompanies the number of diagnostics.
 
     Example that disables the error icon, but still shows the count: >
@@ -327,7 +332,7 @@ icons ~
     require'barbar'.setup {icons = {
       buffer_index = false,
       buffer_number = false,
-      button = '',
+      button = '',
       diagnostics = {{enabled = true}, {enabled = true}},
       filetype = {enabled = true},
       separator = {left = '▎'},
@@ -335,6 +340,13 @@ icons ~
 <
 
   You can also customize icons of 'modified' and pinned buffers:
+
+                                           *barbar-setup.icons.separator_at_end*
+  icons.separator_at_end ~
+    `boolean`  (default: `true`)
+    If true, add an additional separator at the end of the buffer list.
+    Can be used to create a visual separation when the inactive buffer
+    background color is the same as the fill region background color.
 
                                                  *barbar-setup.icons.modified*
   icons.modified ~
@@ -359,7 +371,7 @@ icons ~
   Example: >
     require'barbar'.setup {icons = {
       modified = {separator = '⋄'},
-      pinned = {button = '車', filename = true},
+      pinned = {button = '', filename = true},
     }}
 <
 

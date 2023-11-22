@@ -1,88 +1,54 @@
-local logger = require("neogit.logger")
 local client = require("neogit.client")
-local notif = require("neogit.lib.notification")
+local notification = require("neogit.lib.notification")
+local cli = require("neogit.lib.git.cli")
+local branch_lib = require("neogit.lib.git.branch")
 
 local M = {}
 
 local a = require("plenary.async")
 
 local function merge_command(cmd)
-  local git = require("neogit.lib.git")
-  cmd = cmd or git.cli.rebase
   local envs = client.get_envs_git_editor()
   return cmd.env(envs).show_popup(true):in_pty(true).call(true)
 end
 
-function M.rebase_interactive(...)
-  a.util.scheduler()
-  local git = require("neogit.lib.git")
-  local result = merge_command(git.cli.merge.interactive.args(...))
-  if result.code ~= 0 then
-    notif.create("Rebasing failed. Resolve conflicts before continuing", vim.log.levels.ERROR)
-  end
-  a.util.scheduler()
-  local status = require("neogit.status")
-  status.refresh(true, "rebase_interactive")
-end
-
 function M.merge(branch, args)
   a.util.scheduler()
-  local git = require("neogit.lib.git")
-  local result = merge_command(git.cli.merge.args(branch).arg_list(args))
+  local result = merge_command(cli.merge.args(branch).arg_list(args))
   if result.code ~= 0 then
-    notif.create("Rebasing failed. Resolve conflicts before continuing", vim.log.levels.ERROR)
+    notification.error("Merging failed. Resolve conflicts before continuing")
+  else
+    notification.info("Merged '" .. branch .. "' into '" .. branch_lib.current() .. "'")
   end
 end
 
 function M.continue()
-  local git = require("neogit.lib.git")
-  return merge_command(git.cli.merge.continue)
+  return merge_command(cli.merge.continue)
 end
 
 function M.abort()
-  local git = require("neogit.lib.git")
-  return merge_command(git.cli.merge.abort)
+  return merge_command(cli.merge.abort)
 end
 
-local uv = require("neogit.lib.uv")
 function M.update_merge_status(state)
-  local cli = require("neogit.lib.git.cli")
-  local root = cli.git_root()
-  if root == "" then
+  local repo = require("neogit.lib.git.repository")
+  if repo.git_root == "" then
     return
   end
 
-  local merge = {
-    items = {},
-    head = nil,
-    msg = "",
-  }
+  state.merge = { head = nil, msg = "", items = {} }
 
-  local mfile = root .. "/.git/MERGE_HEAD"
-  local _, stat = a.uv.fs_stat(mfile)
-
-  -- Find the rebase progress files
-
-  if not stat then
+  local merge_head = repo:git_path("MERGE_HEAD")
+  if not merge_head:exists() then
     return
   end
 
-  local err, head = uv.read_file(mfile)
-  if not head then
-    logger.error("Failed to read merge head: " .. err)
-    return
+  state.merge.head = merge_head:read():match("([^\r\n]+)")
+
+  local message = repo:git_path("MERGE_MSG")
+  if message:exists() then
+    state.merge.msg = message:read():match("([^\r\n]+)") -- we need \r? to support windows
   end
-  head = head:match("([^\r\n]+)")
-  merge.head = head
-
-  local _, msg = uv.read_file(root .. "/.git/MERGE_MSG")
-
-  -- we need \r? to support windows
-  if msg then
-    merge.msg = msg:match("([^\r\n]+)")
-  end
-
-  state.merge = merge
 end
 
 M.register = function(meta)

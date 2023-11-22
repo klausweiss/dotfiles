@@ -1,5 +1,6 @@
 local Result = require "mason-core.result"
 local _ = require "mason-core.functional"
+local providers = require "mason-core.providers"
 local util = require "mason-core.installer.registry.util"
 
 ---@param purl Purl
@@ -34,18 +35,19 @@ end
 ---@param source ParsedNpmSource
 function M.install(ctx, source)
     local npm = require "mason-core.installer.managers.npm"
-    local providers = require "mason-core.providers"
 
     return Result.try(function(try)
-        try(util.ensure_valid_version(function()
-            return providers.npm.get_all_versions(source.package)
-        end))
-
         try(npm.init())
         try(npm.install(source.package, source.version, {
             extra_packages = source.extra_packages,
         }))
     end)
+end
+
+---@async
+---@param purl Purl
+function M.get_versions(purl)
+    return providers.npm.get_all_versions(purl_to_npm(purl))
 end
 
 return M

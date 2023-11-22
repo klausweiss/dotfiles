@@ -1,5 +1,6 @@
 local Result = require "mason-core.result"
 local _ = require "mason-core.functional"
+local providers = require "mason-core.providers"
 local util = require "mason-core.installer.registry.util"
 
 local M = {}
@@ -46,19 +47,32 @@ end
 ---@param source ParsedCargoSource
 function M.install(ctx, source)
     local cargo = require "mason-core.installer.managers.cargo"
-    local providers = require "mason-core.providers"
 
-    return Result.try(function(try)
-        try(util.ensure_valid_version(function()
-            return providers.crates.get_all_versions(source.crate)
-        end))
+    return cargo.install(source.crate, source.version, {
+        git = source.git,
+        features = source.features,
+        locked = source.locked,
+    })
+end
 
-        try(cargo.install(source.crate, source.version, {
-            git = source.git,
-            features = source.features,
-            locked = source.locked,
-        }))
-    end)
+---@async
+---@param purl Purl
+function M.get_versions(purl)
+    ---@type string?
+    local repository_url = _.path({ "qualifiers", "repository_url" }, purl)
+    if repository_url then
+        ---@type Result?
+        local git_tags = _.cond {
+            {
+                _.matches "github.com/(.+)",
+                _.compose(providers.github.get_all_tags, _.head, _.match "github.com/(.+)"),
+            },
+        }(repository_url)
+        if git_tags then
+            return git_tags
+        end
+    end
+    return providers.crates.get_all_versions(purl.name)
 end
 
 return M

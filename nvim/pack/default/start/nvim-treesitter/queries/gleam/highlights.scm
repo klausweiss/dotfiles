@@ -27,7 +27,6 @@
 ; Exceptions
 [
   "assert"
-  "try"
 ] @exception
 
 ; Punctuation
@@ -168,6 +167,3 @@
 
 ; Pipe Operator
 (binary_expression operator: "|>" right: (identifier) @function)
-
-; Parser Errors
-(ERROR) @error

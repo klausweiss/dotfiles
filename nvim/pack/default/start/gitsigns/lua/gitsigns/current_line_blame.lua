@@ -1,214 +1,220 @@
-local a = require('gitsigns.async')
-local wrap = a.wrap
-local void = a.void
-local scheduler = a.scheduler
-
+local async = require('gitsigns.async')
 local cache = require('gitsigns.cache').cache
 local config = require('gitsigns.config').config
-local BlameInfo = require('gitsigns.git').BlameInfo
 local util = require('gitsigns.util')
-local uv = require('gitsigns.uv')
 
 local api = vim.api
 
-local current_buf = api.nvim_get_current_buf
+local debounce = require('gitsigns.debounce')
 
 local namespace = api.nvim_create_namespace('gitsigns_blame')
 
-local timer = uv.new_timer(true)
-
 local M = {}
 
-
-
-local wait_timer = wrap(vim.loop.timer_start, 4)
-
-local function set_extmark(bufnr, row, opts)
-   opts = opts or {}
-   opts.id = 1
-   api.nvim_buf_set_extmark(bufnr, namespace, row - 1, 0, opts)
-end
-
-local function get_extmark(bufnr)
-   local pos = api.nvim_buf_get_extmark_by_id(bufnr, namespace, 1, {})
-   if pos[1] then
-      return pos[1] + 1
-   end
-   return
-end
-
+--- @param bufnr integer
 local function reset(bufnr)
-   bufnr = bufnr or current_buf()
-   if not api.nvim_buf_is_valid(bufnr) then
-      return
-   end
-   api.nvim_buf_del_extmark(bufnr, namespace, 1)
-   vim.b[bufnr].gitsigns_blame_line_dict = nil
+  if not api.nvim_buf_is_valid(bufnr) then
+    return
+  end
+  api.nvim_buf_del_extmark(bufnr, namespace, 1)
+  vim.b[bufnr].gitsigns_blame_line_dict = nil
 end
 
--- TODO: expose as config
-local max_cache_size = 1000
-
-local BlameCache = {Elem = {}, }
-
-
-
-
-
-
-
-
-BlameCache.contents = {}
-
-function BlameCache:add(bufnr, lnum, x)
-   if not config._blame_cache then return end
-   local scache = self.contents[bufnr]
-   if scache.size <= max_cache_size then
-      scache.cache[lnum] = x
-      scache.size = scache.size + 1
-   end
-end
-
-function BlameCache:get(bufnr, lnum)
-   if not config._blame_cache then return end
-
-   -- init and invalidate
-   local tick = vim.b[bufnr].changedtick
-   if not self.contents[bufnr] or self.contents[bufnr].tick ~= tick then
-      self.contents[bufnr] = { tick = tick, cache = {}, size = 0 }
-   end
-
-   return self.contents[bufnr].cache[lnum]
-end
-
+--- @param fmt string
+--- @param name string
+--- @param info Gitsigns.BlameInfoPublic
+--- @return string
 local function expand_blame_format(fmt, name, info)
-   if info.author == name then
-      info.author = 'You'
-   end
-   return util.expand_format(fmt, info, config.current_line_blame_formatter_opts.relative_time)
+  if info.author == name then
+    info.author = 'You'
+  end
+  return util.expand_format(fmt, info, config.current_line_blame_formatter_opts.relative_time)
 end
 
+--- @param virt_text {[1]: string, [2]: string}[]
+--- @return string
 local function flatten_virt_text(virt_text)
-   local res = {}
-   for _, part in ipairs(virt_text) do
-      res[#res + 1] = part[1]
-   end
-   return table.concat(res)
+  local res = {} ---@type string[]
+  for _, part in ipairs(virt_text) do
+    res[#res + 1] = part[1]
+  end
+  return table.concat(res)
 end
 
--- Update function, must be called in async context
-local update = void(function()
-   local bufnr = current_buf()
-   local lnum = api.nvim_win_get_cursor(0)[1]
+--- @param winid integer
+--- @return integer
+local function win_width(winid)
+  winid = winid or api.nvim_get_current_win()
+  local wininfo = vim.fn.getwininfo(winid)[1]
+  local textoff = wininfo and wininfo.textoff or 0
+  return api.nvim_win_get_width(winid) - textoff
+end
 
-   local old_lnum = get_extmark(bufnr)
-   if old_lnum and lnum == old_lnum and BlameCache:get(bufnr, lnum) then
-      -- Don't update if on the same line and we already have results
-      return
-   end
+--- @param bufnr integer
+--- @param lnum integer
+--- @return integer
+local function line_len(bufnr, lnum)
+  return #api.nvim_buf_get_lines(bufnr, lnum - 1, lnum, true)[1]
+end
 
-   if api.nvim_get_mode().mode == 'i' then
-      reset(bufnr)
-      return
-   end
+--- @param fmt string
+--- @return Gitsigns.CurrentLineBlameFmtFun
+local function default_formatter(fmt)
+  return function(username, blame_info, _opts)
+    return {
+      {
+        expand_blame_format(fmt, username, blame_info),
+        'GitSignsCurrentLineBlame',
+      },
+    }
+  end
+end
 
-   -- Set an empty extmark to save the line number.
-   -- This will also clear virt_text.
-   -- Only do this if there was already an extmark to avoid clearing the intro
-   -- text.
-   if get_extmark(bufnr) then
-      reset(bufnr)
-      set_extmark(bufnr, lnum)
-   end
+---@param bufnr integer
+---@param blame_info Gitsigns.BlameInfoPublic
+---@return {[1]: string, [2]:string}[]
+local function get_blame_virt_text(bufnr, blame_info)
+  local git_obj = assert(cache[bufnr]).git_obj
 
-   -- Can't show extmarks on folded lines so skip
-   if vim.fn.foldclosed(lnum) ~= -1 then
-      return
-   end
+  local clb_formatter = blame_info.author == 'Not Committed Yet'
+      and config.current_line_blame_formatter_nc
+    or config.current_line_blame_formatter
 
-   local opts = config.current_line_blame_opts
+  if type(clb_formatter) == 'string' then
+    clb_formatter = default_formatter(clb_formatter)
+  end
 
-   -- Note because the same timer is re-used, this call has a debouncing effect.
-   wait_timer(timer, opts.delay, 0)
-   scheduler()
+  return clb_formatter(git_obj.repo.username, blame_info, config.current_line_blame_formatter_opts)
+end
 
-   local bcache = cache[bufnr]
-   if not bcache or not bcache.git_obj.object_name then
-      return
-   end
+--- @param bufnr integer
+--- @param lnum integer
+--- @param blame_info Gitsigns.BlameInfo
+--- @param opts Gitsigns.CurrentLineBlameOpts
+local function handle_blame_info(bufnr, lnum, blame_info, opts)
+  blame_info = util.convert_blame_info(blame_info)
 
-   local result = BlameCache:get(bufnr, lnum)
-   if not result then
-      local buftext = util.buf_lines(bufnr)
-      result = bcache.git_obj:run_blame(buftext, lnum, opts.ignore_whitespace)
-      BlameCache:add(bufnr, lnum, result)
-      scheduler()
-   end
+  local virt_text = get_blame_virt_text(bufnr, blame_info)
+  local virt_text_str = flatten_virt_text(virt_text)
 
-   local lnum1 = api.nvim_win_get_cursor(0)[1]
-   if bufnr == current_buf() and lnum ~= lnum1 then
-      -- Cursor has moved during events; abort
-      return
-   end
+  vim.b[bufnr].gitsigns_blame_line_dict = blame_info
+  vim.b[bufnr].gitsigns_blame_line = virt_text_str
 
-   if not api.nvim_buf_is_loaded(bufnr) then
-      -- Buffer is no longer loaded; abort
-      return
-   end
-
-   vim.b[bufnr].gitsigns_blame_line_dict = result
-
-   if result then
-      local virt_text
-      local clb_formatter = result.author == 'Not Committed Yet' and
-      config.current_line_blame_formatter_nc or
-      config.current_line_blame_formatter
-      if type(clb_formatter) == "string" then
-         virt_text = { {
-            expand_blame_format(clb_formatter, bcache.git_obj.repo.username, result),
-            'GitSignsCurrentLineBlame',
-         }, }
-      else -- function
-         virt_text = clb_formatter(
-         bcache.git_obj.repo.username,
-         result,
-         config.current_line_blame_formatter_opts)
-
+  if opts.virt_text then
+    local virt_text_pos = opts.virt_text_pos
+    if virt_text_pos == 'right_align' then
+      if #virt_text_str > (win_width(0) - line_len(bufnr, lnum)) then
+        virt_text_pos = 'eol'
       end
+    end
+    api.nvim_buf_set_extmark(bufnr, namespace, lnum - 1, 0, {
+      id = 1,
+      virt_text = virt_text,
+      virt_text_pos = virt_text_pos,
+      priority = opts.virt_text_priority,
+      hl_mode = 'combine',
+    })
+  end
+end
 
-      vim.b[bufnr].gitsigns_blame_line = flatten_virt_text(virt_text)
+--- @param winid integer
+--- @return integer lnum
+local function get_lnum(winid)
+  return api.nvim_win_get_cursor(winid)[1]
+end
 
-      if opts.virt_text then
-         set_extmark(bufnr, lnum, {
-            virt_text = virt_text,
-            virt_text_pos = opts.virt_text_pos,
-            priority = opts.virt_text_priority,
-            hl_mode = 'combine',
-         })
-      end
-   end
-end)
+--- @param winid integer
+--- @param lnum integer
+--- @return boolean
+local function foldclosed(winid, lnum)
+  ---@return boolean
+  return api.nvim_win_call(winid, function()
+    return vim.fn.foldclosed(lnum) ~= -1
+  end)
+end
 
-M.setup = function()
-   local group = api.nvim_create_augroup('gitsigns_blame', {})
+---@return boolean
+local function insert_mode()
+  return api.nvim_get_mode().mode == 'i'
+end
 
-   for k, _ in pairs(cache) do
-      reset(k)
-   end
+--- Update function, must be called in async context
+--- @param bufnr integer
+local function update0(bufnr)
+  async.scheduler_if_buf_valid(bufnr)
 
-   if config.current_line_blame then
-      api.nvim_create_autocmd({ 'FocusGained', 'BufEnter', 'CursorMoved', 'CursorMovedI' }, {
-         group = group, callback = function() update() end,
-      })
+  if insert_mode() then
+    return
+  end
 
-      api.nvim_create_autocmd({ 'InsertEnter', 'FocusLost', 'BufLeave' }, {
-         group = group, callback = function() reset() end,
-      })
+  local winid = api.nvim_get_current_win()
 
-      -- Call via vim.schedule to avoid the debounce timer killing the async
-      -- coroutine
-      vim.schedule(update)
-   end
+  if bufnr ~= api.nvim_win_get_buf(winid) then
+    return
+  end
+
+  local lnum = get_lnum(winid)
+
+  -- Can't show extmarks on folded lines so skip
+  if foldclosed(winid, lnum) then
+    return
+  end
+
+  local bcache = cache[bufnr]
+  if not bcache or not bcache.git_obj.object_name then
+    return
+  end
+
+  local opts = config.current_line_blame_opts
+
+  local blame_info = bcache:get_blame(lnum, opts)
+
+  if not blame_info then
+    return
+  end
+
+  if lnum ~= get_lnum(winid) then
+    -- Cursor has moved during events; abort and tr-trigger another update
+    update0(bufnr)
+    return
+  end
+
+  handle_blame_info(bufnr, lnum, blame_info, opts)
+end
+
+local update = async.void(debounce.throttle_by_id(update0))
+
+--- @type fun(bufnr: integer)
+local update_debounced
+
+function M.setup()
+  local group = api.nvim_create_augroup('gitsigns_blame', {})
+
+  local opts = config.current_line_blame_opts
+  update_debounced = debounce.debounce_trailing(opts.delay, update)
+
+  for k, _ in pairs(cache) do
+    reset(k)
+  end
+
+  if config.current_line_blame then
+    api.nvim_create_autocmd({ 'FocusGained', 'BufEnter', 'CursorMoved', 'CursorMovedI' }, {
+      group = group,
+      callback = function(args)
+        reset(args.buf)
+        update_debounced(args.buf)
+      end,
+    })
+
+    api.nvim_create_autocmd({ 'InsertEnter', 'FocusLost', 'BufLeave' }, {
+      group = group,
+      callback = function(args)
+        reset(args.buf)
+      end,
+    })
+
+    update_debounced(api.nvim_get_current_buf())
+  end
 end
 
 return M

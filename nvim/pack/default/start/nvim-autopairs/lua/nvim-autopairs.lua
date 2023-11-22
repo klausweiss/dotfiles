@@ -17,7 +17,7 @@ local default = {
     map_c_w = false,
     map_cr = true,
     disable_filetype = { 'TelescopePrompt', 'spectre_panel' },
-    disable_in_macro = false,
+    disable_in_macro = true,
     disable_in_visualblock = false,
     disable_in_replace_mode = true,
     ignored_next_char = [=[[%w%%%'%[%"%.%`%$]]=],
@@ -29,7 +29,7 @@ local default = {
     enable_bracket_in_quote = true,
     enable_abbr = false,
     ts_config = {
-        lua = { 'string', 'source' },
+        lua = { 'string', 'source', 'string_content' },
         javascript = { 'string', 'template_string' },
     },
 }
@@ -321,7 +321,7 @@ M.on_attach = function(bufnr)
             bufnr,
             "i",
             utils.key.c_h,
-            string.format("v:lua.MPairs.autopairs_c_h(%d)", bufnr),
+            'v:lua.MPairs.autopairs_c_h()',
             { expr = true, noremap = true }
         )
     end
@@ -331,7 +331,7 @@ M.on_attach = function(bufnr)
             bufnr,
             'i',
             '<c-w>',
-            string.format('v:lua.MPairs.autopairs_c_w(%d)', bufnr),
+            'v:lua.MPairs.autopairs_c_w()',
             { expr = true, noremap = true }
         )
     end
@@ -434,7 +434,12 @@ M.autopairs_map = function(bufnr, char)
             -- log.debug("start_pair" .. rule.start_pair)
             -- log.debug('prev_char' .. prev_char)
             -- log.debug('next_char' .. next_char)
-            if utils.compare(rule.end_pair, next_char, rule.is_regex)
+            local char_matches_rule = (rule.end_pair == char or rule.key_map == char)
+            -- for simple pairs, char will match end_pair
+            -- for more complex pairs, user should map the wanted end char with `use_key`
+            --   on a dedicated rule
+            if char_matches_rule
+                and utils.compare(rule.end_pair, next_char, rule.is_regex)
                 and rule:can_move(cond_opt)
             then
                 local end_pair = rule:get_end_pair(cond_opt)
@@ -562,12 +567,10 @@ M.autopairs_cr = function(bufnr)
                 and rule:can_cr(cond_opt)
             then
                 local end_pair = rule:get_end_pair(cond_opt)
-                local end_pair_length = rule:get_end_pair_length(end_pair)
                 return utils.esc(
-                    end_pair
-                    .. utils.repeat_key(utils.key.join_left, end_pair_length)
+                    '<CR>' .. end_pair
                     -- FIXME do i need to re indent twice #118
-                    .. '<cr><esc>====O'
+                    .. '<CMD>normal! ====<CR><up><end><CR>'
                 )
             end
 

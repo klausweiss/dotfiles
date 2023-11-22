@@ -2,13 +2,29 @@ local notify = require "nvim-tree.notify"
 
 local Api = {
   tree = {},
-  node = { navigate = { sibling = {}, git = {}, diagnostics = {}, opened = {} }, run = {}, open = {} },
+  node = {
+    navigate = {
+      sibling = {},
+      git = {},
+      diagnostics = {},
+      opened = {},
+    },
+    run = {},
+    open = {},
+  },
   events = {},
-  marks = { bulk = {}, navigate = {} },
-  fs = { copy = {} },
+  marks = {
+    bulk = {},
+    navigate = {},
+  },
+  fs = {
+    copy = {},
+  },
   git = {},
   live_filter = {},
-  config = { mappings = {} },
+  config = {
+    mappings = {},
+  },
   commands = {},
 }
 
@@ -24,12 +40,23 @@ local function wrap(f)
   end
 end
 
---- Inject the node as the first argument if absent.
---- f function to invoke
-local function wrap_node(f)
+---Inject the node as the first argument if absent.
+---@param fn function function to invoke
+local function wrap_node(fn)
   return function(node, ...)
     node = node or require("nvim-tree.lib").get_node_at_cursor()
-    f(node, ...)
+    if node then
+      fn(node, ...)
+    end
+  end
+end
+
+---Inject the node or nil as the first argument if absent.
+---@param fn function function to invoke
+local function wrap_node_or_nil(fn)
+  return function(node, ...)
+    node = node or require("nvim-tree.lib").get_node_at_cursor()
+    fn(node, ...)
   end
 end
 
@@ -118,13 +145,19 @@ Api.tree.is_tree_buf = wrap(require("nvim-tree.utils").is_nvim_tree_buf)
 
 Api.tree.is_visible = wrap(require("nvim-tree.view").is_visible)
 
-Api.fs.create = wrap_node(require("nvim-tree.actions.fs.create-file").fn)
+---@class ApiTreeWinIdOpts
+---@field tabpage number|nil default nil
+
+Api.tree.winid = wrap(require("nvim-tree.view").winid)
+
+Api.fs.create = wrap_node_or_nil(require("nvim-tree.actions.fs.create-file").fn)
 Api.fs.remove = wrap_node(require("nvim-tree.actions.fs.remove-file").fn)
 Api.fs.trash = wrap_node(require("nvim-tree.actions.fs.trash").fn)
 Api.fs.rename_node = wrap_node(require("nvim-tree.actions.fs.rename-file").fn ":t")
 Api.fs.rename = wrap_node(require("nvim-tree.actions.fs.rename-file").fn ":t")
 Api.fs.rename_sub = wrap_node(require("nvim-tree.actions.fs.rename-file").fn ":p:h")
 Api.fs.rename_basename = wrap_node(require("nvim-tree.actions.fs.rename-file").fn ":t:r")
+Api.fs.rename_full = wrap_node(require("nvim-tree.actions.fs.rename-file").fn ":p")
 Api.fs.cut = wrap_node(require("nvim-tree.actions.fs.copy-paste").cut)
 Api.fs.paste = wrap_node(require("nvim-tree.actions.fs.copy-paste").paste)
 Api.fs.clear_clipboard = wrap(require("nvim-tree.actions.fs.copy-paste").clear_clipboard)
@@ -154,16 +187,6 @@ local function open_or_expand_or_dir_up(mode)
   end
 end
 
-local function open_preview(node)
-  if node.name == ".." then
-    require("nvim-tree.actions.root.change-dir").fn ".."
-  elseif node.nodes then
-    require("nvim-tree.lib").expand_or_collapse(node)
-  else
-    edit("preview", node)
-  end
-end
-
 Api.node.open.edit = wrap_node(open_or_expand_or_dir_up "edit")
 Api.node.open.drop = wrap_node(open_or_expand_or_dir_up "drop")
 Api.node.open.tab_drop = wrap_node(open_or_expand_or_dir_up "tab_drop")
@@ -172,7 +195,8 @@ Api.node.open.no_window_picker = wrap_node(open_or_expand_or_dir_up "edit_no_pic
 Api.node.open.vertical = wrap_node(open_or_expand_or_dir_up "vsplit")
 Api.node.open.horizontal = wrap_node(open_or_expand_or_dir_up "split")
 Api.node.open.tab = wrap_node(open_or_expand_or_dir_up "tabnew")
-Api.node.open.preview = wrap_node(open_preview)
+Api.node.open.preview = wrap_node(open_or_expand_or_dir_up "preview")
+Api.node.open.preview_no_picker = wrap_node(open_or_expand_or_dir_up "preview_no_picker")
 
 Api.node.show_info_popup = wrap_node(require("nvim-tree.actions.node.file-popup").toggle_file_info)
 Api.node.run.cmd = wrap_node(require("nvim-tree.actions.node.run-command").run_file_command)
@@ -202,22 +226,14 @@ Api.marks.get = wrap_node(require("nvim-tree.marks").get_mark)
 Api.marks.list = wrap(require("nvim-tree.marks").get_marks)
 Api.marks.toggle = wrap_node(require("nvim-tree.marks").toggle_mark)
 Api.marks.clear = wrap(require("nvim-tree.marks").clear_marks)
+Api.marks.bulk.delete = wrap(require("nvim-tree.marks.bulk-delete").bulk_delete)
+Api.marks.bulk.trash = wrap(require("nvim-tree.marks.bulk-trash").bulk_trash)
 Api.marks.bulk.move = wrap(require("nvim-tree.marks.bulk-move").bulk_move)
 Api.marks.navigate.next = wrap(require("nvim-tree.marks.navigation").next)
 Api.marks.navigate.prev = wrap(require("nvim-tree.marks.navigation").prev)
 Api.marks.navigate.select = wrap(require("nvim-tree.marks.navigation").select)
 
 Api.config.mappings.default_on_attach = require("nvim-tree.keymap").default_on_attach
-
-Api.config.mappings.active = wrap(function()
-  notify.warn "api.config.mappings.active is deprecated in favor of config.mappings.get_keymap"
-  return require("nvim-tree.keymap-legacy").active_mappings_clone()
-end)
-
-Api.config.mappings.default = function()
-  notify.warn "api.config.mappings.default is deprecated in favor of config.mappings.get_keymap_default"
-  return require("nvim-tree.keymap-legacy").default_mappings_clone()
-end
 
 Api.config.mappings.get_keymap = wrap(function()
   return require("nvim-tree.keymap").get_keymap()

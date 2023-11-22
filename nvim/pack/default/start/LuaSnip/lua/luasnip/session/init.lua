@@ -13,9 +13,20 @@ setmetatable(M.ft_redirect, {
 })
 
 M.current_nodes = {}
+-- roots of snippet-trees, per-buffer.
+-- snippet_roots[n] => list of snippet-roots in buffer n.
+M.snippet_roots = setmetatable({}, {
+	-- create missing lists automatically.
+	__index = function(t, k)
+		local new_t = {}
+		rawset(t, k, new_t)
+		return new_t
+	end,
+})
 M.ns_id = vim.api.nvim_create_namespace("Luasnip")
+M.active_choice_nodes = {}
+
 -- only here for overview.
-M.active_choice_node = nil
 M.latest_load_ft = nil
 
 M.last_expand_snip = nil

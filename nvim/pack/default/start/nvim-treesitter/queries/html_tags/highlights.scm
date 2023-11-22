@@ -1,13 +1,32 @@
 (tag_name) @tag
 (erroneous_end_tag_name) @error
-(comment) @comment
+(comment) @comment @spell
 (attribute_name) @tag.attribute
-(attribute
+((attribute
   (quoted_attribute_value) @string)
+ (#set! "priority" 99))
 (text) @text @spell
 
 ((element (start_tag (tag_name) @_tag) (text) @text.title)
- (#match? @_tag "^(h[0-9]|title)$"))
+ (#eq? @_tag "title"))
+
+((element (start_tag (tag_name) @_tag) (text) @text.title.1)
+ (#eq? @_tag "h1"))
+
+((element (start_tag (tag_name) @_tag) (text) @text.title.2)
+ (#eq? @_tag "h2"))
+
+((element (start_tag (tag_name) @_tag) (text) @text.title.3)
+ (#eq? @_tag "h3"))
+
+((element (start_tag (tag_name) @_tag) (text) @text.title.4)
+ (#eq? @_tag "h4"))
+
+((element (start_tag (tag_name) @_tag) (text) @text.title.5)
+ (#eq? @_tag "h5"))
+
+((element (start_tag (tag_name) @_tag) (text) @text.title.6)
+ (#eq? @_tag "h6"))
 
 ((element (start_tag (tag_name) @_tag) (text) @text.strong)
  (#any-of? @_tag "strong" "b"))

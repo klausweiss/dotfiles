@@ -1,5 +1,6 @@
 local Result = require "mason-core.result"
 local _ = require "mason-core.functional"
+local providers = require "mason-core.providers"
 local util = require "mason-core.installer.registry.util"
 
 local M = {}
@@ -28,20 +29,18 @@ end
 
 ---@async
 ---@param ctx InstallContext
----@param source GemSource
+---@param source ParsedGemSource
 function M.install(ctx, source)
     local gem = require "mason-core.installer.managers.gem"
-    local providers = require "mason-core.providers"
+    return gem.install(source.package, source.version, {
+        extra_packages = source.extra_packages,
+    })
+end
 
-    return Result.try(function(try)
-        try(util.ensure_valid_version(function()
-            return providers.rubygems.get_all_versions(source.package)
-        end))
-
-        try(gem.install(source.package, source.version, {
-            extra_packages = source.extra_packages,
-        }))
-    end)
+---@async
+---@param purl Purl
+function M.get_versions(purl)
+    return providers.rubygems.get_all_versions(purl.name)
 end
 
 return M

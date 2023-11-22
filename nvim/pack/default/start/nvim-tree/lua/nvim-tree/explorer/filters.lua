@@ -121,17 +121,14 @@ function M.should_filter(path, status)
     return false
   end
 
-  return git(path, status.git_status)
-    or buf(path, status.bufinfo, status.unloaded_bufnr)
-    or dotfile(path)
-    or custom(path)
+  return git(path, status.git_status) or buf(path, status.bufinfo, status.unloaded_bufnr) or dotfile(path) or custom(path)
 end
 
 function M.setup(opts)
   M.config = {
     filter_custom = true,
     filter_dotfiles = opts.filters.dotfiles,
-    filter_git_ignored = opts.git.ignore,
+    filter_git_ignored = opts.filters.git_ignored,
     filter_git_clean = opts.filters.git_clean,
     filter_no_buffer = opts.filters.no_buffer,
   }

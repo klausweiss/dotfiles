@@ -1,63 +1,114 @@
 local Buffer = require("neogit.lib.buffer")
-local CommitViewBuffer = require("neogit.buffers.commit_view")
 local ui = require("neogit.buffers.log_view.ui")
 local config = require("neogit.config")
+local popups = require("neogit.popups")
+local notification = require("neogit.lib.notification")
 
+local CommitViewBuffer = require("neogit.buffers.commit_view")
+
+---@class LogViewBuffer
+---@field commits CommitLogEntry[]
+---@field internal_args table
 local M = {}
+M.__index = M
 
--- @class LogViewBuffer
--- @field is_open whether the buffer is currently shown
--- @field data the dislayed data
--- @field buffer Buffer
--- @see CommitInfo
--- @see Buffer
-
---- Creates a new LogViewBuffer
--- @param data the data to display
--- @param show_graph whether we should also render the graph on the left side
--- @return LogViewBuffer
-function M.new(data, show_graph)
+---Opens a popup for selecting a commit
+---@param commits CommitLogEntry[]|nil
+---@param internal_args table|nil
+---@return LogViewBuffer
+function M.new(commits, internal_args)
   local instance = {
-    is_open = false,
-    data = data,
-    show_graph = show_graph,
+    commits = commits,
+    internal_args = internal_args,
     buffer = nil,
   }
 
-  setmetatable(instance, { __index = M })
+  setmetatable(instance, M)
 
   return instance
 end
 
 function M:close()
-  self.is_open = false
   self.buffer:close()
   self.buffer = nil
 end
 
 function M:open()
-  if self.is_open then
-    return
-  end
-
-  self.is_open = true
+  local _, item = require("neogit.status").get_current_section_item()
   self.buffer = Buffer.create {
     name = "NeogitLogView",
     filetype = "NeogitLogView",
-    kind = "split",
+    kind = config.values.log_view.kind,
+    context_highlight = false,
     mappings = {
+      v = {
+        [popups.mapping_for("CherryPickPopup")] = popups.open("cherry_pick", function(p)
+          p { commits = self.buffer.ui:get_commits_in_selection() }
+        end),
+        [popups.mapping_for("BranchPopup")] = popups.open("branch", function(p)
+          p { commits = self.buffer.ui:get_commits_in_selection() }
+        end),
+        [popups.mapping_for("CommitPopup")] = popups.open("commit", function(p)
+          p { commit = self.buffer.ui:get_commit_under_cursor() }
+        end),
+        [popups.mapping_for("PushPopup")] = popups.open("push", function(p)
+          p { commit = self.buffer.ui:get_commit_under_cursor() }
+        end),
+        [popups.mapping_for("RebasePopup")] = popups.open("rebase", function(p)
+          p { commit = self.buffer.ui:get_commit_under_cursor() }
+        end),
+        [popups.mapping_for("RevertPopup")] = popups.open("revert", function(p)
+          p { commits = self.buffer.ui:get_commits_in_selection() }
+        end),
+        [popups.mapping_for("ResetPopup")] = popups.open("reset", function(p)
+          p { commit = self.buffer.ui:get_commit_under_cursor() }
+        end),
+        [popups.mapping_for("TagPopup")] = popups.open("tag", function(p)
+          p { commit = self.buffer.ui:get_commit_under_cursor() }
+        end),
+        ["d"] = function()
+          if not config.check_integration("diffview") then
+            notification.error("Diffview integration must be enabled for log diff")
+            return
+          end
+
+          local dv = require("neogit.integrations.diffview")
+          dv.open("log", self.buffer.ui:get_commits_in_selection())
+        end,
+      },
       n = {
+        [popups.mapping_for("CherryPickPopup")] = popups.open("cherry_pick", function(p)
+          p { commits = { self.buffer.ui:get_commit_under_cursor() } }
+        end),
+        [popups.mapping_for("BranchPopup")] = popups.open("branch", function(p)
+          p { commits = { self.buffer.ui:get_commit_under_cursor() } }
+        end),
+        [popups.mapping_for("CommitPopup")] = popups.open("commit", function(p)
+          p { commit = self.buffer.ui:get_commit_under_cursor() }
+        end),
+        [popups.mapping_for("PushPopup")] = popups.open("push", function(p)
+          p { commit = self.buffer.ui:get_commit_under_cursor() }
+        end),
+        [popups.mapping_for("RebasePopup")] = popups.open("rebase", function(p)
+          p { commit = self.buffer.ui:get_commit_under_cursor() }
+        end),
+        [popups.mapping_for("RevertPopup")] = popups.open("revert", function(p)
+          p { commits = { self.buffer.ui:get_commit_under_cursor() } }
+        end),
+        [popups.mapping_for("ResetPopup")] = popups.open("reset", function(p)
+          p { commit = self.buffer.ui:get_commit_under_cursor() }
+        end),
+        [popups.mapping_for("TagPopup")] = popups.open("tag", function(p)
+          p { commit = self.buffer.ui:get_commit_under_cursor() }
+        end),
         ["q"] = function()
           self:close()
         end,
-        ["F10"] = function()
-          self.ui:print_layout_tree { collapse_hidden_components = true }
+        ["<esc>"] = function()
+          self:close()
         end,
-        ["<enter>"] = function(buffer)
-          local stack = self.buffer.ui:get_component_stack_under_cursor()
-          local c = stack[#stack]
-          buffer:close()
-          CommitViewBuffer.new(self.data[c.position.row_start].oid):open()
+        ["<enter>"] = function()
+          CommitViewBuffer.new(self.buffer.ui:get_commit_under_cursor()):open()
         end,
         ["<c-k>"] = function(buffer)
           local stack = self.buffer.ui:get_component_stack_under_cursor()
@@ -66,6 +117,11 @@ function M:open()
 
           local t_idx = math.max(c.index - 1, 1)
           local target = c.parent.children[t_idx]
+          while not target.children[2] do
+            t_idx = t_idx - 1
+            target = c.parent.children[t_idx]
+          end
+
           target.children[2].options.hidden = false
 
           buffer.ui:update()
@@ -78,35 +134,52 @@ function M:open()
 
           local t_idx = math.min(c.index + 1, #c.parent.children)
           local target = c.parent.children[t_idx]
+          while not target.children[2] do
+            t_idx = t_idx + 1
+            target = c.parent.children[t_idx]
+          end
+
           target.children[2].options.hidden = false
 
           buffer.ui:update()
           buffer:move_cursor(target.position.row_start)
-          vim.fn.feedkeys("zz")
+          vim.cmd("normal! zz")
         end,
         ["<tab>"] = function()
           local stack = self.buffer.ui:get_component_stack_under_cursor()
           local c = stack[#stack]
 
-          c.children[2]:toggle_hidden()
-          self.buffer.ui:update()
-          vim.fn.feedkeys("zz")
+          if c.children[2] then
+            c.children[2]:toggle_hidden()
+            self.buffer.ui:update()
+          end
         end,
-        ["d"] = function(buffer)
-          if not config.ensure_integration("diffview") then
+        ["d"] = function()
+          if not config.check_integration("diffview") then
+            notification.error("Diffview integration must be enabled for log diff")
             return
           end
-          local stack = self.buffer.ui:get_component_stack_under_cursor()
-          local c = stack[#stack]
-          buffer:close()
+
           local dv = require("neogit.integrations.diffview")
-          local commit_id = self.data[c.position.row_start].oid
-          dv.open("log", commit_id)
+          dv.open("log", self.buffer.ui:get_commit_under_cursor())
         end,
       },
     },
+    after = function(buffer, win)
+      if win and item and item.commit then
+        local found = buffer.ui:find_component(function(c)
+          return c.options.oid == item.commit.oid
+        end)
+
+        if found then
+          vim.api.nvim_win_set_cursor(win, { found.position.row_start, 0 })
+        end
+      end
+
+      vim.cmd([[setlocal nowrap]])
+    end,
     render = function()
-      return ui.LogView(self.data, self.show_graph)
+      return ui.View(self.commits, self.internal_args)
     end,
   }
 end

@@ -6,6 +6,7 @@ local a = require "mason-core.async"
 local link = require "mason-core.installer.registry.link"
 local log = require "mason-core.log"
 local schemas = require "mason-core.installer.registry.schemas"
+local util = require "mason-core.installer.registry.util"
 
 local M = {}
 
@@ -42,6 +43,7 @@ end
 ---@class InstallerProvider
 ---@field parse fun(source: RegistryPackageSource, purl: Purl, opts: PackageInstallOpts): Result
 ---@field install async fun(ctx: InstallContext, source: ParsedPackageSource, purl: Purl): Result
+---@field get_versions async fun(purl: Purl, source: RegistryPackageSource): Result # Result<string[]>
 
 ---@class ParsedPackageSource
 
@@ -104,7 +106,7 @@ end
 ---@param spec RegistryPackageSpec
 ---@param opts PackageInstallOpts
 function M.parse(spec, opts)
-    log.debug("Parsing spec", spec.name, opts)
+    log.trace("Parsing spec", spec.name, opts)
     return Result.try(function(try)
         if not M.SCHEMA_CAP[spec.schema] then
             return Result.failure(
@@ -130,7 +132,8 @@ function M.parse(spec, opts)
         log.trace("Parsed source for purl.", source.id, parsed_source)
         return {
             provider = provider,
-            source = parsed_source,
+            source = vim.tbl_extend("keep", parsed_source, source),
+            raw_source = source,
             purl = purl,
         }
     end):on_failure(function(err)
@@ -161,13 +164,19 @@ function M.compile(spec, opts)
             { _.T, _.identity },
         }
 
-        ---@type { purl: Purl, provider: InstallerProvider, source: ParsedPackageSource }
+        ---@type { purl: Purl, provider: InstallerProvider, source: ParsedPackageSource, raw_source: RegistryPackageSource }
         local parsed = try(M.parse(spec, opts):map_err(map_parse_err))
 
         ---@async
         ---@param ctx InstallContext
         return function(ctx)
             return Result.try(function(try)
+                if ctx.opts.version then
+                    try(util.ensure_valid_version(function()
+                        return parsed.provider.get_versions(parsed.purl, parsed.raw_source)
+                    end))
+                end
+
                 -- Run installer
                 try(parsed.provider.install(ctx, parsed.source, parsed.purl))
 
@@ -195,12 +204,23 @@ function M.compile(spec, opts)
                 ctx.receipt:with_primary_source {
                     type = ctx.package.spec.schema,
                     id = Purl.compile(parsed.purl),
-                    source = parsed.source,
                 }
             end):on_failure(function(err)
                 error(err, 0)
             end)
         end
+    end)
+end
+
+---@async
+---@param spec RegistryPackageSpec
+function M.get_versions(spec)
+    return Result.try(function(try)
+        ---@type Purl
+        local purl = try(Purl.parse(spec.source.id))
+        ---@type InstallerProvider
+        local provider = try(get_provider(purl))
+        return provider.get_versions(purl, spec.source)
     end)
 end
 

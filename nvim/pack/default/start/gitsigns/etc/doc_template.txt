@@ -32,7 +32,7 @@ For basic setup with all batteries included:
 
 Configuration can be passed to the setup function. Here is an example with most
 of the default settings:
->
+>lua
 {{SETUP}}
 <
 
@@ -49,6 +49,7 @@ FUNCTIONS                                                 *gitsigns-functions*
 
 Note functions with the {async} attribute are run asynchronously and are
 non-blocking (return immediately).
+
 
 {{FUNCTIONS}}
 
@@ -103,6 +104,9 @@ SPECIFYING OBJECTS                          *gitsigns-object* *gitsigns-revision
 Gitsigns objects are Git revisions as defined in the "SPECIFYING REVISIONS"
 section in the gitrevisions(7) man page. For commands that accept an optional
 base, the default is the file in the index. Examples:
+
+Additionally, Gitsigns also accepts the value `FILE` to specify the working
+version of a file.
 
 Object        Meaning ~
 @             Version of file in the commit referenced by @ aka HEAD

@@ -1,5 +1,6 @@
 local Result = require "mason-core.result"
 local _ = require "mason-core.functional"
+local a = require "mason-core.async"
 local fetch = require "mason-core.fetch"
 local installer = require "mason-core.installer"
 local log = require "mason-core.log"
@@ -94,7 +95,7 @@ end
 function M.download_file(url, out_file)
     log.fmt_debug("std: downloading file %s", url, out_file)
     local ctx = installer.context()
-    ctx.stdio_sink.stdout(("Downloading file %q...\n"):format(url))
+    ctx.stdio_sink.stdout(("Downloading file %q…\n"):format(url))
     return fetch(url, {
         out_file = path.concat { ctx.cwd:get(), out_file },
     }):map_err(function(err)
@@ -108,7 +109,9 @@ end
 local function untar(rel_path)
     log.fmt_debug("std: untar %s", rel_path)
     local ctx = installer.context()
-    return ctx.spawn.tar({ "--no-same-owner", "-xvf", rel_path }):on_success(function()
+    a.scheduler()
+    local tar = vim.fn.executable "gtar" == 1 and "gtar" or "tar"
+    return ctx.spawn[tar]({ "--no-same-owner", "-xvf", rel_path }):on_success(function()
         pcall(function()
             ctx.fs:unlink(rel_path)
         end)
@@ -230,6 +233,8 @@ local unpack_by_filename = _.cond {
 ---@nodiscard
 function M.unpack(rel_path)
     log.fmt_debug("std: unpack %s", rel_path)
+    local ctx = installer.context()
+    ctx.stdio_sink.stdout((("Unpacking %q…\n"):format(rel_path)))
     return unpack_by_filename(rel_path)
 end
 
@@ -241,6 +246,7 @@ function M.clone(git_url, opts)
     opts = opts or {}
     log.fmt_debug("std: clone %s %s", git_url, opts)
     local ctx = installer.context()
+    ctx.stdio_sink.stdout((("Cloning git repository %q…\n"):format(git_url)))
     return Result.try(function(try)
         try(ctx.spawn.git {
             "clone",

@@ -607,7 +607,7 @@ local function generate_tabline(bufnrs, refocus)
       end
     end
 
-    do
+    if config.options.icons.separator_at_end then
       local inactive_separator = config.options.icons.inactive.separator.left
       if inactive_separator ~= nil and #unpinned > 0 and
         data.buffers.unpinned_width + strwidth(inactive_separator) <= data.buffers.unpinned_allocated_width
@@ -708,11 +708,11 @@ function render.update(update_names, refocus)
     return
   end
 
-  local buffers = buffer.hide(render.get_updated_buffers(update_names))
+  local buffers = layout.hide(render.get_updated_buffers(update_names))
 
   -- Auto hide/show if applicable
-  if config.options.auto_hide then
-    if #buffers + #list_tabpages() < 3 then -- 3 because the condition for auto-hiding is 1 visible buffer and 1 tabpage (2).
+  if config.options.auto_hide > -1 then
+    if #buffers <= config.options.auto_hide and #list_tabpages() < 2 then
       if get_option'showtabline' == 2 then
         set_option('showtabline', 0)
       end

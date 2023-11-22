@@ -153,8 +153,7 @@
 (string) @string
 [
   (escape_sequence)
-  "{{"
-  "}}"
+  (escape_interpolation)
 ] @string.escape
 
 ; doc-strings
@@ -262,9 +261,6 @@
 (type_conversion) @function.macro
 
 ["," "." ":" ";" (ellipsis)] @punctuation.delimiter
-
-;; Error
-(ERROR) @error
 
 ;; Starlark-specific
 

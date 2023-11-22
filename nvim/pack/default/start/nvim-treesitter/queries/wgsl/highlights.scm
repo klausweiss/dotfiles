@@ -101,6 +101,4 @@
 (attribute
     (identifier) @attribute)
 
-[(line_comment) (block_comment)] @comment
-
-(ERROR) @error
+[(line_comment) (block_comment)] @comment @spell

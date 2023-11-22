@@ -1,9 +1,11 @@
 local session = require("luasnip.session")
 local util = require("luasnip.util.util")
+local node_util = require("luasnip.util.util")
 local node_util = require("luasnip.nodes.util")
 local ext_util = require("luasnip.util.ext_opts")
 local events = require("luasnip.util.events")
 local key_indexer = require("luasnip.nodes.key_indexer")
+local types = require("luasnip.util.types")
 
 local Node = {}
 
@@ -126,10 +128,6 @@ function Node:jumpable(dir)
 	end
 end
 
-function Node:set_mark_rgrav(rgrav_beg, rgrav_end)
-	self.mark:update_rgravs(rgrav_beg, rgrav_end)
-end
-
 function Node:get_text()
 	if not self.visible then
 		return nil
@@ -180,6 +178,8 @@ function Node:input_leave(_, dry_run)
 
 	self.mark:update_opts(self:get_passive_ext_opts())
 end
+function Node:input_leave_children() end
+function Node:input_enter_children() end
 
 local function find_dependents(self, position_self, dict)
 	local nodes = {}
@@ -458,6 +458,181 @@ function Node:get_buf_position(opts)
 	end
 end
 
+-- only does something for insert- and snippetNode.
+function Node:set_sibling_rgravs(_, _, _, _) end
+
+-- when an insertNode receives text, its mark/region should contain all the
+-- text that is inserted.
+-- This can be achieved by setting the left and right "right-gravity"(rgrav) of
+-- the mark, which are responsible for controlling the direction an endpoint of
+-- the mark is moved when text is inserted.
+-- When a regular insertNode is focused/entered, we would like the left and
+-- right rgrav to be false and true, respectively. Example:
+--        this is an insertNodeAnd this is another insertNode
+-- mark1: l                    r
+-- mark2:                      l                     r
+-- if `this is an insertNode` should be focused, we have to set the rgrav of
+-- l1 false (because inserting text at the column of l1 should not shift l1 to
+-- the right). Similarly, the rgrav of r1 has to be set true, text inserted at
+-- its column SHOULD move it to the right.
+-- Complicating this whole thing: if like above there is an adjacent
+-- insertNode, its gravities have to be adjusted as well (if they are not, the
+-- insertNodes regions would overlap, which is obviously confusing). So, when
+-- adjusting some nodes rgravs, those of the siblings may have to be adjusted as well.
+-- Another example:
+--        aacc
+-- mark1: l r
+-- mark2:   l
+--          r
+-- mark3:   l r
+-- (the insertNode for mark2 is not visible at all, l2 and r2 are in the same
+-- column)
+-- This example highlights that not only the immediate sibling might need
+-- adjusting, but all siblings that share a mark-boundary with the node that
+-- should be focused.
+-- Even further complicating the matter: Snippets are trees, and failing to
+-- set the rgrav of snippet adjacent to (sharing an endpoint with) the node we
+-- want to focus, regardless of its position in the tree, will lead to extmarks
+-- covering the wrong regions.
+--
+-- More complications: focusing a node does not always mean setting the rgravs
+-- such that text will end up inside the node!
+-- For example, in the case of a terminating i(0) (like s("trig", {i(1,
+-- "text"), t"  ", i(0)})), we would like to NOT include the text entered into
+-- it in the snippet. Thus, the gravities of it and all its parents have to be
+-- set (in this case) false,false, if the i(0) were at the beginning of the
+-- snippet (weird??) they'd have to be true,true.
+--
+--
+-- Unfortunately, we cannot guarantee that two extmarks on the same position
+-- also have the same gravities, for exmample if the text inside a focused node
+-- is deleted, and then another unrelated node is focused, the two endpoints of
+-- the previously focused node will have opposing rgravs.
+-- Maybe this whole procedure could be sped up further if we can assume that
+-- identical endpoints imply identical rgravs.
+local function focus_node(self, lrgrav, rrgrav)
+	-- find nodes on path from self to root.
+	local nodes_path = node_util.root_path(self)
+
+	-- direction is the direction away from this node, towards the outside of
+	-- the tree-representation of the snippet.
+	-- This is dubbed "direction" because it is the direction we will search in
+	-- to find nodes on one endpoint of self.
+	for _, direction in ipairs({ -1, 1 }) do
+		local self_direction_endpoint = self.mark:get_endpoint(direction)
+		local direction_rgrav = util.ternary(direction == -1, lrgrav, rrgrav)
+		local effective_direction_rgrav = direction_rgrav
+
+		-- adjust left rgrav of all nodes on path upwards to root/snippet:
+		-- (i st. self and the snippet are both handled)
+		for i = 1, #nodes_path do
+			local node = nodes_path[i]
+			local node_direction_endpoint = node.mark:get_endpoint(direction)
+
+			if
+				not util.pos_equal(
+					node_direction_endpoint,
+					self_direction_endpoint
+				)
+			then
+				-- stop adjusting rgravs once self no longer is on the boundary of
+				-- its parents, or if the rgrav is already set correctly.
+				break
+			end
+
+			node.mark:set_rgrav(direction, effective_direction_rgrav)
+
+			-- Once self's snippet is reached on the root-path, we will only
+			-- adjust nodes self should be completely contained inside.
+			-- Since the rgravs, however, may be set up otherwise (for example
+			-- when focusing on an $0 that is the last node of the snippet), we
+			-- have to adjust them now.
+			if node.snippet == node then
+				effective_direction_rgrav = direction == 1
+			end
+
+			-- can't use node.parent, since that might skip nodes (in the case of
+			-- dynamicNode, for example, the generated snippets parent is not the
+			-- dynamicNode, but its parent).
+			-- also: don't need to check for nil, because the
+			local node_above = nodes_path[i + 1]
+			if node_above then
+				node_above:set_sibling_rgravs(
+					node,
+					self_direction_endpoint,
+					direction,
+					effective_direction_rgrav
+				)
+			end
+		end
+		self:subtree_set_pos_rgrav(
+			self_direction_endpoint,
+			-direction,
+			direction_rgrav
+		)
+	end
+end
+
+function Node:subtree_set_rgrav(rgrav)
+	self.mark:set_rgravs(rgrav, rgrav)
+end
+
+function Node:subtree_set_pos_rgrav(_, direction, rgrav)
+	self.mark:set_rgrav(-direction, rgrav)
+end
+
+function Node:focus()
+	focus_node(self, false, true)
+end
+
+function Node:set_text(text)
+	self:focus()
+
+	local node_from, node_to = self.mark:pos_begin_end_raw()
+	local ok = pcall(
+		vim.api.nvim_buf_set_text,
+		0,
+		node_from[1],
+		node_from[2],
+		node_to[1],
+		node_to[2],
+		text
+	)
+	-- we can assume that (part of) the snippet was deleted; remove it from
+	-- the jumplist.
+	if not ok then
+		error("[LuaSnip Failed]: " .. vim.inspect(text))
+	end
+end
+
+-- since parents validate the adjacency, nodes where we don't know anything
+-- about the text inside them just have to assume they haven't been deleted :D
+function Node:extmarks_valid()
+	return true
+end
+
+function Node:linkable()
+	-- linkable if insert or exitNode.
+	return vim.tbl_contains(
+		{ types.insertNode, types.exitNode },
+		rawget(self, "type")
+	)
+end
+function Node:interactive()
+	-- interactive if immediately inside choiceNode.
+	return vim.tbl_contains(
+		{ types.insertNode, types.exitNode },
+		rawget(self, "type")
+	) or rawget(self, "choice") ~= nil
+end
+function Node:leaf()
+	return vim.tbl_contains(
+		{ types.textNode, types.functionNode, types.insertNode, types.exitNode },
+		rawget(self, "type")
+	)
+end
+
 return {
 	Node = Node,
+	focus_node = focus_node,
 }

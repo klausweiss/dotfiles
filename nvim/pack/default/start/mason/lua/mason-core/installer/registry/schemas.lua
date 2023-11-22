@@ -1,5 +1,6 @@
 local Result = require "mason-core.result"
 local _ = require "mason-core.functional"
+local a = require "mason-core.async"
 local expr = require "mason-core.installer.registry.expr"
 local fetch = require "mason-core.fetch"
 local log = require "mason-core.log"
@@ -19,6 +20,7 @@ local function download_lsp_schema(ctx, url)
 
         if is_vscode_schema then
             local url = unpack(_.match("^vscode:(.+)$", url))
+            ctx.stdio_sink.stdout(("Downloading LSP configuration schema from %q…\n"):format(url))
             local json = try(fetch(url))
 
             ---@type { contributes?: { configuration?: table } }
@@ -32,6 +34,7 @@ local function download_lsp_schema(ctx, url)
                 return Result.failure "Unable to find LSP entry in VSCode schema."
             end
         else
+            ctx.stdio_sink.stdout(("Downloading LSP configuration schema from %q…\n"):format(url))
             try(std.download_file(url, out_file))
             ctx.links.share[share_file] = out_file
         end
@@ -56,7 +59,15 @@ function M.download(ctx, spec, purl, source)
         ctx.fs:mkdir "mason-schemas"
 
         if interpolated_schemas.lsp then
-            try(download_lsp_schema(ctx, interpolated_schemas.lsp))
+            try(a.wait_first {
+                function()
+                    return download_lsp_schema(ctx, interpolated_schemas.lsp)
+                end,
+                function()
+                    a.sleep(5000)
+                    return Result.failure "Schema download timed out."
+                end,
+            })
         end
     end)
 end

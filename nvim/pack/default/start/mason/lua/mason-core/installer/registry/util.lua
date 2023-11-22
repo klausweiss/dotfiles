@@ -38,7 +38,7 @@ end
 
 ---Checks whether a custom version of a package installation corresponds to a valid version.
 ---@async
----@param versions_thunk async fun(): Result Result<string>
+---@param versions_thunk async fun(): Result Result<string[]>
 function M.ensure_valid_version(versions_thunk)
     local ctx = installer.context()
     local version = ctx.opts.version
@@ -47,7 +47,7 @@ function M.ensure_valid_version(versions_thunk)
         ctx.stdio_sink.stdout "Fetching available versions…\n"
         local all_versions = versions_thunk()
         if all_versions:is_failure() then
-            log.warn("Failed to fetch versions for package %s", ctx.package)
+            log.warn("Failed to fetch versions for package", ctx.package)
             -- Gracefully fail (i.e. optimistically continue package installation)
             return Result.success()
         end

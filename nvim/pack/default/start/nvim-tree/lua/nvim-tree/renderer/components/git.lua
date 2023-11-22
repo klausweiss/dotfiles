@@ -5,13 +5,13 @@ local M = {}
 
 local function build_icons_table(i)
   local icons = {
-    staged = { str = i.staged, hl = "NvimTreeGitStaged", ord = 1 },
-    unstaged = { str = i.unstaged, hl = "NvimTreeGitDirty", ord = 2 },
-    renamed = { str = i.renamed, hl = "NvimTreeGitRenamed", ord = 3 },
-    deleted = { str = i.deleted, hl = "NvimTreeGitDeleted", ord = 4 },
-    unmerged = { str = i.unmerged, hl = "NvimTreeGitMerge", ord = 5 },
-    untracked = { str = i.untracked, hl = "NvimTreeGitNew", ord = 6 },
-    ignored = { str = i.ignored, hl = "NvimTreeGitIgnored", ord = 7 },
+    staged = { str = i.staged, hl = { "NvimTreeGitStaged" }, ord = 1 },
+    unstaged = { str = i.unstaged, hl = { "NvimTreeGitDirty" }, ord = 2 },
+    renamed = { str = i.renamed, hl = { "NvimTreeGitRenamed" }, ord = 3 },
+    deleted = { str = i.deleted, hl = { "NvimTreeGitDeleted" }, ord = 4 },
+    unmerged = { str = i.unmerged, hl = { "NvimTreeGitMerge" }, ord = 5 },
+    untracked = { str = i.untracked, hl = { "NvimTreeGitNew" }, ord = 6 },
+    ignored = { str = i.ignored, hl = { "NvimTreeGitIgnored" }, ord = 7 },
   }
   return {
     ["M "] = { icons.staged },
@@ -49,14 +49,52 @@ local function build_icons_table(i)
   }
 end
 
+local function build_hl_table()
+  local file = {
+    ["M "] = "NvimTreeFileStaged",
+    ["C "] = "NvimTreeFileStaged",
+    ["AA"] = "NvimTreeFileStaged",
+    ["AD"] = "NvimTreeFileStaged",
+    ["MD"] = "NvimTreeFileStaged",
+    ["T "] = "NvimTreeFileStaged",
+    ["TT"] = "NvimTreeFileStaged",
+    [" M"] = "NvimTreeFileDirty",
+    ["CM"] = "NvimTreeFileDirty",
+    [" C"] = "NvimTreeFileDirty",
+    [" T"] = "NvimTreeFileDirty",
+    ["MM"] = "NvimTreeFileDirty",
+    ["AM"] = "NvimTreeFileDirty",
+    dirty = "NvimTreeFileDirty",
+    ["A "] = "NvimTreeFileStaged",
+    ["??"] = "NvimTreeFileNew",
+    ["AU"] = "NvimTreeFileMerge",
+    ["UU"] = "NvimTreeFileMerge",
+    ["UD"] = "NvimTreeFileMerge",
+    ["DU"] = "NvimTreeFileMerge",
+    ["UA"] = "NvimTreeFileMerge",
+    [" D"] = "NvimTreeFileDeleted",
+    ["DD"] = "NvimTreeFileDeleted",
+    ["RD"] = "NvimTreeFileDeleted",
+    ["D "] = "NvimTreeFileDeleted",
+    ["R "] = "NvimTreeFileRenamed",
+    ["RM"] = "NvimTreeFileRenamed",
+    [" R"] = "NvimTreeFileRenamed",
+    ["!!"] = "NvimTreeFileIgnored",
+    [" A"] = "none",
+  }
+
+  local folder = {}
+  for k, v in pairs(file) do
+    folder[k] = v:gsub("File", "Folder")
+  end
+
+  return file, folder
+end
+
 local function nil_() end
 
 local function warn_status(git_status)
-  notify.warn(
-    'Unrecognized git state "'
-      .. git_status
-      .. '". Please open up an issue on https://github.com/nvim-tree/nvim-tree.lua/issues with this message.'
-  )
+  notify.warn(string.format("Unrecognized git state '%s'", git_status))
 end
 
 ---@param node table
@@ -101,39 +139,6 @@ local function get_icons_(node)
   return iconss
 end
 
-local git_hl = {
-  ["M "] = "NvimTreeFileStaged",
-  ["C "] = "NvimTreeFileStaged",
-  ["AA"] = "NvimTreeFileStaged",
-  ["AD"] = "NvimTreeFileStaged",
-  ["MD"] = "NvimTreeFileStaged",
-  ["T "] = "NvimTreeFileStaged",
-  ["TT"] = "NvimTreeFileStaged",
-  [" M"] = "NvimTreeFileDirty",
-  ["CM"] = "NvimTreeFileDirty",
-  [" C"] = "NvimTreeFileDirty",
-  [" T"] = "NvimTreeFileDirty",
-  ["MM"] = "NvimTreeFileDirty",
-  ["AM"] = "NvimTreeFileDirty",
-  dirty = "NvimTreeFileDirty",
-  ["A "] = "NvimTreeFileNew",
-  ["??"] = "NvimTreeFileNew",
-  ["AU"] = "NvimTreeFileMerge",
-  ["UU"] = "NvimTreeFileMerge",
-  ["UD"] = "NvimTreeFileMerge",
-  ["DU"] = "NvimTreeFileMerge",
-  ["UA"] = "NvimTreeFileMerge",
-  [" D"] = "NvimTreeFileDeleted",
-  ["DD"] = "NvimTreeFileDeleted",
-  ["RD"] = "NvimTreeFileDeleted",
-  ["D "] = "NvimTreeFileDeleted",
-  ["R "] = "NvimTreeFileRenamed",
-  ["RM"] = "NvimTreeFileRenamed",
-  [" R"] = "NvimTreeFileRenamed",
-  ["!!"] = "NvimTreeFileIgnored",
-  [" A"] = "none",
-}
-
 function M.setup_signs(i)
   vim.fn.sign_define("NvimTreeGitDirty", { text = i.unstaged, texthl = "NvimTreeGitDirty" })
   vim.fn.sign_define("NvimTreeGitStaged", { text = i.staged, texthl = "NvimTreeGitStaged" })
@@ -150,13 +155,19 @@ local function get_highlight_(node)
     return
   end
 
-  return git_hl[git_status[1]]
+  if node.nodes then
+    return M.folder_hl[git_status[1]]
+  else
+    return M.file_hl[git_status[1]]
+  end
 end
 
 function M.setup(opts)
   M.config = opts.renderer
 
   M.git_icons = build_icons_table(opts.renderer.icons.glyphs.git)
+
+  M.file_hl, M.folder_hl = build_hl_table()
 
   if opts.renderer.icons.git_placement == "signcolumn" then
     M.setup_signs(opts.renderer.icons.glyphs.git)

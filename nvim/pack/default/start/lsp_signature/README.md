@@ -58,6 +58,14 @@ Plug 'ray-x/lsp_signature.nvim'
 use {
   "ray-x/lsp_signature.nvim",
 }
+
+" Lazy
+{
+  "ray-x/lsp_signature.nvim",
+  event = "VeryLazy",
+  opts = {},
+  config = function(_, opts) require'lsp_signature'.setup(opts) end
+}
 ```
 
 # Setup / Attach the plugin
@@ -163,10 +171,9 @@ e.g.
                  -- mode, 10 by default
 
   max_height = 12, -- max height of signature floating_window
-  max_width = 80, -- max_width of signature floating_window
-  noice = false, -- set to true if you using noice to render markdown
+  max_width = 80, -- max_width of signature floating_window, line will be wrapped if exceed max_width
+                  -- the value need >= 40
   wrap = true, -- allow doc/signature text wrap inside floating_window, useful if your lsp return doc/sig is too long
-  
   floating_window = true, -- show hint in a floating window, set to false for virtual text only mode
 
   floating_window_above_cur_line = true, -- try to place the floating above the current line when possible Note:
@@ -183,6 +190,9 @@ e.g.
   hint_enable = true, -- virtual hint enable
   hint_prefix = "🐼 ",  -- Panda for parameter, NOTE: for the terminal not support emoji, might crash
   hint_scheme = "String",
+  hint_inline = function() return false end,  -- should the hint be inline(nvim 0.10 only)?  default false
+  -- return true | 'inline' to show hint inline, return 'eol' to show hint at end of line, return false to disable
+  -- return 'right_align' to display hint right aligned in the current line
   hi_parameter = "LspSignatureActiveParameter", -- how your parameter will be highlight
   handler_opts = {
     border = "rounded"   -- double, rounded, single, shadow, none, or a table of borders

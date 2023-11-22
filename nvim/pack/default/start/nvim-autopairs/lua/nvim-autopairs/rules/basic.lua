@@ -1,10 +1,13 @@
 local Rule = require("nvim-autopairs.rule")
 local cond = require("nvim-autopairs.conds")
+local utils = require('nvim-autopairs.utils')
 
 local function quote_creator(opt)
     local quote = function(...)
         local move_func = opt.enable_moveright and cond.move_right or cond.none
-        local rule = Rule(...):with_move(move_func()):with_pair(cond.not_add_quote_inside_quote())
+        local rule = Rule(...)
+            :with_move(move_func())
+            :with_pair(cond.not_add_quote_inside_quote())
 
         if #opt.ignored_next_char > 1 then
             rule:with_pair(cond.not_after_regex(opt.ignored_next_char))
@@ -20,7 +23,8 @@ local function bracket_creator(opt)
     local bracket = function(...)
         local rule = quote(...)
         if opt.enable_check_bracket_line == true then
-            rule:with_pair(cond.is_bracket_line()):with_move(cond.is_bracket_line_move())
+            rule:with_pair(cond.is_bracket_line())
+                :with_move(cond.is_bracket_line_move())
         end
         if opt.enable_bracket_in_quote then
             -- still add bracket if text is quote "|" and next_char have "
@@ -32,7 +36,6 @@ local function bracket_creator(opt)
 end
 
 local function setup(opt)
-    -- stylua: ignore
     local quote = quote_creator(opt)
     local bracket = bracket_creator(opt)
     local rules = {
@@ -41,7 +44,15 @@ local function setup(opt)
         Rule("```.*$", "```", { "markdown", "vimwiki", "rmarkdown", "rmd", "pandoc" }):only_cr():use_regex(true),
         Rule('"""', '"""', { "python", "elixir", "julia", "kotlin" }):with_pair(cond.not_before_char('"', 3)),
         Rule("'''", "'''", { "python" }):with_pair(cond.not_before_char('"', 3)),
-        quote("'", "'", "-rust"):with_pair(cond.not_before_regex("%w")),
+        quote("'", "'", "-rust")
+            :with_pair(function(opts)
+                -- python literals string
+                local str = utils.text_sub_char(opts.line, opts.col - 1, 1)
+                if vim.bo.filetype == 'python' and str:match("[frbuFRBU]") then
+                    return true
+                end
+            end)
+            :with_pair(cond.not_before_regex("%w")),
         quote("'", "'", "rust"):with_pair(cond.not_before_regex("[%w<&]")):with_pair(cond.not_after_text(">")),
         quote("`", "`"),
         quote('"', '"', "-vim"),
@@ -54,6 +65,7 @@ local function setup(opt)
             "^%s*</",
             {
                 "html",
+                "htmldjango",
                 "php",
                 "typescript",
                 "typescriptreact",

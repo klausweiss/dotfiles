@@ -2,10 +2,21 @@ local _ = require "mason-core.functional"
 
 local M = {}
 
+---@param str string
+local function split_once_left(str, char)
+    for i = 1, #str do
+        if str:sub(i, i) == char then
+            local segment = str:sub(1, i - 1)
+            return segment, str:sub(i + 1)
+        end
+    end
+    return str
+end
+
 ---@param registry_id string
 ---@return fun(): RegistrySource # Thunk to instantiate provider.
 local function parse(registry_id)
-    local type, id = registry_id:match "^(.+):(.+)$"
+    local type, id = split_once_left(registry_id, ":")
     if type == "github" then
         local namespace, name = id:match "^(.+)/(.+)$"
         if not namespace or not name then
@@ -30,6 +41,13 @@ local function parse(registry_id)
                 mod = id,
             }
         end
+    elseif type == "file" then
+        return function()
+            local FileRegistrySource = require "mason-registry.sources.file"
+            return FileRegistrySource.new {
+                path = id,
+            }
+        end
     elseif type ~= nil then
         error(("Unknown registry type %q: %q."):format(type, registry_id), 0)
     end
@@ -41,6 +59,7 @@ local registries = {}
 
 ---@param registry_ids string[]
 function M.set_registries(registry_ids)
+    registries = {}
     for _, registry in ipairs(registry_ids) do
         local ok, err = pcall(function()
             table.insert(registries, parse(registry))

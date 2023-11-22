@@ -272,7 +272,7 @@
   "."
   ","
   ":"
-  (separator)
+  ";"
 ] @punctuation.delimiter
 
 
@@ -287,7 +287,3 @@
   (comment)
   (block_comment)
 ] @comment @spell
-
-; Errors
-
-(ERROR) @error

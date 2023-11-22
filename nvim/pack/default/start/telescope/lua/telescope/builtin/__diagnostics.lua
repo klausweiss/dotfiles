@@ -6,6 +6,50 @@ local utils = require "telescope.utils"
 
 local diagnostics = {}
 
+local sorting_comparator = function(opts)
+  local current_buf = vim.api.nvim_get_current_buf()
+  local comparators = {
+    -- sort results by bufnr (prioritize cur buf), severity, lnum
+    buffer = function(a, b)
+      if a.bufnr == b.bufnr then
+        if a.type == b.type then
+          return a.lnum < b.lnum
+        else
+          return a.type < b.type
+        end
+      else
+        if a.bufnr == current_buf then
+          return true
+        end
+        if b.bufnr == current_buf then
+          return false
+        end
+        return a.bufnr < b.bufnr
+      end
+    end,
+    severity = function(a, b)
+      if a.type < b.type then
+        return true
+      elseif a.type > b.type then
+        return false
+      end
+
+      if a.bufnr == b.bufnr then
+        return a.lnum < b.lnum
+      elseif a.bufnr == current_buf then
+        return true
+      elseif b.bufnr == current_buf then
+        return false
+      else
+        return a.bufnr < b.bufnr
+      end
+    end,
+  }
+
+  local sort_by = vim.F.if_nil(opts.sort_by, "buffer")
+  return comparators[sort_by]
+end
+
 local convert_diagnostic_type = function(severities, severity)
   -- convert from string to int
   if type(severity) == "string" then
@@ -20,7 +64,6 @@ local diagnostics_to_tbl = function(opts)
   opts = vim.F.if_nil(opts, {})
   local items = {}
   local severities = vim.diagnostic.severity
-  local current_buf = vim.api.nvim_get_current_buf()
 
   opts.severity = convert_diagnostic_type(severities, opts.severity)
   opts.severity_limit = convert_diagnostic_type(severities, opts.severity_limit)
@@ -42,6 +85,9 @@ local diagnostics_to_tbl = function(opts)
     end
     if opts.severity_bound ~= nil then
       diagnosis_opts.severity["max"] = opts.severity_bound
+    end
+    if vim.version().minor > 9 and vim.tbl_isempty(diagnosis_opts.severity) then
+      diagnosis_opts.severity = nil
     end
   end
 
@@ -77,25 +123,7 @@ local diagnostics_to_tbl = function(opts)
     end
   end
 
-  -- sort results by bufnr (prioritize cur buf), severity, lnum
-  table.sort(items, function(a, b)
-    if a.bufnr == b.bufnr then
-      if a.type == b.type then
-        return a.lnum < b.lnum
-      else
-        return a.type < b.type
-      end
-    else
-      -- prioritize for current bufnr
-      if a.bufnr == current_buf then
-        return true
-      end
-      if b.bufnr == current_buf then
-        return false
-      end
-      return a.bufnr < b.bufnr
-    end
-  end)
+  table.sort(items, sorting_comparator(opts))
 
   return items
 end
@@ -117,6 +145,14 @@ diagnostics.get = function(opts)
     utils.notify("builtin.diagnostics", {
       msg = "No diagnostics found",
       level = "INFO",
+    })
+    return
+  end
+
+  if type(opts.line_width) == "string" and opts.line_width ~= "full" then
+    utils.notify("builtin.diagnostics", {
+      msg = string.format("'%s' is not a valid value for line_width", opts.line_width),
+      level = "ERROR",
     })
     return
   end

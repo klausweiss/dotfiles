@@ -12,8 +12,8 @@ local function open_floating_window()
 
   local status, plenary = pcall(require, 'plenary.window.float')
   if status and vim.g.lazygit_floating_window_use_plenary and vim.g.lazygit_floating_window_use_plenary ~= 0 then
-    plenary.percentage_range_window(floating_window_scaling_factor, floating_window_scaling_factor)
-    return
+    local ret = plenary.percentage_range_window(floating_window_scaling_factor, floating_window_scaling_factor)
+    return ret.win_id, ret.bufnr
   end
 
   local height = math.ceil(vim.o.lines * floating_window_scaling_factor) - 1
@@ -81,7 +81,7 @@ local function open_floating_window()
   cmd = [[autocmd WinLeave <buffer> silent! execute 'silent bdelete! %s']]
   vim.cmd(cmd:format(border_buffer))
 
-  return win, border_window
+  return win, LAZYGIT_BUFFER
 end
 
 return {

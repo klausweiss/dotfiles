@@ -25,10 +25,10 @@ local DEPRECATE_PREFIX = '\nThe barbar.nvim option '
 --- @field [3] barbar.config.options.icons.diagnostics.severity
 --- @field [4] barbar.config.options.icons.diagnostics.severity
 local DEFAULT_DIAGNOSTIC_ICONS = {
-  [vim.diagnostic.severity.ERROR] = { enabled = false, icon = 'Ⓧ ' },
-  [vim.diagnostic.severity.HINT] = { enabled = false, icon = '💡' },
-  [vim.diagnostic.severity.INFO] = { enabled = false, icon = 'ⓘ ' },
-  [vim.diagnostic.severity.WARN] = { enabled = false, icon = '⚠️ ' },
+  [vim.diagnostic.severity.ERROR] = { enabled = false, icon = ' ' },
+  [vim.diagnostic.severity.HINT] = { enabled = false, icon = '󰌶 ' },
+  [vim.diagnostic.severity.INFO] = { enabled = false, icon = ' ' },
+  [vim.diagnostic.severity.WARN] = { enabled = false, icon = ' ' },
 }
 
 --- Deeply extend `icons` to include the `DEFAULT_DIAGNOSTIC_ICONS`
@@ -99,6 +99,7 @@ local GIT_STATUSES = {'added', 'changed', 'deleted'}
 --- @field inactive barbar.config.options.icons.state the icons for inactive buffers
 --- @field preset barbar.config.options.icons.preset
 --- @field scroll barbar.config.options.icons.scroll the scroll arrows
+--- @field separator_at_end boolean if true, add an additional separator at the end of the buffer list
 --- @field visible barbar.config.options.icons.state the icons for visible buffers
 
 --- @type {[barbar.config.options.icons.preset]: fun(default_icons: barbar.config.options.icons, user_icons?: table)}
@@ -106,6 +107,7 @@ local ICON_PRESETS = {
   default = function(default_icons, user_icons)
     default_icons.inactive = { separator = { left = '▎', right = '' } }
     default_icons.separator = { left = '▎', right = '' }
+    default_icons.separator_at_end = true
 
     local pinned_icons = user_icons and user_icons.pinned
     if pinned_icons == nil or
@@ -119,11 +121,13 @@ local ICON_PRESETS = {
   powerline = function(default_icons)
     default_icons.inactive = { separator = { left = '', right = '' } }
     default_icons.separator = { left = '', right = '' }
+    default_icons.separator_at_end = false
   end,
 
   slanted = function(default_icons)
     default_icons.inactive = { separator = { left = '', right = '' } }
     default_icons.separator = { left = '', right = '' }
+    default_icons.separator_at_end = false
   end,
 }
 
@@ -191,7 +195,7 @@ local DEPRECATED_OPTIONS = {
 
 --- @class barbar.config.options
 --- @field animation boolean
---- @field auto_hide boolean
+--- @field auto_hide integer
 --- @field clickable boolean
 --- @field exclude_ft string[]
 --- @field exclude_name string[]
@@ -269,7 +273,14 @@ function config.setup(options)
     options.closable = nil
   end
 
-  do
+  -- convert `auto_hide = true`|`false` to `auto_hide = -1`|`1`
+  if options.auto_hide == false then
+    options.auto_hide = -1
+  elseif options.auto_hide == true then
+    options.auto_hide = 1
+  end
+
+  do -- convert `{Foo = true}` to `{Foo = {event = nil, text = nil}}`
     local sidebar_filetypes = options.sidebar_filetypes
     if sidebar_filetypes then
       for k, v in pairs(sidebar_filetypes) do
@@ -283,7 +294,7 @@ function config.setup(options)
   local default_icons = {
     buffer_index = false,
     buffer_number = false,
-    button = '𝝬',
+    button = '',
     diagnostics = {},
     gitsigns = {
       added = { enabled = false, icon = '+' },
@@ -305,7 +316,7 @@ function config.setup(options)
 
   config.options = tbl_deep_extend('keep', options, {
     animation = true,
-    auto_hide = false,
+    auto_hide = -1,
     clickable = true,
     exclude_ft = {},
     exclude_name = {},

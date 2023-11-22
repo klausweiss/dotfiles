@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Gitter](https://badges.gitter.im/gitsigns-nvim/community.svg)](https://gitter.im/gitsigns-nvim/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 
-Super fast git decorations implemented purely in lua/teal.
+Super fast git decorations implemented purely in Lua.
 
 ## Preview
 
@@ -40,38 +40,13 @@ Super fast git decorations implemented purely in lua/teal.
 
 - Newish version of git. Older versions may not work with some features.
 
-## Installation
+## Installation & Usage
 
-[packer.nvim]:
-```lua
-use {
-  'lewis6991/gitsigns.nvim',
-  -- tag = 'release' -- To use the latest release (do not use this if you run Neovim nightly or dev builds!)
-}
-```
+Install using your package manager of choice.
 
-[vim-plug]:
-```vim
-Plug 'lewis6991/gitsigns.nvim'
-```
-
-## Usage
-
-For basic setup with all batteries included:
+For recommended setup with all batteries included:
 ```lua
 require('gitsigns').setup()
-```
-
-If using [packer.nvim] gitsigns can
-be setup directly in the plugin spec:
-
-```lua
-use {
-  'lewis6991/gitsigns.nvim',
-  config = function()
-    require('gitsigns').setup()
-  end
-}
 ```
 
 Configuration can be passed to the setup function. Here is an example with most of
@@ -92,7 +67,6 @@ require('gitsigns').setup {
   linehl     = false, -- Toggle with `:Gitsigns toggle_linehl`
   word_diff  = false, -- Toggle with `:Gitsigns toggle_word_diff`
   watch_gitdir = {
-    interval = 1000,
     follow_files = true
   },
   attach_to_untracked = true,
@@ -102,6 +76,7 @@ require('gitsigns').setup {
     virt_text_pos = 'eol', -- 'eol' | 'overlay' | 'right_align'
     delay = 1000,
     ignore_whitespace = false,
+    virt_text_priority = 100,
   },
   current_line_blame_formatter = '<author>, <author_time:%Y-%m-%d> - <summary>',
   sign_priority = 6,
@@ -158,8 +133,8 @@ require('gitsigns').setup{
     -- Actions
     map('n', '<leader>hs', gs.stage_hunk)
     map('n', '<leader>hr', gs.reset_hunk)
-    map('v', '<leader>hs', function() gs.stage_hunk {vim.fn.line("."), vim.fn.line("v")} end)
-    map('v', '<leader>hr', function() gs.reset_hunk {vim.fn.line("."), vim.fn.line("v")} end)
+    map('v', '<leader>hs', function() gs.stage_hunk {vim.fn.line('.'), vim.fn.line('v')} end)
+    map('v', '<leader>hr', function() gs.reset_hunk {vim.fn.line('.'), vim.fn.line('v')} end)
     map('n', '<leader>hS', gs.stage_buffer)
     map('n', '<leader>hu', gs.undo_stage_hunk)
     map('n', '<leader>hR', gs.reset_buffer)
@@ -292,30 +267,13 @@ As of 2022-09-01
 When viewing revisions of a file (via `:0Gclog` for example), Gitsigns will attach to the fugitive buffer with the base set to the commit immediately before the commit of that revision.
 This means the signs placed in the buffer reflect the changes introduced by that revision of the file.
 
-### [null-ls]
-
-Null-ls can provide code actions from Gitsigns. To setup:
-
-```lua
-local null_ls = require("null-ls")
-
-null_ls.setup {
-  sources = {
-    null_ls.builtins.code_actions.gitsigns,
-    ...
-  }
-}
-```
-
-Will enable `:lua vim.lsp.buf.code_action()` to retrieve code actions from Gitsigns.
-
 ### [trouble.nvim]
 
 If installed and enabled (via `config.trouble`; defaults to true if installed), `:Gitsigns setqflist` or `:Gitsigns seqloclist` will open Trouble instead of Neovim's built-in quickfix or location list windows.
 
 ### [lspsaga.nvim]
 
-If you are using lspsaga.nvim you can config `code_action.extend_gitsigns` (default is true) to show the gitsigns action in lspsaga codeaction.
+If you are using lspsaga.nvim you can config `code_action.extend_gitsigns` (default is false) to show the gitsigns action in lspsaga codeaction.
 
 ## Similar plugins
 
@@ -327,14 +285,11 @@ If you are using lspsaga.nvim you can config `code_action.extend_gitsigns` (defa
 [coc-git]: https://github.com/neoclide/coc-git
 [diff-linematch]: https://github.com/neovim/neovim/pull/14537
 [luv]: https://github.com/luvit/luv/blob/master/docs.md
-[null-ls]: https://github.com/jose-elias-alvarez/null-ls.nvim
 [nvim-lua-guide]: https://github.com/nanotee/nvim-lua-guide
-[packer.nvim]: https://github.com/wbthomason/packer.nvim
 [release]: https://github.com/lewis6991/gitsigns.nvim/releases
 [trouble.nvim]: https://github.com/folke/trouble.nvim
 [vim-fugitive]: https://github.com/tpope/vim-fugitive
 [vim-gitgutter]: https://github.com/airblade/vim-gitgutter
-[vim-plug]: https://github.com/junegunn/vim-plug
 [vim-signify]: https://github.com/mhinz/vim-signify
 [virtual lines]: https://github.com/neovim/neovim/pull/15351
 [yadm]: https://yadm.io

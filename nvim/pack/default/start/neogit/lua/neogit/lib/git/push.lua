@@ -1,4 +1,5 @@
 local cli = require("neogit.lib.git.cli")
+local log = require("neogit.lib.git.log")
 local util = require("neogit.lib.util")
 
 local M = {}
@@ -13,17 +14,21 @@ function M.push_interactive(remote, branch, args)
 end
 
 local function update_unmerged(state)
-  if not state.upstream.branch then
+  state.upstream.unmerged.items = {}
+  state.pushRemote.unmerged.items = {}
+
+  if state.head.branch == "(detached)" then
     return
   end
 
-  -- local result = cli.log.oneline.for_range("@{upstream}..").show_popup(false).call(false, true):trim().stdout
+  if state.upstream.ref then
+    state.upstream.unmerged.items = util.filter_map(log.list { "@{upstream}.." }, log.present_commit)
+  end
 
-  local result = require("neogit.lib.git.log").list { "@{upstream}.." }
-
-  state.unmerged.items = util.map(result, function(v)
-    return { name = string.format("%s %s", v.oid, v.description[1] or "<empty>"), oid = v.oid, commit = v }
-  end)
+  local pushRemote = require("neogit.lib.git").branch.pushRemote_ref()
+  if pushRemote then
+    state.pushRemote.unmerged.items = util.filter_map(log.list { pushRemote .. ".." }, log.present_commit)
+  end
 end
 
 function M.register(meta)

@@ -1,5 +1,6 @@
 local Result = require "mason-core.result"
 local _ = require "mason-core.functional"
+local providers = require "mason-core.providers"
 local settings = require "mason.settings"
 local util = require "mason-core.installer.registry.util"
 
@@ -38,13 +39,8 @@ end
 ---@param source ParsedPypiSource
 function M.install(ctx, source)
     local pypi = require "mason-core.installer.managers.pypi"
-    local providers = require "mason-core.providers"
 
     return Result.try(function(try)
-        try(util.ensure_valid_version(function()
-            return providers.pypi.get_all_versions(source.package)
-        end))
-
         try(pypi.init {
             upgrade_pip = source.pip.upgrade,
             install_extra_args = source.pip.extra_args,
@@ -55,6 +51,12 @@ function M.install(ctx, source)
             install_extra_args = source.pip.extra_args,
         }))
     end)
+end
+
+---@async
+---@param purl Purl
+function M.get_versions(purl)
+    return providers.pypi.get_all_versions(purl.name)
 end
 
 return M

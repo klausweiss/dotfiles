@@ -60,7 +60,7 @@
  "next"
  ] @repeat
 
-(constant) @type
+(constant) @constant
 
 ((identifier) @type.qualifier
  (#any-of? @type.qualifier "private" "protected" "public"))
@@ -116,10 +116,10 @@
  ] @label
 
 ((identifier) @constant.builtin
- (#vim-match? @constant.builtin "^__(callee|dir|id|method|send|ENCODING|FILE|LINE)__$"))
+ (#match? @constant.builtin "^__(callee|dir|id|method|send|ENCODING|FILE|LINE)__$"))
 
 ((constant) @type
- (#vim-match? @type "^[A-Z\\d_]+$"))
+ (#not-lua-match? @type "^[A-Z0-9_]+$"))
 
 [
  (self)
@@ -192,8 +192,6 @@
   (comment)+ @comment.documentation
   (method))
 
-(string_content) @spell
-
 ; Operators
 
 [
@@ -257,5 +255,3 @@
 (interpolation
   "#{" @punctuation.special
   "}" @punctuation.special) @none
-
-(ERROR) @error

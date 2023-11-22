@@ -35,8 +35,8 @@
 (method_declaration
   name: (field_identifier) @method)
 
-(method_spec 
-  name: (field_identifier) @method) 
+(method_spec
+  name: (field_identifier) @method)
 
 ; Constructors
 
@@ -129,12 +129,13 @@
 
 ;; Builtin types
 
+[ "chan" "map" ] @type.builtin
+
 ((type_identifier) @type.builtin
  (#any-of? @type.builtin
            "any"
            "bool"
            "byte"
-           "chan"
            "comparable"
            "complex128"
            "complex64"
@@ -146,7 +147,6 @@
            "int32"
            "int64"
            "int8"
-           "map"
            "rune"
            "string"
            "uint"
@@ -163,6 +163,7 @@
  (#any-of? @function.builtin
            "append"
            "cap"
+           "clear"
            "close"
            "complex"
            "copy"
@@ -170,6 +171,8 @@
            "imag"
            "len"
            "make"
+           "max"
+           "min"
            "new"
            "panic"
            "print"
@@ -196,7 +199,7 @@
 ; Literals
 
 (interpreted_string_literal) @string
-(raw_string_literal) @string @spell
+(raw_string_literal) @string
 (rune_literal) @string
 (escape_sequence) @string.escape
 
@@ -241,10 +244,6 @@
 (source_file
   (comment)+ @comment.documentation
   . (var_declaration))
-
-; Errors
-
-(ERROR) @error
 
 ; Spell
 

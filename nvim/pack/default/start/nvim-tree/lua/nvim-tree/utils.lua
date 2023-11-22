@@ -161,13 +161,22 @@ function M.get_nodes_by_line(nodes_all, line_start)
 end
 
 function M.rename_loaded_buffers(old_path, new_path)
+  -- delete new if it exists
+  for _, buf in pairs(vim.api.nvim_list_bufs()) do
+    if vim.api.nvim_buf_is_loaded(buf) then
+      local buf_name = vim.api.nvim_buf_get_name(buf)
+      if buf_name == new_path then
+        vim.api.nvim_buf_delete(buf, { force = true })
+      end
+    end
+  end
+
+  -- rename old to new
   for _, buf in pairs(vim.api.nvim_list_bufs()) do
     if vim.api.nvim_buf_is_loaded(buf) then
       local buf_name = vim.api.nvim_buf_get_name(buf)
       local exact_match = buf_name == old_path
-      local child_match = (
-        buf_name:sub(1, #old_path) == old_path and buf_name:sub(#old_path + 1, #old_path + 1) == path_separator
-      )
+      local child_match = (buf_name:sub(1, #old_path) == old_path and buf_name:sub(#old_path + 1, #old_path + 1) == path_separator)
       if exact_match or child_match then
         vim.api.nvim_buf_set_name(buf, new_path .. buf_name:sub(#old_path + 1))
         -- to avoid the 'overwrite existing file' error message on write for
@@ -197,6 +206,16 @@ function M.canonical_path(path)
     return path:sub(1, 1):upper() .. path:sub(2)
   end
   return path
+end
+
+-- Escapes special characters in string if windows else returns unmodified string.
+-- @param path string
+-- @return path
+function M.escape_special_chars(path)
+  if path == nil then
+    return path
+  end
+  return M.is_windows and path:gsub("%(", "\\("):gsub("%)", "\\)") or path
 end
 
 -- Create empty sub-tables if not present
@@ -261,19 +280,38 @@ function M.move_missing_val(src, src_path, src_pos, dst, dst_path, dst_pos, remo
   end
 end
 
+local function round(value)
+  -- Amount of digits to round to after floating point.
+  local digits = 2
+  local round_number = 10 ^ digits
+  return math.floor((value * round_number) + 0.5) / round_number
+end
+
 function M.format_bytes(bytes)
-  local units = { "B", "K", "M", "G", "T" }
+  local units = { "B", "K", "M", "G", "T", "P", "E", "Z", "Y" }
+  local i = "i" -- bInary
 
   bytes = math.max(bytes, 0)
   local pow = math.floor((bytes and math.log(bytes) or 0) / math.log(1024))
   pow = math.min(pow, #units)
 
-  local value = bytes / (1024 ^ pow)
-  value = math.floor((value * 10) + 0.5) / 10
+  local value = round(bytes / (1024 ^ pow))
 
   pow = pow + 1
 
-  return (units[pow] == nil) and (bytes .. "B") or (value .. units[pow])
+  -- units[pow] == nil when size == 0 B or size >= 1024 YiB
+  if units[pow] == nil or pow == 1 then
+    if bytes < 1024 then
+      return bytes .. " " .. units[1]
+    else
+      -- Use the biggest adopted multiple of 2 instead of bytes.
+      value = round(bytes / (1024 ^ (#units - 1)))
+      -- For big numbers decimal part is not useful.
+      return string.format("%.0f %s%s%s", value, units[#units], i, units[1])
+    end
+  else
+    return value .. " " .. units[pow] .. i .. units[1]
+  end
 end
 
 function M.key_by(tbl, key)
@@ -354,6 +392,31 @@ function M.focus_file(path)
   require("nvim-tree.view").set_cursor { i + 1, 1 }
 end
 
+---Focus node passed as parameter if visible, otherwise focus first visible parent.
+---If none of the parents is visible focus root.
+---If node is nil do nothing.
+---@param node table|nil node to focus
+function M.focus_node_or_parent(node)
+  local explorer = require("nvim-tree.core").get_explorer()
+
+  if explorer == nil then
+    return
+  end
+
+  while node do
+    local found_node, i = M.find_node(explorer.nodes, function(node_)
+      return node_.absolute_path == node.absolute_path
+    end)
+
+    if found_node or node.parent == nil then
+      require("nvim-tree.view").set_cursor { i + 1, 1 }
+      break
+    end
+
+    node = node.parent
+  end
+end
+
 function M.get_win_buf_from_path(path)
   for _, w in pairs(vim.api.nvim_tabpage_list_wins(0)) do
     local b = vim.api.nvim_win_get_buf(w)
@@ -379,12 +442,18 @@ function M.array_shallow_clone(array)
   return to
 end
 
--- remove item from array if it exists
+--- Remove and return item from array if present.
+--- @param array table
+--- @param item any
+--- @return any|nil removed
 function M.array_remove(array, item)
+  if not array then
+    return nil
+  end
   for i, v in ipairs(array) do
     if v == item then
       table.remove(array, i)
-      break
+      return v
     end
   end
 end
@@ -409,7 +478,7 @@ function M.is_nvim_tree_buf(bufnr)
   if bufnr == nil then
     bufnr = 0
   end
-  if vim.fn.bufexists(bufnr) then
+  if vim.api.nvim_buf_is_valid(bufnr) then
     local bufname = vim.api.nvim_buf_get_name(bufnr)
     if vim.fn.fnamemodify(bufname, ":t"):match "^NvimTree_[0-9]+$" then
       if vim.bo[bufnr].filetype == "NvimTree" then

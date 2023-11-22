@@ -2,6 +2,7 @@ local Purl = require "mason-core.purl"
 local Result = require "mason-core.result"
 local cargo = require "mason-core.installer.registry.providers.cargo"
 local installer = require "mason-core.installer"
+local providers = require "mason-core.providers"
 local stub = require "luassert.stub"
 
 ---@param overrides Purl
@@ -116,28 +117,23 @@ describe("cargo provider :: installing", function()
             locked = true,
         })
     end)
+end)
 
-    it("should ensure valid version", function()
-        local ctx = create_dummy_context {
-            version = "1.10.0",
-        }
-        local manager = require "mason-core.installer.managers.cargo"
-        local providers = require "mason-core.providers"
-        stub(providers.crates, "get_all_versions", mockx.returns(Result.success { "1.0.0" }))
-        stub(manager, "install", mockx.returns(Result.success()))
-
-        local result = installer.exec_in_context(ctx, function()
-            return cargo.install(ctx, {
-                crate = "crate-name",
-                version = "1.10.0",
-                features = nil,
-                locked = true,
-                git = nil,
-            })
+describe("cargo provider :: versions", function()
+    it("should recognize github cargo source", function()
+        stub(providers.github, "get_all_tags", function()
+            return Result.success { "1.0.0", "2.0.0", "3.0.0" }
         end)
 
-        assert.is_true(result:is_failure())
-        assert.same(Result.failure [[Version "1.10.0" is not available.]], result)
-        assert.spy(manager.install).was_called(0)
+        local result = cargo.get_versions(purl {
+            qualifiers = {
+                repository_url = "https://github.com/rust-lang/rust-analyzer",
+            },
+        })
+
+        assert.is_true(result:is_success())
+        assert.same({ "1.0.0", "2.0.0", "3.0.0" }, result:get_or_throw())
+        assert.spy(providers.github.get_all_tags).was_called(1)
+        assert.spy(providers.github.get_all_tags).was_called_with "rust-lang/rust-analyzer"
     end)
 end)

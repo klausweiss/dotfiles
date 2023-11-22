@@ -62,6 +62,10 @@ internal.builtin = function(opts)
     end
   end
 
+  table.sort(objs, function(a, b)
+    return a.text < b.text
+  end)
+
   opts.bufnr = vim.api.nvim_get_current_buf()
   opts.winnr = vim.api.nvim_get_current_win()
   pickers
@@ -157,6 +161,7 @@ internal.resume = function(opts)
     picker.hidden_previewer = nil
     opts.previewer = vim.F.if_nil(opts.previewer, false)
   end
+  opts.resumed_picker = true
   pickers.new(opts, picker):find()
 end
 
@@ -190,9 +195,21 @@ internal.pickers = function(opts)
       cache_picker = false,
       attach_mappings = function(_, map)
         actions.select_default:replace(function(prompt_bufnr)
-          local current_picker = action_state.get_current_picker(prompt_bufnr)
-          local selection_index = current_picker:get_index(current_picker:get_selection_row())
+          local curr_picker = action_state.get_current_picker(prompt_bufnr)
+          local curr_entry = action_state.get_selected_entry()
+          if not curr_entry then
+            return
+          end
+
           actions.close(prompt_bufnr)
+
+          local selection_index, _ = utils.list_find(function(v)
+            if curr_entry.value == v.value then
+              return true
+            end
+            return false
+          end, curr_picker.finder.results)
+
           opts.cache_picker = opts._cache_picker
           opts["cache_index"] = selection_index
           opts["initial_mode"] = cached_pickers[selection_index].initial_mode
@@ -461,7 +478,7 @@ internal.quickfixhistory = function(opts)
           local nr = action_state.get_selected_entry().nr
           actions.close(prompt_bufnr)
           vim.cmd(nr .. "chistory")
-          vim.cmd "copen"
+          vim.cmd "botright copen"
         end)
         return true
       end,
@@ -974,8 +991,10 @@ internal.colorscheme = function(opts)
         preview_fn = function(_, entry, status)
           if not deleted then
             deleted = true
-            del_win(status.preview_win)
-            del_win(status.preview_border_win)
+            if status.layout.preview then
+              del_win(status.layout.preview.winid)
+              del_win(status.layout.preview.border.winid)
+            end
           end
           vim.cmd("colorscheme " .. entry.value)
         end,
@@ -1055,7 +1074,17 @@ internal.marks = function(opts)
   local marks_table = {}
   local marks_others = {}
   local bufname = vim.api.nvim_buf_get_name(opts.bufnr)
-  for _, cnf in ipairs { local_marks, global_marks } do
+  local all_marks = {}
+  opts.mark_type = vim.F.if_nil(opts.mark_type, "all")
+  if opts.mark_type == "all" then
+    all_marks = { local_marks, global_marks }
+  elseif opts.mark_type == "local" then
+    all_marks = { local_marks }
+  elseif opts.mark_type == "global" then
+    all_marks = { global_marks }
+  end
+
+  for _, cnf in ipairs(all_marks) do
     for _, v in ipairs(cnf.items) do
       -- strip the first single quote character
       local mark = string.sub(v.mark, 2, 3)
@@ -1095,7 +1124,7 @@ internal.marks = function(opts)
 end
 
 internal.registers = function(opts)
-  local registers_table = { '"', "_", "#", "=", "_", "/", "*", "+", ":", ".", "%" }
+  local registers_table = { '"', "-", "#", "=", "/", "*", "+", ":", ".", "%" }
 
   -- named
   for i = 0, 9 do
@@ -1125,7 +1154,6 @@ internal.registers = function(opts)
     :find()
 end
 
--- TODO: make filtering include the mapping and the action
 internal.keymaps = function(opts)
   opts.modes = vim.F.if_nil(opts.modes, { "n", "i", "c", "x" })
   opts.show_plug = vim.F.if_nil(opts.show_plug, true)
@@ -1144,6 +1172,7 @@ internal.keymaps = function(opts)
         if
           (opts.show_plug or not string.find(keymap.lhs, "<Plug>"))
           and (not opts.lhs_filter or opts.lhs_filter(keymap.lhs))
+          and (not opts.filter or opts.filter(keymap))
         then
           table.insert(keymaps_table, keymap)
           max_len_lhs = math.max(max_len_lhs, #utils.display_termcodes(keymap.lhs))

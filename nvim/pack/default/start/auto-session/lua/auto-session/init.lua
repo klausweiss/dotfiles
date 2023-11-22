@@ -89,6 +89,7 @@ local luaOnlyConf = {
 
   ---@type session_lens_config
   session_lens = {
+    buftypes_to_ignore = {}, -- list of bufftypes to ignore when switching between sessions
     load_on_setup = true,
     session_control = {
       control_dir = vim.fn.stdpath "data" .. "/auto_session/", -- Auto session control dir, for control files, like alternating between two sessions with session-lens
@@ -259,7 +260,9 @@ local function suppress_session()
 
   local cwd = vim.fn.getcwd()
   for _, s in pairs(dirs) do
-    s = string.gsub(vim.fn.simplify(Lib.expand(s)), "/+$", "")
+    if s ~= "/" then
+      s = string.gsub(vim.fn.simplify(Lib.expand(s)), "/+$", "")
+    end
     for path in string.gmatch(s, "[^\r\n]+") do
       if cwd == path then
         return true
@@ -321,7 +324,7 @@ local function get_session_file_name(upcoming_session_dir)
 
       -- Was getting %U issue on path without this, directory was unescaped
       -- session_name = string.gsub(session_name, "%.", "%%%.")
-      -- session_name = string.format("%s%s", session_name, branch_name)
+      session_name = string.format("%s%s", session_name, branch_name)
 
       Lib.logger.debug("session name post-format", { session_name = session_name })
     end
@@ -657,9 +660,9 @@ function AutoSession.RestoreSession(sessions_dir_or_file)
 
     if not success then
       Lib.logger.error([[
-        Error restoring session! The session might be corrupted.
-        Disabling auto save. Please check for errors in your config. Error:
-      ]] .. result)
+Error restoring session! The session might be corrupted.
+Disabling auto save. Please check for errors in your config. Error:
+]] .. result)
       AutoSession.conf.auto_save_enabled = false
       return
     end
@@ -751,7 +754,7 @@ function AutoSession.RestoreSession(sessions_dir_or_file)
 end
 
 local maybe_disable_autosave = function(session_name)
-  local current_session = Lib.escaped_session_name_from_cwd()
+  local current_session = get_session_file_name()
 
   if session_name == current_session then
     Lib.logger.debug("Auto Save disabled for current session.", {
@@ -809,9 +812,6 @@ function AutoSession.DeleteSession(...)
   local pre_cmds = AutoSession.get_cmds "pre_delete"
   run_hook_cmds(pre_cmds, "pre-delete")
 
-  -- TODO: make the delete command customizable
-  local is_win32 = vim.fn.has "win32" == Lib._VIM_TRUE
-
   if not Lib.is_empty(...) then
     for _, file_path in ipairs { ... } do
       Lib.logger.debug("session_file_path", file_path)
@@ -821,16 +821,11 @@ function AutoSession.DeleteSession(...)
       Lib.logger.info("Deleted session " .. file_path)
     end
   else
-    local session_name = Lib.escaped_session_name_from_cwd()
-    Lib.logger.debug("session_name", session_name)
-    if is_win32 then
-      session_name = session_name:gsub("\\", "")
-    end
+    local session_file_path = get_session_file_name()
 
-    local session_file_path = string.format(AutoSession.get_root_dir() .. "%s.vim", session_name)
     vim.fn.delete(Lib.expand(session_file_path))
 
-    maybe_disable_autosave(session_name)
+    maybe_disable_autosave(session_file_path)
     Lib.logger.info("Deleted session " .. session_file_path)
   end
 
@@ -877,7 +872,7 @@ function SetupAutocmds()
 
   vim.api.nvim_create_user_command(
     "SessionRestoreFromFile",
-    DisableAutoSave,
+    SessionRestore,
     { complete = AutoSession.CompleteSessions, bang = true, nargs = "*", desc = "Restore Session from file" }
   )
 

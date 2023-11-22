@@ -12,9 +12,10 @@ local reloaders = require "nvim-tree.actions.reloaders.reloaders"
 local git = require "nvim-tree.git"
 local filters = require "nvim-tree.explorer.filters"
 local modified = require "nvim-tree.modified"
-local keymap_legacy = require "nvim-tree.keymap-legacy"
 local find_file = require "nvim-tree.actions.tree.find-file"
 local open = require "nvim-tree.actions.tree.open"
+local events = require "nvim-tree.events"
+local notify = require "nvim-tree.notify"
 
 local _config = {}
 
@@ -195,25 +196,29 @@ local function setup_autocommands(opts)
   create_nvim_tree_autocmd("BufWipeout", {
     pattern = "NvimTree_*",
     callback = function()
-      if utils.is_nvim_tree_buf(0) then
+      if not utils.is_nvim_tree_buf(0) then
+        return
+      end
+      if opts.actions.open_file.eject then
         view._prevent_buffer_override()
+      else
+        view.abandon_current_window()
       end
     end,
   })
 
-  local has_watchers = opts.filesystem_watchers.enable
-
-  if opts.auto_reload_on_write and not has_watchers then
-    create_nvim_tree_autocmd("BufWritePost", { callback = reloaders.reload_explorer })
-  end
+  create_nvim_tree_autocmd("BufWritePost", {
+    callback = function()
+      if opts.auto_reload_on_write and not opts.filesystem_watchers.enable then
+        reloaders.reload_explorer()
+      end
+    end,
+  })
 
   create_nvim_tree_autocmd("BufReadPost", {
     callback = function(data)
       -- update opened file buffers
-      if
-        (filters.config.filter_no_buffer or renderer.config.highlight_opened_files ~= "none")
-        and vim.bo[data.buf].buftype == ""
-      then
+      if (filters.config.filter_no_buffer or renderer.config.highlight_opened_files ~= "none") and vim.bo[data.buf].buftype == "" then
         utils.debounce("Buf:filter_buffer", opts.view.debounce_delay, function()
           reloaders.reload_explorer()
         end)
@@ -224,10 +229,7 @@ local function setup_autocommands(opts)
   create_nvim_tree_autocmd("BufUnload", {
     callback = function(data)
       -- update opened file buffers
-      if
-        (filters.config.filter_no_buffer or renderer.config.highlight_opened_files ~= "none")
-        and vim.bo[data.buf].buftype == ""
-      then
+      if (filters.config.filter_no_buffer or renderer.config.highlight_opened_files ~= "none") and vim.bo[data.buf].buftype == "" then
         utils.debounce("Buf:filter_buffer", opts.view.debounce_delay, function()
           reloaders.reload_explorer(nil, data.buf)
         end)
@@ -235,12 +237,14 @@ local function setup_autocommands(opts)
     end,
   })
 
-  if not has_watchers and opts.git.enable then
-    create_nvim_tree_autocmd("User", {
-      pattern = { "FugitiveChanged", "NeogitStatusRefreshed" },
-      callback = reloaders.reload_git,
-    })
-  end
+  create_nvim_tree_autocmd("User", {
+    pattern = { "FugitiveChanged", "NeogitStatusRefreshed" },
+    callback = function()
+      if not opts.filesystem_watchers.enable and opts.git.enable then
+        reloaders.reload_git()
+      end
+    end,
+  })
 
   if opts.tab.sync.open then
     create_nvim_tree_autocmd("TabEnter", { callback = vim.schedule_wrap(M.tab_enter) })
@@ -276,16 +280,16 @@ local function setup_autocommands(opts)
     create_nvim_tree_autocmd({ "BufEnter", "BufNewFile" }, { callback = M.open_on_directory })
   end
 
-  if opts.reload_on_bufenter and not has_watchers then
-    create_nvim_tree_autocmd("BufEnter", {
-      pattern = "NvimTree_*",
-      callback = function()
-        if utils.is_nvim_tree_buf(0) then
+  create_nvim_tree_autocmd("BufEnter", {
+    pattern = "NvimTree_*",
+    callback = function()
+      if utils.is_nvim_tree_buf(0) then
+        if vim.fn.getcwd() ~= core.get_cwd() or (opts.reload_on_bufenter and not opts.filesystem_watchers.enable) then
           reloaders.reload_explorer()
         end
-      end,
-    })
-  end
+      end
+    end,
+  })
 
   if opts.view.centralize_selection then
     create_nvim_tree_autocmd("BufEnter", {
@@ -337,40 +341,51 @@ local function setup_autocommands(opts)
       end,
     })
   end
+
+  -- TODO #1545 remove similar check from view.resize
+  if vim.fn.has "nvim-0.9" == 1 then
+    create_nvim_tree_autocmd("WinResized", {
+      callback = function()
+        if vim.v.event and vim.v.event.windows then
+          for _, winid in ipairs(vim.v.event.windows) do
+            if vim.api.nvim_win_is_valid(winid) and utils.is_nvim_tree_buf(vim.api.nvim_win_get_buf(winid)) then
+              events._dispatch_on_tree_resize(vim.api.nvim_win_get_width(winid))
+            end
+          end
+        end
+      end,
+    })
+  end
 end
 
 local DEFAULT_OPTS = { -- BEGIN_DEFAULT_OPTS
+  on_attach = "default",
+  hijack_cursor = false,
   auto_reload_on_write = true,
   disable_netrw = false,
-  hijack_cursor = false,
   hijack_netrw = true,
   hijack_unnamed_buffer_when_opening = false,
-  sort_by = "name",
   root_dirs = {},
   prefer_startup_root = false,
   sync_root_with_cwd = false,
   reload_on_bufenter = false,
   respect_buf_cwd = false,
-  on_attach = "default",
-  remove_keymaps = false,
   select_prompts = false,
+  sort = {
+    sorter = "name",
+    folders_first = true,
+    files_first = false,
+  },
   view = {
     centralize_selection = false,
     cursorline = true,
     debounce_delay = 15,
-    width = 30,
-    hide_root_folder = false,
     side = "left",
     preserve_window_proportions = false,
     number = false,
     relativenumber = false,
     signcolumn = "yes",
-    mappings = {
-      custom_only = false,
-      list = {
-        -- user mappings go here
-      },
-    },
+    width = 30,
     float = {
       enable = false,
       quit_on_focus_loss = true,
@@ -387,12 +402,17 @@ local DEFAULT_OPTS = { -- BEGIN_DEFAULT_OPTS
   renderer = {
     add_trailing = false,
     group_empty = false,
-    highlight_git = false,
     full_name = false,
-    highlight_opened_files = "none",
-    highlight_modified = "none",
     root_folder_label = ":~:s?$?/..?",
     indent_width = 2,
+    special_files = { "Cargo.toml", "Makefile", "README.md", "readme.md" },
+    symlink_destination = true,
+    highlight_git = false,
+    highlight_diagnostics = false,
+    highlight_opened_files = "none",
+    highlight_modified = "none",
+    highlight_bookmarks = "none",
+    highlight_clipboard = "name",
     indent_markers = {
       enable = false,
       inline_arrows = true,
@@ -405,9 +425,20 @@ local DEFAULT_OPTS = { -- BEGIN_DEFAULT_OPTS
       },
     },
     icons = {
-      webdev_colors = true,
+      web_devicons = {
+        file = {
+          enable = true,
+          color = true,
+        },
+        folder = {
+          enable = false,
+          color = true,
+        },
+      },
       git_placement = "before",
       modified_placement = "after",
+      diagnostics_placement = "signcolumn",
+      bookmarks_placement = "signcolumn",
       padding = " ",
       symlink_arrow = " ➛ ",
       show = {
@@ -416,6 +447,8 @@ local DEFAULT_OPTS = { -- BEGIN_DEFAULT_OPTS
         folder_arrow = true,
         git = true,
         modified = true,
+        diagnostics = true,
+        bookmarks = true,
       },
       glyphs = {
         default = "",
@@ -443,8 +476,6 @@ local DEFAULT_OPTS = { -- BEGIN_DEFAULT_OPTS
         },
       },
     },
-    special_files = { "Cargo.toml", "Makefile", "README.md", "readme.md" },
-    symlink_destination = true,
   },
   hijack_directories = {
     enable = true,
@@ -458,6 +489,14 @@ local DEFAULT_OPTS = { -- BEGIN_DEFAULT_OPTS
   system_open = {
     cmd = "",
     args = {},
+  },
+  git = {
+    enable = true,
+    show_on_dirs = true,
+    show_on_open_dirs = true,
+    disable_for_dirs = {},
+    timeout = 400,
+    cygwin_support = false,
   },
   diagnostics = {
     enable = false,
@@ -475,29 +514,27 @@ local DEFAULT_OPTS = { -- BEGIN_DEFAULT_OPTS
       error = "",
     },
   },
+  modified = {
+    enable = false,
+    show_on_dirs = true,
+    show_on_open_dirs = true,
+  },
   filters = {
+    git_ignored = true,
     dotfiles = false,
     git_clean = false,
     no_buffer = false,
     custom = {},
     exclude = {},
   },
+  live_filter = {
+    prefix = "[FILTER]: ",
+    always_show_folders = true,
+  },
   filesystem_watchers = {
     enable = true,
     debounce_delay = 50,
     ignore_dirs = {},
-  },
-  git = {
-    enable = true,
-    ignore = true,
-    show_on_dirs = true,
-    show_on_open_dirs = true,
-    timeout = 400,
-  },
-  modified = {
-    enable = false,
-    show_on_dirs = true,
-    show_on_open_dirs = true,
   },
   actions = {
     use_system_clipboard = true,
@@ -521,6 +558,7 @@ local DEFAULT_OPTS = { -- BEGIN_DEFAULT_OPTS
     },
     open_file = {
       quit_on_open = false,
+      eject = true,
       resize_window = true,
       window_picker = {
         enable = true,
@@ -539,10 +577,6 @@ local DEFAULT_OPTS = { -- BEGIN_DEFAULT_OPTS
   trash = {
     cmd = "gio trash",
   },
-  live_filter = {
-    prefix = "[FILTER]: ",
-    always_show_folders = true,
-  },
   tab = {
     sync = {
       open = false,
@@ -552,18 +586,19 @@ local DEFAULT_OPTS = { -- BEGIN_DEFAULT_OPTS
   },
   notify = {
     threshold = vim.log.levels.INFO,
+    absolute_path = true,
+  },
+  help = {
+    sort_by = "key",
   },
   ui = {
     confirm = {
       remove = true,
       trash = true,
+      default_yes = false,
     },
   },
-  experimental = {
-    git = {
-      async = true,
-    },
-  },
+  experimental = {},
   log = {
     enable = false,
     truncate = false,
@@ -588,67 +623,154 @@ local FIELD_SKIP_VALIDATE = {
   open_win_config = true,
 }
 
-local FIELD_OVERRIDE_TYPECHECK = {
-  width = { string = true, ["function"] = true, number = true, ["table"] = true },
-  max = { string = true, ["function"] = true, number = true },
-  min = { string = true, ["function"] = true, number = true },
-  remove_keymaps = { boolean = true, table = true },
-  on_attach = { ["function"] = true, string = true },
-  sort_by = { ["function"] = true, string = true },
-  root_folder_label = { ["function"] = true, string = true, boolean = true },
-  picker = { ["function"] = true, string = true },
+local ACCEPTED_TYPES = {
+  on_attach = { "function", "string" },
+  sort = {
+    sorter = { "function", "string" },
+  },
+  view = {
+    width = {
+      "string",
+      "function",
+      "number",
+      "table",
+      min = { "string", "function", "number" },
+      max = { "string", "function", "number" },
+      padding = { "function", "number" },
+    },
+  },
+  renderer = {
+    group_empty = { "boolean", "function" },
+    root_folder_label = { "function", "string", "boolean" },
+  },
+  actions = {
+    open_file = {
+      window_picker = {
+        picker = { "function", "string" },
+      },
+    },
+  },
+}
+
+local ACCEPTED_STRINGS = {
+  sort = {
+    sorter = { "name", "case_sensitive", "modification_time", "extension", "suffix", "filetype" },
+  },
+  view = {
+    side = { "left", "right" },
+    signcolumn = { "yes", "no", "auto" },
+  },
+  renderer = {
+    highlight_opened_files = { "none", "icon", "name", "all" },
+    highlight_modified = { "none", "icon", "name", "all" },
+    highlight_bookmarks = { "none", "icon", "name", "all" },
+    highlight_clipboard = { "none", "icon", "name", "all" },
+    icons = {
+      git_placement = { "before", "after", "signcolumn" },
+      modified_placement = { "before", "after", "signcolumn" },
+      diagnostics_placement = { "before", "after", "signcolumn" },
+      bookmarks_placement = { "before", "after", "signcolumn" },
+    },
+  },
+  help = {
+    sort_by = { "key", "desc" },
+  },
 }
 
 local function validate_options(conf)
   local msg
 
-  local function validate(user, def, prefix)
-    -- only compare tables with contents that are not integer indexed
-    if type(user) ~= "table" or type(def) ~= "table" or not next(def) or type(next(def)) == "number" then
+  local function validate(user, def, strs, types, prefix)
+    -- if user's option is not a table there is nothing to do
+    if type(user) ~= "table" then
       return
+    end
+
+    -- only compare tables with contents that are not integer indexed
+    if type(def) ~= "table" or not next(def) or type(next(def)) == "number" then
+      -- unless the field can be a table (and is not a table in default config)
+      if vim.tbl_contains(types, "table") then
+        -- use a dummy default to allow all checks
+        def = {}
+      else
+        return
+      end
     end
 
     for k, v in pairs(user) do
       if not FIELD_SKIP_VALIDATE[k] then
         local invalid
-        local override_typecheck = FIELD_OVERRIDE_TYPECHECK[k] or {}
-        if def[k] == nil then
+
+        if def[k] == nil and types[k] == nil then
           -- option does not exist
-          invalid = string.format("[NvimTree] unknown option: %s%s", prefix, k)
-        elseif type(v) ~= type(def[k]) and not override_typecheck[type(v)] then
-          -- option is of the wrong type and is not a function
-          invalid =
-            string.format("[NvimTree] invalid option: %s%s expected: %s actual: %s", prefix, k, type(def[k]), type(v))
+          invalid = string.format("Unknown option: %s%s", prefix, k)
+        elseif type(v) ~= type(def[k]) then
+          local expected
+
+          if types[k] and #types[k] > 0 then
+            if not vim.tbl_contains(types[k], type(v)) then
+              expected = table.concat(types[k], "|")
+            end
+          else
+            expected = type(def[k])
+          end
+
+          if expected then
+            -- option is of the wrong type
+            invalid = string.format("Invalid option: %s%s. Expected %s, got %s", prefix, k, expected, type(v))
+          end
+        elseif type(v) == "string" and strs[k] and not vim.tbl_contains(strs[k], v) then
+          -- option has type `string` but value is not accepted
+          invalid = string.format("Invalid value for field %s%s: '%s'", prefix, k, v)
         end
 
         if invalid then
           if msg then
-            msg = string.format("%s | %s", msg, invalid)
+            msg = string.format("%s\n%s", msg, invalid)
           else
-            msg = string.format("%s", invalid)
+            msg = invalid
           end
           user[k] = nil
         else
-          validate(v, def[k], prefix .. k .. ".")
+          validate(v, def[k], strs[k] or {}, types[k] or {}, prefix .. k .. ".")
         end
       end
     end
   end
 
-  validate(conf, DEFAULT_OPTS, "")
+  validate(conf, DEFAULT_OPTS, ACCEPTED_STRINGS, ACCEPTED_TYPES, "")
 
   if msg then
-    vim.notify_once(msg .. " | see :help nvim-tree-setup for available configuration options", vim.log.levels.WARN)
+    notify.warn(msg .. "\n\nsee :help nvim-tree-opts for available configuration options")
+  end
+end
+
+--- Apply OS specific localisations to DEFAULT_OPTS
+local function localise_default_opts()
+  if utils.is_macos or utils.is_windows then
+    DEFAULT_OPTS.trash.cmd = "trash"
+  end
+end
+
+function M.purge_all_state()
+  require("nvim-tree.watcher").purge_watchers()
+  view.close_all_tabs()
+  view.abandon_all_windows()
+  if core.get_explorer() ~= nil then
+    git.purge_state()
+    TreeExplorer = nil
   end
 end
 
 function M.setup(conf)
   if vim.fn.has "nvim-0.8" == 0 then
-    vim.notify_once("nvim-tree.lua requires Neovim 0.8 or higher", vim.log.levels.WARN)
+    notify.warn "nvim-tree.lua requires Neovim 0.8 or higher"
     return
   end
 
   M.init_root = vim.fn.getcwd()
+
+  localise_default_opts()
 
   legacy.migrate_legacy_options(conf or {})
 
@@ -675,15 +797,13 @@ function M.setup(conf)
     log.raw("config", "%s\n", vim.inspect(opts))
   end
 
-  keymap_legacy.generate_legacy_on_attach(opts)
-
   require("nvim-tree.actions").setup(opts)
   require("nvim-tree.keymap").setup(opts)
   require("nvim-tree.colors").setup()
   require("nvim-tree.diagnostics").setup(opts)
   require("nvim-tree.explorer").setup(opts)
   require("nvim-tree.git").setup(opts)
-  require("nvim-tree.git.runner").setup(opts)
+  require("nvim-tree.git.utils").setup(opts)
   require("nvim-tree.view").setup(opts)
   require("nvim-tree.lib").setup(opts)
   require("nvim-tree.renderer").setup(opts)
@@ -691,6 +811,7 @@ function M.setup(conf)
   require("nvim-tree.marks").setup(opts)
   require("nvim-tree.modified").setup(opts)
   require("nvim-tree.help").setup(opts)
+  require("nvim-tree.watcher").setup(opts)
   if M.config.renderer.icons.show.file and pcall(require, "nvim-web-devicons") then
     require("nvim-web-devicons").setup()
   end
@@ -702,13 +823,7 @@ function M.setup(conf)
     commands.setup()
   else
     -- subsequent calls to setup
-    require("nvim-tree.watcher").purge_watchers()
-    view.close_all_tabs()
-    view.abandon_all_windows()
-    if core.get_explorer() ~= nil then
-      git.purge_state()
-      TreeExplorer = nil
-    end
+    M.purge_all_state()
   end
 
   vim.g.NvimTreeSetup = 1

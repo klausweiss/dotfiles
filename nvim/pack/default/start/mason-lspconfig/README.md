@@ -16,7 +16,7 @@
     <code>:help mason-lspconfig.nvim</code>
 </p>
 <p align="center">
-    <sup>Latest version: v1.5.0</sup> <!-- x-release-please-version -->
+    <sup>Latest version: v1.22.0</sup> <!-- x-release-please-version -->
 </p>
 
 # Table of Contents
@@ -160,6 +160,7 @@ local DEFAULT_SETTINGS = {
 
 | Language                            | Server name                       |
 | ----------------------------------- | --------------------------------- |
+| ast-grep                            | `ast_grep`                        |
 | AWK                                 | `awk_ls`                          |
 | Ada                                 | `als`                             |
 | Angular                             | `angularls`                       |
@@ -171,6 +172,7 @@ local DEFAULT_SETTINGS = {
 | Astro                               | `astro`                           |
 | Azure Pipelines                     | `azure_pipelines_ls`              |
 | Bash                                | `bashls`                          |
+| Bash                                | `pkgbuild_language_server`        |
 | Beancount                           | `beancount`                       |
 | Bicep                               | `bicep`                           |
 | BrighterScript                      | `bright_script`                   |
@@ -180,6 +182,7 @@ local DEFAULT_SETTINGS = {
 | C# [(docs)][omnisharp]              | `omnisharp_mono`                  |
 | C# [(docs)][omnisharp]              | `omnisharp`                       |
 | C++                                 | `clangd`                          |
+| Cairo                               | `cairo_ls`                        |
 | CMake                               | `cmake`                           |
 | CMake                               | `neocmake`                        |
 | CSS                                 | `cssls`                           |
@@ -190,7 +193,9 @@ local DEFAULT_SETTINGS = {
 | CodeQL                              | `codeqlls`                        |
 | Crystal                             | `crystalline`                     |
 | Cucumber                            | `cucumber_language_server`        |
+| Custom Elements Language Server     | `custom_elements_ls`              |
 | Cue                                 | `dagger`                          |
+| Cypher                              | `cypher_ls`                       |
 | Deno                                | `denols`                          |
 | Dhall                               | `dhall_lsp_server`                |
 | Diagnostic (general purpose server) | `diagnosticls`                    |
@@ -204,10 +209,13 @@ local DEFAULT_SETTINGS = {
 | Elixir                              | `elixirls`                        |
 | Elm                                 | `elmls`                           |
 | Ember                               | `ember`                           |
+| Emmet                               | `emmet_language_server`           |
 | Emmet                               | `emmet_ls`                        |
 | Erg                                 | `erg_language_server`             |
+| Erlang                              | `elp`                             |
 | Erlang                              | `erlangls`                        |
 | F#                                  | `fsautocomplete`                  |
+| Facility Service Definition         | `facility_language_server`        |
 | Fennel                              | `fennel_language_server`          |
 | Flux                                | `flux_lsp`                        |
 | Foam (OpenFOAM)                     | `foam_ls`                         |
@@ -226,13 +234,16 @@ local DEFAULT_SETTINGS = {
 | Helm                                | `helm_ls`                         |
 | Hoon                                | `hoon_ls`                         |
 | JSON                                | `jsonls`                          |
+| JSON                                | `biome`                           |
 | Java                                | `jdtls`                           |
 | Java                                | `java_language_server`            |
 | JavaScript                          | `quick_lint_js`                   |
 | JavaScript                          | `tsserver`                        |
 | JavaScript                          | `vtsls`                           |
+| JavaScript                          | `biome`                           |
 | Jsonnet                             | `jsonnet_ls`                      |
 | Julia [(docs)][julials]             | `julials`                         |
+| jq                                  | `jqls`                            |
 | Kotlin                              | `kotlin_language_server`          |
 | LaTeX                               | `ltex`                            |
 | LaTeX                               | `texlab`                          |
@@ -242,14 +253,21 @@ local DEFAULT_SETTINGS = {
 | Markdown                            | `marksman`                        |
 | Markdown                            | `prosemd_lsp`                     |
 | Markdown                            | `remark_ls`                       |
+| Markdown                            | `vale_ls`                         |
 | Markdown                            | `zk`                              |
+| Matlab                              | `matlab_ls`                       |
+| MDX                                 | `mdx_analyzer`                    |
+| Meson                               | `swift_mesonls`                   |
 | Metamath Zero                       | `mm0_ls`                          |
 | Move                                | `move_analyzer`                   |
+| Mutt                                | `mutt_ls`                         |
 | Nickel                              | `nickel_ls`                       |
+| Nim                                 | `nim_langserver`                  |
 | Nim                                 | `nimls`                           |
 | Nix                                 | `nil_ls`                          |
 | Nix                                 | `rnix`                            |
 | OCaml                               | `ocamllsp`                        |
+| Odin                                | `ols`                             |
 | OneScript, 1C:Enterprise            | `bsl_ls`                          |
 | OpenAPI                             | `spectral`                        |
 | OpenCL                              | `opencl_ls`                       |
@@ -258,6 +276,7 @@ local DEFAULT_SETTINGS = {
 | PHP                                 | `phpactor`                        |
 | PHP                                 | `psalm`                           |
 | Perl                                | `perlnavigator`                   |
+| Pest                                | `pest_ls`                         |
 | Powershell                          | `powershell_es`                   |
 | Prisma                              | `prismals`                        |
 | Puppet                              | `puppet`                          |
@@ -279,6 +298,7 @@ local DEFAULT_SETTINGS = {
 | Ruby                                | `solargraph`                      |
 | Ruby                                | `sorbet`                          |
 | Ruby                                | `standardrb`                      |
+| Ruby                                | `rubocop`                         |
 | Rust                                | `rust_analyzer`                   |
 | SQL                                 | `sqlls`                           |
 | SQL                                 | `sqls`                            |
@@ -299,8 +319,11 @@ local DEFAULT_SETTINGS = {
 | TOML                                | `taplo`                           |
 | Tailwind CSS                        | `tailwindcss`                     |
 | Teal                                | `teal_ls`                         |
+| Templ                               | `templ`                           |
 | Terraform                           | `terraformls`                     |
-| Terraform [(docs)][tflint]          | `tflint`                          |
+| Terraform                           | `tflint`                          |
+| Thrift                              | `thriftls`                        |
+| TypeScript                          | `biome`                           |
 | TypeScript                          | `tsserver`                        |
 | TypeScript                          | `vtsls`                           |
 | Typst                               | `typst_lsp`                       |
@@ -319,4 +342,3 @@ local DEFAULT_SETTINGS = {
 [julials]: ./lua/mason-lspconfig/server_configurations/julials/README.md
 [omnisharp]: ./lua/mason-lspconfig/server_configurations/omnisharp/README.md
 [pylsp]: ./lua/mason-lspconfig/server_configurations/pylsp/README.md
-[tflint]: ./lua/mason-lspconfig/server_configurations/tflint/README.md

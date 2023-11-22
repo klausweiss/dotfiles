@@ -155,6 +155,9 @@ NOTE: `<Cmd>lua require('cmp').complete()<CR>` can be used to call these functio
 *cmp.visible* ()
   Return a boolean showing whether the completion menu is visible or not.
 
+*cmp.visible_docs* ()
+  Return a boolean showing whether the docs window is visible or not.
+
 *cmp.get_entries* ()
   Return all current entries.
 
@@ -172,9 +175,36 @@ NOTE: `<Cmd>lua require('cmp').complete()<CR>` can be used to call these functio
 
 *cmp.select_next_item* (option: { behavior = cmp.SelectBehavior, count = 1 })
   Select the next item. Set count with large number to select pagedown.
+  `behavior` can be one of:
+  - `cmp.SelectBehavior.Insert`: Inserts the text at cursor.
+  - `cmp.SelectBehavior.Select`: Only selects the text, potentially adds ghost_text at
+    cursor.
+>lua
+  cmp.setup {
+    mapping = {
+      ["<C-j>"] = cmp.mapping.select_next_item({ behavior = cmp.SelectBehavior.Select }),
+    }
+  }
+<
 
 *cmp.select_prev_item* (option: { behavior = cmp.SelectBehavior, count = 1 })
   Select the previous item. Set count with large number to select pageup.
+  `behavior` can be one of:
+  - `cmp.SelectBehavior.Insert`: Inserts the text at cursor.
+  - `cmp.SelectBehavior.Select`: Only selects the text, potentially adds ghost_text at
+    cursor.
+>lua
+  cmp.setup {
+    mapping = {
+      ["<C-k>"] = cmp.mapping.select_prev_item({ behavior = cmp.SelectBehavior.Select }),
+    }
+  }
+<
+*cmp.open_docs* ()
+  Open docs view.
+
+*cmp.close_docs* ()
+  Close docs view.
 
 *cmp.scroll_docs* (delta: number)
   Scroll the documentation window if visible.
@@ -313,6 +343,12 @@ There are also builtin mapping helper functions you can use:
   *cmp.mapping.select_prev_item* (option: { behavior = cmp.SelectBehavior, count = 1 })
     Same as |cmp.select_prev_item|.
 
+  *cmp.mapping.open_docs* ()
+    Same as |cmp.open_docs|.
+
+  *cmp.mapping.close_docs* ()
+    Same as |cmp.close_docs|.
+
   *cmp.mapping.scroll_docs* (delta: number)
     Same as |cmp.scroll_docs|.
 
@@ -413,10 +449,26 @@ performance.throttle~
   This is used to delay filtering and displaying completions.
 
                                         *cmp-config.performance.fetching_timeout*
-  performance.fetching_timeout~
+performance.fetching_timeout~
     `number`
     Sets the timeout of candidate fetching process.
     The nvim-cmp will wait to display the most prioritized source.
+
+                                        *cmp-config.performance.confirm_resolve_timeout*
+performance.confirm_resolve_timeout~
+    `number`
+    Sets the timeout for resolving item before confirmation.
+
+                                            *cmp-config.performance.async_budget*
+performance.async_budget~
+    `number`
+    Maximum time (in ms) an async function is allowed to run during
+    one step of the event loop.
+
+                                        *cmp-config.performance.max_view_entries*
+performance.max_view_entries~
+    `number`
+    Maximum number of items to show in the entries list.
 
                                                           *cmp-config.preselect*
 preselect~
@@ -562,7 +614,8 @@ sources[n].priority~
                                           *cmp-config.sources[n].max_item_count*
 sources[n].max_item_count~
   `number`
-  The source-specific item count.
+  The source-specific maximum item count option
+  Note: This is applied before sorting, so items that aren't well-matched may be selected.
 
                                              *cmp-config.sources[n].group_index*
 sources[n].group_index~
@@ -619,6 +672,12 @@ view~
   `{ entries: cmp.EntriesConfig|string }`
   The view class used to customize nvim-cmp's appearance.
   Currently available configuration options are:
+
+                                                *cmp-config.view.docs.auto_open*
+view.docs.auto_open~
+  `boolean`
+
+  Specify whether to show the docs_view when selecting an item.
 
                            *cmp-config.window.{completion,documentation}.border*
 window.{completion,documentation}.border~
@@ -861,6 +920,38 @@ How to disable commitCharacters?~
   }
 <
 
+How to disable automatic display of docs view?~
+
+  You can add the `view.docs.auto_open = false` for configuration.
+>lua
+  cmp.setup {
+    ...
+    view = {
+      docs = {
+        auto_open = false
+      }
+    }
+    ...
+  }
+<
+
+  additionaly, if you want to open/close docs view via your key mapping, you
+  can define keymapping as the following.
+>lua
+  cmp.setup {
+    ...
+    mapping = {
+      ['<C-g>'] = function()
+        if cmp.visible_docs() then
+          cmp.close_docs()
+        else
+          cmp.open_docs()
+        end
+      end
+    }
+    ...
+  }
+<
 
 How to disable auto-completion?~
 How to use nvim-cmp as omnifunc?~

@@ -2,8 +2,8 @@ local log = require "nvim-tree.log"
 local view = require "nvim-tree.view"
 local utils = require "nvim-tree.utils"
 local renderer = require "nvim-tree.renderer"
-local core = require "nvim-tree.core"
 local reload = require "nvim-tree.explorer.reload"
+local core = require "nvim-tree.core"
 local Iterator = require "nvim-tree.iterators.node-iterator"
 
 local M = {}
@@ -30,9 +30,9 @@ function M.fn(path)
 
   local profile = log.profile_start("find file %s", path_real)
 
-  -- we cannot wait for watchers to populate a new node
+  -- refresh the contents of all parents, expanding groups as needed
   if utils.get_node_from_path(path_real) == nil then
-    reload.refresh_nodes_for_path(vim.fn.fnamemodify(path_real, ":h"))
+    reload.refresh_parent_nodes_for_path(vim.fn.fnamemodify(path_real, ":h"))
   end
 
   local line = core.get_nodes_starting_line()
@@ -44,8 +44,10 @@ function M.fn(path)
       return node.absolute_path == path_real or node.link_to == path_real
     end)
     :applier(function(node)
+      local incremented_line = false
       if not node.group_next then
         line = line + 1
+        incremented_line = true
       end
 
       if vim.tbl_contains(absolute_paths_searched, node.absolute_path) then
@@ -62,6 +64,9 @@ function M.fn(path)
         end
         if #node.nodes == 0 then
           core.get_explorer():expand(node)
+          if node.group_next and incremented_line then
+            line = line - 1
+          end
         end
       end
     end)

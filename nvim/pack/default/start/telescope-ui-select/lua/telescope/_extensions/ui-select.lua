@@ -28,11 +28,21 @@ return require("telescope").register_extension {
               client_name = 0,
             }
             for idx, item in ipairs(items) do
-              local client = vim.lsp.get_client_by_id(item[1])
+              local client_id, title
+              if vim.version and vim.version.cmp(vim.version(), vim.version.parse "0.10-dev") >= 0 then
+                client_id = item.ctx.client_id
+                title = item.action.title
+              else
+                client_id = item[1]
+                title = item[2].title
+              end
+
+              local client = vim.lsp.get_client_by_id(client_id)
+
               local entry = {
                 idx = idx,
                 ["add"] = {
-                  command_title = item[2].title:gsub("\r\n", "\\r\\n"):gsub("\n", "\\n"),
+                  command_title = title:gsub("\r\n", "\\r\\n"):gsub("\n", "\\n"),
                   client_name = client and client.name or "",
                 },
                 text = item,
@@ -80,6 +90,11 @@ return require("telescope").register_extension {
         return tostring(e)
       end)
 
+      -- schedule_wrap because closing the windows is deferred
+      -- See https://github.com/nvim-telescope/telescope.nvim/pull/2336
+      -- And we only want to dispatch the callback when we're back in the original win
+      on_choice = vim.schedule_wrap(on_choice)
+
       -- We want or here because __TelescopeUISelectSpecificOpts[x] can be either nil or even false -> {}
       local sopts = __TelescopeUISelectSpecificOpts[vim.F.if_nil(opts.kind, "")] or {}
       local indexed_items, widths = vim.F.if_nil(sopts.make_indexed, function(items_)
@@ -100,7 +115,7 @@ return require("telescope").register_extension {
         return opts.format_item(e.text)
       end)
       pickers.new(topts, {
-        prompt_title = prompt,
+        prompt_title = string.gsub(prompt, "\n", " "),
         finder = finders.new_table {
           results = indexed_items,
           entry_maker = function(e)

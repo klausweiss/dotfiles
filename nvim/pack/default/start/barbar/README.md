@@ -66,7 +66,7 @@ require('lazy').setup {
 ```lua
 -- These optional plugins should be loaded directly because of a bug in Packer lazy loading
 use 'nvim-tree/nvim-web-devicons' -- OPTIONAL: for file icons
-use 'lewis6991/gitsigns.nvim', -- OPTIONAL: for git status
+use 'lewis6991/gitsigns.nvim' -- OPTIONAL: for git status
 use 'romgrk/barbar.nvim'
 ```
 
@@ -267,7 +267,8 @@ require'barbar'.setup {
   -- Enable/disable animations
   animation = true,
 
-  -- Enable/disable auto-hiding the tab bar when there is a single buffer
+  -- Automatically hide the tabline when there are this many buffers left.
+  -- Set to any value >=0 to enable.
   auto_hide = false,
 
   -- Enable/disable current/total tabpages indicator (top right corner)
@@ -303,7 +304,7 @@ require'barbar'.setup {
     -- Valid options to display the buffer index and -number are `true`, 'superscript' and 'subscript'
     buffer_index = false,
     buffer_number = false,
-    button = '',
+    button = '',
     -- Enables / disables diagnostic symbols
     diagnostics = {
       [vim.diagnostic.severity.ERROR] = {enabled = true, icon = 'ﬀ'},
@@ -325,6 +326,9 @@ require'barbar'.setup {
       enabled = true,
     },
     separator = {left = '▎', right = ''},
+
+    -- If true, add an additional separator at the end of the buffer list
+    separator_at_end = true,
 
     -- Configure the icons on the bufferline when modified or pinned.
     -- Supports all the base icon options.

@@ -1,16 +1,17 @@
 local core = require "nvim-tree.core"
-local diagnostics = require "nvim-tree.diagnostics"
 local log = require "nvim-tree.log"
 local view = require "nvim-tree.view"
+local events = require "nvim-tree.events"
 local modified = require "nvim-tree.renderer.components.modified"
 
 local _padding = require "nvim-tree.renderer.components.padding"
 local icon_component = require "nvim-tree.renderer.components.icons"
 local full_name = require "nvim-tree.renderer.components.full-name"
 local git = require "nvim-tree.renderer.components.git"
+local diagnostics = require "nvim-tree.renderer.components.diagnostics"
 local Builder = require "nvim-tree.renderer.builder"
 local live_filter = require "nvim-tree.live-filter"
-local marks = require "nvim-tree.marks"
+local bookmarks = require "nvim-tree.renderer.components.bookmarks"
 
 local M = {
   last_highlights = {},
@@ -37,7 +38,11 @@ function M.render_hl(bufnr, hl)
   end
   vim.api.nvim_buf_clear_namespace(bufnr, namespace_id, 0, -1)
   for _, data in ipairs(hl or M.last_highlights) do
-    vim.api.nvim_buf_add_highlight(bufnr, namespace_id, data[1], data[2], data[3], data[4])
+    if type(data[1]) == "table" then
+      for _, group in ipairs(data[1]) do
+        vim.api.nvim_buf_add_highlight(bufnr, namespace_id, group, data[2], data[3], data[4])
+      end
+    end
   end
 end
 
@@ -46,6 +51,8 @@ local picture_map = {
   jpeg = true,
   png = true,
   gif = true,
+  webp = true,
+  jxl = true,
 }
 
 function M.draw(unloaded_bufnr)
@@ -68,9 +75,12 @@ function M.draw(unloaded_bufnr)
     :configure_modified_highlighting(M.config.highlight_modified)
     :configure_icon_padding(M.config.icons.padding)
     :configure_git_icons_placement(M.config.icons.git_placement)
+    :configure_diagnostics_icon_placement(M.config.icons.diagnostics_placement)
+    :configure_bookmark_icon_placement(M.config.icons.bookmarks_placement)
     :configure_modified_placement(M.config.icons.modified_placement)
     :configure_symlink_destination(M.config.symlink_destination)
     :configure_filter(live_filter.filter, live_filter.prefix)
+    :configure_group_name_modifier(M.config.group_empty)
     :build_header(view.is_root_folder_visible(core.get_cwd()))
     :build(core.get_explorer(), unloaded_bufnr)
     :unwrap()
@@ -83,12 +93,11 @@ function M.draw(unloaded_bufnr)
     vim.api.nvim_win_set_cursor(view.get_winnr(), cursor)
   end
 
-  diagnostics.update()
-  marks.draw()
-
   view.grow_from_content()
 
   log.profile_end(profile)
+
+  events._dispatch_on_tree_rendered(bufnr, view.get_winnr())
 end
 
 function M.setup(opts)
@@ -99,6 +108,8 @@ function M.setup(opts)
   full_name.setup(opts)
   git.setup(opts)
   modified.setup(opts)
+  diagnostics.setup(opts)
+  bookmarks.setup(opts)
   icon_component.setup(opts)
 end
 

@@ -1,11 +1,14 @@
-local a = require("plenary.async")
+-- local a = require("plenary.async")
+local uv = vim.loop
+
+local M = {}
 
 ---@generic T: any
 ---@generic U: any
 ---@param tbl T[]
 ---@param f fun(v: T): U
 ---@return U[]
-local function map(tbl, f)
+function M.map(tbl, f)
   local t = {}
   for k, v in pairs(tbl) do
     t[k] = f(v)
@@ -13,12 +16,54 @@ local function map(tbl, f)
   return t
 end
 
----@param tbl any[]
----@param f fun(v: any) -> any|nil
----@return any[]
-local function filter_map(tbl, f)
+---@generic T: any
+---@param tbl T[][]
+---@return T[]
+--- Flattens one level of lists
+function M.flatten(tbl)
   local t = {}
+
   for _, v in ipairs(tbl) do
+    for _, v in ipairs(v) do
+      table.insert(t, v)
+    end
+  end
+
+  return t
+end
+
+---@generic T: any
+---@generic U: any
+---@param tbl T[]
+---@param f fun(v: T): U
+---@return U[]
+function M.flat_map(tbl, f)
+  return M.flatten(M.map(tbl, f))
+end
+
+---@generic T: any
+---@param tbl T[]
+---@return T[]
+--- Reverses list-like table
+function M.reverse(tbl)
+  local t = {}
+  local c = #tbl + 1
+
+  for i, v in ipairs(tbl) do
+    t[c - i] = v
+  end
+
+  return t
+end
+
+---@generic T: any
+---@generic U: any
+---@param list T[]
+---@param f fun(v: T): U|nil
+---@return U[]
+function M.filter_map(list, f)
+  local t = {}
+  for _, v in ipairs(list) do
     v = f(v)
     if v ~= nil then
       table.insert(t, v)
@@ -31,7 +76,7 @@ end
 ---@param min number
 ---@param max number
 ---@return number
-local function clamp(value, min, max)
+function M.clamp(value, min, max)
   if value < min then
     return min
   elseif value > max then
@@ -40,11 +85,11 @@ local function clamp(value, min, max)
   return value
 end
 
-local function trim(s)
+function M.trim(s)
   return (string.gsub(s, "^%s*(.-)%s*$", "%1"))
 end
 
-local function deepcopy(o)
+function M.deepcopy(o)
   local mt = getmetatable(o)
   local copy = vim.deepcopy(o)
 
@@ -55,7 +100,20 @@ local function deepcopy(o)
   return copy
 end
 
-local function range(from, to, step)
+--- Merge multiple 1-dimensional list-like tables into one, preserving order
+---@param ... table
+---@return table
+function M.merge(...)
+  local res = {}
+  for _, tbl in ipairs { ... } do
+    for _, item in ipairs(tbl) do
+      table.insert(res, item)
+    end
+  end
+  return res
+end
+
+function M.range(from, to, step)
   local step = step or 1
   local t = {}
   if to == nil then
@@ -68,7 +126,7 @@ local function range(from, to, step)
   return t
 end
 
-local function intersperse(tbl, sep)
+function M.intersperse(tbl, sep)
   local t = {}
   local len = #tbl
   for i = 1, len do
@@ -81,87 +139,144 @@ local function intersperse(tbl, sep)
   return t
 end
 
-local function filter(tbl, f)
+function M.filter(tbl, f)
   return vim.tbl_filter(f, tbl)
 end
 
-local function print_tbl(tbl)
-  for _, x in pairs(tbl) do
-    print("| " .. x)
-  end
-end
+-- function M.print_tbl(tbl)
+--   for _, x in pairs(tbl) do
+--     print("| " .. x)
+--   end
+-- end
 
-local function get_keymaps(mode, startswith)
-  local maps = vim.api.nvim_get_keymap(mode)
-  if startswith then
-    return filter(maps, function(x)
-      return vim.startswith(x.lhs, startswith)
-    end)
-  else
-    return maps
-  end
-end
+-- function M.get_keymaps(mode, startswith)
+--   local maps = vim.api.nvim_get_keymap(mode)
+--   if startswith then
+--     return M.filter(maps, function(x)
+--       return vim.startswith(x.lhs, startswith)
+--     end)
+--   else
+--     return maps
+--   end
+-- end
 
-local function time(name, f)
-  local before = os.clock()
-  local res = f()
-  print(name .. " took " .. os.clock() - before .. "ms")
-  return res
-end
+-- function M.time(name, f)
+--   local before = os.clock()
+--   local res = f()
+--   print(name .. " took " .. os.clock() - before .. "ms")
+--   return res
+-- end
 
-local function time_async(name, f)
-  local before = os.clock()
-  local res = a.run(f())
-  print(name .. " took " .. os.clock() - before .. "ms")
-  return res
-end
+-- function M.time_async(name, f)
+--   local before = os.clock()
+--   local res = a.run(f())
+--   print(name .. " took " .. os.clock() - before .. "ms")
+--   return res
+-- end
 
-local function str_right_pad(str, len, sep)
-  return str .. sep:rep(len - #str)
-end
+-- function M.str_right_pad(str, len, sep)
+--   return str .. sep:rep(len - #str)
+-- end
 
-local function slice(tbl, s, e)
-  local pos, new = 1, {}
-
-  if e == nil then
-    e = #tbl
-  end
-
-  for i = s, e do
-    new[pos] = tbl[i]
-    pos = pos + 1
+function M.str_min_width(str, len, sep)
+  local length = vim.fn.strdisplaywidth(str)
+  if length > len then
+    return str
   end
 
-  return new
+  return str .. string.rep(sep or " ", len - length)
 end
 
-local function str_count(str, target)
-  local count = 0
-  local str_len = #str
-  for i = 1, str_len do
-    if str:sub(i, i) == target then
-      count = count + 1
-    end
-  end
-  return count
-end
+-- function M.slice(tbl, s, e)
+--   local pos, new = 1, {}
+--
+--   if e == nil then
+--     e = #tbl
+--   end
+--
+--   for i = s, e do
+--     new[pos] = tbl[i]
+--     pos = pos + 1
+--   end
+--
+--   return new
+-- end
 
-local function split(str, sep)
+-- function M.str_count(str, target)
+--   local count = 0
+--   local str_len = #str
+--   for i = 1, str_len do
+--     if str:sub(i, i) == target then
+--       count = count + 1
+--     end
+--   end
+--   return count
+-- end
+
+function M.split(str, sep)
   if str == "" then
     return {}
   end
   return vim.split(str, sep)
 end
 
-local function split_lines(str)
-  if str == "" then
-    return {}
+-- function M.split_lines(str)
+--   if str == "" then
+--     return {}
+--   end
+--   -- we need \r? to support windows
+--   return vim.split(str, "\r?\n")
+-- end
+
+function M.str_truncate(str, max_length, trailing)
+  trailing = trailing or "..."
+  if vim.fn.strdisplaywidth(str) > max_length then
+    str = vim.trim(str:sub(1, max_length - #trailing)) .. trailing
   end
-  -- we need \r? to support windows
-  return vim.split(str, "\r?\n")
+  return str
 end
 
-local function parse_command_args(args)
+function M.str_clamp(str, len, sep)
+  return M.str_min_width(M.str_truncate(str, len - 1, ""), len, sep or " ")
+end
+
+--- Splits a string every n characters, respecting word boundaries
+---@param str string
+---@param len integer
+---@return table
+function M.str_wrap(str, len)
+  if #str < len then
+    return { str }
+  end
+
+  local s = {}
+  local tmp = {}
+
+  local words = vim.split(str, " ")
+  local line_length = 0
+  while true do
+    if #words == 0 then
+      table.insert(s, table.concat(tmp, " "))
+      break
+    end
+
+    local word = table.remove(words, 1)
+    if line_length + #word + 1 > len then
+      table.insert(s, table.concat(tmp, " "))
+      tmp = {}
+
+      table.insert(tmp, word)
+      line_length = #word
+    else
+      table.insert(tmp, word)
+      line_length = line_length + #word + 1
+    end
+  end
+
+  return s
+end
+
+function M.parse_command_args(args)
   local tbl = {}
 
   for _, val in pairs(args) do
@@ -176,23 +291,136 @@ local function parse_command_args(args)
   return tbl
 end
 
-return {
-  time = time,
-  time_async = time_async,
-  clamp = clamp,
-  slice = slice,
-  map = map,
-  filter_map = filter_map,
-  range = range,
-  filter = filter,
-  str_right_pad = str_right_pad,
-  str_count = str_count,
-  get_keymaps = get_keymaps,
-  print_tbl = print_tbl,
-  split = split,
-  intersperse = intersperse,
-  split_lines = split_lines,
-  deepcopy = deepcopy,
-  trim = trim,
-  parse_command_args = parse_command_args,
-}
+-- function M.pattern_escape(str)
+--   local special_chars = { "(", ")", ".", "%", "+", "-", "*", "?", "[", "^", "$" }
+--   for _, char in ipairs(special_chars) do
+--     str, _ = str:gsub("%" .. char, "%%" .. char)
+--   end
+--
+--   return str
+-- end
+
+function M.deduplicate(tbl)
+  local res = {}
+  for i = 1, #tbl do
+    if tbl[i] and not vim.tbl_contains(res, tbl[i]) then
+      table.insert(res, tbl[i])
+    end
+  end
+  return res
+end
+
+-- function M.find(tbl, cond)
+--   local res
+--   for i = 1, #tbl do
+--     if cond(tbl[i]) then
+--       res = tbl[i]
+--       break
+--     end
+--   end
+--   return res
+-- end
+
+function M.build_reverse_lookup(tbl)
+  local result = {}
+  for i, v in ipairs(tbl) do
+    table.insert(result, v)
+    result[v] = i
+  end
+  return result
+end
+
+---Removes the given value from the table
+---@param tbl table
+---@param value any
+function M.remove_item_from_table(tbl, value)
+  for index, t_value in ipairs(tbl) do
+    if vim.deep_equal(t_value, value) then
+      table.remove(tbl, index)
+    end
+  end
+end
+
+---Checks if both lists contain the same values. This does NOT check ordering.
+---@param l1 any[]
+---@param l2 any[]
+---@return boolean
+function M.lists_equal(l1, l2)
+  if #l1 ~= #l2 then
+    return false
+  end
+
+  for _, value in ipairs(l1) do
+    if not vim.tbl_contains(l2, value) then
+      return false
+    end
+  end
+
+  return true
+end
+
+function M.pad_right(s, len)
+  return s .. string.rep(" ", math.max(len - #s, 0))
+end
+
+--- Debounces a function on the trailing edge.
+---
+--- @generic F: function
+--- @param ms number Timeout in ms
+--- @param fn F Function to debounce
+--- @return F Debounced function.
+function M.debounce_trailing(ms, fn)
+  local timer = assert(uv.new_timer())
+  return function(...)
+    local argv = { ... }
+    timer:start(ms, 0, function()
+      timer:stop()
+      fn(unpack(argv))
+    end)
+  end
+end
+
+--- http://lua-users.org/wiki/StringInterpolation
+--- @param template string
+--- @param values table
+--- example:
+---   format("${name} is ${value}", {name = "foo", value = "bar"}) )
+function M.format(template, values)
+  return (template:gsub("($%b{})", function(w)
+    return values[w:sub(3, -2)] or w
+  end))
+end
+
+--- Compute the differences present in a and not in b
+---@param a table
+---@param b table
+---@return table
+function M.set_difference(a, b)
+  local result = {}
+  for _, x in ipairs(a) do
+    local found = false
+    for _, y in ipairs(b) do
+      if x == y then
+        found = true
+        break
+      end
+    end
+    if not found then
+      table.insert(result, x)
+    end
+  end
+  return result
+end
+
+---comment
+---@param s string
+---@return string
+function M.underscore(s)
+  local snakey = function(upper)
+    return "_" .. upper:lower()
+  end
+
+  return s:gsub("%u", snakey):gsub("^_", "")
+end
+
+return M

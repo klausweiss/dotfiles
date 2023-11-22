@@ -163,7 +163,7 @@ do
       display, hl_group, icon = utils.transform_devicons(entry.value, display, disable_devicons)
 
       if hl_group then
-        return display, { { { 1, #icon }, hl_group } }
+        return display, { { { 0, #icon }, hl_group } }
       else
         return display
       end
@@ -333,7 +333,7 @@ do
         )
 
         if hl_group then
-          return display, { { { 1, #icon }, hl_group } }
+          return display, { { { 0, #icon }, hl_group } }
         else
           return display
         end
@@ -833,7 +833,7 @@ end
 function make_entry.gen_from_keymaps(opts)
   local function get_desc(entry)
     if entry.callback and not entry.desc then
-      return require("telescope.actions.utils")._get_anon_function_name(entry.callback)
+      return require("telescope.actions.utils")._get_anon_function_name(debug.getinfo(entry.callback))
     end
     return vim.F.if_nil(entry.desc, entry.rhs)
   end
@@ -1152,14 +1152,25 @@ function make_entry.gen_from_diagnostics(opts)
     return signs
   end)()
 
+  local sign_width
+  if opts.disable_coordinates then
+    sign_width = signs ~= nil and 2 or 0
+  else
+    sign_width = signs ~= nil and 10 or 8
+  end
+
   local display_items = {
-    { width = signs ~= nil and 10 or 8 },
+    { width = sign_width },
     { remaining = true },
   }
   local line_width = vim.F.if_nil(opts.line_width, 0.5)
+  local line_width_opts = { width = line_width }
+  if type(line_width) == "string" and line_width == "full" then
+    line_width_opts = {}
+  end
   local hidden = utils.is_path_hidden(opts)
   if not hidden then
-    table.insert(display_items, 2, { width = line_width })
+    table.insert(display_items, 2, line_width_opts)
   end
   local displayer = entry_display.create {
     separator = "▏",
@@ -1171,8 +1182,9 @@ function make_entry.gen_from_diagnostics(opts)
 
     -- add styling of entries
     local pos = string.format("%4d:%2d", entry.lnum, entry.col)
+    local line_info_text = signs and signs[entry.type] .. " " or ""
     local line_info = {
-      (signs and signs[entry.type] .. " " or "") .. pos,
+      opts.disable_coordinates and line_info_text or line_info_text .. pos,
       "DiagnosticSign" .. entry.type,
     }
 

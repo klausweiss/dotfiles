@@ -198,7 +198,7 @@
 
 (number) @number
 
-(string) @string @spell
+(string) @string
 
 (nil) @constant.builtin
 
@@ -246,7 +246,3 @@
 
 ((comment) @comment.documentation
   (#lua-match? @comment.documentation "^[-][-](%s?)@"))
-
-; Errors
-
-(ERROR) @error

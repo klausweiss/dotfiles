@@ -14,7 +14,7 @@ function Runner:_parse_status_output(status, path)
     path = path:gsub("/", "\\")
   end
   if #status > 0 and #path > 0 then
-    self.output[utils.path_remove_trailing(utils.path_join { self.project_root, path })] = status
+    self.output[utils.path_remove_trailing(utils.path_join { self.toplevel, path })] = status
   end
 end
 
@@ -57,7 +57,7 @@ function Runner:_getopts(stdout_handle, stderr_handle)
   local ignored = (self.list_untracked and self.list_ignored) and "--ignored=matching" or "--ignored=no"
   return {
     args = { "--no-optional-locks", "status", "--porcelain=v1", "-z", ignored, untracked, self.path },
-    cwd = self.project_root,
+    cwd = self.toplevel,
     stdio = { nil, stdout_handle, stderr_handle },
   }
 end
@@ -89,11 +89,13 @@ function Runner:_run_git_job(callback)
     stderr:read_stop()
     stdout:close()
     stderr:close()
-    if handle then
+
+    -- don't close the handle when killing as it will leave a zombie
+    if rc == -1 then
+      pcall(vim.loop.kill, pid, "sigkill")
+    elseif handle then
       handle:close()
     end
-
-    pcall(vim.loop.kill, pid)
 
     if callback then
       callback()
@@ -151,22 +153,16 @@ end
 
 function Runner:_finalise(opts)
   if self.rc == -1 then
-    log.line("git", "job timed out  %s %s", opts.project_root, opts.path)
+    log.line("git", "job timed out  %s %s", opts.toplevel, opts.path)
     timeouts = timeouts + 1
     if timeouts == MAX_TIMEOUTS then
-      notify.warn(
-        string.format(
-          "%d git jobs have timed out after %dms, disabling git integration. Try increasing git.timeout",
-          timeouts,
-          opts.timeout
-        )
-      )
+      notify.warn(string.format("%d git jobs have timed out after git.timeout %dms, disabling git integration.", timeouts, opts.timeout))
       require("nvim-tree.git").disable_git_integration()
     end
   elseif self.rc ~= 0 then
-    log.line("git", "job fail rc %d %s %s", self.rc, opts.project_root, opts.path)
+    log.line("git", "job fail rc %d %s %s", self.rc, opts.toplevel, opts.path)
   else
-    log.line("git", "job success    %s %s", opts.project_root, opts.path)
+    log.line("git", "job success    %s %s", opts.toplevel, opts.path)
   end
 end
 
@@ -176,7 +172,7 @@ end
 --- @return table|nil status by absolute path, nil if callback present
 function Runner.run(opts, callback)
   local self = setmetatable({
-    project_root = opts.project_root,
+    toplevel = opts.toplevel,
     path = opts.path,
     list_untracked = opts.list_untracked,
     list_ignored = opts.list_ignored,
@@ -185,8 +181,8 @@ function Runner.run(opts, callback)
     rc = nil, -- -1 indicates timeout
   }, Runner)
 
-  local async = callback ~= nil and self.config.git_async
-  local profile = log.profile_start("git %s job %s %s", async and "async" or "sync", opts.project_root, opts.path)
+  local async = callback ~= nil
+  local profile = log.profile_start("git %s job %s %s", async and "async" or "sync", opts.toplevel, opts.path)
 
   if async and callback then
     -- async, always call back
@@ -212,11 +208,6 @@ function Runner.run(opts, callback)
       return self.output
     end
   end
-end
-
-function Runner.setup(opts)
-  Runner.config = {}
-  Runner.config.git_async = opts.experimental.git.async
 end
 
 return Runner

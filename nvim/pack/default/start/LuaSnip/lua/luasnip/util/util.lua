@@ -1,5 +1,11 @@
 local session = require("luasnip.session")
 
+-- jsregexp: first try loading the version installed by luasnip, then global ones.
+local jsregexp_ok, jsregexp = pcall(require, "luasnip-jsregexp")
+if not jsregexp_ok then
+	jsregexp_ok, jsregexp = pcall(require, "jsregexp")
+end
+
 local function get_cursor_0ind()
 	local c = vim.api.nvim_win_get_cursor(0)
 	c[1] = c[1] - 1
@@ -262,137 +268,6 @@ local function wrap_nodes(nodes)
 	end
 end
 
-local SELECT_RAW = "LUASNIP_SELECT_RAW"
-local SELECT_DEDENT = "LUASNIP_SELECT_DEDENT"
-local TM_SELECT = "LUASNIP_TM_SELECT"
-
-local function get_selection()
-	local ok, val = pcall(vim.api.nvim_buf_get_var, 0, SELECT_RAW)
-	if ok then
-		local result = {
-			val,
-			vim.api.nvim_buf_get_var(0, SELECT_DEDENT),
-			vim.api.nvim_buf_get_var(0, TM_SELECT),
-		}
-
-		vim.api.nvim_buf_del_var(0, SELECT_RAW)
-		vim.api.nvim_buf_del_var(0, SELECT_DEDENT)
-		vim.api.nvim_buf_del_var(0, TM_SELECT)
-
-		return unpack(result)
-	end
-	return {}, {}, {}
-end
-
-local function get_min_indent(lines)
-	-- "^(%s*)%S": match only lines that actually contain text.
-	local min_indent = lines[1]:match("^(%s*)%S")
-	for i = 2, #lines do
-		-- %s* -> at least matches
-		local line_indent = lines[i]:match("^(%s*)%S")
-		-- ignore if not matched.
-		if line_indent then
-			-- if no line until now matched, use line_indent.
-			if not min_indent or #line_indent < #min_indent then
-				min_indent = line_indent
-			end
-		end
-	end
-	return min_indent
-end
-
--- there's probably a better way to do this.
-local function byte_start_to_byte_end(pos)
-	local line = vim.api.nvim_buf_get_lines(0, pos[1], pos[1] + 1, false)
-	-- line[1]: get_lines returns table.
-	-- col may be one past the end (for linebreak)
-	-- byteindex rounds toward end of the multibyte-character.
-	return vim.str_byteindex(
-		line[1] .. " " or "",
-		vim.str_utfindex(line[1] .. " " or "", pos[2])
-	)
-end
-
-local function store_selection()
-	local start_line, start_col = vim.fn.line("'<"), vim.fn.col("'<")
-
-	local end_line = vim.fn.line("'>")
-	-- col of '>/'< is the first byte, in case of multibyte. As the entire
-	-- multibyte-string has to be in the selection, this needs to be converted.
-	local end_col = byte_start_to_byte_end({ end_line - 1, vim.fn.col("'>") })
-
-	local mode = vim.fn.visualmode()
-	if
-		not vim.o.selection == "exclusive"
-		and not (start_line == end_line and start_col == end_col)
-	then
-		end_col = end_col - 1
-	end
-
-	local chunks = {}
-	local lines = vim.api.nvim_buf_get_lines(0, start_line - 1, end_line, true)
-	if start_line == end_line then
-		chunks = { lines[1]:sub(start_col, end_col) }
-	else
-		local first_col = 0
-		local last_col = nil
-		if mode:lower() ~= "v" then -- mode is block
-			first_col = start_col
-			last_col = end_col
-		end
-		chunks = { lines[1]:sub(start_col, last_col) }
-
-		-- potentially trim lines (Block).
-		for cl = 2, #lines - 1 do
-			table.insert(chunks, lines[cl]:sub(first_col, last_col))
-		end
-		table.insert(chunks, lines[#lines]:sub(first_col, end_col))
-	end
-
-	-- init with raw selection.
-	local tm_select, select_dedent = vim.deepcopy(chunks), vim.deepcopy(chunks)
-	-- may be nil if no indent.
-	local min_indent = get_min_indent(lines) or ""
-	-- TM_SELECTED_TEXT contains text from new cursor position(for V the first
-	-- non-whitespace of first line, v and c-v raw) to end of selection.
-	if mode == "V" then
-		tm_select[1] = tm_select[1]:gsub("^%s+", "")
-		-- remove indent from all lines:
-		for i = 1, #select_dedent do
-			select_dedent[i] = select_dedent[i]:gsub("^" .. min_indent, "")
-		end
-	elseif mode == "v" then
-		-- if selection starts inside indent, remove indent.
-		if #min_indent > start_col then
-			select_dedent[1] = lines[1]:gsub(min_indent, "")
-		end
-		for i = 2, #select_dedent - 1 do
-			select_dedent[i] = select_dedent[i]:gsub(min_indent, "")
-		end
-
-		-- remove as much indent from the last line as possible.
-		if #min_indent > end_col then
-			select_dedent[#select_dedent] = ""
-		else
-			select_dedent[#select_dedent] =
-				select_dedent[#select_dedent]:gsub("^" .. min_indent, "")
-		end
-	else
-		-- in block: if indent is in block, remove the part of it that is inside
-		-- it for select_dedent.
-		if #min_indent > start_col then
-			local indent_in_block = min_indent:sub(start_col, #min_indent)
-			for i, line in ipairs(chunks) do
-				select_dedent[i] = line:gsub("^" .. indent_in_block, "")
-			end
-		end
-	end
-
-	vim.api.nvim_buf_set_var(0, SELECT_RAW, chunks)
-	vim.api.nvim_buf_set_var(0, SELECT_DEDENT, select_dedent)
-	vim.api.nvim_buf_set_var(0, TM_SELECT, tm_select)
-end
-
 local function pos_equal(p1, p2)
 	return p1[1] == p2[1] and p1[2] == p2[2]
 end
@@ -591,6 +466,24 @@ local function ternary(cond, if_val, else_val)
 	end
 end
 
+-- just compare two integers.
+local function cmp(i1, i2)
+	-- lets hope this ends up as one cmp.
+	if i1 < i2 then
+		return -1
+	end
+	if i1 > i2 then
+		return 1
+	end
+	return 0
+end
+
+-- compare two positions, <0 => pos1<pos2,  0 => pos1=pos2,  >0 => pos1 > pos2.
+local function pos_cmp(pos1, pos2)
+	-- if row is different it determines result, otherwise the column does.
+	return 2 * cmp(pos1[1], pos2[1]) + cmp(pos1[2], pos2[2])
+end
+
 return {
 	get_cursor_0ind = get_cursor_0ind,
 	set_cursor_0ind = set_cursor_0ind,
@@ -607,8 +500,6 @@ return {
 	put = put,
 	to_string_table = to_string_table,
 	wrap_nodes = wrap_nodes,
-	store_selection = store_selection,
-	get_selection = get_selection,
 	pos_equal = pos_equal,
 	dedent = dedent,
 	indent = indent,
@@ -637,4 +528,6 @@ return {
 	indx_of = indx_of,
 	lazy_table = lazy_table,
 	ternary = ternary,
+	jsregexp = jsregexp_ok and jsregexp,
+	pos_cmp = pos_cmp,
 }

@@ -8,6 +8,16 @@ Requires neovim 0.7
 
 Install the plugin with your preferred package manager:
 
+### [lazy.nvim](https://github.com/folke/lazy.nvim)
+
+```lua
+return {
+    'windwp/nvim-autopairs',
+    event = "InsertEnter",
+    opts = {} -- this is equalent to setup({}) function
+}
+```
+
 ### [vim-plug](https://github.com/junegunn/vim-plug)
 
 ```vim
@@ -31,7 +41,7 @@ use {
 
 ``` lua
 local disable_filetype = { "TelescopePrompt", "spectre_panel" }
-local disable_in_macro = false  -- disable when recording or executing a macro
+local disable_in_macro = true  -- disable when recording or executing a macro
 local disable_in_visualblock = false -- disable when insert after visual block mode
 local disable_in_replace_mode = true
 local ignored_next_char = [=[[%w%%%'%[%"%.%`%$]]=]
@@ -355,10 +365,13 @@ require("nvim-autopairs").get_rules("'")[1]:with_pair(cond.not_after_text("["))
 ### FastWrap
 
 ``` text
-Before        Input                    After
---------------------------------------------------
-(|foobar      <M-e> then press $        (|foobar)
+Before        Input                    After         Note
+-----------------------------------------------------------------
+(|foobar      <M-e> then press $       (|foobar)
 (|)(foobar)   <M-e> then press q       (|(foobar))
+(|foo bar     <M-e> then press qh      (|foo) bar
+(|foo bar     <M-e> then press qH      (foo|) bar
+(|foo bar     <M-e> then press qH      (foo)| bar    if cursor_pos_before = false
 ```
 
 ```lua
@@ -374,8 +387,11 @@ npairs.setup({
       chars = { '{', '[', '(', '"', "'" },
       pattern = [=[[%'%"%>%]%)%}%,]]=],
       end_key = '$',
+      before_key = 'h',
+      after_key = 'l',
+      cursor_pos_before = true,
       keys = 'qwertyuiopzxcvbnmasdfghjkl',
-      check_comma = true,
+      manual_position = true,
       highlight = 'Search',
       highlight_grey='Comment'
     },

@@ -3,10 +3,10 @@ local M = {}
 local C = {}
 
 --- Predefined comparator, defaulting to name
---- @param sort_by string as per options
+--- @param sorter string as per options
 --- @return function
-local function get_comparator(sort_by)
-  return C[sort_by] or C.name
+local function get_comparator(sorter)
+  return C[sorter] or C.name
 end
 
 ---Create a shallow copy of a portion of a list.
@@ -21,6 +21,24 @@ local function tbl_slice(t, first, last)
   end
 
   return slice
+end
+
+---Evaluate `sort.folders_first` and `sort.files_first`
+---@param a table node
+---@param b table node
+---@return boolean|nil
+local function folders_or_files_first(a, b)
+  if not (M.config.sort.folders_first or M.config.sort.files_first) then
+    return
+  end
+
+  if not a.nodes and b.nodes then
+    -- file <> folder
+    return M.config.sort.files_first
+  elseif a.nodes and not b.nodes then
+    -- folder <> file
+    return not M.config.sort.files_first
+  end
 end
 
 local function merge(t, first, mid, last, comparator)
@@ -68,7 +86,7 @@ local function split_merge(t, first, last, comparator)
   merge(t, first, mid, last, comparator)
 end
 
----Perform a merge sort using sort_by option.
+---Perform a merge sort using sorter option.
 ---@param t table nodes
 function M.sort(t)
   if C.user then
@@ -80,6 +98,7 @@ function M.sort(t)
         absolute_path = n.absolute_path,
         executable = n.executable,
         extension = n.extension,
+        filetype = vim.filetype.match { filename = n.name },
         link_to = n.link_to,
         name = n.name,
         type = n.type,
@@ -114,7 +133,7 @@ function M.sort(t)
 
     split_merge(t, 1, #t, mini_comparator) -- sort by user order
   else
-    split_merge(t, 1, #t, get_comparator(M.config.sort_by))
+    split_merge(t, 1, #t, get_comparator(M.config.sort.sorter))
   end
 end
 
@@ -122,10 +141,10 @@ local function node_comparator_name_ignorecase_or_not(a, b, ignorecase)
   if not (a and b) then
     return true
   end
-  if a.nodes and not b.nodes then
-    return true
-  elseif not a.nodes and b.nodes then
-    return false
+
+  local early_return = folders_or_files_first(a, b)
+  if early_return ~= nil then
+    return early_return
   end
 
   if ignorecase then
@@ -147,10 +166,10 @@ function C.modification_time(a, b)
   if not (a and b) then
     return true
   end
-  if a.nodes and not b.nodes then
-    return true
-  elseif not a.nodes and b.nodes then
-    return false
+
+  local early_return = folders_or_files_first(a, b)
+  if early_return ~= nil then
+    return early_return
   end
 
   local last_modified_a = 0
@@ -167,19 +186,63 @@ function C.modification_time(a, b)
   return last_modified_b <= last_modified_a
 end
 
+function C.suffix(a, b)
+  if not (a and b) then
+    return true
+  end
+
+  -- directories go first
+  local early_return = folders_or_files_first(a, b)
+  if early_return ~= nil then
+    return early_return
+  elseif a.nodes and b.nodes then
+    return C.name(a, b)
+  end
+
+  -- dotfiles go second
+  if a.name:sub(1, 1) == "." and b.name:sub(1, 1) ~= "." then
+    return true
+  elseif a.name:sub(1, 1) ~= "." and b.name:sub(1, 1) == "." then
+    return false
+  elseif a.name:sub(1, 1) == "." and b.name:sub(1, 1) == "." then
+    return C.name(a, b)
+  end
+
+  -- unsuffixed go third
+  local a_suffix_ndx = a.name:find "%.%w+$"
+  local b_suffix_ndx = b.name:find "%.%w+$"
+
+  if not a_suffix_ndx and b_suffix_ndx then
+    return true
+  elseif a_suffix_ndx and not b_suffix_ndx then
+    return false
+  elseif not (a_suffix_ndx and b_suffix_ndx) then
+    return C.name(a, b)
+  end
+
+  -- finally, compare by suffixes
+  local a_suffix = a.name:sub(a_suffix_ndx)
+  local b_suffix = b.name:sub(b_suffix_ndx)
+
+  if a_suffix and not b_suffix then
+    return true
+  elseif not a_suffix and b_suffix then
+    return false
+  elseif a_suffix:lower() == b_suffix:lower() then
+    return C.name(a, b)
+  end
+
+  return a_suffix:lower() < b_suffix:lower()
+end
+
 function C.extension(a, b)
   if not (a and b) then
     return true
   end
 
-  if a.nodes and not b.nodes then
-    return true
-  elseif not a.nodes and b.nodes then
-    return false
-  end
-
-  if not (a.extension and b.extension) then
-    return true
+  local early_return = folders_or_files_first(a, b)
+  if early_return ~= nil then
+    return early_return
   end
 
   if a.extension and not b.extension then
@@ -188,15 +251,46 @@ function C.extension(a, b)
     return false
   end
 
-  return a.extension:lower() <= b.extension:lower()
+  local a_ext = (a.extension or ""):lower()
+  local b_ext = (b.extension or ""):lower()
+  if a_ext == b_ext then
+    return C.name(a, b)
+  end
+
+  return a_ext < b_ext
+end
+
+function C.filetype(a, b)
+  local a_ft = vim.filetype.match { filename = a.name }
+  local b_ft = vim.filetype.match { filename = b.name }
+
+  -- directories first
+  local early_return = folders_or_files_first(a, b)
+  if early_return ~= nil then
+    return early_return
+  end
+
+  -- one is nil, the other wins
+  if a_ft and not b_ft then
+    return true
+  elseif not a_ft and b_ft then
+    return false
+  end
+
+  -- same filetype or both nil, sort by name
+  if a_ft == b_ft then
+    return C.name(a, b)
+  end
+
+  return a_ft < b_ft
 end
 
 function M.setup(opts)
   M.config = {}
-  M.config.sort_by = opts.sort_by
+  M.config.sort = opts.sort
 
-  if type(opts.sort_by) == "function" then
-    C.user = opts.sort_by
+  if type(M.config.sort.sorter) == "function" then
+    C.user = M.config.sort.sorter
   end
 end
 

@@ -1407,6 +1407,8 @@ function! undotree#UndotreeToggle() abort
         endif
         if !exists('t:undotree')
             let t:undotree = s:new(s:undotree)
+        endif
+        if !exists('t:diffpanel')
             let t:diffpanel = s:new(s:diffpanel)
         endif
         call t:undotree.Toggle()
@@ -1457,6 +1459,28 @@ function! undotree#UndotreeFocus() abort
             echom v:exception
             echohl NONE
         endtry
+    endif
+endfunction
+
+function! undotree#UndotreePersistUndo(goSetUndofile) abort
+    call s:log("undotree#UndotreePersistUndo(" . a:goSetUndofile . ")")
+    if ! &undofile
+        if !isdirectory(g:undotree_UndoDir)
+            call mkdir(g:undotree_UndoDir, 'p', 0700)
+            call s:log(" > [Dir " . g:undotree_UndoDir . "] created.")
+        endif
+        exe "set undodir=" . g:undotree_UndoDir
+        call s:log(" > [set undodir=" . g:undotree_UndoDir . "] executed.")
+        if filereadable(undofile(expand('%'))) || a:goSetUndofile
+            setlocal undofile
+            call s:log(" > [setlocal undofile] executed")
+        endif
+        if a:goSetUndofile
+            silent! write
+            echo "A persistence undo file has been created."
+        endif
+    else
+        call s:log(" > Undofile has been set. Do nothing.")
     endif
 endfunction
 

@@ -1,6 +1,7 @@
 local utils = require "nvim-tree.utils"
 local builders = require "nvim-tree.explorer.node-builders"
 local explorer_node = require "nvim-tree.explorer.node"
+local git = require "nvim-tree.git"
 local sorters = require "nvim-tree.explorer.sorters"
 local filters = require "nvim-tree.explorer.filters"
 local live_filter = require "nvim-tree.live-filter"
@@ -29,11 +30,7 @@ local function populate_children(handle, cwd, node, git_status)
     local profile = log.profile_start("explore populate_children %s", abs)
 
     t = get_type_from(t, abs)
-    if
-      not filters.should_filter(abs, filter_status)
-      and not nodes_by_path[abs]
-      and Watcher.is_fs_event_capable(abs)
-    then
+    if not filters.should_filter(abs, filter_status) and not nodes_by_path[abs] and Watcher.is_fs_event_capable(abs) then
       local child = nil
       if t == "directory" and vim.loop.fs_access(abs, "R") then
         child = builders.folder(node, abs, name)
@@ -70,8 +67,10 @@ function M.explore(node, status)
   local is_root = not node.parent
   local child_folder_only = explorer_node.has_one_child_folder(node) and node.nodes[1]
   if M.config.group_empty and not is_root and child_folder_only then
+    local child_cwd = child_folder_only.link_to or child_folder_only.absolute_path
+    local child_status = git.load_project_status(child_cwd)
     node.group_next = child_folder_only
-    local ns = M.explore(child_folder_only, status)
+    local ns = M.explore(child_folder_only, child_status)
     node.nodes = ns or {}
 
     log.profile_end(profile)

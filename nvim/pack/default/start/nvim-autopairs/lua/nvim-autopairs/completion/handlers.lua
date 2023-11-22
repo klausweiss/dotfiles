@@ -81,4 +81,11 @@ M.lisp = function (char, item, bufnr, _, _)
   utils.feed("<Space>")
 end
 
+M.python = function(char, item, bufnr, rules, _)
+   if item.data then
+       item.data.funcParensDisabled = false
+   end
+   M["*"](char,item,bufnr,rules)
+end
+
 return M

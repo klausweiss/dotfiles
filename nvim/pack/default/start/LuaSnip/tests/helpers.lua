@@ -36,6 +36,8 @@ function M.session_setup_luasnip(opts)
 	else
 		setup_parsers = false
 	end
+	-- nil or true.
+	local hl_choiceNode = opts.hl_choiceNode
 
 	-- stylua: ignore
 	helpers.exec("set rtp+=" .. os.getenv("LUASNIP_SOURCE"))
@@ -67,14 +69,28 @@ function M.session_setup_luasnip(opts)
 
 	helpers.exec_lua(
 		[[
+		local hl_choiceNode, setup_extend = ...
+
 		-- MYVIMRC might not be set when nvim is loaded like this.
 		vim.env.MYVIMRC = "/.vimrc"
 
 		ls = require("luasnip")
 		ls.setup(vim.tbl_extend("force", {
 			store_selection_keys = "<Tab>"
-		}, ...))
+		}, hl_choiceNode and {
+			ext_opts = {
+				[require("luasnip.util.types").choiceNode] = {
+					active = {
+						virt_text = {{"●", "ErrorMsg"}},
+						priority = 0
+					},
+				}
+			},
+		} or {}, setup_extend))
 	]],
+		-- passing nil here means the argument-list is terminated, I think.
+		-- Just pass false instead of nil/false.
+		hl_choiceNode or false,
 		setup_extend
 	)
 
@@ -151,6 +167,15 @@ M.loaders = {
 			string.format(
 				[[require("luasnip.loaders.from_vscode").lazy_load({paths="%s"})]],
 				os.getenv("LUASNIP_SOURCE") .. "/tests/data/vscode-snippets"
+			)
+		)
+	end,
+	["vscode(standalone)"] = function()
+		exec_lua(
+			string.format(
+				[[require("luasnip.loaders.from_vscode").load_standalone({path="%s"})]],
+				os.getenv("LUASNIP_SOURCE")
+					.. "/tests/data/vscode-standalone.code-snippets"
 			)
 		)
 	end,

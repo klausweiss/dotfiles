@@ -16,7 +16,7 @@ describe("indent t32:", function()
   describe("new line:", function()
     runner:new_line("if_block.cmm", { on_line = 2, text = "GOTO start", indent = 0 }, "command after IF", XFAIL)
 
-    runner:new_line("if_block.cmm", { on_line = 5, text = "GOTO start", indent = 2 }, "command in IF then block", XFAIL)
+    runner:new_line("if_block.cmm", { on_line = 5, text = "GOTO start", indent = 2 }, "command in IF then block")
 
     runner:new_line("if_block.cmm", { on_line = 4, text = "(", indent = 0 }, "block after IF")
 
@@ -31,12 +31,26 @@ describe("indent t32:", function()
       runner:new_line(
         "if_block.cmm",
         { on_line = test[1], text = "&x=1.", indent = test[2] },
-        "command in IF then[" .. ii .. "]",
+        "command in IF then[" .. ii .. "]"
+      )
+    end
+
+    -- Insertion of a command right before the existing block results in
+    -- incorrect syntax. The parse either detect an error or incorrectly
+    -- assumes "ELSE IF" is a command.
+    for ii, test in ipairs {
+      { 26, 2 },
+      { 30, 2 },
+    } do
+      runner:new_line(
+        "if_block.cmm",
+        { on_line = test[1], text = 'PRINT ""', indent = test[2] },
+        "displace block in IF then[" .. ii .. "]",
         XFAIL
       )
     end
 
-    runner:new_line("if_block.cmm", { on_line = 45, text = "&x=1.", indent = 4 }, "command in IF then")
+    runner:new_line("if_block.cmm", { on_line = 45, text = "&x=1.", indent = 6 }, "command in IF then", XFAIL)
 
     for ii, test in ipairs {
       { 16, 2 },
@@ -46,13 +60,12 @@ describe("indent t32:", function()
     } do
       runner:new_line(
         "if_block.cmm",
-        { on_line = test[1], text = "(\n", indent = test[2] },
-        "command in IF else[" .. ii .. "]",
-        XFAIL
+        { on_line = test[1], text = "CONTinue\n", indent = test[2] },
+        "command in IF else[" .. ii .. "]"
       )
     end
 
-    runner:new_line("while_block.cmm", { on_line = 2, text = "&x=1.", indent = 0 }, "command after WHILE", XFAIL)
+    runner:new_line("while_block.cmm", { on_line = 2, text = "&x=1.", indent = 2 }, "command after WHILE")
 
     runner:new_line("while_block.cmm", { on_line = 4, text = "&x=1.", indent = 0 }, "command after WHILE")
 
@@ -65,52 +78,48 @@ describe("indent t32:", function()
       runner:new_line(
         "while_block.cmm",
         { on_line = test[1], text = "&x=1.", indent = test[2] },
-        "command in WHILE then block[" .. ii .. "]",
-        XFAIL
+        "command in WHILE then block[" .. ii .. "]"
       )
     end
 
     for ii, test in ipairs {
-      { 1, 0, nil },
-      { 4, 0, XFAIL },
+      { 1, 0 },
+      { 4, 2 },
     } do
       runner:new_line(
         "repeat_block.cmm",
         { on_line = test[1], text = "&x=1.", indent = test[2] },
-        "command after RePeaT[" .. ii .. "]",
-        test[3]
+        "command after RePeaT[" .. ii .. "]"
       )
     end
 
     runner:new_line("repeat_block.cmm", { on_line = 3, text = "(\n", indent = 0 }, "block in RePeaT then")
 
     for ii, test in ipairs {
-      { 7, 2, XFAIL },
-      { 18, 2, nil },
-      { 24, 2, XFAIL },
+      { 7, 2 },
+      { 18, 2 },
+      { 24, 2 },
     } do
       runner:new_line(
         "repeat_block.cmm",
         { on_line = test[1], text = "&x=1.", indent = test[2] },
-        "command in RePeaT then block[" .. ii .. "]",
-        test[3]
+        "command in RePeaT then block [" .. ii .. "]"
       )
     end
 
     runner:new_line("subroutine_block.cmm", { on_line = 1, text = "(\n", indent = 0 }, "block after call label")
 
     for ii, test in ipairs {
-      { 2, 2, XFAIL },
-      { 3, 2, nil },
-      { 8, 2, XFAIL },
-      { 12, 2, nil },
-      { 19, 2, XFAIL },
+      { 2, 2 },
+      { 3, 2 },
+      { 8, 2 },
+      { 12, 2 },
+      { 19, 2 },
     } do
       runner:new_line(
         "subroutine_block.cmm",
         { on_line = test[1], text = "&x=1.", indent = test[2] },
-        "command in subroutine block[" .. ii .. "]",
-        test[3]
+        "command in subroutine block[" .. ii .. "]"
       )
     end
 
@@ -122,8 +131,7 @@ describe("indent t32:", function()
       runner:new_line(
         "subroutine_block.cmm",
         { on_line = test[1], text = "&x=1.", indent = test[2] },
-        "command after subroutine block[" .. ii .. "]",
-        XFAIL
+        "command after subroutine block[" .. ii .. "]"
       )
     end
   end)

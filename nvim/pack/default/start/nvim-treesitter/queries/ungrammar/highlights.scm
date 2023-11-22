@@ -1,4 +1,4 @@
-(comment) @comment
+(comment) @comment @spell
 
 (definition) @keyword
 
@@ -26,5 +26,3 @@
   "("
   ")"
 ] @punctuation.bracket
-
-(ERROR) @error

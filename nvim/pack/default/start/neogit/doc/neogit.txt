@@ -1,4 +1,4 @@
-*neogit.txt* A Magit clone for Neovim that is geared towards the Vim philosophy. 
+*neogit.txt* A Magit clone for Neovim that is geared towards the Vim philosophy.
 *neogit*
 Author: TimUntersberger
 License: MIT license {{{
@@ -25,85 +25,1236 @@ License: MIT license {{{
 }}}
 
 ==============================================================================
-CONTENTS                                        *neogit-contents*
+CONTENTS                                                       *neogit_contents*
 
-    1. Intro                         |neogit-intro|
-    2. Commands                      |neogit-commands|
-    3. Mappings                      |neogit-mappings|
-    4. Highlights                    |neogit-highlights|
+    1. Intro                                                     |neogit_intro|
+    2. Commands                                               |neogit_commands|
+    3. Mappings                                               |neogit_mappings|
+    4. Highlights                                           |neogit_highlights|
+    5. API                                                         |neogit_api|
+    6. Popups                                                   |neogit_popups|
+       • Branch                                           |neogit_branch_popup|
+       • Branch Config                             |neogit_branch_config_popup|
+       • Cherry Pick                                 |neogit_cherry_pick_popup|
+       • Commit                                           |neogit_commit_popup|
+       • Diff                                               |neogit_diff_popup|
+       • Fetch                                             |neogit_fetch_popup|
+       • Ignore                                           |neogit_ignore_popup|
+       • Log                                                 |neogit_log_popup|
+       • Merge                                             |neogit_merge_popup|
+       • Pull                                               |neogit_pull_popup|
+       • Push                                               |neogit_push_popup|
+       • Rebase                                           |neogit_rebase_popup|
+       • Remote                                           |neogit_remote_popup|
+       • Remote Config                             |neogit_remote_config_popup|
+       • Reset                                             |neogit_reset_popup|
+       • Revert                                           |neogit_revert_popup|
+       • Stash                                             |neogit_stash_popup|
+       • Tag                                                 |neogit_tag_popup|
 
+    7. Buffers                                                 |neogit_buffers|
+       • Status                                          |neogit_status_buffer|
+       • Log                                                |neogit_log_buffer|
+       • Reflog                                          |neogit_reflog_buffer|
+       • Commit                                          |neogit_commit_buffer|
 
 ==============================================================================
-1. Intro                                        *neogit-intro*
+1. Intro                                                          *neogit_intro*
 
-Neogit is a magit clone for Neovim that is currently work in progress.
+Neogit is a git client for Neovim built as a clone of the popular emacs git
+client 'Magit'.
+
+"Magit is a complete text-based user interface to Git. It fills the glaring
+gap between the Git command-line interface and various GUIs, letting you
+perform trivial as well as elaborate version control tasks with just a couple
+of mnemonic key presses. Magit looks like a prettified version of what you get
+after running a few Git commands but in Magit every bit of visible information
+is also actionable to an extent that goes far beyond what any Git GUI provides
+and it takes care of automatically refreshing this output when it becomes
+outdated. In the background Magit just runs Git commands and if you wish you
+can see what exactly is being run, making it possible for you to learn the git
+command-line by using Magit.
+
+Using Magit for a while will make you a more effective version control user.
+Magit supports and streamlines the use of Git features that most users and
+developers of other Git clients apparently thought could not be reasonably
+mapped to a non-command-line interface. Magit is both faster and more
+intuitive than either the command line or any GUI and these holds for both
+Git beginners and experts alike."
+
+- https://magit.vc/
+
+
+Though not yet feature complete, our goal is to bring the Magit git experience
+to Neovim users.
 
 ==============================================================================
-2. Commands                                     *neogit-commands*
+2. Commands                                                    *neogit_commands*
 
-                                                *:Neogit*           
+                                                                       *:Neogit*
 :Neogit                 In a Git repository, opens a new NeogitStatus tab.
 
+                                                             *:NeogitResetState*
+:NeogitResetState       Performs a full reset of saved flags for all popups.
+
 ==============================================================================
-3. Mappings                                      *neogit-mappings*
+3. Mappings                                                    *neogit_mappings*
 
-                                                *neogit-staging-maps*
-Staging/unstaging maps ~
+                                                            *neogit_status_maps*
+Status Mappings
 
-                                                *neogit_s*
-s                       Stage (also supports staging selection/hunk) 
+                                                                      *neogit_s*
+s                       Stage file/hunk/visual-selection
 
-                                                *neogit_S*
-S                       Stage unstage changes
+                                                                      *neogit_S*
+S                       Stage unstaged changes
 
-                                                *neogit_<C-s>*
+                                                                  *neogit_<C-s>*
 <C-s>                   Stage Everything
 
-                                                *neogit_u*
-u                       Unstage (also supports unstaging selection/hunk)
+                                                                      *neogit_u*
+u                       Unstage file/hunk/visual-selection
 
-                                                *neogit_U*
+                                                                      *neogit_U*
 U                       Unstage staged changes
 
-                                                *neogit_x*
-x                       Discard changes (also supports discarding hunks)
+                                                                      *neogit_x*
+x                       Discard changes for file/hunk/visual-selection
 
-                                                *neogit_d*
-Diff maps ~
-                                                *neogit_<tab>*
+                                                                   *neogit_<cr>*
+<cr>                    Goto item at cursor
+
+                                                                  *neogit_<tab>*
 <tab>                   Toggle diff
 
+                                                                      *neogit_{*
+{                       Goto previous hunk
 
-                                                *neogit-commit-maps*
-Commit maps ~
-                                                *neogit_c*
-c                       Open commit popup
+                                                                      *neogit_}*
+}                       Goto next hunk
 
-<C-C><C-C>              Commit (when writing a commit message)
-
-                                                *neogit-misc-maps*
-Miscellaneous maps ~
-                                                *neogit_$*
-$                       Command History
-
-                                                *neogit_fold*
-1, 2, 3, 4              Set a foldlevel
-
-                                                *neogit_<C-r>*
+                                                                  *neogit_<C-r>*
 <C-r>                   Refresh Buffer
 
-                                                *neogit_L*
-L                       Open log popup
+                                                                   *neogit_fold*
+1, 2, 3, 4              Set a foldlevel
 
-                                                *neogit_p*
+
+                                                             *neogit_popup_maps*
+Popup maps ~
+
+                                                                      *neogit_$*
+$                       Command History
+
+                                                                      *neogit_#*
+#                       Console Output
+
+                                                                      *neogit_L*
+l                       Open log popup
+
+                                                                      *neogit_p*
 p                       Open pull popup
 
-                                                *neogit_P*
+                                                                      *neogit_P*
 P                       Open push popup
-                                                *neogit_f*
+
+                                                                      *neogit_f*
 f                       Open fetch popup
+
+                                                                      *neogit_X*
+X                       Open reset popup
+
+                                                                      *neogit_A*
+A                       Open cherry-pick popup
+
+                                                                      *neogit_m*
+m                       Open merge popup
+
+                                                                      *neogit_v*
+v                       Open revert popup
+
+                                                                      *neogit_M*
+M                       Open remotes popup
+
+                                                                      *neogit_?*
+?                       Open help popup
+
+                                                                      *neogit_b*
+b                       Open branch popup
+
+                                                                      *neogit_c*
+c                       Open commit popup
+
+                                                                      *neogit_r*
+r                       Open rebase popup
+
+                                                                      *neogit_Z*
+Z                       Open stash popup
+
 ==============================================================================
-4. Highlights                                    *neogit-highlights*
+4. Highlights                                                *neogit_highlights*
+
+The following highlight groups are defined by this plugin. If you set any of
+these yourself before the plugin loads, that will be respected. If they do not
+exist, they will be created with sensible defaults based on your colorscheme.
+
+STATUS BUFFER
+NeogitBranch                Local branches
+NeogitBranchHead            Accent highlight for current HEAD in LogBuffer
+NeogitRemote                Remote branches
+NeogitObjectId              Object's SHA hash
+NeogitStash                 Stash name
+NeogitFold                  Folded text highlight
+NeogitRebaseDone            Current position within rebase
+NeogitTagName               Closest Tag name
+NeogitTagDistance           Number of commits between the tag and HEAD
 
 
- vim:tw=78:ts=8:ft=help
+STATUS BUFFER SECTION HEADERS
+NeogitSectionHeader
+
+NeogitUnpushedTo            Linked to NeogitSectionHeader
+NeogitUnmergedInto          ^
+NeogitUnpulledFrom          ^
+NeogitUntrackedfiles        ^
+NeogitUnstagedchanges       ^
+NeogitUnmergedchanges       ^
+NeogitUnpulledchanges       ^
+NeogitRecentcommits         ^
+NeogitStagedchanges         ^
+NeogitStashes               ^
+NeogitRebasing              ^
+NeogitReverting             ^
+NeogitPicking               ^
+
+STATUS BUFFER FILE
+Applied to the label on the left of filenames.
+
+NeogitChangeModified
+NeogitChangeAdded
+NeogitChangeDeleted
+NeogitChangeRenamed
+NeogitChangeUpdated
+NeogitChangeCopied
+NeogitChangeBothModified
+NeogitChangeNewFile
+
+SIGNS FOR LINE HIGHLIGHTING
+Used to highlight different sections of the status buffer or commit buffer.
+
+NeogitHunkHeader
+NeogitDiffContext
+NeogitDiffAdd
+NeogitDiffDelete
+NeogitDiffHeader
+
+SIGNS FOR LINE HIGHLIGHTING CURRENT CONTEXT
+These are essentially an accented version of the above highlight groups. Only
+applies to the current context the cursor is within.
+
+NeogitHunkHeaderHighlight
+NeogitDiffContextHighlight
+NeogitDiffAddHighlight
+NeogitDiffDeleteHighlight
+NeogitDiffHeaderHighlight
+
+NeogitCursorLine            Applies a "fake" cursorline highlight because
+                            signs will otherwise take precedence over normal
+                            CursorLine HL group
+
+COMMIT BUFFER
+NeogitFilePath              Applied to filepath
+NeogitCommitViewHeader      Applied to header of Commit View
+
+LOG VIEW BUFFER
+NeogitGraphAuthor           Applied to the commit's author in graph view
+NeogitGraphBlack            Used when --colors is enabled for graph
+NeogitGraphBlackBold
+NeogitGraphRed
+NeogitGraphRedBold
+NeogitGraphGreen
+NeogitGraphGreenBold
+NeogitGraphYellow
+NeogitGraphYellowBold
+NeogitGraphBlue
+NeogitGraphBlueBold
+NeogitGraphPurple
+NeogitGraphPurpleBold
+NeogitGraphCyan
+NeogitGraphCyanBold
+NeogitGraphWhite
+NeogitGraphWhiteBold
+NeogitGraphGray
+NeogitGraphBoldGray
+NeogitGraphOrange
+
+NeogitSignatureGood        For highlighting the commit hash when
+NeogitSignatureBad         --show-signature is passed
+NeogitSignatureMissing
+NeogitSignatureNone
+NeogitSignatureGoodUnknown
+NeogitSignatureGoodExpired
+NeogitSignatureGoodExpiredKey
+NeogitSignatureGoodRevokedKey
+
+POPUPS
+NeogitPopupSectionTitle    Applied to all section headers
+NeogitPopupBranchName      Applied to the current branch name for emphasis
+NeogitPopupBold            Applied on "@{upstream}" and "pushRemote" for
+                           emphasis (but less emphasis than BranchName)
+
+NeogitPopupSwitchKey       Applied to the key that will toggle switch
+NeogitPopupSwitchEnabled   Applied to the flag if enabled
+NeogitPopupSwitchDisabled  Applied to the flag if disabled
+
+NeogitPopupOptionKey       Applied to the key that will trigger option
+NeogitPopupOptionEnabled   Applied if option is set
+NeogitPopupOptionDisabled  Applied if option has no value
+
+NeogitPopupConfigKey       Applied to the key that triggers config
+NeogitPopupConfigEnabled   Applied to enabled config value
+NeogitPopupConfigDisabled  Applied to config without value
+
+NeogitPopupActionKey       Applied to key that triggers function
+NeogitPopupActionDisabled  Applied to key when function is unimplemented
+
+COMMAND HISTORY BUFFER
+NeogitCommandText          Git command that was run
+NeogitCommandTime          Execution time
+NeogitCommandCodeNormal    Applied to a successful command's exit status (0)
+NeogitCommandCodeError     When command exits with non-zero status
+
+==============================================================================
+5. Lua API                                               *neogit_api* *neogit-lua*
+
+neogit.open({*opts})                                             *neogit.open()*
+    Open Neogit. Alternative to `:Neogit` >lua
+        local neogit = require('neogit')
+
+        -- open using defaults
+        neogit.open()
+
+        -- open commit popup
+        neogit.open({ "commit" })
+
+        -- open with split kind
+        neogit.open({ kind = "split" })
+
+        -- open home directory
+        neogit.open({ cwd = "~" })
+<
+    Parameters:
+      • {opts}  (table|nil)
+                • kind (string) optional: How to open Neogit.
+                    - "tab" (default) like :tab split
+                    - "replace"       like :enew
+                    - "split"         like :below split
+                    - "split_above"   like :top split
+                    - "vsplit"        like :vsplit
+                    - "floating" not-yet-implemented
+
+                • cwd (string) optional: Path to git repository.
+                  default: |current-directory|.
+                • no_expand (boolean) optional: Set to true to
+                  prevent the calling of `expand()` on the path.
+
+                • [1] (string) optional: Name of the Neogit
+                  popup to open. See |neogit-popups|.
+
+neogit.action({popup}, {action}, {args})                       *neogit.action()*
+    Call an action without going through the popup interface.
+
+    Note: Some actions might not play nicely when being invoked this way.
+          You've been warned. >lua
+
+        local neogit = require('neogit')
+
+        -- Calls the "commit" action from the "commit" popup, with arguments
+        vim.keymap.set(
+          'n',
+          '<leader>gcc',
+          neogit.action('commit', 'commit', { '--verbose', '--all' })
+        )
+<
+    Parameters:
+      • {popup}  (string)
+        Name of popup, as found in `lua/neogit/popups/*`
+
+      • {action} (string)
+        Name of action for popup, found in `lua/neogit/popups/*/actions.lua`
+
+      • {args}   (table|nil)
+        CLI arguments to pass to git command
+
+==============================================================================
+6. Popups                                                        *neogit_popups*
+
+A Neogit popup is a client interface over a git subcommand or other
+git mechanism.
+
+                                                                 *neogit_branch*
+"branch"             see :Man git-branch or |neogit_branch_popup|
+
+                                                          *neogit_branch_config*
+"branch_config"      Common configuration for branch/repo
+
+                                                            *neogit_cherry_pick*
+"cherry_pick"        see :Man git-cherry-pick
+
+                                                                 *neogit_commit*
+"commit"             see :Man git-commit
+
+                                                                   *neogit_diff*
+"diff"               see :Man git-diff
+
+                                                                  *neogit_fetch*
+"fetch"              see :Man git-fetch
+
+                                                                   *neogit_help*
+"help"               Overview of different popups
+
+                                                                    *neogit_log*
+"log"                see :Man git-log
+
+                                                                  *neogit_merge*
+"merge"              see :Man git-merge
+
+                                                                   *neogit_pull*
+"pull"               see :Man git-pull
+
+                                                                   *neogit_push*
+"push"               see :Man git-push
+
+                                                                 *neogit_rebase*
+"rebase"             see :Man git-rebase
+
+                                                                 *neogit_remote*
+"remote"             see :Man git-remote
+
+                                                          *neogit_remote_config*
+"remote_config"      Common configuration for remote
+
+                                                                  *neogit_reset*
+"reset"              see :Man git-reset
+
+                                                                 *neogit_revert*
+"revert"             see :Man git-revert
+
+                                                                  *neogit_stash*
+"stash"              see :Man git-stash
+
+==============================================================================
+Cherry-Pick Popup                                     *neogit_cherry_pick_popup*
+
+Arguments:                                       *neogit_cherry_pick_popup_args*
+  • --ff
+    If the current HEAD is the same as the parent of the cherry-pick’ed
+    commit, then a fast forward to this commit will be performed.
+
+Actions:                                      *neogit_cherry_pick_popup_actions*
+  Actions for the branch popup are split into two categories: "Apply here",
+  and "Apply elsewhere". The former will update the current HEAD, whereas the
+  latter will prompt for a target.
+
+  When a Cherry-Pick isn't in progress, the following actions are available:
+
+  • Pick                                               *neogit_cherry_pick_pick*
+    This command copies COMMITS from another branch onto the current branch.
+    If a commit is under the cursor, or multiple commits are selected, then
+    those are used instead of prompting. Otherwise the user is prompted to
+    select one or more commits.
+
+  • Apply                                             *neogit_cherry_pick_apply*
+    This command applies the changes in COMMITS from another branch onto the
+    current branch, without committing. If a commit is under the cursor, or
+    multiple commits are selected, then those are used instead of prompting.
+    Otherwise the user is prompted to select one or more commits.
+
+  • Harvest                                         *neogit_cherry_pick_harvest*
+    (Not yet implemented)
+
+  • Squash                                           *neogit_cherry_pick_squash*
+    (Not yet implemented)
+
+  • Donate                                           *neogit_cherry_pick_donate*
+    (Not yet implemented)
+
+  • Spinout                                         *neogit_cherry_pick_spinout*
+    (Not yet implemented)
+
+  • Spinoff                                         *neogit_cherry_pick_spinoff*
+    (Not yet implemented)
+
+
+  When a Cherry-Pick is in progress, the following actions are available:
+
+  • Continue                                       *neogit_cherry_pick_continue*
+    Resume current cherry-pick sequence.
+
+  • Skip                                               *neogit_cherry_pick_skip*
+    Skip the current commit during a cherry-pick sequence.
+
+  • Abort                                             *neogit_cherry_pick_abort*
+    Abort the current cherry-pick sequence. This discards all changes made.
+
+==============================================================================
+Branch Popup                                               *neogit_branch_popup*
+
+Variables:                                       *neogit_branch_popup_variables*
+  • branch.<name>.description
+    (TODO)
+
+  • branch.<name>.merge
+    branch.<name>.remote
+    (TODO)
+
+  • branch.<name>.rebase
+    Cycles branch.<name>.rebase value between true, false, and the value of
+    `pull.rebase`. When enabled, actions like pulling will attempt to rebase
+    by default.
+
+  • branch.<name>.pushRemote
+    Cycles pushRemote between the remotes currently configured for the
+    repository. `remote.pushDefault` will be offered, if set.
+
+Arguments:                                            *neogit_branch_popup_args*
+  • --recurse-submodules
+    (EXPERIMENTAL) Causes the current command to recurse into submodules if
+    submodule.propagateBranches is enabled.
+
+    When used in branch creation, a new branch <branchname> will be created
+    in the superproject and all of the submodules in the superproject’s
+    <start-point>. In submodules, the branch will point to the submodule
+    commit in the superproject’s <start-point> but the branch’s tracking
+    information will be set up based on the submodule’s branches and remotes
+    e.g.  git branch --recurse-submodules topic origin/main will create the
+    submodule branch "topic" that points to the submodule commit in the
+    superproject’s "origin/main", but tracks the submodule’s "origin/main".
+
+Actions:                                           *neogit_branch_popup_actions*
+  Actions for the branch popup are split into three categories: "Checkout",
+  "Create", and "Do". They behave as described: "Checkout" actions will change
+  your HEAD when checking out the selected/created branch. "Create" actions,
+  by contrast, will _not_ change HEAD.
+
+  Finally, "Do" actions provide some common housekeeping actions.
+
+  • Checkout branch/revision                        *neogit_branch_checkout_rev*
+    Changes HEAD to point to the selected branch/revision. If a local branch
+    is selected, that will be checked out. Otherwise HEAD will become
+    detatched. Any ref under the cursor or selected will be available to
+    checkout.
+
+  • Checkout local branch                         *neogit_branch_checkout_local*
+    Changes HEAD to point to the selected branch. Also lists branches on
+    remotes that do not have a matching branch locally. If a remote branch is
+    selected, then a local branch is created tracking the selected remote
+    branch.
+
+  • Checkout recent branch                       *neogit_branch_checkout_recent*
+    Changes HEAD to point to the selected branch. Branches are listed by how
+    recently they have been checked out. Only local branches are considered.
+
+  • Checkout new branch                             *neogit_branch_checkout_new*
+    Creates and switches HEAD to a new branch. Any whitespace in the branch
+    name will be automatically changed to '-'.
+
+    For example, entering "new branch name" will result in a branch called
+    "new-branch-name" being created.
+
+    After entering a name, you will be prompted to choose a base branch for
+    the branch being created. The current branch will be at the top of the
+    list, but any branch can be chosen.
+
+  • Checkout new spin-off                               *neogit_branch_spin_off*
+    This command creates and checks out a new branch starting at and tracking
+    the current branch. That branch in turn is reset to the last commit it
+    shares with its upstream. If the current branch has no upstream or no
+    unpushed commits, then the new branch is created anyway and the previously
+    current branch is not touched.
+
+    This is useful to create a feature branch after work has already began on
+    the old branch.
+
+  • Checkout new worktree                      *neogit_branch_checkout_worktree*
+    (Not yet implemented)
+
+  • Create new branch                              *neogit_branch_create_branch*
+    Functionally the same as |neogit_branch_checkout_new|, but does not update
+    HEAD.
+
+  • Create new spin-out                                 *neogit_branch_spin_out*
+    Like |neogit_branch_spin_off|, but doesn't change HEAD. However, if the
+    index has uncomitted changes, will behave exactly the same as spin_off.
+
+  • Create new worktree                          *neogit_branch_create_worktree*
+    (Not yet implemented)
+
+  • Configure                                          *neogit_branch_configure*
+    Opens selector to choose a branch, then offering some configuration
+    options. See |neogit_branch_config_popup|.
+
+  • Rename                                                *neogit_branch_rename*
+    Opens selector to choose a branch to rename. Like with a new branch, any
+    whitespace will be replaced with '-'.
+
+  • Reset                                                  *neogit_branch_reset*
+    Resets the current branch to the the selected branch via a hard reset.
+    Uncommitted changes will be lost in the process.
+
+  • Delete                                                *neogit_branch_delete*
+    Opens selector, allowing the user to delete either a local or remote
+    branch.
+
+  • Pull Request                                    *neogit_branch_pull_request*
+    When a branch has an upstream configured, can be used to open a
+    pull-request on the git services' website. By default, supports github,
+    gitlab, and bitbucket, but more can be added via config.git_services.
+
+
+==============================================================================
+Branch Config Popup                                 *neogit_branch_config_popup*
+
+Allows configuring some common config settings for the selected branch, as
+well as some repository defaults.
+
+Branch:
+  • branch.<name>.description                 *neogit_branch_config_description*
+    Branch description is automatically added in the format-patch cover letter
+    or request-pull summary.
+
+  • branch.<name>.merge                             *neogit_branch_config_merge*
+    Defines, together with branch.<name>.remote, the upstream branch for the
+    given branch. It tells git fetch/git pull/git rebase which branch to merge
+    and can also affect git push (see push.default). When in branch <name>,
+    it tells git fetch the default refspec to be marked for merging in
+    FETCH_HEAD. The value is handled like the remote part of a refspec, and
+    must match a ref which is fetched from the remote given by
+    "branch.<name>.remote".
+
+    The merge information is used by git pull (which at first calls git fetch)
+    to lookup the default branch for merging.
+
+    Without this option, git pull defaults to merge the first refspec fetched.
+    Specify multiple values to get an octopus merge. If you wish to setup git
+    pull so that it merges into <name> from another branch in the local
+    repository, you can point branch.<name>.merge to the desired branch, and
+    use the relative path setting . (a period) for branch.<name>.remote.
+
+  • branch.<name>.remote                           *neogit_branch_config_remote*
+    When on branch <name>, it tells git fetch and git push which remote to
+    fetch from/push to. The remote to push to may be overridden with
+    remote.pushDefault (for all branches). The remote to push to, for the
+    current branch, may be further overridden by branch.<name>.pushRemote. If
+    no remote is configured, or if you are not on any branch and there is more
+    than one remote defined in the repository, it defaults to origin for
+    fetching and remote.pushDefault for pushing. Additionally, . (a period) is
+    the current local repository (a dot-repository), see branch.<name>.merge's
+    final note below.
+
+  • branch.<name>.rebase                           *neogit_branch_config_rebase*
+    When true, rebase the branch <name> on top of the fetched branch, instead
+    of merging the default branch from the default remote when "git pull" is
+    run. See "pull.rebase" for doing this in a non branch-specific manner.
+
+    NOTE: this is a possibly dangerous operation; do not use it unless you
+    understand the implications (see git-rebase(1) for details).
+
+  • branch.<name>.pushRemote                   *neogit_branch_config_pushRemote*
+    When on branch <name>, it overrides branch.<name>.remote for pushing. It
+    also overrides remote.pushDefault for pushing from branch <name>. When you
+    pull from one place (e.g. your upstream) and push to another place (e.g.
+    your own publishing repository), you would want to set remote.pushDefault
+    to specify the remote to push to for all branches, and use this option to
+    override it for a specific branch.
+
+Repository defaults:
+  • pull.rebase                               *neogit_branch_config_pull_rebase*
+    When true, rebase branches on top of the fetched branch, instead of
+    merging the default branch from the default remote when "git pull" is run.
+    Use "branch.<name>.rebase" for setting this on a per-branch basis.
+
+    NOTE: this is a possibly dangerous operation; do not use it unless you
+    understand the implications (see git-rebase[1] for details).
+
+  • remote.pushDefault                 *neogit_branch_config_remote_pushDefault*
+    The remote to push to by default. Overrides branch.<name>.remote for all
+    branches, and is overridden by branch.<name>.pushRemote for specific
+    branches.
+
+  • neogit.baseBranch                          *neogit_branch_config_baseBranch*
+    If set, will be used by "rebase onto base" action. Otherwise defaults to
+    either "main" or "master", depending on which is found.
+
+  • neogit.askSetPushDefault            *neogit_branch_config_askSetPushDefault*
+    This option controls whether the user is asked whether they want to set
+    remote.pushDefault after adding a remote.
+
+    When set to 'ask', the user is always asked.
+
+    When 'ask-if-unset', the user is only asked if the variable isn’t set.
+    (This is also the default behaviour when unset.)
+
+    When 'never', the user isn’t asked and the variable isn’t set.
+
+Branch creation:
+  • branch.autoSetupMerge                  *neogit_branch_config_autoSetupMerge*
+    Tells git branch, git switch and git checkout to set up new branches so
+    that git-pull(1) will appropriately merge from the starting point branch.
+
+    false   — No automatic setup is done.
+
+    true    — Automatic setup is done when the starting point is a
+              remote-tracking branch.
+
+    always  — Automatic setup is done when the starting point is either a
+              local branch or remote-tracking branch.
+
+    inherit — If the starting point has a tracking configuration, it is copied
+              to the new branch.
+
+    simple  — Automatic setup is done only when the starting point is a
+              remote-tracking branch and the new branch has the same name as
+              the remote branch.
+
+    This option defaults to true.
+
+  • branch.autoSetupRebase                *neogit_branch_config_autoSetupRebase*
+    When a new branch is created with git branch, git switch or git checkout
+    that tracks another branch, this variable tells Git to set up pull to
+    rebase instead of merge (see "branch.<name>.rebase").
+
+    never  - Rebase is never automatically set to true.
+
+    local  - Rebase is set to true for tracked branches of other local
+             branches.
+
+    remote - Rebase is set to true for tracked branches of remote-tracking
+             branches.
+
+    always - Rebase will be set to true for all tracking branches.
+
+    See "branch.autoSetupMerge" for details on how to set up a branch to track
+    another branch.
+
+    This option defaults to never.
+
+==============================================================================
+Commit Popup                                               *neogit_commit_popup*
+
+Arguments:                                            *neogit_commit_popup_args*
+  • --all
+    Tell the command to automatically stage files that have been modified and
+    deleted, but new files you have not told Git about are not affected.
+
+  • --allow-empty
+    Usually recording a commit that has the exact same tree as its sole parent
+    commit is a mistake, and the command prevents you from making such a
+    commit. This option bypasses the safety, and is primarily for use by
+    foreign SCM interface scripts.
+
+  • --verbose
+    Show unified diff between the HEAD commit and what would be committed at
+    the bottom of the commit message template to help the user describe the
+    commit by reminding what changes the commit has. Note that this diff
+    output doesn’t have its lines prefixed with #. This diff will not be a
+    part of the commit message. See the `commit.verbose` configuration variable
+    in git-config(1).
+
+  • --no-verify
+    Skip any pre-commit or commit-msg hooks. See also githooks(5).
+
+  • --signoff
+    Add a Signed-off-by trailer by the committer at the end of the commit log
+    message. The meaning of a signoff depends on the project to which you’re
+    committing. For example, it may certify that the committer has the rights
+    to submit the work under the project’s license or agrees to some
+    contributor representation, such as a Developer Certificate of Origin.
+
+    See http://developercertificate.org for the one used by the Linux kernel
+    and Git projects.
+
+    Consult the documentation or leadership of the project to which you’re
+    contributing to understand how the signoffs are used in that project.
+
+  • --no-gpg-sign
+    This is useful to countermand both commit.gpgSign configuration variable,
+    and --gpg-sign
+
+  • --reset-author
+    When used while ammending or when committing after a conflicting
+    cherry-pick, declare that the authorship of the resulting commit now
+    belongs to the committer. This also renews the author timestamp.
+
+  • --author=
+    Override the commit author. Specify an explicit author using the standard
+    A U Thor <author@example.com> format. Otherwise <author> is assumed to be
+    a pattern and is used to search for an existing commit by that author
+    (i.e. rev-list --all -i --author=<author>); the commit author is then
+    copied from the first such commit found.
+
+  • --gpg-sign=
+    GPG-sign commits. The argument should be the keyid is optional and
+    defaults to the committer identity,
+
+  • --reuse-message=
+    Take an existing commit object, and reuse the log message and the
+    authorship information (including the timestamp) when creating the commit.
+
+Actions:                                           *neogit_commit_popup_actions*
+  Actions in the commit popup are in three groups: "Create", "Edit HEAD", and
+  "Edit". The first should be somewhat self explanatory - you can create a new
+  commit from your staged changes. "Edit HEAD" actions will modify the current
+  commit HEAD is pointing at, and "Edit" will modify commits that your HEAD
+  isn't pointing to.
+
+  • Create Commit                                         *neogit_commit_create*
+    Creates a new commit on the current branch from the currently staged
+    changes.
+
+  • Extend                                                *neogit_commit_extend*
+    Amends the last commit without editing the commit message.
+
+  • Reword                                                *neogit_commit_reword*
+    Edit the last commit message without modifying the committed changes. Any
+    staged changes are ignored.
+
+  • Amend                                                  *neogit_commit_amend*
+    Amend the last commit.
+
+  • Fixup                                                  *neogit_commit_fixup*
+    Creates a fixup commit. If a commit is selected it will be used, otherwise
+    the user is prompted to pick a commit.
+
+  • Squash                                                *neogit_commit_squash*
+    Creates a squash commit. If a commit is selected it will be used,
+    otherwise the user is prompted to pick a commit.
+
+  • Augment                                              *neogit_commit_augment*
+    Creates a squash commit, editing the squash message. If a commit is
+    selected it will be used, otherwise the user is prompted to pick a commit.
+
+  • Instant Fixup                                  *neogit_commit_instant_fixup*
+    Similar to |neogit_commit_fixup|, but instantly rebases after.
+
+  • Instant Squash                                *neogit_commit_instant_squash*
+    Similar to |neogit_commit_squash|, but instantly rebases after.
+
+==============================================================================
+Diff Popup                                                   *neogit_diff_popup*
+
+(TODO)
+
+==============================================================================
+Fetch Popup                                                 *neogit_fetch_popup*
+
+Arguments:                                             *neogit_fetch_popup_args*
+  • --prune
+    Before fetching, remove any remote-tracking references that no longer
+    exist on the remote. Tags are not subject to pruning if they are fetched
+    only because of the default tag auto-following or due to a --tags option.
+
+    However, if tags are fetched due to an explicit refspec (either on the
+    command line or in the remote configuration, for example if the remote was
+    cloned with the --mirror option), then they are also subject to pruning.
+
+  • --tags
+    Fetch all tags from the remote (i.e., fetch remote tags refs/tags/* into
+    local tags with the same name), in addition to whatever else would
+    otherwise be fetched. Using this option alone does not subject tags to
+    pruning, even if --prune is used (though tags may be pruned anyway if
+    they are also the destination of an explicit refspec; see --prune).
+
+Actions:                                            *neogit_fetch_popup_actions*
+  • Fetch from pushRemote                              *neogit_fetch_pushremote*
+    Fetches from the current pushRemote.
+
+    When the pushRemote is not configured, the user will be prompted to choose
+    from the existing remotes to set it.
+
+  • Fetch from upstream                                  *neogit_fetch_upstream*
+    Fetches from the upstream of the current branch.
+
+    If the upstream is configured for the current branch and names an existing
+    remote, then use that. Otherwise try to use another remote: If only a
+    single remote is configured, then use that. Otherwise if a remote named
+    "origin" exists, then use that.
+
+  • Fetch from elsewhere                                *neogit_fetch_elsewhere*
+    Provides a select interface for the user to choose which remote to fetch
+    from.
+
+  • Fetch from All Remotes                                    *neogit_fetch_all*
+    Fetches from all configured remotes.
+
+  • Fetch Another Branch                                   *neogit_fetch_branch*
+    Fetches only a specific branch from a remote, both of which are selected
+    by the user.
+
+  • Fetch Explicit Refspec                                *neogit_fetch_refspec*
+    Fetches from a remote using an explicit refspec.
+
+  • Fetch Submodules                                   *neogit_fetch_submodules*
+    Fetches all submodules.
+
+  • Set Variables                                   *neogit_fetch_set_variables*
+    Opens Branch Config popup for the current branch.
+    See |neogit_branch_config_popup|.
+
+==============================================================================
+Log Popup                                                     *neogit_log_popup*
+
+(TODO)
+
+==============================================================================
+Merge Popup                                                 *neogit_merge_popup*
+
+(TODO)
+
+==============================================================================
+Remote Popup                                               *neogit_remote_popup*
+
+(TODO)
+
+==============================================================================
+Remote Config Popup                                 *neogit_remote_config_popup*
+
+Allows configuring some common config variables for the selected remote.
+
+Remote:
+  • remote.<name>.url                                 *neogit_remote_config_url*
+    The URL of a remote repository.
+
+  • remote.<name>.fetch                             *neogit_remote_config_fetch*
+    The default set of "refspec" for git fetch.
+
+  • remote.<name>.pushurl                         *neogit_remote_config_pushurl*
+    The push URL of a remote repository
+
+  • remote.<name>.push                               *neogit_remote_config_push*
+    The default set of "refspec" for git-push
+
+  • remote.<name>.tagOpt                           *neogit_remote_config_tagOpt*
+    Setting this value to --no-tags disables automatic tag following when
+    fetching from remote <name>. Setting it to --tags will fetch every tag
+    from remote <name>, even if they are not reachable from remote branch
+    heads.
+
+    Passing these flags directly to git fetch can override this setting.
+    See |neogit_fetch_popup_args|.
+
+==============================================================================
+Pull Popup                                                   *neogit_pull_popup*
+
+Variables:                                         *neogit_pull_popup_variables*
+  • branch.<name>.rebase
+    When true, rebase the branch <name> on top of the fetched branch, instead
+    of merging the default branch from the default remote when "git pull" is
+    run. See "pull.rebase" for doing this in a non branch-specific manner.
+
+Arguments:                                              *neogit_pull_popup_args*
+  • --ff-only
+    Only update to the new history if there is no divergent local history.
+    This is the default when no method for reconciling divergent histories is
+    provided (via the --rebase=* flags).
+
+  • --rebase
+    When enabled, rebase the current branch on top of the upstream branch
+    after fetching. If there is a remote-tracking branch corresponding to the
+    upstream branch and the upstream branch was rebased since last fetched,
+    the rebase uses that information to avoid rebasing non-local changes.
+
+    See pull.rebase, branch.<name>.rebase and branch.autoSetupRebase if you 
+    want to make git pull always use --rebase instead of merging.
+
+    Note:
+    This is a potentially dangerous mode of operation. It rewrites history,
+    which does not bode well when you published that history already. Do not
+    use this option unless you understand the consequences.
+
+  • --autostash
+    Automatically create a temporary stash entry before the operation begins,
+    record it in the special ref MERGE_AUTOSTASH and apply it after the
+    operation ends. This means that you can run the operation on a dirty
+    worktree. However, use with care: the final stash application after a
+    successful merge might result in non-trivial conflicts.
+
+  • --tags
+    Fetch all tags from the remote (i.e., fetch remote tags refs/tags/* into
+    local tags with the same name), in addition to whatever else would
+    otherwise be fetched.
+
+Actions:                                             *neogit_pull_popup_actions*
+  • Pull into <current> from pushRemote                 *neogit_pull_pushRemote*
+    Pulls into the current branch from `branch.<name>.pushRemote`. If that is
+    unset, the user will be prompted to select a remote branch, which will
+    pulled from and used to set `branch.<name>.pushRemote`.
+
+  • Pull into <current> from @{upstream}                  *neogit_pull_upstream*
+    Pulls into the current branch from it's upstream counterpart. If that is
+    unset, the user will be prompted to select a remote branch, which will
+    pulled from and set as the upstream.
+
+  • Pull into <current> from elsewhere                   *neogit_pull_elsewhere*
+    Prompts the user to select a branch (local or remote), which is then
+    pulled in the current branch.
+
+  • Set Variables                                    *neogit_pull_set_variables*
+    Opens Branch Config popup for the current branch.
+    See |neogit_branch_config_popup|.
+
+==============================================================================
+Push Popup                                                   *neogit_push_popup*
+
+Arguments:                                              *neogit_push_popup_args*
+  • --force-with-lease
+    Usually, "git push" refuses to update a remote ref that is not an ancestor
+    of the local ref used to overwrite it.
+
+    This option overrides this restriction if the current value of the remote
+    ref is the expected value. "git push" fails otherwise.
+
+    Imagine that you have to rebase what you have already published. You will
+    have to bypass the "must fast-forward" rule in order to replace the
+    history you originally published with the rebased history. If somebody
+    else built on top of your original history while you are rebasing, the tip
+    of the branch at the remote may advance with their commit, and blindly
+    pushing with --force will lose their work.
+
+    This option allows you to say that you expect the history you are updating
+    is what you rebased and want to replace. If the remote ref still points at
+    the commit you specified, you can be sure that no other people did
+    anything to the ref. It is like taking a "lease" on the ref without
+    explicitly locking it, and the remote ref is updated only if the "lease"
+    is still valid.
+
+  • --force
+    Usually, the command refuses to update a remote ref that is not an
+    ancestor of the local ref used to overwrite it. Also, when
+    --force-with-lease option is used, the command refuses to update a remote
+    ref whose current value does not match what is expected.
+
+    This flag disables these checks, and can cause the remote repository to
+    lose commits; use it with care.
+
+    Note that --force applies to all the refs that are pushed, hence using it
+    with push.default set to matching or with multiple push destinations
+    configured with remote.*.push may overwrite refs other than the current
+    branch (including local refs that are strictly behind their remote
+    counterpart).
+
+  • --set-upstream
+    For every branch that is up to date or successfully pushed, add upstream
+    (tracking) reference.
+
+  • --no-verify
+    Skips runing any pre-push git hooks. By default, all hooks are run.
+
+  • --dry-run
+    Do everything except actually send the updates.
+
+Actions:                                             *neogit_push_popup_actions*
+  • Push <current> to pushRemote                        *neogit_push_pushRemote*
+    Pushes the current branch to `branch.<name>.pushRemote`. If that is unset,
+    to `remote.pushDefault`. And if _that_ is unset, the user will be prompted
+    to select a remote, which will be used to set `branch.<name>.pushRemote`,
+    and pushed to.
+
+  • Push <current> to @{upstream}                         *neogit_push_upstream*
+    Pushes the current branch to it's upstream branch. If not set, then the
+    user will be prompted to select a remote, which will be set as the
+    current branch's upstream and pushed to.
+
+  • Push <current> elsewhere                             *neogit_push_elsewhere*
+    Pushes the current branch to a branch selected by the user.
+
+  • Push another branch                             *neogit_push_another_branch*
+    Push a branch or commit somewhere. Both source and target are selected by
+    the user.
+
+  • Push explicit refspecs                       *neogit_push_explicit_refspecs*
+    (Not yet implemented)
+
+  • Push matching branches                       *neogit_push_matching_branches*
+    (Not yet implemented)
+
+  • Push a tag                                                 *neogit_push_tag*
+    (Not yet implemented)
+
+  • Push all tags                                         *neogit_push_all_tags*
+    Pushes all tags to selected remote. If only one remote exists, that will
+    be used; otherwise the user will be prompted to select a remote.
+
+  • Set Variables                                    *neogit_push_set_variables*
+    Opens Branch Config popup for the current branch.
+    See |neogit_branch_config_popup|.
+
+==============================================================================
+Rebase Popup                                               *neogit_rebase_popup*
+
+(TODO)
+
+==============================================================================
+Revert Popup                                               *neogit_revert_popup*
+
+Arguments:                                            *neogit_revert_popup_args*
+  • --mainline
+    Usually you cannot revert a merge because you do not know which side of the
+    merge should be considered the mainline. This option specifies the parent
+    number (starting from 1) of the mainline and allows revert to reverse the
+    change relative to the specified parent.
+
+    Reverting a merge commit declares that you will never want the tree changes
+    brought in by the merge. As a result, later merges will only bring in tree
+    changes introduced by commits that are not ancestors of the previously
+    reverted merge. This may or may not be what you want.
+
+  • --edit
+    With this option, git revert will let you edit the commit message prior to
+    committing the revert. This is the default.
+
+    Cannot be used with --no-edit
+
+  • --no-edit
+    With this option, git revert will auto-generate the commit message without
+    bringing up the commit message editor.
+
+    Cannot be used with --edit
+
+Actions:                                           *neogit_revert_popup_actions*
+  • Revert Commit(s)                                     *neogit_revert_commits*
+    Reverts one or more commits. If any commits are under the cursor, or
+    selected, they will be used. Otherwise a selector interface will come up.
+
+    Will create a commit of the reverted changes.
+
+  • Revert Changes                                       *neogit_revert_changes*
+    Reverts one or more commits WITHOUT committing the worktree. If any commits
+    are under the cursor, or selected, they will be used. Otherwise a selector
+    interface will come up.
+
+==============================================================================
+Reset Popup                                                 *neogit_reset_popup*
+
+All actions will default to the commit under cursor if there is one, or prompt
+the user to select one if there is not.
+
+Actions:                                            *neogit_reset_popup_actions*
+  • Mixed                                                   *neogit_reset_mixed*
+    Resets the index but not the working tree (i.e., the changed files are
+    preserved but not marked for commit).
+
+  • Soft                                                     *neogit_reset_soft*
+    Does not touch the index file or the working tree at all (but resets the
+    head to <commit>, just like all modes do). This leaves all your changed
+    files "Changes to be committed", as git status would put it.
+
+  • Hard                                                     *neogit_reset_hard*
+    Resets the index and working tree. Any changes to tracked files in the
+    working tree since <commit> are discarded. Any untracked files or
+    directories in the way of writing any tracked files are simply deleted.
+
+  • Keep                                                     *neogit_reset_keep*
+    Resets index entries and updates files in the working tree that are
+    different between <commit> and HEAD. If a file that is different between
+    <commit> and HEAD has local changes, reset is aborted.
+
+  • Index                                                   *neogit_reset_index*
+    Reset the index to <commit>, keeping the HEAD and working tree as-is.
+
+    For example, if the commit refers to the HEAD, then this would unstage all
+    changes.
+
+  • Worktree                                             *neogit_reset_worktree*
+    (Not yet implemented)
+
+==============================================================================
+Stash Popup                                                 *neogit_stash_popup*
+
+(TODO)
+
+==============================================================================
+Ignore Popup                                               *neogit_ignore_popup*
+
+Actions:                                           *neogit_ignore_popup_actions*
+  • Shared at top-level                                 *neogit_ignore_toplevel*
+    Appends selected filepaths to the `.gitignore` file located in the
+    project's root.
+
+  • Shared in sub-directory                               *neogit_ignore_subdir*
+    Appends selected filepaths to the `.gitignore` file located in the
+    selected subdirectory, creating one if it doesn't exist.
+
+  • Private for Repo                                     *neogit_ignore_private*
+    Appends selected filepaths to the user's private exclude file in the
+    current repository.
+
+  • Private Global                                        *neogit_ignore_global*
+    If git config value {core.excludesFile} is set, this action will append
+    selected filepaths to the global excludes file.
+
+==============================================================================
+Tag Popup                                                     *neogit_tag_popup*
+
+Arguments:                                               *neogit_tag_popup_args*
+  • --force
+    Replace an existing tag with the given name (instead of failing)
+
+  • --annotate
+    Make an unsigned, annotated tag object
+
+  • --sign
+    Make a GPG-signed tag, using the default e-mail address’s key. The default
+    behavior of tag GPG-signing is controlled by `tag.gpgSign` configuration
+    variable if it exists, or disabled otherwise.
+
+  • --local-user
+    Make a GPG-signed tag, using the given key.
+
+Actions:                                              *neogit_tag_popup_actions*
+  • Tag                                                         *neogit_tag_tag*
+    Creates a new TAG at specified REV.
+
+  • Release                                                 *neogit_tag_release*
+    (Not yet implemented)
+
+  • Delete                                                   *neogit_tag_delete*
+    Deletes one or more tags.
+
+  • Prune                                                     *neogit_tag_prune*
+    Offers to delete tags missing locally from REMOTE, and vice versa.
+
+==============================================================================
+7. Buffers                                                      *neogit_buffers*
+
+• Status                                                  |neogit_status_buffer|
+• Log                                                        |neogit_log_buffer|
+• Reflog                                                  |neogit_reflog_buffer|
+• Commit                                                  |neogit_commit_buffer|
+
+==============================================================================
+Status Buffer                                             *neogit_status_buffer*
+(TODO)
+
+Untracked Files                                 *neogit_status_buffer_untracked*
+  Neogit respects status.showUntrackedFiles. It can be set to "no" to hide
+  untracked files entirely, "normal" to show files and directories (default),
+  or "all" to show all files in all directories.
+
+==============================================================================
+Log Buffer                                                   *neogit_log_buffer*
+
+(TODO)
+
+==============================================================================
+Reflog Buffer                                             *neogit_reflog_buffer*
+
+(TODO)
+
+==============================================================================
+Commit Buffer                                             *neogit_commit_buffer*
+
+(TODO)
+
+
+vim:tw=78:ts=8:ft=help

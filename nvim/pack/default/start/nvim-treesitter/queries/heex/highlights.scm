@@ -27,13 +27,10 @@
 (doctype) @constant
 
 ; HEEx comments are highlighted as such
-(comment) @comment
+(comment) @comment @spell
 
 ; HEEx text content is treated as markup
 (text) @text
-
-; Tree-sitter parser errors
-(ERROR) @error
 
 ; HEEx tags and slots are highlighted as HTML
 [

@@ -1,2 +1,1 @@
-;; General syntax
-;(ERROR) @error
+;; This file is a placeholder to enable the highlighting of injected languages.

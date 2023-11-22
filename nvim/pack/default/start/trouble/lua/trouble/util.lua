@@ -22,6 +22,7 @@ function M.jump_to_item(win, precmd, item)
   end
   vim.api.nvim_set_current_buf(item.bufnr)
   vim.api.nvim_win_set_cursor(win or 0, { item.start.line + 1, item.start.character })
+  vim.api.nvim_exec_autocmds("User", { pattern = "TroubleJump", modeline = false })
 end
 
 function M.fix_mode(opts)
@@ -44,6 +45,7 @@ function M.fix_mode(opts)
   end
 end
 
+---@return number
 function M.count(tab)
   local count = 0
   for _ in pairs(tab) do
@@ -121,11 +123,9 @@ end
 
 -- based on the Telescope diagnostics code
 -- see https://github.com/nvim-telescope/telescope.nvim/blob/0d6cd47990781ea760dd3db578015c140c7b9fa7/lua/telescope/utils.lua#L85
-
 function M.process_item(item, bufnr)
   bufnr = bufnr or item.bufnr
   local filename = vim.api.nvim_buf_get_name(bufnr)
-  local uri = vim.uri_from_bufnr(bufnr)
   local range = item.range or item.targetSelectionRange
 
   local start = {
@@ -143,37 +143,52 @@ function M.process_item(item, bufnr)
   if finish.character == nil or finish.line == nil then
     M.error("Found an item for Trouble without finish range " .. vim.inspect(finish))
   end
-  local row = start.line
-  local col = start.character
+  local row = start.line ---@type number
+  local col = start.character ---@type number
 
   if not item.message and filename then
-    local fd = assert(uv.fs_open(filename, "r", 438))
-    local stat = assert(uv.fs_fstat(fd))
-    local data = assert(uv.fs_read(fd, stat.size, 0))
-    assert(uv.fs_close(fd))
+    -- check if the filename is a uri
+    if string.match(filename, "^%w+://") ~= nil then
+      if not vim.api.nvim_buf_is_loaded(bufnr) then
+        vim.fn.bufload(bufnr)
+      end
+      local lines = vim.api.nvim_buf_get_lines(bufnr, row, row + 1, false)
+      item.message = lines[1] or ""
+    else
+      local fd = assert(uv.fs_open(filename, "r", 438))
+      local stat = assert(uv.fs_fstat(fd))
+      local data = assert(uv.fs_read(fd, stat.size, 0))
+      assert(uv.fs_close(fd))
 
-    item.message = vim.split(data, "\n", { plain = true })[row + 1] or ""
+      item.message = vim.split(data, "\n", { plain = true })[row + 1] or ""
+    end
   end
 
   ---@class Item
   ---@field is_file boolean
   ---@field fixed boolean
-  local ret
-  ret = {
+  local ret = {
     bufnr = bufnr,
     filename = filename,
     lnum = row + 1,
     col = col + 1,
     start = start,
     finish = finish,
-    sign = item.sign,
-    sign_hl = item.sign_hl,
+    sign = item.sign, ---@type string?
+    sign_hl = item.sign_hl, ---@type string?
     -- remove line break to avoid display issues
-    text = vim.trim(item.message:gsub("[\n]", "")):sub(0, vim.o.columns),
+    text = vim.trim(item.message:gsub("[\n]+", "")):sub(0, vim.o.columns),
     full_text = vim.trim(item.message),
     type = M.severity[item.severity] or M.severity[0],
-    code = item.code or (item.user_data and item.user_data.lsp and item.user_data.lsp.code),
-    source = item.source,
+    code = item.code or (item.user_data and item.user_data.lsp and item.user_data.lsp.code), ---@type string?
+    code_href = (item.codeDescription and item.codeDescription.href)
+      or (
+        item.user_data
+        and item.user_data.lsp
+        and item.user_data.lsp.codeDescription
+        and item.user_data.lsp.codeDescription.href
+      ), ---@type string?
+    source = item.source, ---@type string?
     severity = item.severity or 0,
   }
   return ret

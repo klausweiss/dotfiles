@@ -5,35 +5,30 @@ local log = require "nvim-tree.log"
 
 local M = {}
 
-local GROUP = "NvimTreeDiagnosticSigns"
-
-local severity_levels = { Error = 1, Warning = 2, Information = 3, Hint = 4 }
-local sign_names = {
-  { "NvimTreeSignError", "NvimTreeLspDiagnosticsError" },
-  { "NvimTreeSignWarning", "NvimTreeLspDiagnosticsWarning" },
-  { "NvimTreeSignInformation", "NvimTreeLspDiagnosticsInformation" },
-  { "NvimTreeSignHint", "NvimTreeLspDiagnosticsHint" },
+local severity_levels = {
+  Error = 1,
+  Warning = 2,
+  Information = 3,
+  Hint = 4,
 }
-
-local function add_sign(linenr, severity)
-  local buf = view.get_bufnr()
-  if not vim.api.nvim_buf_is_valid(buf) or not vim.api.nvim_buf_is_loaded(buf) then
-    return
-  end
-  local sign_name = sign_names[severity][1]
-  vim.fn.sign_place(0, GROUP, sign_name, buf, { lnum = linenr, priority = 2 })
-end
 
 local function from_nvim_lsp()
   local buffer_severity = {}
 
-  for _, diagnostic in ipairs(vim.diagnostic.get(nil, { severity = M.severity })) do
-    local buf = diagnostic.bufnr
-    if vim.api.nvim_buf_is_valid(buf) then
-      local bufname = vim.api.nvim_buf_get_name(buf)
-      local lowest_severity = buffer_severity[bufname]
-      if not lowest_severity or diagnostic.severity < lowest_severity then
-        buffer_severity[bufname] = diagnostic.severity
+  local is_disabled = false
+  if vim.fn.has "nvim-0.9" == 1 then
+    is_disabled = vim.diagnostic.is_disabled()
+  end
+
+  if not is_disabled then
+    for _, diagnostic in ipairs(vim.diagnostic.get(nil, { severity = M.severity })) do
+      local buf = diagnostic.bufnr
+      if vim.api.nvim_buf_is_valid(buf) then
+        local bufname = vim.api.nvim_buf_get_name(buf)
+        local lowest_severity = buffer_severity[bufname]
+        if not lowest_severity or diagnostic.severity < lowest_severity then
+          buffer_severity[bufname] = diagnostic.severity
+        end
       end
     end
   end
@@ -78,14 +73,6 @@ local function is_using_coc()
   return vim.g.coc_service_initialized == 1
 end
 
-function M.clear()
-  if not M.enable or not view.is_buf_valid(view.get_bufnr()) then
-    return
-  end
-
-  vim.fn.sign_unplace(GROUP)
-end
-
 function M.update()
   if not M.enable or not core.get_explorer() or not view.is_buf_valid(view.get_bufnr()) then
     return
@@ -101,8 +88,6 @@ function M.update()
       buffer_severity = from_nvim_lsp()
     end
 
-    M.clear()
-
     local nodes_by_line = utils.get_nodes_by_line(core.get_explorer().nodes, core.get_nodes_starting_line())
     for _, node in pairs(nodes_by_line) do
       node.diag_status = nil
@@ -115,32 +100,22 @@ function M.update()
         for line, node in pairs(nodes_by_line) do
           local nodepath = utils.canonical_path(node.absolute_path)
           log.line("diagnostics", "  %d checking nodepath '%s'", line, nodepath)
-          if
-            M.show_on_dirs
-            and vim.startswith(bufpath:gsub("\\", "/"), nodepath:gsub("\\", "/") .. "/")
-            and (not node.open or M.show_on_open_dirs)
-          then
+
+          local node_contains_buf = vim.startswith(bufpath:gsub("\\", "/"), nodepath:gsub("\\", "/") .. "/")
+          if M.show_on_dirs and node_contains_buf and (not node.open or M.show_on_open_dirs) then
             log.line("diagnostics", " matched fold node '%s'", node.absolute_path)
             node.diag_status = severity
-            add_sign(line, severity)
           elseif nodepath == bufpath then
             log.line("diagnostics", " matched file node '%s'", node.absolute_path)
             node.diag_status = severity
-            add_sign(line, severity)
           end
         end
       end
     end
     log.profile_end(profile)
+    require("nvim-tree.renderer").draw()
   end)
 end
-
-local links = {
-  NvimTreeLspDiagnosticsError = "DiagnosticError",
-  NvimTreeLspDiagnosticsWarning = "DiagnosticWarn",
-  NvimTreeLspDiagnosticsInformation = "DiagnosticInfo",
-  NvimTreeLspDiagnosticsHint = "DiagnosticHint",
-}
 
 function M.setup(opts)
   M.enable = opts.diagnostics.enable
@@ -153,14 +128,6 @@ function M.setup(opts)
 
   M.show_on_dirs = opts.diagnostics.show_on_dirs
   M.show_on_open_dirs = opts.diagnostics.show_on_open_dirs
-  vim.fn.sign_define(sign_names[1][1], { text = opts.diagnostics.icons.error, texthl = sign_names[1][2] })
-  vim.fn.sign_define(sign_names[2][1], { text = opts.diagnostics.icons.warning, texthl = sign_names[2][2] })
-  vim.fn.sign_define(sign_names[3][1], { text = opts.diagnostics.icons.info, texthl = sign_names[3][2] })
-  vim.fn.sign_define(sign_names[4][1], { text = opts.diagnostics.icons.hint, texthl = sign_names[4][2] })
-
-  for lhs, rhs in pairs(links) do
-    vim.cmd("hi def link " .. lhs .. " " .. rhs)
-  end
 end
 
 return M

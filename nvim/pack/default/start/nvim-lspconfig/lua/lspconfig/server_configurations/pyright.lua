@@ -7,6 +7,7 @@ local root_files = {
   'requirements.txt',
   'Pipfile',
   'pyrightconfig.json',
+  '.git',
 }
 
 local function organize_imports()
@@ -32,14 +33,16 @@ return {
   default_config = {
     cmd = { 'pyright-langserver', '--stdio' },
     filetypes = { 'python' },
-    root_dir = util.root_pattern(unpack(root_files)),
+    root_dir = function(fname)
+      return util.root_pattern(unpack(root_files))(fname)
+    end,
     single_file_support = true,
     settings = {
       python = {
         analysis = {
           autoSearchPaths = true,
           useLibraryCodeForTypes = true,
-          diagnosticMode = 'workspace',
+          diagnosticMode = 'openFilesOnly',
         },
       },
     },

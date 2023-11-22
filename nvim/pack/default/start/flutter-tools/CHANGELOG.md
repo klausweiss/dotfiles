@@ -1,5 +1,40 @@
 # Changelog
 
+## [1.5.1](https://github.com/akinsho/flutter-tools.nvim/compare/v1.5.0...v1.5.1) (2023-10-04)
+
+
+### Bug Fixes
+
+* **dap:** fix cwd not being considered ([0c97d46](https://github.com/akinsho/flutter-tools.nvim/commit/0c97d46afead1885560c5c5c8bbfe0a9f1d13f05))
+
+## [1.5.0](https://github.com/akinsho/flutter-tools.nvim/compare/v1.4.1...v1.5.0) (2023-10-01)
+
+
+### Features
+
+* **dap:** add custom commands to dap ([af591f5](https://github.com/akinsho/flutter-tools.nvim/commit/af591f5504250ba285a564aa75895e1e5fb166d6))
+
+## [1.4.1](https://github.com/akinsho/flutter-tools.nvim/compare/v1.4.0...v1.4.1) (2023-09-20)
+
+
+### Bug Fixes
+
+* lsp rename when files with import is opened in another buffer ([29da857](https://github.com/akinsho/flutter-tools.nvim/commit/29da857afe886ab476e69cd40af944b230628593))
+
+## [1.4.0](https://github.com/akinsho/flutter-tools.nvim/compare/v1.3.1...v1.4.0) (2023-09-18)
+
+
+### Features
+
+* add root_patterns to config ([#287](https://github.com/akinsho/flutter-tools.nvim/issues/287)) ([0ba9698](https://github.com/akinsho/flutter-tools.nvim/commit/0ba969873f1fb345efef4baa053c8c43c443ab84))
+
+## [1.3.1](https://github.com/akinsho/flutter-tools.nvim/compare/v1.3.0...v1.3.1) (2023-07-24)
+
+
+### Bug Fixes
+
+* **dap:** define adapter and config when running standalone dart ([#272](https://github.com/akinsho/flutter-tools.nvim/issues/272)) ([356f643](https://github.com/akinsho/flutter-tools.nvim/commit/356f64339ff44ae1e615b90bb0739892acf2c522))
+
 ## [1.3.0](https://github.com/akinsho/flutter-tools.nvim/compare/v1.2.1...v1.3.0) (2023-05-10)
 
 
