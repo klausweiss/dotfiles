@@ -1,15 +1,21 @@
 [user]
     email =
     name =
+
 [core]
     autocrlf = input
     editor = nvim
+    pager = delta
+
 [commit]
     gpgSign = true
+
 [tag]
     gpgSign = true
+
 [push]
     default = matching
+
 [alias]
     ignore = "!gi() { curl -L -s https://www.gitignore.io/api/$@ ;}; gi"
     new = "!gnew() { \
@@ -22,3 +28,17 @@ if [ $# -gt 0 ]; then \
   git commit -am \"Add $@ to .gitignore\"; \
 fi; \
 }; gnew"
+
+[interactive]
+    diffFilter = delta --color-only
+
+[delta]
+    navigate = true    # use n and N to move between diff sections
+    light = false      # set to true if you're in a terminal w/ a light background color (e.g. the default macOS terminal)
+
+[merge]
+    conflictstyle = diff3
+
+[diff]
+    colorMoved = default
+
