@@ -27,5 +27,6 @@ fonts
 gtk
 rofi
 vscodium
+xmonad
 xorg
 xterm

@@ -3,7 +3,12 @@
 [run]
 # Installing packages
 sudo pacman -Sy
+	feh
 	git-delta
+	i3lock
 	neovim
+	polybar
+	redshift
 	rofi
+	xmonad
 

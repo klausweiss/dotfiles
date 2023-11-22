@@ -1,0 +1,17 @@
+name: xmonad-config
+
+dependencies:
+  - base
+  - xmonad
+  - xmonad-contrib
+  - unliftio
+
+library:
+  source-dirs: .
+    
+executables:
+  xmonad:
+    main: xmonad.hs
+    dependencies:
+      - xmonad
+      - X11 >= 1.10
