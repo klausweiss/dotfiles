@@ -108,6 +108,10 @@ function mk_sound_info()
       local left, right = string.match(str, '.+ (%d+)%% .* (%d+)%%')
       left = tonumber(left)
       right = tonumber(right)
+      if left == nil then
+         local naughty = require("naughty")
+         naughty.notify { text = str, timeout = 0 }
+      end
       return math.floor((left + right) / 2)
    end
 
@@ -118,7 +122,7 @@ function mk_sound_info()
 
       awful.spawn.easy_async_with_shell
       (get_output_volume_cmd(self.sink_number), function(out, e, r, c)
-         self.output_volume = get_volume_from_two_percents_string(out)
+         self.output_volume = get_volume_from_two_percents_string("refresh output " .. out)
 
          self._refreshing_output_volume = false
          if not args.nonotify then
@@ -134,7 +138,7 @@ function mk_sound_info()
 
       awful.spawn.easy_async_with_shell
       (get_input_volume_cmd, function(out, e, r, c)
-         self.input_volume = get_volume_from_two_percents_string(out)
+         self.input_volume = get_volume_from_two_percents_string("refresh input " .. out)
 
          self._refreshing_input_volume = false
          if not args.nonotify then
