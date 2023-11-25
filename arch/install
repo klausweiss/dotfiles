@@ -3,6 +3,7 @@
 [run]
 # Installing packages
 sudo pacman -Sy
+	dunst
 	feh
 	git-delta
 	i3lock
