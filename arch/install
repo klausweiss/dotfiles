@@ -11,4 +11,6 @@ sudo pacman -Sy
 	redshift
 	rofi
 	xmonad
+yay -Sy
+	lux
 
