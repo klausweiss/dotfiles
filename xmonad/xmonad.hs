@@ -69,6 +69,7 @@ myStartupHook = do
     startRedshift
     startCompositionManager
     setWallpaper
+    setAutoScreenLock
     populateTray
     capslockIsCtrl
 
@@ -98,3 +99,7 @@ populateTray = do
     spawnOnce "nm-applet"
     spawnOnce "blueman-applet"
     spawnOnce "flameshot"
+
+setAutoScreenLock = do
+    spawnOnce "xss-lock -- i3lock -n --color 000000"
+
