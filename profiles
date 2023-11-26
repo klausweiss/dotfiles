@@ -23,10 +23,12 @@ void
 
 [xorg]
 awesome
+dunst
 fonts
 gtk
 polybar
 rofi
+touchegg
 vscodium
 xmonad
 xorg
