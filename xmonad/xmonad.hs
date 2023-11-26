@@ -67,6 +67,7 @@ myStartupHook = do
     setDefaultCursor xC_left_ptr
     startBars
     startRedshift
+    startCompositionManager
     setWallpaper
     populateTray
     capslockIsCtrl
@@ -89,6 +90,9 @@ startBars = do
 
 startRedshift = do
     spawnOnce "redshift -l 42.65:18.1"
+
+startCompositionManager = do
+    spawnOnce "picom"
 
 populateTray = do
     spawnOnce "nm-applet"
