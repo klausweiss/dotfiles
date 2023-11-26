@@ -8,9 +8,11 @@ sudo pacman -Sy
 	git-delta
 	i3lock
 	neovim
+	picom
 	polybar
 	redshift
 	rofi
+	touchegg
 	xmonad
 yay -Sy
 	lux
