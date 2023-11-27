@@ -4,6 +4,7 @@ import XMonad.Config.Desktop
 import XMonad.Util.Cursor (setDefaultCursor)
 import XMonad.Util.EZConfig (additionalKeysP)
 import XMonad.Util.SpawnOnce
+import XMonad.Util.Themes
 
 main =
     xmonad $
@@ -12,7 +13,7 @@ main =
             , modMask = mod4Mask
             , startupHook = myStartupHook
             , workspaces = myWorkspaces
-            , manageHook =  myManageHook <> manageHook desktopConfig
+            , manageHook = myManageHook <> manageHook desktopConfig
             }
             `additionalKeysP` myKeys
 
@@ -26,11 +27,16 @@ microphoneMuteCmd = "pactl set-source-mute @DEFAULT_SOURCE@ toggle"
 brightnessUpCmd = "lux -a 5%"
 brightnessDownCmd = "lux -s 5%"
 screenshotCmd = "flameshot gui"
+lastScreenshotCmd = "flameshot gui --last-region"
+lockScreenCmd = "i3lock -n --color 000000"
+fileManagerCmd = "thunar"
 
 myKeys =
     [ ("M-p", spawn launcherCmd)
-    , ("M-w", kill)
+    , ("M-q", kill)
     , ("M-S-w", spawn browserCmd)
+    , ("M-S-e", spawn fileManagerCmd)
+    , ("M-S-l", spawn lockScreenCmd)
     , ("<XF86MonBrightnessUp>", spawn brightnessUpCmd)
     , ("<XF86MonBrightnessDown>", spawn brightnessDownCmd)
     , ("<XF86AudioMute>", spawn volumeMuteCmd)
@@ -38,6 +44,7 @@ myKeys =
     , ("<XF86AudioRaiseVolume>", spawn volumeUpCmd)
     , ("<XF86AudioMicMute>", spawn microphoneMuteCmd)
     , ("<Print>", spawn screenshotCmd)
+    , ("S-<Print>", spawn lastScreenshotCmd)
     ]
 
 web = "1:web"
@@ -68,6 +75,7 @@ myStartupHook = do
     startBars
     startRedshift
     startCompositionManager
+    startTouchpadGesturesManager
     setWallpaper
     setAutoScreenLock
     populateTray
@@ -95,11 +103,13 @@ startRedshift = do
 startCompositionManager = do
     spawnOnce "picom"
 
+startTouchpadGesturesManager = do
+    spawnOnce "touchegg"
+
 populateTray = do
     spawnOnce "nm-applet"
     spawnOnce "blueman-applet"
     spawnOnce "flameshot"
 
 setAutoScreenLock = do
-    spawnOnce "xss-lock -- i3lock -n --color 000000"
-
+    spawnOnce $ "xss-lock -- " <> lockScreenCmd
