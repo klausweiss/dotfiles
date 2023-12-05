@@ -85,10 +85,10 @@ myStartupHook = do
     startRedshift
     startCompositionManager
     startTouchpadGesturesManager
+    capslockIsCtrl
     setWallpaper
     setAutoScreenLock
     populateTray
-    capslockIsCtrl
 
 capslockIsCtrl = do
     spawnOnce "setxkbmap pl"
