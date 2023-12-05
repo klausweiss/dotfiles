@@ -1,6 +1,8 @@
 import UnliftIO.Directory (getHomeDirectory)
 import XMonad
 import XMonad.Config.Desktop
+import XMonad.Layout.Grid
+import XMonad.Layout.Spacing (spacing)
 import XMonad.Util.Cursor (setDefaultCursor)
 import XMonad.Util.EZConfig (additionalKeysP)
 import XMonad.Util.SpawnOnce
@@ -14,6 +16,7 @@ main =
             , startupHook = myStartupHook
             , workspaces = myWorkspaces
             , manageHook = myManageHook <> manageHook desktopConfig
+            , layoutHook = myLayoutHook
             }
             `additionalKeysP` myKeys
 
@@ -57,6 +60,8 @@ myWorkspaces =
     , mail
     ]
         <> fmap show [4 .. 9]
+
+myLayoutHook = desktopLayoutModifiers . spacing 10 $ Grid ||| Full
 
 myManageHook =
     mconcat
