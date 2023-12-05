@@ -1,3 +1,4 @@
+import Data.Function ((&))
 import UnliftIO.Directory (getHomeDirectory)
 import XMonad
 import XMonad.Config.Desktop
@@ -59,9 +60,12 @@ myWorkspaces =
     , "3"
     , mail
     ]
-        <> fmap show [4 .. 9]
+        <> fmap show [5 .. 9]
 
-myLayoutHook = desktopLayoutModifiers . spacing 10 $ Grid ||| Full
+myLayoutHook =
+    Grid ||| Full
+        & desktopLayoutModifiers
+        & spacing 10
 
 myManageHook =
     mconcat
