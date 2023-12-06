@@ -4,6 +4,8 @@ import XMonad
 import XMonad.Config.Desktop
 import XMonad.Layout.Grid
 import XMonad.Layout.Spacing (spacing)
+import XMonad.StackSet (greedyView)
+import qualified XMonad.StackSet as W
 import XMonad.Util.Cursor (setDefaultCursor)
 import XMonad.Util.EZConfig (additionalKeysP)
 import XMonad.Util.SpawnOnce
@@ -49,15 +51,27 @@ myKeys =
     , ("<XF86AudioMicMute>", spawn microphoneMuteCmd)
     , ("<Print>", spawn screenshotCmd)
     , ("S-<Print>", spawn lastScreenshotCmd)
+    , -- workspace-related shortcuts
+      ("M-v", windows $ greedyView web)
+    , ("M-x", windows $ greedyView dev)
+    , ("M-c", windows $ greedyView notes)
+    , ("M-i", windows $ greedyView mail)
+    , ("M-a", windows $ greedyView "5")
+    , ("M-e", windows $ greedyView "6")
+    -- monitor shortcuts
+    -- , ("M-u", windows $ greedyView web)
+    -- , ("M-o", windows $ greedyView dev)
+    -- , ("M-y", windows $ greedyView notes)
     ]
 
 web = "1:web"
 dev = "2:dev"
+notes = "3:notes"
 mail = "4:mail"
 myWorkspaces =
     [ web
     , dev
-    , "3"
+    , notes
     , mail
     ]
         <> fmap show [5 .. 9]
@@ -74,7 +88,8 @@ myManageHook =
         , className =? "Signal" --> doShift mail
         , className =? "thunderbird" --> doShift mail
         , className =? "zoom" --> doShift mail
-        , className =? "slack" --> doShift mail
+        , className =? "Slack" --> doShift mail
+        , className =? "logseq" --> doShift notes
         ]
 
 myStartupHook :: X ()
