@@ -31,6 +31,7 @@ volumeUpCmd = "pactl set-sink-volume @DEFAULT_SINK@ +5%"
 volumeDownCmd = "pactl set-sink-volume @DEFAULT_SINK@ -5%"
 volumeMuteCmd = "pactl set-sink-mute @DEFAULT_SINK@ toggle"
 microphoneMuteCmd = "pactl set-source-mute @DEFAULT_SOURCE@ toggle"
+audioPauseCmd = "playerctl play-pause"
 brightnessUpCmd = "lux -a 5%"
 brightnessDownCmd = "lux -s 5%"
 screenshotCmd = "flameshot gui"
@@ -50,6 +51,7 @@ myKeys =
     , ("<XF86AudioLowerVolume>", spawn volumeDownCmd)
     , ("<XF86AudioRaiseVolume>", spawn volumeUpCmd)
     , ("<XF86AudioMicMute>", spawn microphoneMuteCmd)
+    , ("<XF86AudioPause>", spawn audioPauseCmd)
     , ("<Print>", spawn screenshotCmd)
     , ("S-<Print>", spawn lastScreenshotCmd)
     , -- workspace-related shortcuts
