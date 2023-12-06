@@ -89,7 +89,7 @@ myManageHook =
         , className =? "thunderbird" --> doShift mail
         , className =? "zoom" --> doShift mail
         , className =? "Slack" --> doShift mail
-        , className =? "logseq" --> doShift notes
+        , className =? "Logseq" --> doShift notes
         ]
 
 myStartupHook :: X ()
