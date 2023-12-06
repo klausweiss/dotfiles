@@ -9,6 +9,7 @@ sudo pacman -Sy
 	i3lock
 	neovim
 	picom
+	playerctl
 	polybar
 	redshift
 	rofi
