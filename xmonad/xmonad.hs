@@ -3,6 +3,7 @@ import UnliftIO.Directory (getHomeDirectory)
 import XMonad
 import XMonad.Actions.CycleWS (nextScreen, prevScreen, shiftNextScreen, shiftPrevScreen)
 import XMonad.Config.Desktop
+import XMonad.Hooks.SetWMName (setWMName)
 import XMonad.Layout.Grid
 import XMonad.Layout.Spacing (spacing)
 import XMonad.StackSet (greedyView, shift)
@@ -108,6 +109,7 @@ myManageHook =
 
 myStartupHook :: X ()
 myStartupHook = do
+    fixJvmGuisNotWorking
     startNotificationDaemon
     setDefaultCursor xC_left_ptr
     startBars
@@ -118,6 +120,9 @@ myStartupHook = do
     setWallpaper
     setAutoScreenLock
     populateTray
+
+fixJvmGuisNotWorking = do
+    setWMName "LG3D"
 
 capslockIsCtrl = do
     spawnOnce "setxkbmap pl"
