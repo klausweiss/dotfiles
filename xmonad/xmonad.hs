@@ -1,10 +1,11 @@
 import Data.Function ((&))
 import UnliftIO.Directory (getHomeDirectory)
 import XMonad
+import XMonad.Actions.CycleWS (nextScreen, prevScreen, shiftNextScreen, shiftPrevScreen)
 import XMonad.Config.Desktop
 import XMonad.Layout.Grid
 import XMonad.Layout.Spacing (spacing)
-import XMonad.StackSet (greedyView)
+import XMonad.StackSet (greedyView, shift)
 import qualified XMonad.StackSet as W
 import XMonad.Util.Cursor (setDefaultCursor)
 import XMonad.Util.EZConfig (additionalKeysP)
@@ -52,16 +53,27 @@ myKeys =
     , ("<Print>", spawn screenshotCmd)
     , ("S-<Print>", spawn lastScreenshotCmd)
     , -- workspace-related shortcuts
+      --   switch
       ("M-v", windows $ greedyView web)
     , ("M-x", windows $ greedyView dev)
     , ("M-c", windows $ greedyView notes)
     , ("M-i", windows $ greedyView mail)
     , ("M-a", windows $ greedyView "5")
     , ("M-e", windows $ greedyView "6")
-    -- monitor shortcuts
-    -- , ("M-u", windows $ greedyView web)
-    -- , ("M-o", windows $ greedyView dev)
-    -- , ("M-y", windows $ greedyView notes)
+    , --   move
+      ("M-S-v", windows $ shift web)
+    , ("M-S-x", windows $ shift dev)
+    , ("M-S-c", windows $ shift notes)
+    , ("M-S-i", windows $ shift mail)
+    , ("M-S-a", windows $ shift "5")
+    , ("M-S-e", windows $ shift "6")
+    , -- monitor shortcuts
+      --   switch
+      ("M-o", prevScreen)
+    , ("M-y", nextScreen)
+    , --   move
+      ("M-S-o", shiftPrevScreen)
+    , ("M-S-y", shiftNextScreen)
     ]
 
 web = "1:web"
