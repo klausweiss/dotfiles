@@ -125,9 +125,7 @@ fixJvmGuisNotWorking = do
     setWMName "LG3D"
 
 capslockIsCtrl = do
-    spawnOnce "setxkbmap pl"
-    spawnOnce "setxkbmap -option shift:both_capslock"
-    spawnOnce "setxkbmap -option caps:ctrl_modifier"
+    spawnOnce "setxkbmap pl -option shift:both_capslock -option caps:ctrl_modifier"
 
 setWallpaper = do
     home <- getHomeDirectory
