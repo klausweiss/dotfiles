@@ -2,6 +2,7 @@ import Data.Function ((&))
 import UnliftIO.Directory (getHomeDirectory)
 import XMonad
 import XMonad.Actions.CycleWS (nextScreen, prevScreen, shiftNextScreen, shiftPrevScreen)
+import XMonad.Actions.PhysicalScreens
 import XMonad.Config.Desktop
 import XMonad.Hooks.SetWMName (setWMName)
 import XMonad.Layout.Grid
@@ -72,11 +73,13 @@ myKeys =
     , ("M-S-e", windows $ shift "6")
     , -- monitor shortcuts
       --   switch
-      ("M-o", prevScreen)
-    , ("M-y", nextScreen)
+      ("M-u", viewScreen def 0)
+    , ("M-o", viewScreen def 1)
+    , ("M-y", viewScreen def 2)
     , --   move
-      ("M-S-o", shiftPrevScreen)
-    , ("M-S-y", shiftNextScreen)
+      ("M-S-u", sendToScreen def 0)
+    , ("M-S-o", sendToScreen def 1)
+    , ("M-S-y", sendToScreen def 2)
     ]
 
 web = "1:web"
