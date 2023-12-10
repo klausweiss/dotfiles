@@ -5,7 +5,7 @@ import XMonad.Actions.CycleWS (nextScreen, prevScreen, shiftNextScreen, shiftPre
 import XMonad.Actions.PhysicalScreens
 import XMonad.Config.Desktop
 import XMonad.Hooks.SetWMName (setWMName)
-import XMonad.Layout.Grid
+import XMonad.Layout.GridVariants
 import XMonad.Layout.Spacing (spacing)
 import XMonad.StackSet (greedyView, shift)
 import qualified XMonad.StackSet as W
@@ -95,7 +95,7 @@ myWorkspaces =
         <> fmap show [5 .. 9]
 
 myLayoutHook =
-    Grid ||| Full
+    Grid (16 / 9) ||| Full
         & desktopLayoutModifiers
         & spacing 10
 
@@ -103,12 +103,17 @@ myManageHook =
     mconcat
         [ className =? "firefox" --> doShift web
         , className =? "emacs" --> doShift dev
+        , jetbrainsIde --> doShift dev
         , className =? "Signal" --> doShift mail
         , className =? "thunderbird" --> doShift mail
         , className =? "zoom" --> doShift mail
         , className =? "Slack" --> doShift mail
         , className =? "Logseq" --> doShift notes
         ]
+  where
+    jetbrainsIde :: Query Bool
+    jetbrainsIde =
+        className =? "jetbrains-pycharm-ce"
 
 myStartupHook :: X ()
 myStartupHook = do
