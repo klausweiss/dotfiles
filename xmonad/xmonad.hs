@@ -4,9 +4,10 @@ import XMonad
 import XMonad.Actions.CycleWS (nextScreen, prevScreen, shiftNextScreen, shiftPrevScreen)
 import XMonad.Actions.PhysicalScreens
 import XMonad.Config.Desktop
+import XMonad.Hooks.ManageDocks (ToggleStruts(..))
 import XMonad.Hooks.SetWMName (setWMName)
 import XMonad.Layout.GridVariants
-import XMonad.Layout.Spacing (spacing)
+import XMonad.Layout.Spacing (spacing, smartSpacing)
 import XMonad.StackSet (greedyView, shift)
 import qualified XMonad.StackSet as W
 import XMonad.Util.Cursor (setDefaultCursor)
@@ -56,6 +57,7 @@ myKeys =
     , ("<XF86AudioPause>", spawn audioPauseCmd)
     , ("<Print>", spawn screenshotCmd)
     , ("S-<Print>", spawn lastScreenshotCmd)
+    , ("M-f", sendMessage ToggleStruts)
     , -- workspace-related shortcuts
       --   switch
       ("M-v", windows $ greedyView web)
@@ -97,7 +99,7 @@ myWorkspaces =
 myLayoutHook =
     Grid (16 / 9) ||| Full
         & desktopLayoutModifiers
-        & spacing 10
+        & smartSpacing 10
 
 myManageHook =
     mconcat
