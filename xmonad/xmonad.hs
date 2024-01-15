@@ -41,10 +41,12 @@ screenshotCmd = "flameshot gui"
 lastScreenshotCmd = "flameshot gui --last-region"
 lockScreenCmd = "i3lock -n --color 000000"
 fileManagerCmd = "thunar"
+powerMenuCmd = "rofi -show power-menu -modi power-menu:~/.dotfiles/rofi/rofi-power-menu/rofi-power-menu"
 
 myKeys =
     [ ("M-p", spawn launcherCmd)
     , ("M-q", kill)
+    , ("C-M1-<Delete>", spawn powerMenuCmd)
     , ("M-S-w", spawn browserCmd)
     , ("M-S-e", spawn fileManagerCmd)
     , ("M-S-l", spawn lockScreenCmd)
