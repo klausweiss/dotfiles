@@ -46,14 +46,14 @@ function M.merge_config(branch)
   local branches = util.merge(local_branches, remote_branches)
 
   return a.void(function(popup, c)
-    local target = FuzzyFinderBuffer.new(branches):open_async { prompt_prefix = "Upstream > " }
+    local target = FuzzyFinderBuffer.new(branches):open_async { prompt_prefix = "upstream" }
     if not target then
       return
     end
 
     local merge_value, remote_value
     if target:match([[/]]) then
-      local target_remote, target_branch = target:match("^([^/]*)/(.*)$")
+      local target_remote, target_branch = git.branch.parse_remote_branch(target)
       merge_value = "refs/heads/" .. target_branch
       remote_value = target_remote
     else

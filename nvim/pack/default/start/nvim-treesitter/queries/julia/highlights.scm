@@ -47,6 +47,12 @@
 (broadcast_call_expression
   (field_expression (identifier) @function.call .))
 
+(binary_expression
+  (_)
+  (operator) @_pipe
+  (identifier) @function.call
+  (#eq? @_pipe "|>"))
+
 ;; Builtins
 
 ((identifier) @function.builtin
@@ -392,6 +398,8 @@
   "as" @include)
 (export_statement
   "export" @include)
+(selected_import
+  ":" @punctuation.delimiter)
 
 (struct_definition
   ["struct" "end"] @keyword)

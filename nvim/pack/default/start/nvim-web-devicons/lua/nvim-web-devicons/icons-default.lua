@@ -47,6 +47,12 @@ local icons_by_filename = {
     cterm_color = "56",
     name = "Eslintrc",
   },
+  [".eslintignore"] = {
+    icon = "",
+    color = "#4b32c3",
+    cterm_color = "56",
+    name = "EslintIgnore",
+  },
   [".gitattributes"] = {
     icon = "",
     color = "#41535b",
@@ -82,6 +88,12 @@ local icons_by_filename = {
     color = "#019833",
     cterm_color = "28",
     name = "Gvimrc",
+  },
+  [".luaurc"] = {
+    icon = "",
+    color = "#00a2ff",
+    cterm_color = "75",
+    name = "Luaurc",
   },
   [".npmignore"] = {
     icon = "",
@@ -323,6 +335,18 @@ local icons_by_filename = {
     cterm_color = "196",
     name = "SvelteConfig",
   },
+  ["tailwind.config.js"] = {
+    icon = "󱏿",
+    color = "#20c2e3",
+    cterm_color = "45",
+    name = "TailwindConfig",
+  },
+  ["tsconfig.json"] = {
+    icon = "",
+    color = "#519aba",
+    cterm_color = "74",
+    name = "TSConfig",
+  },
   ["unlicense"] = {
     icon = "",
     color = "#d0bf41",
@@ -373,6 +397,12 @@ local icons_by_file_extension = {
     color = "#cbcb41",
     cterm_color = "185",
     name = "Ai",
+  },
+  ["app"] = {
+    icon = "",
+    color = "#9F0500",
+    cterm_color = "124",
+    name = "App",
   },
   ["applescript"] = {
     icon = "",
@@ -459,9 +489,9 @@ local icons_by_file_extension = {
     name = "Configuration",
   },
   ["cjs"] = {
-    icon = "",
-    color = "#cbcb41",
-    cterm_color = "185",
+    icon = "󰌞",
+    color = "#F1F134",
+    cterm_color = "227",
     name = "Cjs",
   },
   ["clj"] = {
@@ -680,6 +710,12 @@ local icons_by_file_extension = {
     cterm_color = "185",
     name = "Ejs",
   },
+  ["elf"] = {
+    icon = "",
+    color = "#9F0500",
+    cterm_color = "124",
+    name = "Elf",
+  },
   ["elm"] = {
     icon = "",
     color = "#519aba",
@@ -716,6 +752,12 @@ local icons_by_file_extension = {
     cterm_color = "140",
     name = "Ex",
   },
+  ["exe"] = {
+    icon = "",
+    color = "#9F0500",
+    cterm_color = "124",
+    name = "Exe",
+  },
   ["exs"] = {
     icon = "",
     color = "#a074c4",
@@ -741,7 +783,7 @@ local icons_by_file_extension = {
     name = "Flac",
   },
   ["fnl"] = {
-    icon = "🌜",
+    icon = "",
     color = "#fff3d7",
     cterm_color = "230",
     name = "Fennel",
@@ -957,9 +999,9 @@ local icons_by_file_extension = {
     name = "Jpg",
   },
   ["js"] = {
-    icon = "",
-    color = "#cbcb41",
-    cterm_color = "185",
+    icon = "󰌞",
+    color = "#F1F134",
+    cterm_color = "227",
     name = "Js",
   },
   ["json"] = {
@@ -1060,8 +1102,8 @@ local icons_by_file_extension = {
   },
   ["luau"] = {
     icon = "",
-    color = "#51a0cf",
-    cterm_color = "74",
+    color = "#00a2ff",
+    cterm_color = "75",
     name = "Luau",
   },
   ["m4a"] = {
@@ -1113,9 +1155,9 @@ local icons_by_file_extension = {
     name = "Mint",
   },
   ["mjs"] = {
-    icon = "",
-    color = "#f1e05a",
-    cterm_color = "185",
+    icon = "󰌞",
+    color = "#F1F134",
+    cterm_color = "227",
     name = "Mjs",
   },
   ["mk"] = {
@@ -1219,6 +1261,12 @@ local icons_by_file_extension = {
     color = "#ECECEC",
     cterm_color = "255",
     name = "OpenTypeFont",
+  },
+  ["out"] = {
+    icon = "",
+    color = "#9F0500",
+    cterm_color = "124",
+    name = "Out",
   },
   ["pck"] = {
     icon = "",
@@ -1450,8 +1498,8 @@ local icons_by_file_extension = {
   },
   ["scm"] = {
     icon = "󰘧",
-    color = "#000000",
-    cterm_color = "16",
+    color = "#eeeeee",
+    cterm_color = "255",
     name = "Scheme",
   },
   ["scss"] = {
@@ -1604,6 +1652,12 @@ local icons_by_file_extension = {
     cterm_color = "25",
     name = "Tcl",
   },
+  ["templ"] = {
+    icon = "",
+    color = "#dbbd30",
+    cterm_color = "178",
+    name = "Templ",
+  },
   ["terminal"] = {
     icon = "",
     color = "#31B53E",
@@ -1641,7 +1695,7 @@ local icons_by_file_extension = {
     name = "Tex",
   },
   ["tf"] = {
-    icon = "",
+    icon = "",
     color = "#5F43E9",
     cterm_color = "93",
     name = "Terraform",
@@ -1653,9 +1707,9 @@ local icons_by_file_extension = {
     name = "TFVars",
   },
   ["toml"] = {
-    icon = "",
-    color = "#6d8086",
-    cterm_color = "66",
+    icon = "",
+    color = "#ffffff",
+    cterm_color = "231",
     name = "Toml",
   },
   ["tres"] = {
@@ -1858,7 +1912,239 @@ local icons_by_file_extension = {
   },
 }
 
+local icons_by_operating_system = {
+  ["apple"] = {
+    icon = "",
+    color = "#A2AAAD",
+    cterm_color = "248",
+    name = "Apple",
+  },
+  ["windows"] = {
+    icon = "",
+    color = "#00A4EF",
+    cterm_color = "39",
+    name = "Windows",
+  },
+  ["linux"] = {
+    icon = "",
+    color = "#000000",
+    cterm_color = "16",
+    name = "Linux",
+  },
+  ["alma"] = {
+    icon = "",
+    color = "#000000",
+    cterm_color = "16",
+    name = "Almalinux",
+  },
+  ["alpine"] = {
+    icon = "",
+    color = "#0d597f",
+    cterm_color = "24",
+    name = "Alpine",
+  },
+  ["aosc"] = {
+    icon = "",
+    color = "#000000",
+    cterm_color = "16",
+    name = "AOSC",
+  },
+  ["arch"] = {
+    icon = "󰣇",
+    color = "#0f94d2",
+    cterm_color = "67",
+    name = "Arch",
+  },
+  ["artix"] = {
+    icon = "",
+    color = "#41b4d7",
+    cterm_color = "38",
+    name = "Artix",
+  },
+  ["budgie"] = {
+    icon = "",
+    color = "#ffffff",
+    cterm_color = "231",
+    name = "Budgie",
+  },
+  ["centos"] = {
+    icon = "",
+    color = "#a2518d",
+    cterm_color = "132",
+    name = "Centos",
+  },
+  ["debian"] = {
+    icon = "",
+    color = "#a80030",
+    cterm_color = "88",
+    name = "Debian",
+  },
+  ["deepin"] = {
+    icon = "",
+    color = "#2ca7f8",
+    cterm_color = "39",
+    name = "Deepin",
+  },
+  ["devuan"] = {
+    icon = "",
+    color = "#404a52",
+    cterm_color = "238",
+    name = "Devuan",
+  },
+  ["elementary"] = {
+    icon = "",
+    color = "#5890c2",
+    cterm_color = "67",
+    name = "Elementary",
+  },
+  ["endeavour"] = {
+    icon = "",
+    color = "#7b3db9",
+    cterm_color = "91",
+    name = "Endeavour",
+  },
+  ["fedora"] = {
+    icon = "",
+    color = "#072a5e",
+    cterm_color = "17",
+    name = "Fedora",
+  },
+  ["freebsd"] = {
+    icon = "",
+    color = "#c90f02",
+    cterm_color = "160",
+    name = "FreeBSD",
+  },
+  ["gentoo"] = {
+    icon = "󰣨",
+    color = "#b1abce",
+    cterm_color = "146",
+    name = "Gentoo",
+  },
+  ["guix"] = {
+    icon = "",
+    color = "#ffcc00",
+    cterm_color = "220",
+    name = "Guix",
+  },
+  ["illumos"] = {
+    icon = "",
+    color = "#ff430f",
+    cterm_color = "196",
+    name = "Illumos",
+  },
+  ["kali"] = {
+    icon = "",
+    color = "#ffffff",
+    cterm_color = "231",
+    name = "Kali",
+  },
+  ["mint"] = {
+    icon = "󰣭",
+    color = "#66af3d",
+    cterm_color = "70",
+    name = "Mint",
+  },
+  ["mageia"] = {
+    icon = "",
+    color = "#2397d4",
+    cterm_color = "67",
+    name = "Mageia",
+  },
+  ["manjaro"] = {
+    icon = "",
+    color = "#33b959",
+    cterm_color = "35",
+    name = "Manjaro",
+  },
+  ["nixos"] = {
+    icon = "",
+    color = "#7ab1db",
+    cterm_color = "110",
+    name = "NixOS",
+  },
+  ["openbsd"] = {
+    icon = "",
+    color = "#000000",
+    cterm_color = "16",
+    name = "OpenBSD",
+  },
+  ["opensuse"] = {
+    icon = "",
+    color = "#6fb424",
+    cterm_color = "70",
+    name = "openSUSE",
+  },
+  ["parrot"] = {
+    icon = "",
+    color = "#000000",
+    cterm_color = "16",
+    name = "Parrot",
+  },
+  ["pop_os"] = {
+    icon = "",
+    color = "#48b9c7",
+    cterm_color = "73",
+    name = "Pop_OS",
+  },
+  ["raspberry_pi"] = {
+    icon = "",
+    color = "#be1848",
+    cterm_color = "161",
+    name = "RaspberryPiOS",
+  },
+  ["redhat"] = {
+    icon = "󱄛",
+    color = "#EE0000",
+    cterm_color = "196",
+    name = "Redhat",
+  },
+  ["rocky"] = {
+    icon = "",
+    color = "#0fb37d",
+    cterm_color = "36",
+    name = "RockyLinux",
+  },
+  ["sabayon"] = {
+    icon = "",
+    color = "#c6c6c6",
+    cterm_color = "251",
+    name = "Sabayon",
+  },
+  ["slackware"] = {
+    icon = "",
+    color = "#475fa9",
+    cterm_color = "61",
+    name = "Slackware",
+  },
+  ["solus"] = {
+    icon = "",
+    color = "#4b5163",
+    cterm_color = "239",
+    name = "Solus",
+  },
+  ["ubuntu"] = {
+    icon = "",
+    color = "#dd4814",
+    cterm_color = "196",
+    name = "Ubuntu",
+  },
+  ["void"] = {
+    icon = "",
+    color = "#295340",
+    cterm_color = "23",
+    name = "Void",
+  },
+  ["zorin"] = {
+    icon = "",
+    color = "#14a1e8",
+    cterm_color = "39",
+    name = "Zorin",
+  },
+}
+
 return {
   icons_by_filename = icons_by_filename,
   icons_by_file_extension = icons_by_file_extension,
+  icons_by_operating_system = icons_by_operating_system,
 }

@@ -4,6 +4,10 @@
 [![Version](https://img.shields.io/github/v/release/lewis6991/gitsigns.nvim)](https://github.com/lewis6991/gitsigns.nvim/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Gitter](https://badges.gitter.im/gitsigns-nvim/community.svg)](https://gitter.im/gitsigns-nvim/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
+<a href="https://dotfyle.com/plugins/lewis6991/gitsigns.nvim">
+  <img src="https://dotfyle.com/plugins/lewis6991/gitsigns.nvim/shield" />
+</a>
+
 
 Super fast git decorations implemented purely in Lua.
 
@@ -69,6 +73,7 @@ require('gitsigns').setup {
   watch_gitdir = {
     follow_files = true
   },
+  auto_attach = true,
   attach_to_untracked = true,
   current_line_blame = false, -- Toggle with `:Gitsigns toggle_current_line_blame`
   current_line_blame_opts = {
@@ -269,7 +274,7 @@ This means the signs placed in the buffer reflect the changes introduced by that
 
 ### [trouble.nvim]
 
-If installed and enabled (via `config.trouble`; defaults to true if installed), `:Gitsigns setqflist` or `:Gitsigns seqloclist` will open Trouble instead of Neovim's built-in quickfix or location list windows.
+If installed and enabled (via `config.trouble`; defaults to true if installed), `:Gitsigns setqflist` or `:Gitsigns setloclist` will open Trouble instead of Neovim's built-in quickfix or location list windows.
 
 ### [lspsaga.nvim]
 

@@ -10,16 +10,8 @@ local operation = require("neogit.operations")
 local FuzzyFinderBuffer = require("neogit.buffers.fuzzy_finder")
 local BranchConfigPopup = require("neogit.popups.branch_config")
 
-local function parse_remote_branch_name(ref)
-  local offset = ref:find("/")
-  if not offset then
-    return nil, ref
-  end
-
-  local remote = ref:sub(1, offset - 1)
-  local branch_name = ref:sub(offset + 1, ref:len())
-
-  return remote, branch_name
+local function fire_branch_event(pattern, data)
+  vim.api.nvim_exec_autocmds("User", { pattern = pattern, modeline = false, data = data })
 end
 
 local function spin_off_branch(checkout)
@@ -28,18 +20,18 @@ local function spin_off_branch(checkout)
     checkout = true
   end
 
-  local name = input.get_user_input("branch > ")
-  if not name or name == "" then
+  local name =
+    input.get_user_input(("%s branch"):format(checkout and "Spin-off" or "Spin-out"), { strip_spaces = true })
+  if not name then
     return
   end
 
-  name, _ = name:gsub("%s", "-")
   git.branch.create(name)
 
   local current_branch_name = git.branch.current_full_name()
 
   if checkout then
-    git.cli.checkout.branch(name).call_sync()
+    git.cli.checkout.branch(name).call()
   end
 
   local upstream = git.branch.upstream()
@@ -52,6 +44,40 @@ local function spin_off_branch(checkout)
   end
 end
 
+---@param popup Popup
+---@param prompt string
+---@param checkout boolean
+---@return string|nil
+---@return string|nil
+local function create_branch(popup, prompt, checkout)
+  -- stylua: ignore
+  local options = util.deduplicate(util.merge(
+    { popup.state.env.commits[1] },
+    { git.branch.current() or "HEAD" },
+    git.branch.get_all_branches(false),
+    git.tag.list(),
+    git.refs.heads()
+  ))
+
+  local base_branch = FuzzyFinderBuffer.new(options):open_async { prompt_prefix = prompt }
+  if not base_branch then
+    return
+  end
+
+  local name = input.get_user_input("Create branch", { strip_spaces = true })
+  if not name then
+    return
+  end
+
+  git.branch.create(name, base_branch)
+  fire_branch_event("NeogitBranchCreate", { branch_name = name, base = base_branch })
+
+  if checkout then
+    git.branch.checkout(name, popup:get_arguments())
+    fire_branch_event("NeogitBranchCheckout", { branch_name = name })
+  end
+end
+
 M.spin_off_branch = operation("spin_off_branch", function()
   spin_off_branch(true)
 end)
@@ -61,14 +87,14 @@ M.spin_out_branch = operation("spin_out_branch", function()
 end)
 
 M.checkout_branch_revision = operation("checkout_branch_revision", function(popup)
-  local options = util.merge(popup.state.env.commits, git.branch.get_all_branches())
-
+  local options = util.merge(popup.state.env.commits, git.branch.get_all_branches(false), git.tag.list())
   local selected_branch = FuzzyFinderBuffer.new(options):open_async()
   if not selected_branch then
     return
   end
 
-  git.cli.checkout.branch(selected_branch).arg_list(popup:get_arguments()).call_sync():trim()
+  git.cli.checkout.branch(selected_branch).arg_list(popup:get_arguments()).call_sync()
+  fire_branch_event("NeogitBranchCheckout", { branch_name = selected_branch })
 end)
 
 M.checkout_local_branch = operation("checkout_local_branch", function(popup)
@@ -82,15 +108,16 @@ M.checkout_local_branch = operation("checkout_local_branch", function(popup)
   end)
 
   local target = FuzzyFinderBuffer.new(util.merge(local_branches, remote_branches)):open_async {
-    prompt_prefix = " branch > ",
+    prompt_prefix = "branch",
   }
 
   if target then
     if vim.tbl_contains(remote_branches, target) then
-      git.cli.checkout.track(target).arg_list(popup:get_arguments()).call_sync()
+      git.branch.track(target, popup:get_arguments())
     elseif target then
-      git.cli.checkout.branch(target).arg_list(popup:get_arguments()).call_sync()
+      git.branch.checkout(target, popup:get_arguments())
     end
+    fire_branch_event("NeogitBranchCheckout", { branch_name = target })
   end
 end)
 
@@ -100,38 +127,16 @@ M.checkout_recent_branch = operation("checkout_recent_branch", function(popup)
     return
   end
 
-  git.cli.checkout.branch(selected_branch).arg_list(popup:get_arguments()).call_sync():trim()
+  git.branch.checkout(selected_branch, popup:get_arguments())
+  fire_branch_event("NeogitBranchCheckout", { branch_name = selected_branch })
 end)
 
-M.checkout_create_branch = operation("checkout_create_branch", function()
-  local branches = git.branch.get_all_branches(false)
-  local current_branch = git.branch.current()
-  if current_branch then
-    table.insert(branches, 1, current_branch)
-  end
-
-  local name = input.get_user_input("branch > ")
-  if not name or name == "" then
-    return
-  end
-  name, _ = name:gsub("%s", "-")
-
-  local base_branch = FuzzyFinderBuffer.new(branches):open_async { prompt_prefix = " base branch > " }
-  if not base_branch then
-    return
-  end
-
-  git.cli.checkout.new_branch_with_start_point(name, base_branch).call_sync()
+M.checkout_create_branch = operation("checkout_create_branch", function(popup)
+  create_branch(popup, "Create and checkout branch starting at", true)
 end)
 
-M.create_branch = operation("create_branch", function()
-  local name = input.get_user_input("branch > ")
-  if not name or name == "" then
-    return
-  end
-
-  name, _ = name:gsub("%s", "-")
-  git.branch.create(name)
+M.create_branch = operation("create_branch", function(popup)
+  create_branch(popup, "Create branch starting at", false)
 end)
 
 M.configure_branch = operation("configure_branch", function()
@@ -144,8 +149,8 @@ M.configure_branch = operation("configure_branch", function()
 end)
 
 M.rename_branch = operation("rename_branch", function()
-  local current_branch = git.repo.head.branch
-  local branches = git.branch.get_local_branches(true)
+  local current_branch = git.branch.current()
+  local branches = git.branch.get_local_branches(false)
   if current_branch then
     table.insert(branches, 1, current_branch)
   end
@@ -155,18 +160,18 @@ M.rename_branch = operation("rename_branch", function()
     return
   end
 
-  local new_name = input.get_user_input("new branch name > ", selected_branch)
-  if not new_name or new_name == "" then
+  local new_name = input.get_user_input(("Rename '%s' to"):format(selected_branch), { strip_spaces = true })
+  if not new_name then
     return
   end
 
-  new_name, _ = new_name:gsub("%s", "-")
   git.cli.branch.move.args(selected_branch, new_name).call()
 
   notification.info(string.format("Renamed '%s' to '%s'", selected_branch, new_name))
+  fire_branch_event("NeogitBranchRename", { branch_name = selected_branch, new_name = new_name })
 end)
 
-M.reset_branch = operation("reset_branch", function()
+M.reset_branch = operation("reset_branch", function(popup)
   if git.status.is_dirty() then
     local confirmation = input.get_confirmation(
       "Uncommitted changes will be lost. Proceed?",
@@ -177,10 +182,23 @@ M.reset_branch = operation("reset_branch", function()
     end
   end
 
+  local relatives = util.compact {
+    git.branch.pushRemote_ref(),
+    git.branch.upstream(),
+  }
+
+  local options = util.deduplicate(
+    util.merge(
+      popup.state.env.commits,
+      relatives,
+      git.branch.get_all_branches(false),
+      git.tag.list(),
+      git.refs.heads()
+    )
+  )
   local current = git.branch.current()
-  local branches = git.branch.get_all_branches(false)
-  local to = FuzzyFinderBuffer.new(branches):open_async {
-    prompt_prefix = string.format(" reset %s to > ", current),
+  local to = FuzzyFinderBuffer.new(options):open_async {
+    prompt_prefix = string.format("reset %s to", current),
   }
 
   if not to then
@@ -192,6 +210,7 @@ M.reset_branch = operation("reset_branch", function()
   git.log.update_ref(git.branch.current_full_name(), to)
 
   notification.info(string.format("Reset '%s' to '%s'", current, to))
+  fire_branch_event("NeogitBranchReset", { branch_name = current, resetting_to = to })
 end)
 
 M.delete_branch = operation("delete_branch", function()
@@ -201,7 +220,7 @@ M.delete_branch = operation("delete_branch", function()
     return
   end
 
-  local remote, branch_name = parse_remote_branch_name(selected_branch)
+  local remote, branch_name = git.branch.parse_remote_branch(selected_branch)
   local success = false
 
   if
@@ -251,6 +270,7 @@ M.delete_branch = operation("delete_branch", function()
     else
       notification.info(string.format("Deleted branch '%s'", branch_name))
     end
+    fire_branch_event("NeogitBranchDelete", { branch_name = branch_name })
   end
 end)
 

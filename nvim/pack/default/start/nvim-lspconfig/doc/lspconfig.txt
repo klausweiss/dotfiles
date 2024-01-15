@@ -390,7 +390,7 @@ below returns a function that takes as its argument the current buffer path.
 - `util.find_package_json_ancestor`: a function that locates the first parent
   directory containing a `package.json`.
 >
-   root_dir = util.find_json_ancestor
+   root_dir = util.find_package_json_ancestor
 <
 Note: On Windows, `lspconfig` always assumes forward slash normalized paths with
 capitalized drive letters.
@@ -477,9 +477,9 @@ contained in `:LspInfo`:
 EXAMPLE KEYBINDINGS                                      *lspconfig-keybindings*
 
 `lspconfig`, and the core client, do not map any keybindings by default. The
-following is an example Lua block which demonstrates how to leverage
+following is an example Lua block which demonstrates how to leverage the
 `LspAttach` (Nvim 0.8+) autocommand to apply keybindings after a language
-servers has attached to a given buffer.
+server has attached to a given buffer.
 >
   -- Setup language servers.
   local lspconfig = require('lspconfig')

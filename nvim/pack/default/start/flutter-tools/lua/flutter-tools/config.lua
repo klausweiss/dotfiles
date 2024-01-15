@@ -9,6 +9,8 @@ local ui = lazy.require("flutter-tools.ui") ---@module "flutter-tools.ui"
 ---@field target string
 ---@field dart_define {[string]: string}
 ---@field dart_define_from_file string
+---@field flutter_mode string
+---@field web_port number
 
 local M = {}
 

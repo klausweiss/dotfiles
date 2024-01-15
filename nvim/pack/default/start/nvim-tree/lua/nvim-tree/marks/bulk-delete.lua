@@ -9,7 +9,7 @@ local M = {
 }
 
 --- Delete nodes; each removal will be optionally notified
---- @param nodes table
+---@param nodes Node[]
 local function do_delete(nodes)
   for _, node in pairs(nodes) do
     remove_file.remove(node)
@@ -18,7 +18,7 @@ local function do_delete(nodes)
   marks.clear_marks()
 
   if not M.config.filesystem_watchers.enable then
-    require("nvim-tree.actions.reloaders.reloaders").reload_explorer()
+    require("nvim-tree.actions.reloaders").reload_explorer()
   end
 end
 
@@ -33,7 +33,7 @@ function M.bulk_delete()
   if M.config.ui.confirm.remove then
     local prompt_select = "Remove bookmarked ?"
     local prompt_input = prompt_select .. " y/N: "
-    lib.prompt(prompt_input, prompt_select, { "", "y" }, { "No", "Yes" }, function(item_short)
+    lib.prompt(prompt_input, prompt_select, { "", "y" }, { "No", "Yes" }, "nvimtree_bulk_delete", function(item_short)
       utils.clear_prompt()
       if item_short == "y" then
         do_delete(nodes)

@@ -9,7 +9,7 @@ local M = {
 }
 
 --- Delete nodes; each removal will be optionally notified
---- @param nodes table
+---@param nodes Node[]
 local function do_trash(nodes)
   for _, node in pairs(nodes) do
     remove_file.remove(node)
@@ -28,7 +28,7 @@ function M.bulk_trash()
   if M.config.ui.confirm.trash then
     local prompt_select = "Trash bookmarked ?"
     local prompt_input = prompt_select .. " y/N: "
-    lib.prompt(prompt_input, prompt_select, { "", "y" }, { "No", "Yes" }, function(item_short)
+    lib.prompt(prompt_input, prompt_select, { "", "y" }, { "No", "Yes" }, "nvimtree_bulk_trash", function(item_short)
       utils.clear_prompt()
       if item_short == "y" then
         do_trash(nodes)

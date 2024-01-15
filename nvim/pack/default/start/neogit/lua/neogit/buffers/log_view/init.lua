@@ -3,21 +3,24 @@ local ui = require("neogit.buffers.log_view.ui")
 local config = require("neogit.config")
 local popups = require("neogit.popups")
 local notification = require("neogit.lib.notification")
-
+local status_maps = require("neogit.config").get_reversed_status_maps()
 local CommitViewBuffer = require("neogit.buffers.commit_view")
 
 ---@class LogViewBuffer
 ---@field commits CommitLogEntry[]
 ---@field internal_args table
+---@field files string[]
 local M = {}
 M.__index = M
 
 ---Opens a popup for selecting a commit
 ---@param commits CommitLogEntry[]|nil
 ---@param internal_args table|nil
+---@param files string[]|nil list of files to filter by
 ---@return LogViewBuffer
-function M.new(commits, internal_args)
+function M.new(commits, internal_args, files)
   local instance = {
+    files = files,
     commits = commits,
     internal_args = internal_args,
     buffer = nil,
@@ -51,12 +54,17 @@ function M:open()
         [popups.mapping_for("CommitPopup")] = popups.open("commit", function(p)
           p { commit = self.buffer.ui:get_commit_under_cursor() }
         end),
+        [popups.mapping_for("FetchPopup")] = popups.open("fetch"),
+        [popups.mapping_for("MergePopup")] = popups.open("merge", function(p)
+          p { commit = self.buffer.ui:get_commit_under_cursor() }
+        end),
         [popups.mapping_for("PushPopup")] = popups.open("push", function(p)
           p { commit = self.buffer.ui:get_commit_under_cursor() }
         end),
         [popups.mapping_for("RebasePopup")] = popups.open("rebase", function(p)
           p { commit = self.buffer.ui:get_commit_under_cursor() }
         end),
+        [popups.mapping_for("RemotePopup")] = popups.open("remote"),
         [popups.mapping_for("RevertPopup")] = popups.open("revert", function(p)
           p { commits = self.buffer.ui:get_commits_in_selection() }
         end),
@@ -66,6 +74,7 @@ function M:open()
         [popups.mapping_for("TagPopup")] = popups.open("tag", function(p)
           p { commit = self.buffer.ui:get_commit_under_cursor() }
         end),
+        [popups.mapping_for("PullPopup")] = popups.open("pull"),
         ["d"] = function()
           if not config.check_integration("diffview") then
             notification.error("Diffview integration must be enabled for log diff")
@@ -86,12 +95,17 @@ function M:open()
         [popups.mapping_for("CommitPopup")] = popups.open("commit", function(p)
           p { commit = self.buffer.ui:get_commit_under_cursor() }
         end),
+        [popups.mapping_for("FetchPopup")] = popups.open("fetch"),
+        [popups.mapping_for("MergePopup")] = popups.open("merge", function(p)
+          p { commit = self.buffer.ui:get_commit_under_cursor() }
+        end),
         [popups.mapping_for("PushPopup")] = popups.open("push", function(p)
           p { commit = self.buffer.ui:get_commit_under_cursor() }
         end),
         [popups.mapping_for("RebasePopup")] = popups.open("rebase", function(p)
           p { commit = self.buffer.ui:get_commit_under_cursor() }
         end),
+        [popups.mapping_for("RemotePopup")] = popups.open("remote"),
         [popups.mapping_for("RevertPopup")] = popups.open("revert", function(p)
           p { commits = { self.buffer.ui:get_commit_under_cursor() } }
         end),
@@ -101,6 +115,17 @@ function M:open()
         [popups.mapping_for("TagPopup")] = popups.open("tag", function(p)
           p { commit = self.buffer.ui:get_commit_under_cursor() }
         end),
+        [popups.mapping_for("PullPopup")] = popups.open("pull"),
+        [status_maps["YankSelected"]] = function()
+          local yank = self.buffer.ui:get_commit_under_cursor()
+          if yank then
+            yank = string.format("'%s'", yank)
+            vim.cmd.let("@+=" .. yank)
+            vim.cmd.echo(yank)
+          else
+            vim.cmd("echo ''")
+          end
+        end,
         ["q"] = function()
           self:close()
         end,
@@ -108,7 +133,7 @@ function M:open()
           self:close()
         end,
         ["<enter>"] = function()
-          CommitViewBuffer.new(self.buffer.ui:get_commit_under_cursor()):open()
+          CommitViewBuffer.new(self.buffer.ui:get_commit_under_cursor(), self.files):open()
         end,
         ["<c-k>"] = function(buffer)
           local stack = self.buffer.ui:get_component_stack_under_cursor()

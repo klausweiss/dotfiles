@@ -63,7 +63,7 @@ For more detailed information on setting these up, see ["Advanced setup"](#advan
 
 ## Requirements
 
-- **Neovim 0.9.1** or later  ([nightly](https://github.com/neovim/neovim#install-from-source) recommended)
+- **Neovim 0.9.2** or later  ([nightly](https://github.com/neovim/neovim#install-from-source) recommended)
 - `tar` and `curl` in your path (or alternatively `git`)
 - A C compiler in your path and libstdc++ installed ([Windows users please read this!](https://github.com/nvim-treesitter/nvim-treesitter/wiki/Windows-support)).
 
@@ -175,6 +175,7 @@ We are looking for maintainers to add more parsers and to write query files for 
 <!--parserinfo-->
 - [x] [ada](https://github.com/briot/tree-sitter-ada) (maintained by @briot)
 - [x] [agda](https://github.com/tree-sitter/tree-sitter-agda) (maintained by @Decodetalkers)
+- [ ] [angular](https://github.com/steelsojka/tree-sitter-angular) (experimental)
 - [x] [apex](https://github.com/aheber/tree-sitter-sfapex) (maintained by @aheber)
 - [x] [arduino](https://github.com/ObserverOfTime/tree-sitter-arduino) (maintained by @ObserverOfTime)
 - [x] [astro](https://github.com/virchau13/tree-sitter-astro) (maintained by @virchau13)
@@ -222,6 +223,7 @@ We are looking for maintainers to add more parsers and to write query files for 
 - [x] [elvish](https://github.com/elves/tree-sitter-elvish) (maintained by @elves)
 - [ ] [embedded_template](https://github.com/tree-sitter/tree-sitter-embedded-template)
 - [x] [erlang](https://github.com/WhatsApp/tree-sitter-erlang) (maintained by @filmor)
+- [x] [facility](https://github.com/FacilityApi/tree-sitter-facility) (maintained by @bryankenote)
 - [x] [fennel](https://github.com/travonted/tree-sitter-fennel) (maintained by @TravonteD)
 - [x] [firrtl](https://github.com/amaanq/tree-sitter-firrtl) (maintained by @amaanq)
 - [x] [fish](https://github.com/ram02z/tree-sitter-fish) (maintained by @ram02z)
@@ -344,12 +346,13 @@ We are looking for maintainers to add more parsers and to write query files for 
 - [x] [r](https://github.com/r-lib/tree-sitter-r) (maintained by @echasnovski)
 - [ ] [racket](https://github.com/6cdh/tree-sitter-racket)
 - [x] [rasi](https://github.com/Fymyte/tree-sitter-rasi) (maintained by @Fymyte)
+- [x] [rbs](https://github.com/joker1007/tree-sitter-rbs) (maintained by @joker1007)
 - [x] [re2c](https://github.com/amaanq/tree-sitter-re2c) (maintained by @amaanq)
 - [x] [regex](https://github.com/tree-sitter/tree-sitter-regex) (maintained by @theHamsta)
 - [x] [rego](https://github.com/FallenAngel97/tree-sitter-rego) (maintained by @FallenAngel97)
 - [x] [pip requirements](https://github.com/ObserverOfTime/tree-sitter-requirements) (maintained by @ObserverOfTime)
 - [x] [rnoweb](https://github.com/bamonroe/tree-sitter-rnoweb) (maintained by @bamonroe)
-- [x] [robot](https://github.com/Hubro/tree-sitter-robot) (experimental, maintained by @ema2159)
+- [x] [robot](https://github.com/Hubro/tree-sitter-robot) (maintained by @Hubro)
 - [x] [ron](https://github.com/amaanq/tree-sitter-ron) (maintained by @amaanq)
 - [x] [rst](https://github.com/stsewd/tree-sitter-rst) (maintained by @stsewd)
 - [x] [ruby](https://github.com/tree-sitter/tree-sitter-ruby) (maintained by @TravonteD)
@@ -358,6 +361,7 @@ We are looking for maintainers to add more parsers and to write query files for 
 - [x] [scfg](https://git.sr.ht/~rockorager/tree-sitter-scfg) (maintained by @WhyNotHugo)
 - [ ] [scheme](https://github.com/6cdh/tree-sitter-scheme)
 - [x] [scss](https://github.com/serenadeai/tree-sitter-scss) (maintained by @elianiva)
+- [x] [slang](https://github.com/theHamsta/tree-sitter-slang) (experimental, maintained by @theHamsta)
 - [x] [slint](https://github.com/jrmoulton/tree-sitter-slint) (experimental, maintained by @jrmoulton)
 - [x] [smali](https://git.sr.ht/~yotam/tree-sitter-smali) (maintained by @amaanq)
 - [x] [smithy](https://github.com/indoorvivants/tree-sitter-smithy) (maintained by @amaanq, @keynmol)
@@ -371,6 +375,7 @@ We are looking for maintainers to add more parsers and to write query files for 
 - [x] [ssh_config](https://github.com/ObserverOfTime/tree-sitter-ssh-config) (maintained by @ObserverOfTime)
 - [x] [starlark](https://github.com/amaanq/tree-sitter-starlark) (maintained by @amaanq)
 - [x] [strace](https://github.com/sigmaSd/tree-sitter-strace) (maintained by @amaanq)
+- [x] [styled](https://github.com/mskelton/tree-sitter-styled) (maintained by @mskelton)
 - [x] [supercollider](https://github.com/madskjeldgaard/tree-sitter-supercollider) (maintained by @madskjeldgaard)
 - [x] [surface](https://github.com/connorlay/tree-sitter-surface) (maintained by @connorlay)
 - [x] [svelte](https://github.com/Himujjal/tree-sitter-svelte) (maintained by @elianiva)

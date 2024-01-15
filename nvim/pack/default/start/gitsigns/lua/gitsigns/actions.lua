@@ -149,9 +149,10 @@ M.toggle_deleted = function(value)
   return config.show_deleted
 end
 
----@param bufnr? integer
----@param hunks? Gitsigns.Hunk.Hunk[]?
----@return Gitsigns.Hunk.Hunk?
+--- @param bufnr? integer
+--- @param hunks? Gitsigns.Hunk.Hunk[]?
+--- @return Gitsigns.Hunk.Hunk? hunk
+--- @return integer? index
 local function get_cursor_hunk(bufnr, hunks)
   bufnr = bufnr or current_buf()
 
@@ -185,15 +186,14 @@ local function get_range(params)
   return range
 end
 
+--- @async
 --- @param bufnr integer
 --- @param bcache Gitsigns.CacheEntry
 --- @param greedy? boolean
 --- @param staged? boolean
 --- @return Gitsigns.Hunk.Hunk[]? hunks
 local function get_hunks(bufnr, bcache, greedy, staged)
-  local hunks --- @type Gitsigns.Hunk.Hunk[]
-
-  if greedy then
+  if greedy and config.diff_opts.linematch then
     -- Re-run the diff without linematch
     local buftext = util.buf_lines(bufnr)
     local text --- @type string[]?
@@ -205,8 +205,8 @@ local function get_hunks(bufnr, bcache, greedy, staged)
     if not text then
       return
     end
-    hunks = run_diff(text, buftext, false)
-    async.scheduler()
+    local hunks = run_diff(text, buftext, false)
+    manager.buf_check(bufnr)
     return hunks
   end
 
@@ -225,20 +225,21 @@ end
 local function get_hunk(bufnr, range, greedy, staged)
   local bcache = cache[bufnr]
   local hunks = get_hunks(bufnr, bcache, greedy, staged)
-  local hunk --- @type Gitsigns.Hunk.Hunk?
-  if range then
-    table.sort(range)
-    local top, bot = range[1], range[2]
-    hunk = Hunks.create_partial_hunk(hunks or {}, top, bot)
-    hunk.added.lines = api.nvim_buf_get_lines(bufnr, top - 1, bot, false)
-    hunk.removed.lines = vim.list_slice(
-      bcache.compare_text,
-      hunk.removed.start,
-      hunk.removed.start + hunk.removed.count - 1
-    )
-  else
-    hunk = get_cursor_hunk(bufnr, hunks)
+
+  if not range then
+    local hunk = get_cursor_hunk(bufnr, hunks)
+    return hunk
   end
+
+  table.sort(range)
+  local top, bot = range[1], range[2]
+  local hunk = Hunks.create_partial_hunk(hunks or {}, top, bot)
+  hunk.added.lines = api.nvim_buf_get_lines(bufnr, top - 1, bot, false)
+  hunk.removed.lines = vim.list_slice(
+    bcache.compare_text,
+    hunk.removed.start,
+    hunk.removed.start + hunk.removed.count - 1
+  )
   return hunk
 end
 
@@ -300,7 +301,7 @@ end
 --- @param bufnr integer
 --- @param hunk Gitsigns.Hunk.Hunk
 local function reset_hunk(bufnr, hunk)
-  local lstart, lend ---@type integer, integer
+  local lstart, lend --- @type integer, integer
   if hunk.type == 'delete' then
     lstart = hunk.added.start
     lend = hunk.added.start
@@ -734,11 +735,27 @@ local function feedkeys(keys)
   api.nvim_feedkeys(cy, 'n', false)
 end
 
+--- @param bufnr integer
+--- @param greedy? boolean
+--- @return Gitsigns.Hunk.Hunk? hunk
+--- @return boolean? staged
+local function get_hunk_with_staged(bufnr, greedy)
+  local hunk = get_hunk(bufnr, nil, greedy, false)
+  if hunk then
+    return hunk, false
+  end
+
+  hunk = get_hunk(bufnr, nil, greedy, true)
+  if hunk then
+    return hunk, true
+  end
+end
+
 --- Preview the hunk at the cursor position inline in the buffer.
-M.preview_hunk_inline = function()
+M.preview_hunk_inline = async.void(function()
   local bufnr = current_buf()
 
-  local hunk = get_cursor_hunk(bufnr)
+  local hunk, staged = get_hunk_with_staged(bufnr, true)
 
   if not hunk then
     return
@@ -746,11 +763,11 @@ M.preview_hunk_inline = function()
 
   clear_preview_inline(bufnr)
 
-  local winid ---@type integer
+  local winid --- @type integer
   manager.show_added(bufnr, ns_inline, hunk)
   if config._inline2 then
     if hunk.removed.count > 0 then
-      winid = manager.show_deleted_in_float(bufnr, ns_inline, hunk)
+      winid = manager.show_deleted_in_float(bufnr, ns_inline, hunk, staged)
     end
   else
     manager.show_deleted(bufnr, ns_inline, hunk)
@@ -773,7 +790,7 @@ M.preview_hunk_inline = function()
   if hunk.added.start <= 1 then
     feedkeys(hunk.removed.count .. '<C-y>')
   end
-end
+end)
 
 --- Select the hunk under the cursor.
 M.select_hunk = function()
@@ -931,8 +948,8 @@ C.blame_line = function(args, _)
   M.blame_line(args)
 end
 
----@param bcache Gitsigns.CacheEntry
----@param base string?
+--- @param bcache Gitsigns.CacheEntry
+--- @param base string?
 local function update_buf_base(bcache, base)
   bcache.base = base
   bcache:invalidate(true)
@@ -1123,14 +1140,14 @@ local function hunks_to_qflist(buf_or_filename, hunks, qflist)
   end
 end
 
----@param target 'all'|'attached'|integer|nil
----@return table[]?
+--- @param target 'all'|'attached'|integer|nil
+--- @return table[]?
 local function buildqflist(target)
   target = target or current_buf()
   if target == 0 then
     target = current_buf()
   end
-  local qflist = {} ---@type table[]
+  local qflist = {} --- @type table[]
 
   if type(target) == 'number' then
     local bufnr = target
@@ -1231,7 +1248,7 @@ M.setqflist = async.void(function(target, opts)
 end)
 
 C.setqflist = function(args, _)
-  local target = tonumber(args[2]) or args[2]
+  local target = tonumber(args[1]) or args[1]
   M.setqflist(target, args)
 end
 

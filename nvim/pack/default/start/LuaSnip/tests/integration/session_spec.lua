@@ -20,7 +20,6 @@ describe("session", function()
 
 	before_each(function()
 		helpers.clear()
-		ls_helpers.setup_jsregexp()
 		ls_helpers.session_setup_luasnip({ hl_choiceNode = true })
 
 		-- add a rather complicated snippet.
@@ -1899,4 +1898,211 @@ describe("session", function()
 			{2:-- SELECT --}                                      |]],
 		})
 	end)
+
+	it(
+		"Refocus works correctly when functionNode moves focus during refocus, and `to` is not `input_enter`ed.",
+		function()
+			exec_lua([[
+			ls.setup({
+				keep_roots = true,
+				link_roots = true,
+				link_children = true
+			})
+		]])
+			screen:detach()
+			screen = Screen.new(50, 4)
+			screen:attach()
+			screen:set_default_attr_ids({
+				[0] = { bold = true, foreground = Screen.colors.Blue },
+				[1] = { bold = true, foreground = Screen.colors.Brown },
+				[2] = { bold = true },
+				[3] = { background = Screen.colors.LightGray },
+				[4] = {
+					background = Screen.colors.Red1,
+					foreground = Screen.colors.White,
+				},
+			})
+
+			exec_lua([[
+			ls.add_snippets("all", {
+				s("tricky", {
+					-- add some text before snippet to make sure a snippet
+					-- expanded in i(1) will expand inside the snippet, not
+					-- before it.
+					t"|", i(1, "1234"), f(function()
+						return "asdf"
+					-- depend on first insertNode, so that this fNode is
+					-- updated when i(1) is changed.
+					end, {1})
+				}),
+				s("dummy", { t"qwer" })
+			})
+		]])
+
+			feed("itricky")
+			expand()
+			feed("dummy")
+			expand()
+			feed("<Space>dummy")
+			expand()
+			screen:expect({
+				grid = [[
+			|qwer qwer^asdf                                    |
+			{0:~                                                 }|
+			{0:~                                                 }|
+			{2:-- INSERT --}                                      |]],
+			})
+			jump(1)
+			jump(-1)
+			-- Bad:
+			-- screen:expect{grid=[[
+			--   |^q{3:wer }qwerasdf                                    |
+			--   {0:~                                                 }|
+			--   {0:~                                                 }|
+			--   {2:-- SELECT --}                                      |
+			-- ]]}
+
+			-- Good:
+			screen:expect({
+				grid = [[
+			|^q{3:wer qwer}asdf                                    |
+			{0:~                                                 }|
+			{0:~                                                 }|
+			{2:-- SELECT --}                                      |]],
+			})
+		end
+	)
+
+	it(
+		"snippet_roots stays an array if a snippet-root is removed during refocus, during trigger_expand.",
+		function()
+			exec_lua([[
+			ls.setup({
+				keep_roots = true,
+				-- don't update immediately; we want to ensure removal of the
+				-- snippet due to update of deleted nodes, and we have to
+				-- delete them before the update is triggered via autocmd
+				update_events = "BufWritePost"
+			})
+		]])
+
+			feed("o<Cr><Cr><Cr><Esc>kkifn")
+			expand()
+			jump(1)
+			jump(1)
+			jump(1)
+			feed("int a")
+			screen:expect({
+				grid = [[
+			                                                  |
+			                                                  |
+			/**                                               |
+			 * A short Description                            |
+			 */                                               |
+			public void myFunc(int a^) {                       |
+			                                                  |
+			}                                                 |
+			                                                  |
+			                                                  |
+			{0:~                                                 }|
+			{0:~                                                 }|
+			{0:~                                                 }|
+			{0:~                                                 }|
+			{0:~                                                 }|
+			{0:~                                                 }|
+			{0:~                                                 }|
+			{0:~                                                 }|
+			{0:~                                                 }|
+			{0:~                                                 }|
+			{0:~                                                 }|
+			{0:~                                                 }|
+			{0:~                                                 }|
+			{0:~                                                 }|
+			{0:~                                                 }|
+			{0:~                                                 }|
+			{0:~                                                 }|
+			{0:~                                                 }|
+			{0:~                                                 }|
+			{2:-- INSERT --}                                      |]],
+			})
+
+			-- delete snippet-text while an update for the dynamicNode is pending
+			-- => when the dynamicNode is left during `refocus`, the deletion will
+			-- be detected, and snippet removed from the jumplist.
+			feed("<Esc>kkkVjjjjjd")
+
+			feed("jifn")
+			expand()
+
+			-- make sure the snippet-roots-list is still an array, and we did not
+			-- insert at 2 after the deletion of the first snippet.
+			assert(exec_lua("return ls.session.snippet_roots[1][1] ~= nil"))
+			assert(exec_lua("return ls.session.snippet_roots[1][2] == nil"))
+		end
+	)
+
+	it(
+		"sibling-snippet's extmarks are shifted away before insertion.",
+		function()
+			screen:detach()
+			-- make screen smaller :)
+			screen = Screen.new(50, 3)
+			screen:attach()
+			screen:set_default_attr_ids({
+				[0] = { bold = true, foreground = Screen.colors.Blue },
+				[1] = { bold = true, foreground = Screen.colors.Brown },
+				[2] = { bold = true },
+				[3] = { background = Screen.colors.LightGray },
+				[4] = {
+					background = Screen.colors.Red1,
+					foreground = Screen.colors.White,
+				},
+			})
+
+			exec_lua([[
+			ls.setup{
+				link_children = true
+			}
+			ls.add_snippets("all", {
+				s({
+					trig = '_',
+					wordTrig = false,
+				}, {
+					t('_'),
+					i(1),
+				}),
+				ls.parser.parse_snippet({trig="(", wordTrig=false}, "($1)"),
+			})
+		]])
+
+			feed("i(")
+			expand()
+			feed("n_")
+			expand()
+			feed("h")
+			screen:expect({
+				grid = [[
+			(n_h^)                                             |
+			{0:~                                                 }|
+			{2:-- INSERT --}                                      |]],
+			})
+			-- jumped behind the insertNode, into $0.
+			jump(1)
+
+			feed("(")
+			expand()
+			feed("asdf")
+			jump(-1)
+			jump(-1)
+			jump(-1)
+			-- make sure that we only select h, ie. that the insertNode only
+			-- contains h, and not the ()-snippet.
+			screen:expect({
+				grid = [[
+			(n_^h(asdf))                                       |
+			{0:~                                                 }|
+			{2:-- SELECT --}                                      |]],
+			})
+		end
+	)
 end)

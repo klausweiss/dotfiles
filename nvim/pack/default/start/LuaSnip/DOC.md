@@ -130,6 +130,7 @@ When expanding a new snippet, it becomes a child of the snippet whose region it
 is expanded inside, and a root if it is not inside any snippet's region.  
 If it is inside another snippet, the specific node it is inside is determined,
 and the snippet then nested inside that node.
+
 * If that node is interactive (for example, an `insertNode`), the new snippet
   will be traversed when the node is visited, as long as the
   configuration-option `link_children` is enabled. If it is not enabled, it is
@@ -161,6 +162,7 @@ some nodes (`user_args` for function/dynamicNode). These `opts` are
 only mentioned if they accept options that are not common to all nodes.
 
 Common opts:
+
 * `node_ext_opts` and `merge_node_ext_opts`: Control `ext_opts` (most likely
   highlighting) of the node. Described in detail in [ext_opts](#ext_opts)
 * `key`: The node can be reffered to by this key. Useful for either [Key
@@ -246,15 +248,15 @@ s({trig="trigger"}, {})
 
     Besides these predefined engines, it is also possible to create new ones:
     Instead of a string, pass a function which satisfies
-    `trigEngine(trigger) -> (matcher(line_to_cursor, trigger) -> whole_match,
-    captures)`
-    (ie. the function receives `trig`, can, for example, precompile a regex, and
-    then returns a function responsible for determining whether the current
-    cursor-position (represented by the line up to the cursor) matches the
-    trigger (it is passed again here so engines which don't do any
-    trigger-specific work (like compilation) can just return a static
-    `matcher`), and what the capture-groups are).
-    The `lua`-engine, for example, can be (and is!) implemented like this:
+    `trigEngine(trigger, opts) -> (matcher(line_to_cursor, trigger) ->
+    whole_match, captures)`
+    (ie. the function receives `trig` and `trigEngineOpts` can, for example,
+    precompile a regex, and then returns a function responsible for determining
+    whether the current cursor-position (represented by the line up to the
+    cursor) matches the trigger (it is passed again here so engines which don't
+    do any trigger-specific work (like compilation) can just return a static
+    `matcher`), and what the capture-groups are).  
+    The `lua`-engine, for example, can be implemented like this:
     ```lua
     local function matcher(line_to_cursor, trigger)
         -- look for match which ends at the cursor.
@@ -287,6 +289,16 @@ s({trig="trigger"}, {})
     The predefined engines are defined in
     [`trig_engines.lua`](https://github.com/L3MON4D3/LuaSnip/blob/master/lua/luasnip/nodes/util/trig_engines.lua),
     read it for more examples.
+
+  - `trigEngineOpts`: `table<string, any>`, options for the used trigEngine.  
+    The valid options are:
+    * `max_len`: number, upper bound on the length of the trigger.  
+      If this is set, the `line_to_cursor` will be truncated (from the cursor of
+      course) to `max_len` characters before performing the match.  
+      This is implemented because feeding long `line_to_cursor` into eg. the
+      pattern-trigEngine will hurt performance quite a bit (see issue
+      Luasnip#1103).  
+      This option is implemented for all `trigEngines`. 
 
   - `docstring`: string, textual representation of the snippet, specified like
     `desc`. Overrides docstrings loaded from json.
@@ -691,6 +703,7 @@ API.
 For example, argnodes in functionNode, dynamicNode or lambda are
 node references.  
 These references can be either of:
+
   - `number`: the jump-index of the node.
     This will be resolved relative to the parent of the node this is passed to.
     (So, only nodes with the same parent can be referenced. This is very easy to
@@ -1206,9 +1219,11 @@ snippetNode, so even if the restoreNode only contains one node, that node has
 to be accessed as `ai[restoreNodeIndx][0][1]`.
 
 `absolute_indexer`s' can be constructed in different ways:
+
 * `ai[1][2][3]`
 * `ai(1, 2, 3)`
 * `ai{1, 2, 3}`
+
 are all the same node.
 
 # MultiSnippet
@@ -1554,9 +1569,11 @@ a snippet's `condition` or `show_condition`. These are grouped accordingly into
 `luasnip.extras.conditions.expand` and `luasnip.extras.conditions.show`:
 
 **`expand`**:
+
 - `line_begin`: only expand if the cursor is at the beginning of the line.
 
 **`show`**:
+
 - `line_end`: only expand at the end of the line.
 - `has_selected_text`: only expand if there's selected text stored after pressing
   `store_selection_keys`. 
@@ -1820,6 +1837,7 @@ While this functionality can also be implemented by a cusutom
 `resolveExpandParams`, this helper simplifies the common cases.  
 
 This matching of treesitter-nodes can be done either
+
 * by providing a query and the name of the capture that should be in front of
   the trigger (in most cases, the complete match, but requiring specific nodes
   before/after the matched node may be useful as well), or
@@ -1943,6 +1961,7 @@ end
 ```
 
 `snip.env` would contain:
+
 * `LS_TSMATCH`: `{ "function add(a, b)", "\treturn a + b", "end" }`
 * `LS_TSDATA`:
   ```lua
@@ -2018,6 +2037,7 @@ ts_post({
 The module `luasnip.extras.treesitter_postfix` contains a few functions that may
 be useful for creating more efficient ts-postfix-snippets.  
 Nested in `builtin.tsnode_matcher` are:
+
 * `fun find_topmost_types(types: string[]): MatchTSNodeFunc`: Generates
   a `LuaSnip.extra.MatchTSNodeFunc` which returns the last parent whose type
   is in `types`.
@@ -2216,6 +2236,7 @@ This is primarily implemented for snippet which got their source from one of the
 loaders, but might also work for snippets where the source was set manually.  
 
 `require("luasnip.extras.snip_location")`:
+
 * `snip_location.jump_to_snippet(snip, opts)`
   Jump to the definition of `snip`.
   * `snip`: a snippet with attached source-data.
@@ -2344,6 +2365,7 @@ This behaviour can be modified by changing `parser_nested_assembler` in
 
 LuaSnip will also modify some snippets that it is incapable of representing
 accurately:
+
   - if the `$0` is a placeholder with something other than just text inside
   - if the `$0` is a choice
   - if the `$0` is not an immediate child of the snippet (it could be inside a
@@ -2544,12 +2566,28 @@ where `opts` can contain the following keys:
   - `snipmate`: similar to lua, but the directory has to be `"snippets"`.
   - `vscode`: any directory in `runtimepath` that contains a
     `package.json` contributing snippets.
+- `lazy_paths`: behaves essentially like `paths`, with two exceptions: if it is
+  `nil`, it does not default to `runtimepath`, and the paths listed here do not
+  need to exist, and will be loaded on creation.  
+  LuaSnip will do its best to determine the path that this should resolve to,
+  but since the resolving we do is not very sophisticated it may produce
+  incorrect paths. Definitely check the log if snippets are not loaded as
+  expected.
 - `exclude`: List of languages to exclude, empty by default.
 - `include`: List of languages to include, includes everything by default.
 - `{override,default}_priority`: These keys are passed straight to the
   `add_snippets`-calls (documented in [API](#api)) and can therefore change the
   priority of snippets loaded from some colletion (or, in combination with
   `{in,ex}clude`, only some of its snippets).
+- `fs_event_providers`: `table<string, boolean>?`, specifies which mechanisms
+  should be used to watch files for updates/creation.  
+  If `autocmd` is set to `true`, a `BufWritePost`-hook watches files of this
+  collection, if `libuv` is set, the file-watcher-api exposed by libuv is used
+  to watch for updates.  
+  Use `libuv` if you want snippets to update from other neovim-instances, and
+  `autocmd` if the collection resides on a filesystem where the libuv-watchers
+  may not work correctly. Or, of course, just enable both :D  
+  By default, only `autocmd` is enabled.
 
 While `load` will immediately load the snippets, `lazy_load` will defer loading until
 the snippets are actually needed (whenever a new buffer is created, or the
@@ -2560,8 +2598,15 @@ a `bufnr`, returns the filetypes that should be loaded (`fn(bufnr) -> filetypes
 (string[])`)).  
 
 All of the loaders support reloading, so simply editing any file contributing
-snippets will reload its snippets (only in the session the file was edited in;
-we use `BufWritePost` for reloading, not some lower-level mechanism).
+snippets will reload its snippets (according to `fs_event_providers` in the
+instance where the file was edited, or in other instances as well).
+
+As an alternative (or addition) to automatic reloading, luasnip can also process
+manual updates to files: Call `require("luasnip.loaders").reload_file(path)` to
+reload the file at `path`.  
+This may be useful when the collection is controlled by some other plugin, or
+when enabling the other reload-mechanisms is for some reason undesirable
+(performance? minimalism?).
 
 For easy editing of these files, LuaSnip provides a `vim.ui.select`-based dialog
 ([Loaders-edit_snippets](#edit_snippets)) where first the filetype, and then the
@@ -2723,6 +2768,9 @@ If `scope` is not set, the snippet will be added to the global filetype (`all`).
   - `{override,default}_priority`: These keys are passed straight to the
     `add_snippets`-calls (documented in [API](#api)) and can be used to change
     the priority of the loaded snippets.
+  - `lazy`: `boolean`, if it is set, the file does not have to exist when
+    `load_standalone` is called, and it will be loaded on creation.  
+    `false` by default.
 
 **Example**:
 `a.code-snippets`:
@@ -2884,6 +2932,23 @@ Load via
 ```lua
 require("luasnip.loaders.from_lua").load({paths = "~/snippets"})
 ```
+
+### Reloading when editing `require`'d files
+While the lua-snippet-files will be reloaded on edit, this does not
+automatically happen if a file the snippet-file depends on (eg. via `require`)
+is changed.  
+Since this still may still be desirable, there are two functions exposed when a
+file is loaded by the lua-loader: `ls_tracked_dofile` and
+`ls_tracked_dopackage`. They perform like `dofile` and (almost like) `require`,
+but both register the loaded file internally as a dependency of the
+snippet-file, so it can be reloaded when the loaded file is edited.  As stated,
+`ls_tracked_dofile` behaves exactly like `dofile`, but does the dependency-work
+as well.  
+`ls_tracked_dopackage` mimics `require` in that it does not take a path, but a
+module-name like `"luasnip.loaders.from_lua"`, and then searches the
+`runtimepath/lua`-directories, and path and cpath for the module.  
+Unlike `require`, the file will not be cached, since that would complicate the
+reload-on-edit-behaviour.
 
 ## edit_snippets
 
@@ -3688,6 +3753,27 @@ These are the settings you can provide to `luasnip.setup()`:
       function(snip)
       	return snip.insert_nodes[0]
       end
+      ```
+    - `indent`: bool?, defaults to `true`. Whether LuaSnip will try to add
+      additional indents to fit current indent level in snippet expanding. This
+      option is useful when some LSP server already take indents into
+      consideration. In such cases, LuaSnip should not try to add additional
+      indents. If you are using `nvim-cmp`, sample config:
+
+      ```lua
+      require("cmp").setup {
+        snippet = {
+          expand = function(args)
+            local indent_nodes = true
+            if vim.api.nvim_get_option_value("filetype", { buf = 0 }) == "dart" then
+              indent_nodes = false
+            end
+            require("luasnip").lsp_expand(args.body, {
+              indent = indent_nodes,
+            })
+          end,
+        },
+      }
       ```
 
   `opts` and any of its parameters may be nil.

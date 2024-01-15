@@ -1,4 +1,5 @@
 local util = require("luasnip.util.util")
+local lazy_table = require("luasnip.util.lazy_table")
 local types = require("luasnip.util.types")
 local node_util = require("luasnip.nodes.util")
 
@@ -233,6 +234,7 @@ local function snip_expand(snippet, opts)
 	-- override with current position if none given.
 	opts.pos = opts.pos or util.get_cursor_0ind()
 	opts.jump_into_func = opts.jump_into_func or _jump_into_default
+	opts.indent = vim.F.if_nil(opts.indent, true)
 
 	snip.trigger = opts.expand_params.trigger or snip.trigger
 	snip.captures = opts.expand_params.captures or {}
@@ -270,7 +272,8 @@ local function snip_expand(snippet, opts)
 	local snip_parent_node = snip:trigger_expand(
 		session.current_nodes[vim.api.nvim_get_current_buf()],
 		pos_id,
-		env
+		env,
+		opts.indent
 	)
 
 	-- jump_into-callback returns new active node.
@@ -697,22 +700,7 @@ local function cleanup()
 end
 
 local function refresh_notify(ft)
-	-- vim.validate({
-	-- 	filetype = { ft, { "string", "nil" } },
-	-- })
-
-	if not ft then
-		-- call refresh_notify for all filetypes that have snippets.
-		for ft_, _ in pairs(ls.snippets) do
-			refresh_notify(ft_)
-		end
-	else
-		session.latest_load_ft = ft
-		vim.api.nvim_exec_autocmds(
-			"User",
-			{ pattern = "LuasnipSnippetsAdded", modeline = false }
-		)
-	end
+	snippet_collection.refresh_notify(ft)
 end
 
 local function setup_snip_env()
@@ -724,7 +712,7 @@ local function setup_snip_env()
 	setfenv(2, combined_table)
 end
 local function get_snip_env()
-	return session.config.snip_env
+	return session.get_snip_env()
 end
 
 local function get_id_snippet(id)
@@ -849,7 +837,7 @@ local ls_lazy = {
 	select_keys = function() return require("luasnip.util.select").select_keys end
 }
 
-ls = util.lazy_table({
+ls = lazy_table({
 	expand_or_jumpable = expand_or_jumpable,
 	expand_or_locally_jumpable = expand_or_locally_jumpable,
 	locally_jumpable = locally_jumpable,

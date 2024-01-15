@@ -13,6 +13,7 @@ local M = {
   target_winid = nil,
 }
 
+---@return Node|nil
 function M.get_node_at_cursor()
   if not core.get_explorer() then
     return
@@ -23,7 +24,7 @@ function M.get_node_at_cursor()
     return
   end
 
-  local cursor = vim.api.nvim_win_get_cursor(view.get_winnr())
+  local cursor = vim.api.nvim_win_get_cursor(winnr)
   local line = cursor[1]
 
   if line == 1 and view.is_root_folder_visible(core.get_cwd()) then
@@ -34,8 +35,8 @@ function M.get_node_at_cursor()
 end
 
 ---Create a sanitized partial copy of a node, populating children recursively.
----@param node table
----@return table|nil cloned node
+---@param node Node|nil
+---@return Node|nil cloned node
 local function clone_node(node)
   if not node then
     node = core.get_explorer()
@@ -68,19 +69,25 @@ local function clone_node(node)
 end
 
 ---Api.tree.get_nodes
+---@return Node[]|nil
 function M.get_nodes()
   return clone_node(core.get_explorer())
 end
 
 -- If node is grouped, return the last node in the group. Otherwise, return the given node.
+---@param node Node
+---@return Node
 function M.get_last_group_node(node)
-  local next_node = node
-  while next_node.group_next do
-    next_node = next_node.group_next
+  while node and node.group_next do
+    node = node.group_next
   end
-  return next_node
+
+  ---@diagnostic disable-next-line: return-type-mismatch -- it can't be nil
+  return node
 end
 
+---@param node Node
+---@return Node[]
 function M.get_all_nodes_in_group(node)
   local next_node = utils.get_parent_of_group(node)
   local nodes = {}
@@ -91,6 +98,7 @@ function M.get_all_nodes_in_group(node)
   return nodes
 end
 
+---@param node Node
 function M.expand_or_collapse(node)
   if node.has_children then
     node.has_children = false
@@ -119,6 +127,7 @@ function M.set_target_win()
   M.target_winid = id
 end
 
+---@param cwd string
 local function handle_buf_cwd(cwd)
   if M.respect_buf_cwd and cwd ~= core.get_cwd() then
     require("nvim-tree.actions.root.change-dir").fn(cwd)
@@ -144,7 +153,13 @@ local function should_hijack_current_buf()
   return should_hijack_dir or should_hijack_unnamed
 end
 
-function M.prompt(prompt_input, prompt_select, items_short, items_long, callback)
+---@param prompt_input string
+---@param prompt_select string
+---@param items_short string[]
+---@param items_long string[]
+---@param kind string|nil
+---@param callback fun(item_short: string)
+function M.prompt(prompt_input, prompt_select, items_short, items_long, kind, callback)
   local function format_item(short)
     for i, s in ipairs(items_short) do
       if short == s then
@@ -155,7 +170,7 @@ function M.prompt(prompt_input, prompt_select, items_short, items_long, callback
   end
 
   if M.select_prompts then
-    vim.ui.select(items_short, { prompt = prompt_select, format_item = format_item }, function(item_short)
+    vim.ui.select(items_short, { prompt = prompt_select, kind = kind, format_item = format_item }, function(item_short)
       callback(item_short)
     end)
   else

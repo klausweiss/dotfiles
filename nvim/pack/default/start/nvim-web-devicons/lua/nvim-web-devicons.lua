@@ -1,11 +1,25 @@
 local M = {}
 
 -- When adding new icons, remember to add an entry to the `filetypes` table, if applicable.
-local icons, icons_by_filename, icons_by_file_extension
+local icons, icons_by_filename, icons_by_file_extension, icons_by_operating_system
+
+local default_icon = {
+  icon = "",
+  color = "#6d8086",
+  cterm_color = "66",
+  name = "Default",
+}
 
 function M.get_icons()
   return icons
 end
+
+local global_opts = {
+  override = {},
+  strict = false,
+  default = false,
+  color_icons = true,
+}
 
 -- Set the current icons tables, depending on the 'background' option.
 local function refresh_icons()
@@ -18,7 +32,10 @@ local function refresh_icons()
 
   icons_by_filename = theme.icons_by_filename
   icons_by_file_extension = theme.icons_by_file_extension
-  icons = vim.tbl_extend("keep", {}, icons_by_filename, icons_by_file_extension)
+  icons_by_operating_system = theme.icons_by_operating_system
+  icons = vim.tbl_extend("keep", {}, icons_by_filename, icons_by_file_extension, icons_by_operating_system)
+  icons = vim.tbl_extend("force", icons, global_opts.override)
+  icons[1] = default_icon
 end
 
 -- Map of filetypes -> icon names
@@ -192,6 +209,7 @@ local filetypes = {
   ["systemverilog"] = "sv",
   ["tads"] = "t",
   ["tcl"] = "tcl",
+  ["templ"] = "templ",
   ["terminal"] = "terminal",
   ["tex"] = "tex",
   ["toml"] = "toml",
@@ -218,20 +236,6 @@ local filetypes = {
   ["yaml"] = "yaml",
   ["zig"] = "zig",
   ["zsh"] = "zsh",
-}
-
-local default_icon = {
-  icon = "",
-  color = "#6d8086",
-  cterm_color = "66",
-  name = "Default",
-}
-
-local global_opts = {
-  override = {},
-  strict = false,
-  default = false,
-  color_icons = true,
 }
 
 local function get_highlight_name(data)
@@ -334,6 +338,13 @@ function M.setup(opts)
 
   icons =
     vim.tbl_extend("force", icons, user_icons.override or {}, user_filename_icons or {}, user_file_ext_icons or {})
+  global_opts.override = vim.tbl_extend(
+    "force",
+    global_opts.override,
+    user_icons.override or {},
+    user_filename_icons or {},
+    user_file_ext_icons or {}
+  )
 
   if user_filename_icons then
     icons_by_filename = vim.tbl_extend("force", icons_by_filename, user_filename_icons)
@@ -342,7 +353,7 @@ function M.setup(opts)
     icons_by_file_extension = vim.tbl_extend("force", icons_by_file_extension, user_file_ext_icons)
   end
 
-  table.insert(icons, default_icon)
+  icons[1] = default_icon
 
   M.set_up_highlights()
 

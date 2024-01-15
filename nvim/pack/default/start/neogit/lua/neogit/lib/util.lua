@@ -1,6 +1,3 @@
--- local a = require("plenary.async")
-local uv = vim.loop
-
 local M = {}
 
 ---@generic T: any
@@ -143,6 +140,19 @@ function M.filter(tbl, f)
   return vim.tbl_filter(f, tbl)
 end
 
+---Finds length of longest string in table
+---@param tbl table
+---@return integer
+function M.max_length(tbl)
+  local max = 0
+  for _, v in ipairs(tbl) do
+    if #v > max then
+      max = #v
+    end
+  end
+  return max
+end
+
 -- function M.print_tbl(tbl)
 --   for _, x in pairs(tbl) do
 --     print("| " .. x)
@@ -174,10 +184,6 @@ end
 --   return res
 -- end
 
--- function M.str_right_pad(str, len, sep)
---   return str .. sep:rep(len - #str)
--- end
-
 function M.str_min_width(str, len, sep)
   local length = vim.fn.strdisplaywidth(str)
   if length > len then
@@ -187,20 +193,20 @@ function M.str_min_width(str, len, sep)
   return str .. string.rep(sep or " ", len - length)
 end
 
--- function M.slice(tbl, s, e)
---   local pos, new = 1, {}
---
---   if e == nil then
---     e = #tbl
---   end
---
---   for i = s, e do
---     new[pos] = tbl[i]
---     pos = pos + 1
---   end
---
---   return new
--- end
+function M.slice(tbl, s, e)
+  local pos, new = 1, {}
+
+  if e == nil then
+    e = #tbl
+  end
+
+  for i = s, e do
+    new[pos] = tbl[i]
+    pos = pos + 1
+  end
+
+  return new
+end
 
 -- function M.str_count(str, target)
 --   local count = 0
@@ -291,15 +297,9 @@ function M.parse_command_args(args)
   return tbl
 end
 
--- function M.pattern_escape(str)
---   local special_chars = { "(", ")", ".", "%", "+", "-", "*", "?", "[", "^", "$" }
---   for _, char in ipairs(special_chars) do
---     str, _ = str:gsub("%" .. char, "%%" .. char)
---   end
---
---   return str
--- end
-
+---Removes duplicate values from a table
+---@param tbl table
+---@return table
 function M.deduplicate(tbl)
   local res = {}
   for i = 1, #tbl do
@@ -310,16 +310,29 @@ function M.deduplicate(tbl)
   return res
 end
 
--- function M.find(tbl, cond)
---   local res
---   for i = 1, #tbl do
---     if cond(tbl[i]) then
---       res = tbl[i]
---       break
---     end
---   end
---   return res
--- end
+---Removes nil values from a table
+---@param tbl table
+---@return table
+function M.compact(tbl)
+  local res = {}
+  for i = 1, #tbl do
+    if tbl[i] ~= nil then
+      table.insert(res, tbl[i])
+    end
+  end
+  return res
+end
+
+function M.find(tbl, cond)
+  local res
+  for i = 1, #tbl do
+    if cond(tbl[i]) then
+      res = tbl[i]
+      break
+    end
+  end
+  return res
+end
 
 function M.build_reverse_lookup(tbl)
   local result = {}
@@ -334,11 +347,15 @@ end
 ---@param tbl table
 ---@param value any
 function M.remove_item_from_table(tbl, value)
+  local removed = false
   for index, t_value in ipairs(tbl) do
     if vim.deep_equal(t_value, value) then
       table.remove(tbl, index)
+      removed = true
     end
   end
+
+  return removed
 end
 
 ---Checks if both lists contain the same values. This does NOT check ordering.
@@ -361,23 +378,6 @@ end
 
 function M.pad_right(s, len)
   return s .. string.rep(" ", math.max(len - #s, 0))
-end
-
---- Debounces a function on the trailing edge.
----
---- @generic F: function
---- @param ms number Timeout in ms
---- @param fn F Function to debounce
---- @return F Debounced function.
-function M.debounce_trailing(ms, fn)
-  local timer = assert(uv.new_timer())
-  return function(...)
-    local argv = { ... }
-    timer:start(ms, 0, function()
-      timer:stop()
-      fn(unpack(argv))
-    end)
-  end
 end
 
 --- http://lua-users.org/wiki/StringInterpolation
@@ -420,7 +420,57 @@ function M.underscore(s)
     return "_" .. upper:lower()
   end
 
-  return s:gsub("%u", snakey):gsub("^_", "")
+  local r, _ = s:gsub("%u", snakey):gsub("^_", "")
+  return r
+end
+
+---Simple timeout function
+---@param timeout integer
+---@param callback function
+---@return uv_timer_t
+local function set_timeout(timeout, callback)
+  local timer = vim.loop.new_timer()
+
+  timer:start(timeout, 0, function()
+    timer:stop()
+    timer:close()
+    callback()
+  end)
+
+  return timer
+end
+
+local DEFAULT_TIMEOUT = os.getenv("CI") and 0 or 1000
+
+---Memoize a function's result for a set period of time. Value will be forgotten after specified timeout, or 1 second. Timer resets with each call.
+---@param f function Function to memoize
+---@param opts table?
+---@return function
+function M.memoize(f, opts)
+  opts = opts or {}
+
+  assert(f, "Cannot memoize without function")
+
+  local cache = {}
+  local timer = {}
+
+  return function(...)
+    local key = vim.inspect { ... }
+
+    if cache[key] == nil then
+      cache[key] = f(...)
+    elseif timer[key] ~= nil then
+      timer[key]:stop()
+      timer[key]:close()
+    end
+
+    timer[key] = set_timeout(opts.timeout or DEFAULT_TIMEOUT, function()
+      cache[key] = nil
+      timer[key] = nil
+    end)
+
+    return cache[key]
+  end
 end
 
 return M

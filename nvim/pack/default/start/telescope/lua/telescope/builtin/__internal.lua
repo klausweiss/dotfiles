@@ -12,8 +12,6 @@ local utils = require "telescope.utils"
 
 local conf = require("telescope.config").values
 
-local filter = vim.tbl_filter
-
 -- Makes sure aliased options are set correctly
 local function apply_cwd_only_aliases(opts)
   local has_cwd_only = opts.cwd_only ~= nil
@@ -26,6 +24,15 @@ local function apply_cwd_only_aliases(opts)
   end
 
   return opts
+end
+
+---@return boolean
+local function buf_in_cwd(bufname, cwd)
+  if cwd:sub(-1) ~= Path.path.sep then
+    cwd = cwd .. Path.path.sep
+  end
+  local bufname_prefix = bufname:sub(1, #cwd)
+  return bufname_prefix == cwd
 end
 
 local internal = {}
@@ -383,12 +390,11 @@ internal.commands = function(opts)
           local cmd = string.format([[:%s ]], val.name)
 
           if val.nargs == "0" then
-            vim.cmd(cmd)
-            vim.fn.histadd("cmd", val.name)
-          else
-            vim.cmd [[stopinsert]]
-            vim.fn.feedkeys(cmd, "n")
+            local cr = vim.api.nvim_replace_termcodes("<cr>", true, false, true)
+            cmd = cmd .. cr
           end
+          vim.cmd [[stopinsert]]
+          vim.api.nvim_feedkeys(cmd, "t", false)
         end)
 
         return true
@@ -547,19 +553,20 @@ internal.oldfiles = function(opts)
     cwd = cwd .. utils.get_separator()
     cwd = cwd:gsub([[\]], [[\\]])
     results = vim.tbl_filter(function(file)
-      return vim.fn.matchstrpos(file, cwd)[2] ~= -1
+      return buf_in_cwd(file, cwd)
     end, results)
   end
 
   pickers
     .new(opts, {
       prompt_title = "Oldfiles",
+      __locations_input = true,
       finder = finders.new_table {
         results = results,
         entry_maker = opts.entry_maker or make_entry.gen_from_file(opts),
       },
       sorter = conf.file_sorter(opts),
-      previewer = conf.file_previewer(opts),
+      previewer = conf.grep_previewer(opts),
     })
     :find()
 end
@@ -884,32 +891,43 @@ end
 
 internal.buffers = function(opts)
   opts = apply_cwd_only_aliases(opts)
-  local bufnrs = filter(function(b)
-    if 1 ~= vim.fn.buflisted(b) then
+
+  local bufnrs = vim.tbl_filter(function(bufnr)
+    if 1 ~= vim.fn.buflisted(bufnr) then
       return false
     end
     -- only hide unloaded buffers if opts.show_all_buffers is false, keep them listed if true or nil
-    if opts.show_all_buffers == false and not vim.api.nvim_buf_is_loaded(b) then
+    if opts.show_all_buffers == false and not vim.api.nvim_buf_is_loaded(bufnr) then
       return false
     end
-    if opts.ignore_current_buffer and b == vim.api.nvim_get_current_buf() then
+    if opts.ignore_current_buffer and bufnr == vim.api.nvim_get_current_buf() then
       return false
     end
-    if opts.cwd_only and not string.find(vim.api.nvim_buf_get_name(b), vim.loop.cwd(), 1, true) then
+
+    local bufname = vim.api.nvim_buf_get_name(bufnr)
+
+    if opts.cwd_only and not buf_in_cwd(bufname, vim.loop.cwd()) then
       return false
     end
-    if not opts.cwd_only and opts.cwd and not string.find(vim.api.nvim_buf_get_name(b), opts.cwd, 1, true) then
+    if not opts.cwd_only and opts.cwd and not buf_in_cwd(bufname, opts.cwd) then
       return false
     end
     return true
   end, vim.api.nvim_list_bufs())
+
   if not next(bufnrs) then
+    utils.notify("builtin.buffers", { msg = "No buffers found with the provided options", level = "INFO" })
     return
   end
+
   if opts.sort_mru then
     table.sort(bufnrs, function(a, b)
       return vim.fn.getbufinfo(a)[1].lastused > vim.fn.getbufinfo(b)[1].lastused
     end)
+  end
+
+  if type(opts.sort_buffers) == "function" then
+    table.sort(bufnrs, opts.sort_buffers)
   end
 
   local buffers = {}
@@ -956,7 +974,7 @@ end
 
 internal.colorscheme = function(opts)
   local before_background = vim.o.background
-  local before_color = vim.api.nvim_exec("colorscheme", true)
+  local before_color = vim.api.nvim_exec2("colorscheme", { output = true }).output
   local need_restore = true
 
   local colors = opts.colors or { before_color }
@@ -996,7 +1014,7 @@ internal.colorscheme = function(opts)
               del_win(status.layout.preview.border.winid)
             end
           end
-          vim.cmd("colorscheme " .. entry.value)
+          vim.cmd.colorscheme(entry.value)
         end,
       }
     else
@@ -1012,7 +1030,7 @@ internal.colorscheme = function(opts)
             local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
             vim.api.nvim_buf_set_lines(self.state.bufnr, 0, -1, false, lines)
           end
-          vim.cmd("colorscheme " .. entry.value)
+          vim.cmd.colorscheme(entry.value)
         end,
       }
     end
@@ -1035,7 +1053,7 @@ internal.colorscheme = function(opts)
 
         actions.close(prompt_bufnr)
         need_restore = false
-        vim.cmd("colorscheme " .. selection.value)
+        vim.cmd.colorscheme(selection.value)
       end)
 
       return true
@@ -1049,7 +1067,7 @@ internal.colorscheme = function(opts)
       close_windows(status)
       if need_restore then
         vim.o.background = before_background
-        vim.cmd("colorscheme " .. before_color)
+        vim.cmd.colorscheme(before_color)
       end
     end
   end
@@ -1096,7 +1114,7 @@ internal.marks = function(opts)
         line = line,
         lnum = lnum,
         col = col,
-        filename = v.file or bufname,
+        filename = vim.fs.normalize(v.file or bufname),
       }
       -- non alphanumeric marks goes to last
       if mark:match "%w" then

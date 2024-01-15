@@ -1,5 +1,5 @@
 local lazy = require("flutter-tools.lazy")
-local Job = require("plenary.job")
+local Job = require("plenary.job") ---@module "plenary.job"
 local ui = lazy.require("flutter-tools.ui") ---@module "flutter-tools.ui"
 local utils = lazy.require("flutter-tools.utils") ---@module "flutter-tools.utils"
 local devices = lazy.require("flutter-tools.devices") ---@module "flutter-tools.devices"
@@ -133,10 +133,13 @@ local function get_run_args(opts, conf)
   local target = conf and conf.target
   local dart_defines = conf and conf.dart_define
   local dart_define_from_file = conf and conf.dart_define_from_file
+  local flutter_mode = conf and conf.flutter_mode
+  local web_port = conf and conf.web_port
   local dev_url = dev_tools.get_url()
 
   if not use_debugger_runner() then vim.list_extend(args, { "run" }) end
   if not cmd_args and device then vim.list_extend(args, { "-d", device }) end
+  if web_port then vim.list_extend(args, { "--web-port", web_port }) end
   if cmd_args then vim.list_extend(args, cmd_args) end
   if flavor then vim.list_extend(args, { "--flavor", flavor }) end
   if target then vim.list_extend(args, { "--target", target }) end
@@ -148,8 +151,23 @@ local function get_run_args(opts, conf)
       vim.list_extend(args, { "--dart-define", ("%s=%s"):format(key, value) })
     end
   end
+  if flutter_mode then
+    if flutter_mode == "profile" then
+      vim.list_extend(args, { "--profile" })
+    elseif flutter_mode == "release" then
+      vim.list_extend(args, { "--release" })
+    end -- else default to debug
+  end
   if dev_url then vim.list_extend(args, { "--devtools-server-address", dev_url }) end
   return args
+end
+
+--- @param args string[]
+--- @return Device?
+local function get_device_from_args(args)
+  for i = 1, #args - 1 do
+    if args[i] == "-d" then return { id = args[i + 1] } end
+  end
 end
 
 ---@param opts RunOpts
@@ -158,6 +176,8 @@ local function run(opts, project_conf)
   opts = opts or {}
   executable.get(function(paths)
     local args = opts.cli_args or get_run_args(opts, project_conf)
+
+    current_device = opts.device or get_device_from_args(args)
     ui.notify("Starting flutter project...")
     runner = use_debugger_runner() and debugger_runner or job_runner
     runner:run(paths, args, lsp.get_lsp_root_dir(), on_run_data, on_run_exit)
@@ -205,6 +225,15 @@ end
 
 ---@param quiet boolean?
 function M.visual_debug(quiet) send("visual_debug", quiet) end
+
+---@param quiet boolean?
+function M.performance_overlay(quiet) send("performance_overlay", quiet) end
+
+---@param quiet boolean?
+function M.repaint_rainbow(quiet) send("repaint_rainbow", quiet) end
+
+---@param quiet boolean?
+function M.slow_animations(quiet) send("slow_animations", quiet) end
 
 ---@param quiet boolean?
 function M.detach(quiet) send("detach", quiet) end
@@ -376,6 +405,78 @@ function M.fvm_use(sdk_name)
     end))
 
     fvm_use_job:start()
+  end
+end
+
+---@param args string[]
+---@param project_conf flutter.ProjectConfig?
+---@return string[]
+local function set_args_from_project_config(args, project_conf)
+  local flavor = project_conf and project_conf.flavor
+  local device = project_conf and project_conf.device
+  if flavor then vim.list_extend(args, { "--flavor", flavor }) end
+  if device then vim.list_extend(args, { "-d", device }) end
+end
+
+---@type Job?
+local install_job = nil
+
+function M.install()
+  if not install_job then
+    select_project_config(function(project_conf)
+      local args = { "install" }
+      set_args_from_project_config(args, project_conf)
+      ui.notify("Installing the app...")
+      executable.flutter(function(cmd)
+        local notify_timeout = 10000
+        install_job = Job:new({
+          command = cmd,
+          args = args,
+        -- stylua: ignore
+        cwd = lsp.get_lsp_root_dir() --[[@as string]],
+        })
+        install_job:after_success(vim.schedule_wrap(function(j)
+          ui.notify(utils.join(j:result()), nil, { timeout = notify_timeout })
+          install_job = nil
+        end))
+        install_job:after_failure(vim.schedule_wrap(function(j)
+          ui.notify(utils.join(j:result()), nil, { timeout = notify_timeout })
+          install_job = nil
+        end))
+        install_job:start()
+      end)
+    end)
+  end
+end
+
+---@type Job?
+local uninstall_job = nil
+
+function M.uninstall()
+  if not uninstall_job then
+    select_project_config(function(project_conf)
+      local args = { "install", "--uninstall-only" }
+      set_args_from_project_config(args, project_conf)
+      ui.notify("Uninstalling the app...")
+      executable.flutter(function(cmd)
+        local notify_timeout = 10000
+        uninstall_job = Job:new({
+          command = cmd,
+          args = args,
+        -- stylua: ignore
+        cwd = lsp.get_lsp_root_dir() --[[@as string]],
+        })
+        uninstall_job:after_success(vim.schedule_wrap(function(j)
+          ui.notify(utils.join(j:result()), nil, { timeout = notify_timeout })
+          uninstall_job = nil
+        end))
+        uninstall_job:after_failure(vim.schedule_wrap(function(j)
+          ui.notify(utils.join(j:result()), nil, { timeout = notify_timeout })
+          uninstall_job = nil
+        end))
+        uninstall_job:start()
+      end)
+    end)
   end
 end
 

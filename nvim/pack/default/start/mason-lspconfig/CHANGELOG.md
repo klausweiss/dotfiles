@@ -1,5 +1,48 @@
 # Changelog
 
+## [1.26.0](https://github.com/williamboman/mason-lspconfig.nvim/compare/v1.25.0...v1.26.0) (2023-12-21)
+
+
+### Features
+
+* add hdl_checker ([#336](https://github.com/williamboman/mason-lspconfig.nvim/issues/336)) ([9453e3d](https://github.com/williamboman/mason-lspconfig.nvim/commit/9453e3d6cd2ca45d96e20f343e8f1b927364b630))
+* add snyk-ls server mapping ([#342](https://github.com/williamboman/mason-lspconfig.nvim/issues/342)) ([ef713a5](https://github.com/williamboman/mason-lspconfig.nvim/commit/ef713a5b91ea922aa8ad630dfb854ae19cc2845c))
+
+## [1.25.0](https://github.com/williamboman/mason-lspconfig.nvim/compare/v1.24.0...v1.25.0) (2023-12-01)
+
+
+### Features
+
+* add hydra_lsp mapping ([#333](https://github.com/williamboman/mason-lspconfig.nvim/issues/333)) ([2d7a2a6](https://github.com/williamboman/mason-lspconfig.nvim/commit/2d7a2a61221c634391130b86dbebe90b7249e2b1))
+* add support for `*` filetype specifier ([#335](https://github.com/williamboman/mason-lspconfig.nvim/issues/335)) ([dd67d01](https://github.com/williamboman/mason-lspconfig.nvim/commit/dd67d01335a27bff4b5dcb580c7a4bce0f4e2105))
+* add typos-ls mapping ([#325](https://github.com/williamboman/mason-lspconfig.nvim/issues/325)) ([41674c9](https://github.com/williamboman/mason-lspconfig.nvim/commit/41674c9d50f23cfa3e11f0ca964eb9100c2a8922))
+
+## [1.24.0](https://github.com/williamboman/mason-lspconfig.nvim/compare/v1.23.0...v1.24.0) (2023-11-26)
+
+
+### Features
+
+* add autotools_ls mapping ([#323](https://github.com/williamboman/mason-lspconfig.nvim/issues/323)) ([a547608](https://github.com/williamboman/mason-lspconfig.nvim/commit/a5476087db0a20c05bd1163e1cd4a29b795e73a7))
+
+
+### Bug Fixes
+
+* **rescriptls:** remove cmd override ([#330](https://github.com/williamboman/mason-lspconfig.nvim/issues/330)) ([748bb58](https://github.com/williamboman/mason-lspconfig.nvim/commit/748bb587889600433ff47847012dc2e05d34bb16))
+
+## [1.23.0](https://github.com/williamboman/mason-lspconfig.nvim/compare/v1.22.0...v1.23.0) (2023-11-23)
+
+
+### Features
+
+* add htmx-lsp ([#320](https://github.com/williamboman/mason-lspconfig.nvim/issues/320)) ([01f9887](https://github.com/williamboman/mason-lspconfig.nvim/commit/01f988738b8ef62db2a76659a6bd57cbf873f04d))
+* add stimulus_ls ([#319](https://github.com/williamboman/mason-lspconfig.nvim/issues/319)) ([79846e4](https://github.com/williamboman/mason-lspconfig.nvim/commit/79846e444be885ebd3dde69c5c69f775d9218fef))
+* add v_analyzer ([#317](https://github.com/williamboman/mason-lspconfig.nvim/issues/317)) ([0a1d8df](https://github.com/williamboman/mason-lspconfig.nvim/commit/0a1d8dfbf8c84eaef8c17cccc169ba39a1152cb0))
+
+
+### Bug Fixes
+
+* update rescriptls mapping ([#318](https://github.com/williamboman/mason-lspconfig.nvim/issues/318)) ([f385b0f](https://github.com/williamboman/mason-lspconfig.nvim/commit/f385b0f5f02b430a014d1060125cd53e1bec04fc))
+
 ## [1.22.0](https://github.com/williamboman/mason-lspconfig.nvim/compare/v1.21.0...v1.22.0) (2023-11-14)
 
 

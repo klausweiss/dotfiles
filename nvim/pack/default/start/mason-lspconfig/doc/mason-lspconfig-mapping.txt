@@ -13,6 +13,7 @@ arduino-language-server                   arduino_language_server
 asm-lsp                                   asm_lsp
 ast-grep                                  ast_grep
 astro-language-server                     astro
+autotools-language-server                 autotools_ls
 awk-language-server                       awk_ls
 azure-pipelines-language-server           azure_pipelines_ls
 bash-language-server                      bashls
@@ -69,10 +70,13 @@ grammarly-languageserver                  grammarly
 graphql-language-service-cli              graphql
 groovy-language-server                    groovyls
 haxe-language-server                      haxe_language_server
+hdl-checker                               hdl_checker
 helm-ls                                   helm_ls
 haskell-language-server                   hls
 hoon-language-server                      hoon_ls
 html-lsp                                  html
+htmx-lsp                                  htmx
+hydra-lsp                                 hydra_lsp
 intelephense                              intelephense
 java-language-server                      java_language_server
 jdtls                                     jdtls
@@ -87,6 +91,7 @@ lemminx                                   lemminx
 ltex-ls                                   ltex
 lua-language-server                       lua_ls
 luau-lsp                                  luau_lsp
+lwc-language-server                       lwc_ls
 marksman                                  marksman
 matlab-language-server                    matlab_ls
 mdx-analyzer                              mdx_analyzer
@@ -122,7 +127,7 @@ r-languageserver                          r_language_server
 raku-navigator                            raku_navigator
 reason-language-server                    reason_ls
 remark-language-server                    remark_ls
-rescript-lsp                              rescriptls
+rescript-language-server                  rescriptls
 rnix-lsp                                  rnix
 robotframework-lsp                        robotframework_ls
 rome                                      rome
@@ -134,6 +139,7 @@ salt-lsp                                  salt_ls
 serve-d                                   serve_d
 slint-lsp                                 slint_lsp
 smithy-language-server                    smithy_ls
+snyk-ls                                   snyk_ls
 solang                                    solang
 solargraph                                solargraph
 solidity                                  solc
@@ -145,6 +151,7 @@ spectral-language-server                  spectral
 sqlls                                     sqlls
 sqls                                      sqls
 standardrb                                standardrb
+stimulus-language-server                  stimulus_ls
 stylelint-lsp                             stylelint_lsp
 svelte-language-server                    svelte
 svlangserver                              svlangserver
@@ -160,8 +167,10 @@ tflint                                    tflint
 shopify-theme-check                       theme_check
 thriftls                                  thriftls
 typescript-language-server                tsserver
+typos-lsp                                 typos_lsp
 typst-lsp                                 typst_lsp
 unocss-language-server                    unocss
+v-analyzer                                v_analyzer
 vala-language-server                      vala_ls
 vale-ls                                   vale_ls
 verible                                   verible

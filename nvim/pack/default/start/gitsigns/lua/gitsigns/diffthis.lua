@@ -31,14 +31,17 @@ local bufread = async.void(function(bufnr, dbufnr, base)
     async.scheduler_if_buf_valid(bufnr)
   end
 
+  vim.bo[dbufnr].fileformat = vim.bo[bufnr].fileformat
+  vim.bo[dbufnr].filetype = vim.bo[bufnr].filetype
+  vim.bo[dbufnr].bufhidden = 'wipe'
+
   local modifiable = vim.bo[dbufnr].modifiable
   vim.bo[dbufnr].modifiable = true
+
   util.set_lines(dbufnr, 0, -1, text)
 
   vim.bo[dbufnr].modifiable = modifiable
   vim.bo[dbufnr].modified = false
-  vim.bo[dbufnr].filetype = vim.bo[bufnr].filetype
-  vim.bo[dbufnr].bufhidden = 'wipe'
 end)
 
 --- @param bufnr integer
@@ -203,7 +206,10 @@ M.update = throttle_by_id(async.void(function(bufnr)
     if api.nvim_win_is_valid(w) then
       local b = api.nvim_win_get_buf(w)
       local bname = api.nvim_buf_get_name(b)
-      if bname == bufname or vim.startswith(bname, 'fugitive://') then
+      local is_fugitive_diff_window = vim.startswith(bname, 'fugitive://')
+        and vim.fn.exists('*FugitiveParse')
+        and vim.fn.FugitiveParse(bname)[1] ~= ':'
+      if bname == bufname or is_fugitive_diff_window then
         if should_reload(b) then
           api.nvim_buf_call(b, function()
             vim.cmd.doautocmd('BufReadCmd')

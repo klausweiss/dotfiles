@@ -103,9 +103,11 @@ local function generate_lines()
   local lines = vim.api.nvim_buf_get_lines(fn.bufnr(), start, finish, true)
   for i = 1, #lines do
     if lines[i]:find "^%s*color =" then
-      lines[i] = lines[i]:gsub("%#%x+", function(m)
-        return darken_color(m)
-      end)
+      local rrggbb = lines[i]:match '"(#%x%x%x%x%x%x)"'
+      if not rrggbb then
+        error_exit(string.format("invalid color at line %s: '%s'", i, lines[i]), 1)
+      end
+      lines[i] = lines[i]:gsub(rrggbb, darken_color)
     end
   end
   table.insert(lines, "")
@@ -138,14 +140,23 @@ if fn.search("^local icons_by_file_extension", "c") == 0 then
   error_exit("Table 'icons_by_file_extension' not found in lua/nvim-web-devicons/icons-default.lua", 1)
 end
 local lines2 = generate_lines()
-table.insert(lines2, "return {")
-table.insert(lines2, "  icons_by_filename = icons_by_filename,")
-table.insert(lines2, "  icons_by_file_extension = icons_by_file_extension,")
-table.insert(lines2, "}")
+
+-- third table
+if fn.search("^local icons_by_operating_system", "c") == 0 then
+  error_exit("Table 'icons_by_operating_system' not found in lua/nvim-web-devicons/icons-default.lua", 1)
+end
+local lines3 = generate_lines()
+
+table.insert(lines3, "return {")
+table.insert(lines3, "  icons_by_filename = icons_by_filename,")
+table.insert(lines3, "  icons_by_file_extension = icons_by_file_extension,")
+table.insert(lines3, "  icons_by_operating_system = icons_by_operating_system,")
+table.insert(lines3, "}")
 
 -- write both tables to file
 fn.writefile(lines, "lua/nvim-web-devicons/icons-light.lua")
 fn.writefile(lines2, "lua/nvim-web-devicons/icons-light.lua", "a")
+fn.writefile(lines3, "lua/nvim-web-devicons/icons-light.lua", "a")
 
 print "Finished creating new file!"
 

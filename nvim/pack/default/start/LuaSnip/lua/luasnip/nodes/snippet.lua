@@ -256,7 +256,11 @@ local function init_snippet_context(context, opts)
 		)
 		engine = trig_engines[engine_name]
 	end
-	effective_context.trig_matcher = engine(effective_context.trigger)
+	-- make sure to pass through nil-trigEngineOpts, they will be recognized and
+	-- we will get a default-version of that function instead of generating a
+	-- curried (?) version of it (which would waste space I think).
+	effective_context.trig_matcher =
+		engine(effective_context.trigger, context.trigEngineOpts)
 
 	effective_context.resolveExpandParams = generate_resolve_expand_params_func(
 		context.condition or opts.condition,
@@ -625,7 +629,7 @@ local function insert_into_jumplist(
 	table.insert(sibling_snippets, own_indx, snippet)
 end
 
-function Snippet:trigger_expand(current_node, pos_id, env)
+function Snippet:trigger_expand(current_node, pos_id, env, indent_nodes)
 	local pos = vim.api.nvim_buf_get_extmark_by_id(0, session.ns_id, pos_id, {})
 
 	-- find tree-node the snippet should be inserted at (could be before another node).
@@ -635,6 +639,7 @@ function Snippet:trigger_expand(current_node, pos_id, env)
 			tree_preference = node_util.binarysearch_preference.outside,
 			snippet_mode = "linkable",
 		})
+	local n_siblings_pre = #sibling_snippets
 
 	if current_node then
 		if parent_node then
@@ -651,6 +656,44 @@ function Snippet:trigger_expand(current_node, pos_id, env)
 		else
 			-- if no parent_node, completely leave.
 			node_util.refocus(current_node, nil)
+
+			-- in this branch, it may happen that the snippet we leave is
+			-- invalid and removed from the snippet-list during `refocus`.
+			-- This is not catastrophic, but we have to recognize it here, and
+			-- update the `own_indx` among the snippet-roots (one was deleted,
+			-- the computed index is no longer valid since there may have been
+			-- a shift down over `own_indx`)
+			if n_siblings_pre ~= #sibling_snippets then
+				-- only own_indx can change, since the text in the buffer is
+				-- unchanged, while the number of roots is.
+				_, _, own_indx, _ =
+					node_util.snippettree_find_undamaged_node(pos, {
+						tree_respect_rgravs = false,
+						tree_preference = node_util.binarysearch_preference.outside,
+						snippet_mode = "linkable",
+					})
+			end
+		end
+
+		-- There may be other snippets inside of this parent_node/on this level
+		-- of the snippet-tree whose extmarks have to be adjusted s.t. they
+		-- don't contain the text that will be inserted during put_initial.
+		-- Node's/snippet's extmarks that are outside of this parent_node/not
+		-- siblings of this node will be adjusted during the refocus above, if
+		-- applicable.
+		--
+		-- The following adjustments may do too much, but there's no issue
+		-- with that, and we're on the safe side.
+
+		-- set rgrav false for snippets/nodes where the right boundary
+		-- coincides with the position we insert at now...
+		for i = 1, own_indx - 1 do
+			sibling_snippets[i]:subtree_set_pos_rgrav(pos, -1, false)
+		end
+		-- set rgrav true for snippets/nodes where the left boundary
+		-- coincides with the position we insert at now...
+		for i = own_indx, #sibling_snippets do
+			sibling_snippets[i]:subtree_set_pos_rgrav(pos, 1, true)
 		end
 	end
 
@@ -661,12 +704,14 @@ function Snippet:trigger_expand(current_node, pos_id, env)
 
 	Environ:override(env, pre_expand_res.env_override or {})
 
-	local indentstring = util.line_chars_before(pos):match("^%s*")
-	-- expand tabs before indenting to keep indentstring unmodified
-	if vim.bo.expandtab then
-		self:expand_tabs(util.tab_width(), #indentstring)
+	if indent_nodes then
+		local indentstring = util.line_chars_before(pos):match("^%s*")
+		-- expand tabs before indenting to keep indentstring unmodified
+		if vim.bo.expandtab then
+			self:expand_tabs(util.tab_width(), #indentstring)
+		end
+		self:indent(indentstring)
 	end
-	self:indent(indentstring)
 
 	-- (possibly) keep user-set opts.
 	if self.merge_child_ext_opts then

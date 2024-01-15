@@ -1148,6 +1148,8 @@ builtin.git_status({opts})                    *telescope.builtin.git_status()*
         {git_icons}     (table)    string -> string. Matches name with icon
                                    (see source code, make_entry.lua
                                    git_icon_defaults)
+        {expand_dir}    (boolean)  pass flag `-uall` to show files in
+                                   untracked directories (default: true)
 
 
 builtin.git_stash({opts})                      *telescope.builtin.git_stash()*
@@ -1264,11 +1266,9 @@ builtin.quickfix({opts})                        *telescope.builtin.quickfix()*
         {opts} (table)  options to pass to the picker
 
     Options: ~
-        {show_line}   (boolean)  show results text (default: true)
-        {trim_text}   (boolean)  trim results text (default: false)
-        {fname_width} (number)   defines the width of the filename section
-                                 (default: 30)
-        {nr}          (number)   specify the quickfix list number
+        {show_line} (boolean)  show results text (default: true)
+        {trim_text} (boolean)  trim results text (default: false)
+        {nr}        (number)   specify the quickfix list number
 
 
 builtin.quickfixhistory({opts})          *telescope.builtin.quickfixhistory()*
@@ -1290,10 +1290,8 @@ builtin.loclist({opts})                          *telescope.builtin.loclist()*
         {opts} (table)  options to pass to the picker
 
     Options: ~
-        {show_line}   (boolean)  show results text (default: true)
-        {trim_text}   (boolean)  trim results text (default: false)
-        {fname_width} (number)   defines the width of the filename section
-                                 (default: 30)
+        {show_line} (boolean)  show results text (default: true)
+        {trim_text} (boolean)  trim results text (default: false)
 
 
 builtin.oldfiles({opts})                        *telescope.builtin.oldfiles()*
@@ -1394,27 +1392,32 @@ builtin.buffers({opts})                          *telescope.builtin.buffers()*
         {opts} (table)  options to pass to the picker
 
     Options: ~
-        {cwd}                   (string)   specify a working directory to
-                                           filter buffers list by
-        {show_all_buffers}      (boolean)  if true, show all buffers,
-                                           including unloaded buffers
-                                           (default: true)
-        {ignore_current_buffer} (boolean)  if true, don't show the current
-                                           buffer in the list (default: false)
-        {only_cwd}              (boolean)  if true, only show buffers in the
-                                           current working directory (default:
-                                           false)
-        {cwd_only}              (boolean)  alias for only_cwd
-        {sort_lastused}         (boolean)  Sorts current and last buffer to
-                                           the top and selects the lastused
-                                           (default: false)
-        {sort_mru}              (boolean)  Sorts all buffers after most recent
-                                           used. Not just the current and last
-                                           one (default: false)
-        {bufnr_width}           (number)   Defines the width of the buffer
-                                           numbers in front of the filenames 
-                                           (default: dynamic)
-        {file_encoding}         (string)   file encoding for the previewer
+        {cwd}                   (string)    specify a working directory to
+                                            filter buffers list by
+        {show_all_buffers}      (boolean)   if true, show all buffers,
+                                            including unloaded buffers
+                                            (default: true)
+        {ignore_current_buffer} (boolean)   if true, don't show the current
+                                            buffer in the list (default:
+                                            false)
+        {only_cwd}              (boolean)   if true, only show buffers in the
+                                            current working directory
+                                            (default: false)
+        {cwd_only}              (boolean)   alias for only_cwd
+        {sort_lastused}         (boolean)   Sorts current and last buffer to
+                                            the top and selects the lastused
+                                            (default: false)
+        {sort_mru}              (boolean)   Sorts all buffers after most
+                                            recent used. Not just the current
+                                            and last one (default: false)
+        {bufnr_width}           (number)    Defines the width of the buffer
+                                            numbers in front of the filenames 
+                                            (default: dynamic)
+        {file_encoding}         (string)    file encoding for the previewer
+        {sort_buffers}          (function)  sort fn(bufnr_a, bufnr_b). true if
+                                            bufnr_a should go first. Runs
+                                            after sorting by most recent (if
+                                            specified)
 
 
 builtin.colorscheme({opts})                  *telescope.builtin.colorscheme()*
@@ -1515,10 +1518,8 @@ builtin.tagstack({opts})                        *telescope.builtin.tagstack()*
         {opts} (table)  options to pass to the picker
 
     Options: ~
-        {show_line}   (boolean)  show results text (default: true)
-        {trim_text}   (boolean)  trim results text (default: false)
-        {fname_width} (number)   defines the width of the filename section
-                                 (default: 30)
+        {show_line} (boolean)  show results text (default: true)
+        {trim_text} (boolean)  trim results text (default: false)
 
 
 builtin.jumplist({opts})                        *telescope.builtin.jumplist()*
@@ -1529,10 +1530,8 @@ builtin.jumplist({opts})                        *telescope.builtin.jumplist()*
         {opts} (table)  options to pass to the picker
 
     Options: ~
-        {show_line}   (boolean)  show results text (default: true)
-        {trim_text}   (boolean)  trim results text (default: false)
-        {fname_width} (number)   defines the width of the filename section
-                                 (default: 30)
+        {show_line} (boolean)  show results text (default: true)
+        {trim_text} (boolean)  trim results text (default: false)
 
 
 builtin.lsp_references({opts})            *telescope.builtin.lsp_references()*
@@ -1553,8 +1552,6 @@ builtin.lsp_references({opts})            *telescope.builtin.lsp_references()*
                                           different from the current file,
                                           values: "tab", "tab drop", "split",
                                           "vsplit", "never"
-        {fname_width}          (number)   defines the width of the filename
-                                          section (default: 30)
         {show_line}            (boolean)  show results text (default: true)
         {trim_text}            (boolean)  trim results text (default: false)
         {file_encoding}        (string)   file encoding for the previewer
@@ -1569,8 +1566,6 @@ builtin.lsp_incoming_calls({opts})    *telescope.builtin.lsp_incoming_calls()*
         {opts} (table)  options to pass to the picker
 
     Options: ~
-        {fname_width}   (number)   defines the width of the filename section
-                                   (default: 30)
         {show_line}     (boolean)  show results text (default: true)
         {trim_text}     (boolean)  trim results text (default: false)
         {file_encoding} (string)   file encoding for the previewer
@@ -1585,8 +1580,6 @@ builtin.lsp_outgoing_calls({opts})    *telescope.builtin.lsp_outgoing_calls()*
         {opts} (table)  options to pass to the picker
 
     Options: ~
-        {fname_width}   (number)   defines the width of the filename section
-                                   (default: 30)
         {show_line}     (boolean)  show results text (default: true)
         {trim_text}     (boolean)  trim results text (default: false)
         {file_encoding} (string)   file encoding for the previewer
@@ -1605,8 +1598,6 @@ builtin.lsp_definitions({opts})          *telescope.builtin.lsp_definitions()*
                                    and the definition file is different from
                                    the current file, values: "tab", "tab
                                    drop", "split", "vsplit", "never"
-        {fname_width}   (number)   defines the width of the filename section
-                                   (default: 30)
         {show_line}     (boolean)  show results text (default: true)
         {trim_text}     (boolean)  trim results text (default: false)
         {reuse_win}     (boolean)  jump to existing window if buffer is
@@ -1627,8 +1618,6 @@ builtin.lsp_type_definitions({opts}) *telescope.builtin.lsp_type_definitions()*
                                    and the definition file is different from
                                    the current file, values: "tab", "tab
                                    drop", "split", "vsplit", "never"
-        {fname_width}   (number)   defines the width of the filename section
-                                   (default: 30)
         {show_line}     (boolean)  show results text (default: true)
         {trim_text}     (boolean)  trim results text (default: false)
         {reuse_win}     (boolean)  jump to existing window if buffer is
@@ -1649,8 +1638,6 @@ builtin.lsp_implementations({opts})  *telescope.builtin.lsp_implementations()*
                                    one and the definition file is different
                                    from the current file, values: "tab", "tab
                                    drop", "split", "vsplit", "never"
-        {fname_width}   (number)   defines the width of the filename section
-                                   (default: 30)
         {show_line}     (boolean)  show results text (default: true)
         {trim_text}     (boolean)  trim results text (default: false)
         {reuse_win}     (boolean)  jump to existing window if buffer is
@@ -3305,6 +3292,14 @@ actions.to_fuzzy_refine({prompt_bufnr})  *telescope.actions.to_fuzzy_refine()*
     Move from a none fuzzy search to a fuzzy one
     This action is meant to be used in live_grep and
     lsp_dynamic_workspace_symbols
+
+
+    Parameters: ~
+        {prompt_bufnr} (number)  The prompt bufnr
+
+
+actions.delete_mark({prompt_bufnr})          *telescope.actions.delete_mark()*
+    Delete the selected mark or all the marks selected using multi selection.
 
 
     Parameters: ~

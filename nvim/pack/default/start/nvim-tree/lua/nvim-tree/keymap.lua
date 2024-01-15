@@ -1,8 +1,8 @@
 local M = {}
 
 --- Apply mappings to a scratch buffer and return buffer local mappings
---- @param fn function(bufnr) on_attach or default_on_attach
---- @return table as per vim.api.nvim_buf_get_keymap
+---@param fn function(bufnr) on_attach or default_on_attach
+---@return table as per vim.api.nvim_buf_get_keymap
 local function generate_keymap(fn)
   -- create an unlisted scratch buffer
   local scratch_bufnr = vim.api.nvim_create_buf(false, true)
@@ -20,6 +20,7 @@ local function generate_keymap(fn)
 end
 
 -- stylua: ignore start
+---@param bufnr integer
 function M.default_on_attach(bufnr)
   local api = require('nvim-tree.api')
 
@@ -48,7 +49,7 @@ function M.default_on_attach(bufnr)
   vim.keymap.set('n', '<',       api.node.navigate.sibling.prev,      opts('Previous Sibling'))
   vim.keymap.set('n', '.',       api.node.run.cmd,                    opts('Run Command'))
   vim.keymap.set('n', '-',       api.tree.change_root_to_parent,      opts('Up'))
-  vim.keymap.set('n', 'a',       api.fs.create,                       opts('Create'))
+  vim.keymap.set('n', 'a',       api.fs.create,                       opts('Create File Or Directory'))
   vim.keymap.set('n', 'bd',      api.marks.bulk.delete,               opts('Delete Bookmarked'))
   vim.keymap.set('n', 'bt',      api.marks.bulk.trash,                opts('Trash Bookmarked'))
   vim.keymap.set('n', 'bmv',     api.marks.bulk.move,                 opts('Move Bookmarked'))
@@ -63,14 +64,15 @@ function M.default_on_attach(bufnr)
   vim.keymap.set('n', 'e',       api.fs.rename_basename,              opts('Rename: Basename'))
   vim.keymap.set('n', ']e',      api.node.navigate.diagnostics.next,  opts('Next Diagnostic'))
   vim.keymap.set('n', '[e',      api.node.navigate.diagnostics.prev,  opts('Prev Diagnostic'))
-  vim.keymap.set('n', 'F',       api.live_filter.clear,               opts('Clean Filter'))
-  vim.keymap.set('n', 'f',       api.live_filter.start,               opts('Filter'))
+  vim.keymap.set('n', 'F',       api.live_filter.clear,               opts('Live Filter: Clear'))
+  vim.keymap.set('n', 'f',       api.live_filter.start,               opts('Live Filter: Start'))
   vim.keymap.set('n', 'g?',      api.tree.toggle_help,                opts('Help'))
   vim.keymap.set('n', 'gy',      api.fs.copy.absolute_path,           opts('Copy Absolute Path'))
   vim.keymap.set('n', 'H',       api.tree.toggle_hidden_filter,       opts('Toggle Filter: Dotfiles'))
   vim.keymap.set('n', 'I',       api.tree.toggle_gitignore_filter,    opts('Toggle Filter: Git Ignore'))
   vim.keymap.set('n', 'J',       api.node.navigate.sibling.last,      opts('Last Sibling'))
   vim.keymap.set('n', 'K',       api.node.navigate.sibling.first,     opts('First Sibling'))
+  vim.keymap.set('n', 'M',       api.tree.toggle_no_bookmark_filter,  opts('Toggle Filter: No Bookmark'))
   vim.keymap.set('n', 'm',       api.marks.toggle,                    opts('Toggle Bookmark'))
   vim.keymap.set('n', 'o',       api.node.open.edit,                  opts('Open'))
   vim.keymap.set('n', 'O',       api.node.open.no_window_picker,      opts('Open: No Window Picker'))
@@ -93,10 +95,12 @@ function M.default_on_attach(bufnr)
 end
 -- stylua: ignore end
 
+---@return table
 function M.get_keymap()
   return generate_keymap(M.on_attach)
 end
 
+---@return table
 function M.get_keymap_default()
   return generate_keymap(M.default_on_attach)
 end

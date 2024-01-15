@@ -1,4 +1,8 @@
 local source = require("luasnip.session.snippet_collection.source")
+local u_table = require("luasnip.util.table")
+local auto_creating_tables =
+	require("luasnip.util.auto_table").warn_depth_autotable
+local session = require("luasnip.session")
 
 -- store snippets by some key.
 -- also ordered by filetype, eg.
@@ -11,28 +15,6 @@ local source = require("luasnip.session.snippet_collection.source")
 local M = {
 	invalidated_count = 0,
 }
-
--- depth specifies how many levels under this table should be allowed to index
--- throug this metamethod
--- set depth to 0 to disable checking
--- Acknowledgment: This is (maybe more than) inspired by
--- https://lua-users.org/wiki/AutomagicTables so special thanks to
--- Thomas Wrensch and Rici Lake for sharing their ideas on this topic.
-local function auto_creating_tables(self, key, depth)
-	local t = {}
-	assert(depth ~= 1, "don't index at that level")
-	setmetatable(t, {
-		-- creating a new function on each time (could be shared) isn't that
-		-- nice. Nonetheless this shouldn't be too bad, as these are only
-		-- created twice (auto+snippet) per ft and twice for each prio,ft
-		-- combination
-		__index = function(s, k)
-			return auto_creating_tables(s, k, depth - 1)
-		end,
-	})
-	self[key] = t
-	return t
-end
 
 local by_key = {}
 
@@ -257,7 +239,8 @@ function M.add_snippets(snippets, opts)
 					or opts.type
 				assert(
 					snip_type == "autosnippets" or snip_type == "snippets",
-					"snippetType must be either 'autosnippets' or 'snippets'"
+					"snippetType must be either 'autosnippets' or 'snippets', was "
+						.. vim.inspect(snip_type)
 				)
 
 				local snip_ft = snip.filetype or ft
@@ -270,10 +253,9 @@ function M.add_snippets(snippets, opts)
 				table.insert(by_ft[snip_type][snip_ft], snip)
 				by_id[snip.id] = snip
 
-				-- set source if it was passed, and remove from snippet.
+				-- set source if it is available.
 				if snip._source then
 					source.set(snip, snip._source)
-					snip._source = nil
 				end
 			end
 		end
@@ -315,6 +297,32 @@ end
 
 function M.get_id_snippet(id)
 	return by_id[id]
+end
+
+local function get_all_snippet_fts()
+	local ft_set = {}
+	for ft, _ in pairs(by_ft.snippets) do
+		ft_set[ft] = true
+	end
+	for ft, _ in pairs(by_ft.autosnippets) do
+		ft_set[ft] = true
+	end
+
+	return u_table.set_to_list(ft_set)
+end
+
+-- modules that want to call refresh_notify probably also want to notify others
+-- of adding those snippets => put those functions into the same module.
+function M.refresh_notify(ft_or_nil)
+	local fts = ft_or_nil and { ft_or_nil } or get_all_snippet_fts()
+
+	for _, ft in ipairs(fts) do
+		session.latest_load_ft = ft
+		vim.api.nvim_exec_autocmds(
+			"User",
+			{ pattern = "LuasnipSnippetsAdded", modeline = false }
+		)
+	end
 end
 
 return M

@@ -93,6 +93,15 @@ list.agda = {
   maintainers = { "@Decodetalkers" },
 }
 
+list.angular = {
+  install_info = {
+    url = "https://github.com/steelsojka/tree-sitter-angular",
+    files = { "src/parser.c" },
+    requires_generate_from_grammar = true,
+  },
+  experimental = true,
+}
+
 list.apex = {
   install_info = {
     url = "https://github.com/aheber/tree-sitter-sfapex",
@@ -485,6 +494,15 @@ list.erlang = {
     files = { "src/parser.c" },
   },
   maintainers = { "@filmor" },
+}
+
+list.facility = {
+  install_info = {
+    url = "https://github.com/FacilityApi/tree-sitter-facility",
+    files = { "src/parser.c" },
+  },
+  filetype = "fsd",
+  maintainers = { "@bryankenote" },
 }
 
 list.fennel = {
@@ -1308,6 +1326,7 @@ list.perl = {
 list.php = {
   install_info = {
     url = "https://github.com/tree-sitter/tree-sitter-php",
+    location = "php",
     files = { "src/parser.c", "src/scanner.c" },
   },
   maintainers = { "@tk-shirasaka" },
@@ -1518,6 +1537,14 @@ list.rasi = {
   maintainers = { "@Fymyte" },
 }
 
+list.rbs = {
+  install_info = {
+    url = "https://github.com/joker1007/tree-sitter-rbs",
+    files = { "src/parser.c" },
+  },
+  maintainers = { "@joker1007" },
+}
+
 list.re2c = {
   install_info = {
     url = "https://github.com/amaanq/tree-sitter-re2c",
@@ -1564,8 +1591,7 @@ list.robot = {
     url = "https://github.com/Hubro/tree-sitter-robot",
     files = { "src/parser.c" },
   },
-  maintainers = { "@ema2159" },
-  experimental = true,
+  maintainers = { "@Hubro" },
 }
 
 list.ron = {
@@ -1630,6 +1656,17 @@ list.scss = {
     files = { "src/parser.c", "src/scanner.c" },
   },
   maintainers = { "@elianiva" },
+}
+
+list.slang = {
+  install_info = {
+    url = "https://github.com/theHamsta/tree-sitter-slang",
+    files = { "src/parser.c", "src/scanner.c" },
+    generate_requires_npm = true,
+  },
+  filetype = "shaderslang",
+  maintainers = { "@theHamsta" },
+  experimental = true,
 }
 
 list.slint = {
@@ -1741,6 +1778,14 @@ list.strace = {
     files = { "src/parser.c" },
   },
   maintainers = { "@amaanq" },
+}
+
+list.styled = {
+  install_info = {
+    url = "https://github.com/mskelton/tree-sitter-styled",
+    files = { "src/parser.c", "src/scanner.c" },
+  },
+  maintainers = { "@mskelton" },
 }
 
 list.supercollider = {
@@ -1979,7 +2024,7 @@ list.uxntal = {
 list.v = {
   install_info = {
     url = "https://github.com/v-analyzer/v-analyzer",
-    files = { "src/parser.c", "src/scanner.c" },
+    files = { "src/parser.c" },
     location = "tree_sitter_v",
   },
   filetype = "vlang",

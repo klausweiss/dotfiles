@@ -8,7 +8,6 @@ describe("snippets_basic", function()
 
 	before_each(function()
 		helpers.clear()
-		ls_helpers.setup_jsregexp()
 		ls_helpers.session_setup_luasnip()
 
 		screen = Screen.new(50, 3)
@@ -1116,7 +1115,7 @@ describe("snippets_basic", function()
 		it('trigEngine "' .. engine .. '" works', function()
 			exec_lua(
 				[[
-				trigEngine, trig, body, doctrig = ...
+				trigEngine, trig = ...
 				snip = s({trig = trig, docTrig = "3", trigEngine = trigEngine}, {t"c1: ", l(l.CAPTURE1)})
 				ls.add_snippets("all", {snip})
 			]],
@@ -1135,6 +1134,37 @@ describe("snippets_basic", function()
 			assert.is_true(
 				exec_lua([[return snip:get_docstring()[1] == "c1: 3$0"]])
 			)
+		end)
+	end
+
+	for engine, trig in pairs(engine_data) do
+		it('trigEngine "' .. engine .. '" respects `max_len`', function()
+			exec_lua(
+				[[
+				trigEngine, trig = ...
+				snip = s({trig=trig, wordTrig=false, trigEngine=trigEngine, trigEngineOpts={max_len = 2}}, {t"c1: ", l(l.CAPTURE1)})
+				ls.add_snippets("all", {snip})
+			]],
+				engine,
+				trig
+			)
+			feed("i<Space>33")
+			exec_lua("ls.expand()")
+			screen:expect({
+				grid = [[
+				 c1: 33^                                           |
+				{0:~                                                 }|
+				{2:-- INSERT --}                                      |]],
+			})
+
+			feed("<Cr>333")
+			exec_lua("ls.expand()")
+			screen:expect({
+				grid = [[
+				 c1: 33                                           |
+				3c1: 33^                                           |
+				{2:-- INSERT --}                                      |]],
+			})
 		end)
 	end
 

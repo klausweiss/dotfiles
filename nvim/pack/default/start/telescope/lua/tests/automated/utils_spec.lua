@@ -78,3 +78,46 @@ describe("is_uri", function()
     end
   end)
 end)
+
+describe("separates file path location", function()
+  local suites = {
+    {
+      input = "file.txt:12:4",
+      file = "file.txt",
+      row = 12,
+      col = 4,
+    },
+    {
+      input = "file.txt:12",
+      file = "file.txt",
+      row = 12,
+      col = 0,
+    },
+    {
+      input = "file:12:4",
+      file = "file",
+      row = 12,
+      col = 4,
+    },
+    {
+      input = "file:12:",
+      file = "file",
+      row = 12,
+      col = 0,
+    },
+    {
+      input = "file:",
+      file = "file",
+    },
+  }
+
+  for _, suite in ipairs(suites) do
+    it("separtates file path for " .. suite.input, function()
+      local file, row, col = utils.__separate_file_path_location(suite.input)
+
+      assert.are.equal(file, suite.file)
+      assert.are.equal(row, suite.row)
+      assert.are.equal(col, suite.col)
+    end)
+  end
+end)

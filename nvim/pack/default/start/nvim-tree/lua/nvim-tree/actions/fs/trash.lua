@@ -1,5 +1,6 @@
 local lib = require "nvim-tree.lib"
 local notify = require "nvim-tree.notify"
+local reloaders = require "nvim-tree.actions.reloaders"
 
 local M = {
   config = {},
@@ -8,6 +9,7 @@ local M = {
 local utils = require "nvim-tree.utils"
 local events = require "nvim-tree.events"
 
+---@param absolute_path string
 local function clear_buffer(absolute_path)
   local bufs = vim.fn.getbufinfo { bufloaded = 1, buflisted = 1 }
   for _, buf in pairs(bufs) do
@@ -24,6 +26,7 @@ local function clear_buffer(absolute_path)
   end
 end
 
+---@param node Node
 function M.remove(node)
   local binary = M.config.trash.cmd:gsub(" .*$", "")
   if vim.fn.executable(binary) == 0 then
@@ -57,7 +60,7 @@ function M.remove(node)
       end
       events._dispatch_folder_removed(node.absolute_path)
       if not M.config.filesystem_watchers.enable then
-        require("nvim-tree.actions.reloaders.reloaders").reload_explorer()
+        reloaders.reload_explorer()
       end
     end)
   else
@@ -70,12 +73,13 @@ function M.remove(node)
       events._dispatch_file_removed(node.absolute_path)
       clear_buffer(node.absolute_path)
       if not M.config.filesystem_watchers.enable then
-        require("nvim-tree.actions.reloaders.reloaders").reload_explorer()
+        reloaders.reload_explorer()
       end
     end)
   end
 end
 
+---@param node Node
 function M.fn(node)
   if node.name == ".." then
     return
@@ -99,7 +103,7 @@ function M.fn(node)
       items_long = { "No", "Yes" }
     end
 
-    lib.prompt(prompt_input, prompt_select, items_short, items_long, function(item_short)
+    lib.prompt(prompt_input, prompt_select, items_short, items_long, "nvimtree_trash", function(item_short)
       utils.clear_prompt()
       if item_short == "y" or item_short == (M.config.ui.confirm.default_yes and "") then
         do_trash()

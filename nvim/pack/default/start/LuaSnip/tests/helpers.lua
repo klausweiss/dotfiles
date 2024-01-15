@@ -5,11 +5,58 @@ local assert = require("luassert")
 
 local M = {}
 
-function M.setup_jsregexp()
-	-- append default-path.
-	exec_lua(
-		('package.cpath = "%s"'):format(os.getenv("JSREGEXP_PATH") .. "/?.so;;")
-	)
+function M.jsregexp_it(it, name, fn)
+	for _, version in ipairs({ "005", "006", "luasnip" }) do
+		it(name .. " (jsregexp-" .. version .. ")", function()
+			exec_lua(
+				[[
+				local version, jsregexp_005_path, jsregexp_path = ...
+				if version ~= "luasnip" then
+					if version == "005" then
+						package.preload["jsregexp"] = package.loadlib(jsregexp_005_path .. "/jsregexp.so", "luaopen_jsregexp")
+
+						if package.preload["jsregexp"]().compile_safe then
+							error("wrong jsregexp-version loaded")
+						end
+					else
+						package.preload["jsregexp.core"] = package.loadlib(jsregexp_path .. "/jsregexp.so", "luaopen_jsregexp_core")
+						package.path = jsregexp_path .. "/?.lua;;"
+						-- populate package now, before jsregexp-core-preload is overwritten in util/jsregexp.lua.
+						-- also load it to check the version.
+						local jsregexp = require("jsregexp")
+						-- is actually 0.0.6.
+						if not jsregexp.compile_safe then
+							error("wrong jsregexp-version loaded")
+						end
+					end
+
+					-- don't accidentially load luasnip-jsregexp with unknown version.
+					local old_require = require
+					require = function(modulename)
+						if modulename == "luasnip-jsregexp" then
+							error("Disabled by `prevent_jsregexp`")
+						end
+						return old_require(modulename)
+					end
+				else
+					-- don't accidentially load regular jsregexp.
+					local old_require = require
+					require = function(modulename)
+						if modulename == "jsregexp" then
+							error("Disabled by `prevent_jsregexp`")
+						end
+						return old_require(modulename)
+					end
+				end
+			]],
+				version,
+				os.getenv("JSREGEXP005_ABS_PATH"),
+				os.getenv("JSREGEXP_ABS_PATH")
+			)
+
+			fn()
+		end)
+	end
 end
 
 function M.prevent_jsregexp()
@@ -257,6 +304,60 @@ function M.check_global_node_refs(test_name, resolve_map, fn)
 			fn()
 		end)
 	end
+end
+
+local scratchdir_path = ("%s/tests/scratch"):format(os.getenv("LUASNIP_SOURCE"))
+M.scratchdir_path = scratchdir_path
+
+function M.scratch_prepare()
+	-- clean (maybe a test was not able to clean up after itself) and re-create
+	-- scratch-directory.
+	os.execute(('rm -rf "%s"'):format(scratchdir_path))
+	os.execute(('mkdir "%s"'):format(scratchdir_path))
+
+	exec_lua(([[
+		local function translate_callbacks(cbs)
+			local cbs_new = {}
+
+			for name, cb in pairs(cbs) do
+				cbs_new[name] = function(full_path)
+					-- +1 to start behind scratch-path, +1 to omit
+					-- path-separator.
+					cb(full_path:sub(%s + 2))
+				end
+			end
+
+			return cbs_new
+		end
+
+		function scratch_tree_watcher(root_scratch_rel, depth, cbs, opts)
+			return require("luasnip.loaders.fs_watchers").tree("%s/" .. root_scratch_rel, depth, translate_callbacks(cbs), opts)
+		end
+
+		function scratch_path_watcher(root_scratch_rel, cbs, opts)
+			return require("luasnip.loaders.fs_watchers").path("%s/" .. root_scratch_rel, translate_callbacks(cbs), opts)
+		end
+	]]):format(#scratchdir_path, scratchdir_path, scratchdir_path))
+end
+
+function M.scratch_mkdir(scratch_rel)
+	os.execute(('mkdir -p "%s/%s"'):format(scratchdir_path, scratch_rel))
+end
+function M.scratch_touch(scratch_rel)
+	os.execute(('touch "%s/%s"'):format(scratchdir_path, scratch_rel))
+end
+
+function M.scratch_clear()
+	os.execute(('rm -rf "%s"'):format(scratchdir_path))
+end
+
+function M.scratch_edit(scratch_rel)
+	-- trigger BufWritePost.
+	exec(("edit %s/%s"):format(scratchdir_path, scratch_rel))
+
+	-- can replace with "write ++p" once we drop support for old versions.
+	M.scratch_mkdir(scratch_rel:gsub("%/[^%/]+$", ""))
+	exec(("write"):format(scratchdir_path, scratch_rel))
 end
 
 return M

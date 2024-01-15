@@ -70,6 +70,7 @@
 --- @field current_line_blame_formatter_nc string|Gitsigns.CurrentLineBlameFmtFun
 --- @field current_line_blame_opts Gitsigns.CurrentLineBlameOpts
 --- @field preview_config table<string,any>
+--- @field auto_attach boolean
 --- @field attach_to_untracked boolean
 --- @field yadm { enable: boolean }
 --- @field worktrees {toplevel: string, gitdir: string}[]
@@ -562,6 +563,14 @@ M.schema = {
     ]],
   },
 
+  auto_attach = {
+    type = 'boolean',
+    default = true,
+    description = [[
+      Automatically attach to files.
+    ]],
+  },
+
   attach_to_untracked = {
     type = 'boolean',
     default = true,
@@ -813,7 +822,7 @@ M.schema = {
 
   _inline2 = {
     type = 'boolean',
-    default = false,
+    default = true,
     description = [[
       Enable enhanced version of preview_hunk_inline()
     ]],

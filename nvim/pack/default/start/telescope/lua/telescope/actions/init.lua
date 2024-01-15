@@ -1407,20 +1407,27 @@ actions.which_key = function(prompt_bufnr, opts)
     end
   end
 
-  -- only set up autocommand after showing preview completed
+  -- if close_with_action is true, close the which_key window when any action is triggered
+  -- otherwise close the window when the prompt buffer is closed
+  local close_event, close_pattern, close_buffer
   if opts.close_with_action then
-    vim.schedule(function()
-      vim.api.nvim_create_autocmd("User", {
-        pattern = "TelescopeKeymap",
-        once = true,
-        callback = function()
-          pcall(vim.api.nvim_win_close, km_win_id, true)
-          pcall(vim.api.nvim_win_close, km_opts.border.win_id, true)
-          require("telescope.utils").buf_delete(km_buf)
-        end,
-      })
-    end)
+    close_event, close_pattern, close_buffer = "User", "TelescopeKeymap", nil
+  else
+    close_event, close_pattern, close_buffer = "BufWinLeave", nil, prompt_bufnr
   end
+  -- only set up autocommand after showing preview completed
+  vim.schedule(function()
+    vim.api.nvim_create_autocmd(close_event, {
+      pattern = close_pattern,
+      buffer = close_buffer,
+      once = true,
+      callback = function()
+        pcall(vim.api.nvim_win_close, km_win_id, true)
+        pcall(vim.api.nvim_win_close, km_opts.border.win_id, true)
+        require("telescope.utils").buf_delete(km_buf)
+      end,
+    })
+  end)
 end
 
 --- Move from a none fuzzy search to a fuzzy one<br>
@@ -1453,6 +1460,25 @@ actions.to_fuzzy_refine = function(prompt_bufnr)
     prompt_title = string.format("%s (%s)", opts.prefix, line),
     sorter = opts.sorter,
   })
+end
+
+--- Delete the selected mark or all the marks selected using multi selection.
+---@param prompt_bufnr number: The prompt bufnr
+actions.delete_mark = function(prompt_bufnr)
+  local current_picker = action_state.get_current_picker(prompt_bufnr)
+  current_picker:delete_selection(function(selection)
+    local bufname = selection.filename
+    local bufnr = vim.fn.bufnr(bufname)
+    local mark = selection.ordinal:sub(1, 1)
+
+    local success
+    if mark:match "%u" then
+      success = pcall(vim.api.nvim_del_mark, mark)
+    else
+      success = pcall(vim.api.nvim_buf_del_mark, bufnr, mark)
+    end
+    return success
+  end)
 end
 
 actions.nop = function(_) end

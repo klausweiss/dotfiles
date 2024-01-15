@@ -194,7 +194,7 @@ files.grep_string = function(opts)
 
   if visual == true then
     local saved_reg = vim.fn.getreg "v"
-    vim.cmd [[noautocmd sil norm "vy]]
+    vim.cmd [[noautocmd sil norm! "vy]]
     local sele = vim.fn.getreg "v"
     vim.fn.setreg("v", saved_reg)
     word = vim.F.if_nil(opts.search, sele)
@@ -384,8 +384,9 @@ files.find_files = function(opts)
   pickers
     .new(opts, {
       prompt_title = "Find Files",
+      __locations_input = true,
       finder = finders.new_oneshot_job(find_command, opts),
-      previewer = conf.file_previewer(opts),
+      previewer = conf.grep_previewer(opts),
       sorter = conf.file_sorter(opts),
     })
     :find()

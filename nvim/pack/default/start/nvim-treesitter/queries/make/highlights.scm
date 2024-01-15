@@ -10,6 +10,13 @@
  ] @conditional)
  "endif" @conditional)
 
+(rule (targets (word) @function))
+
+(rule
+ (targets) @_target
+ (prerequisites (word) @function
+  (#eq? @_target ".PHONY")))
+
 (rule (targets
        (word) @function.builtin
        (#any-of? @function.builtin
