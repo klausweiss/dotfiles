@@ -120,6 +120,9 @@ update-gruvbox-material:
 update-hop:
 	$(call download-from-repo, https://github.com/phaazon/hop.nvim)
 
+update-koka:
+	$(call download-from-git-subdirectory, https://github.com/koka-lang/koka, support/vim)
+
 update-lazygit:
 	$(call download-from-repo, https://github.com/kdheepak/lazygit.nvim)
 
