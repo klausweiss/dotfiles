@@ -95,10 +95,11 @@ list.agda = {
 
 list.angular = {
   install_info = {
-    url = "https://github.com/steelsojka/tree-sitter-angular",
-    files = { "src/parser.c" },
-    requires_generate_from_grammar = true,
+    url = "https://github.com/dlvandenberg/tree-sitter-angular",
+    files = { "src/parser.c", "src/scanner.c" },
+    generate_requires_npm = true,
   },
+  maintainers = { "@dlvandenberg" },
   experimental = true,
 }
 
@@ -388,6 +389,14 @@ list.diff = {
   maintainers = { "@gbprod" },
 }
 
+list.disassembly = {
+  install_info = {
+    url = "https://github.com/ColinKennedy/tree-sitter-disassembly",
+    files = { "src/parser.c", "src/scanner.c" },
+  },
+  maintainers = { "@ColinKennedy" },
+}
+
 list.dockerfile = {
   install_info = {
     url = "https://github.com/camdencheek/tree-sitter-dockerfile",
@@ -668,6 +677,14 @@ list.gn = {
   readme_name = "GN (Generate Ninja)",
 }
 
+list.gnuplot = {
+  install_info = {
+    url = "https://github.com/dpezto/tree-sitter-gnuplot",
+    files = { "src/parser.c" },
+  },
+  maintainers = { "@dpezto" },
+}
+
 list.go = {
   install_info = {
     url = "https://github.com/tree-sitter/tree-sitter-go",
@@ -720,11 +737,10 @@ list.gpg = {
 
 list.groovy = {
   install_info = {
-    url = "https://github.com/Decodetalkers/tree-sitter-groovy",
+    url = "https://github.com/murtaza64/tree-sitter-groovy",
     files = { "src/parser.c" },
-    branch = "gh-pages",
   },
-  maintainers = { "@Decodetalkers" },
+  maintainers = { "@murtaza64" },
 }
 
 list.graphql = {
@@ -915,7 +931,7 @@ list.jq = {
 list.jsdoc = {
   install_info = {
     url = "https://github.com/tree-sitter/tree-sitter-jsdoc",
-    files = { "src/parser.c" },
+    files = { "src/parser.c", "src/scanner.c" },
   },
   maintainers = { "@steelsojka" },
 }
@@ -1332,6 +1348,15 @@ list.php = {
   maintainers = { "@tk-shirasaka" },
 }
 
+list.php_only = {
+  install_info = {
+    url = "https://github.com/tree-sitter/tree-sitter-php",
+    location = "php_only",
+    files = { "src/parser.c", "src/scanner.c" },
+  },
+  maintainers = { "@tk-shirasaka" },
+}
+
 -- Parsers for injections
 list.phpdoc = {
   install_info = {
@@ -1385,6 +1410,14 @@ list.pony = {
     files = { "src/parser.c", "src/scanner.c" },
   },
   maintainers = { "@amaanq", "@mfelsche" },
+}
+
+list.printf = {
+  install_info = {
+    url = "https://github.com/ObserverOfTime/tree-sitter-printf",
+    files = { "src/parser.c" },
+  },
+  maintainers = { "@ObserverOfTime" },
 }
 
 list.prisma = {
@@ -2148,6 +2181,14 @@ list.yuck = {
     files = { "src/parser.c", "src/scanner.c" },
   },
   maintainers = { "@Philipp-M", "@amaanq" },
+}
+
+list.zathurarc = {
+  install_info = {
+    url = "https://github.com/Freed-Wu/tree-sitter-zathurarc",
+    files = { "src/parser.c" },
+  },
+  maintainers = { "@Freed-Wu" },
 }
 
 list.zig = {

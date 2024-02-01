@@ -11,9 +11,10 @@
 "=>" @operator
 
 (comment) @comment @spell
-(module_path) @text.uri
+
+(module_path) @string.special.url
 
 [
-(version)
-(go_version)
+  (version)
+  (go_version)
 ] @string

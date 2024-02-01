@@ -251,6 +251,12 @@ local icons_by_filename = {
     cterm_color = "59",
     name = "Makefile",
   },
+  ["groovy"] = {
+    icon = "",
+    color = "#384e5d",
+    cterm_color = "239",
+    name = "Groovy",
+  },
   ["gruntfile"] = {
     icon = "",
     color = "#975122",
@@ -336,6 +342,18 @@ local icons_by_filename = {
     name = "SvelteConfig",
   },
   ["tailwind.config.js"] = {
+    icon = "󱏿",
+    color = "#158197",
+    cterm_color = "31",
+    name = "TailwindConfig",
+  },
+  ["tailwind.config.mjs"] = {
+    icon = "󱏿",
+    color = "#158197",
+    cterm_color = "31",
+    name = "TailwindConfig",
+  },
+  ["tailwind.config.ts"] = {
     icon = "󱏿",
     color = "#158197",
     cterm_color = "31",
@@ -482,6 +500,12 @@ local icons_by_file_extension = {
     cterm_color = "125",
     name = "CPlusPlus",
   },
+  ["ccm"] = {
+    icon = "",
+    color = "#a23253",
+    cterm_color = "125",
+    name = "CPlusPlusModule",
+  },
   ["cfg"] = {
     icon = "",
     color = "#2f2f2f",
@@ -566,6 +590,12 @@ local icons_by_file_extension = {
     cterm_color = "24",
     name = "Cpp",
   },
+  ["cppm"] = {
+    icon = "",
+    color = "#36677c",
+    cterm_color = "24",
+    name = "Cppm",
+  },
   ["cpy"] = {
     icon = "⚙",
     color = "#005ca5",
@@ -615,7 +645,7 @@ local icons_by_file_extension = {
     name = "Css",
   },
   ["csv"] = {
-    icon = "󰈙",
+    icon = "",
     color = "#447028",
     cterm_color = "22",
     name = "Csv",
@@ -626,11 +656,29 @@ local icons_by_file_extension = {
     cterm_color = "24",
     name = "Cts",
   },
+  ["cu"] = {
+    icon = "",
+    color = "#447028",
+    cterm_color = "22",
+    name = "cuda",
+  },
+  ["cuh"] = {
+    icon = "",
+    color = "#6b4d83",
+    cterm_color = "96",
+    name = "cudah",
+  },
   ["cxx"] = {
     icon = "",
     color = "#36677c",
     cterm_color = "24",
     name = "Cxx",
+  },
+  ["cxxm"] = {
+    icon = "",
+    color = "#36677c",
+    cterm_color = "24",
+    name = "Cxxm",
   },
   ["d"] = {
     icon = "",
@@ -890,6 +938,12 @@ local icons_by_file_extension = {
     cterm_color = "236",
     name = "Haml",
   },
+  ["hx"] = {
+    icon = "",
+    color = "#9c5715",
+    cterm_color = "130",
+    name = "Haxe",
+  },
   ["hbs"] = {
     icon = "",
     color = "#a04f1d",
@@ -956,6 +1010,12 @@ local icons_by_file_extension = {
     cterm_color = "96",
     name = "Hxx",
   },
+  ["ixx"] = {
+    icon = "",
+    color = "#36677c",
+    cterm_color = "24",
+    name = "Ixx",
+  },
   ["ico"] = {
     icon = "",
     color = "#666620",
@@ -973,6 +1033,12 @@ local icons_by_file_extension = {
     color = "#526064",
     cterm_color = "59",
     name = "Ini",
+  },
+  ["ino"] = {
+    icon = "",
+    color = "#397981",
+    cterm_color = "30",
+    name = "arduino",
   },
   ["java"] = {
     icon = "",
@@ -1105,6 +1171,12 @@ local icons_by_file_extension = {
     color = "#007abf",
     cterm_color = "32",
     name = "Luau",
+  },
+  ["mpp"] = {
+    icon = "",
+    color = "#36677c",
+    cterm_color = "24",
+    name = "Mpp",
   },
   ["m4a"] = {
     icon = "",

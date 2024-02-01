@@ -50,7 +50,7 @@ of the default settings:
         follow_files = true
       },
       auto_attach = true,
-      attach_to_untracked = true,
+      attach_to_untracked = false,
       current_line_blame = false, -- Toggle with `:Gitsigns toggle_current_line_blame`
       current_line_blame_opts = {
         virt_text = true,
@@ -720,7 +720,7 @@ auto_attach                                      *gitsigns-config-auto_attach*
       Automatically attach to files.
 
 attach_to_untracked                      *gitsigns-config-attach_to_untracked*
-      Type: `boolean`, Default: `true`
+      Type: `boolean`, Default: `false`
 
       Attach to untracked files.
 

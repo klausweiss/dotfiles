@@ -1,5 +1,5 @@
-((line_comment) @injection.content
- (#set! injection.language "comment"))
+((comment) @injection.content
+  (#set! injection.language "comment"))
 
-((block_comment) @injection.content
- (#set! injection.language "comment"))
+((groovy_doc) @injection.content
+  (#set! injection.language "comment"))

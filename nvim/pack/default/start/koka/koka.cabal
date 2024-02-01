@@ -1,0 +1,258 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.36.0.
+--
+-- see: https://github.com/sol/hpack
+
+name:           koka
+version:        3.0.5
+description:    Please see the README on GitHub at <https://github.com/koka-lang/koka#readme>
+homepage:       https://github.com/koka-lang/koka#readme
+bug-reports:    https://github.com/koka-lang/koka/issues
+author:         Daan Leijen
+maintainer:     daan@microsoft.com
+license:        Apache-2.0
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    readme.md
+
+source-repository head
+  type: git
+  location: https://github.com/koka-lang/koka
+
+library
+  exposed-modules:
+      Backend.C.Box
+      Backend.C.FromCore
+      Backend.C.Parc
+      Backend.C.ParcReuse
+      Backend.C.ParcReuseSpec
+      Backend.CSharp.FromCore
+      Backend.JavaScript.FromCore
+      Common.ColorScheme
+      Common.Error
+      Common.Failure
+      Common.File
+      Common.Id
+      Common.IdMap
+      Common.IdNice
+      Common.IdSet
+      Common.Message
+      Common.Name
+      Common.NameMap
+      Common.NamePrim
+      Common.NameSet
+      Common.QNameMap
+      Common.Range
+      Common.ResumeKind
+      Common.Syntax
+      Common.Unique
+      Compiler.Compile
+      Compiler.Module
+      Compiler.Options
+      Compiler.Package
+      Core.AnalysisCCtx
+      Core.AnalysisMatch
+      Core.AnalysisResume
+      Core.BindingGroups
+      Core.Borrowed
+      Core.Check
+      Core.CheckFBIP
+      Core.Core
+      Core.CoreVar
+      Core.CTail
+      Core.Divergent
+      Core.FunLift
+      Core.Inline
+      Core.Inlines
+      Core.Monadic
+      Core.MonadicLift
+      Core.OpenResolve
+      Core.Parse
+      Core.Pretty
+      Core.Simplify
+      Core.Specialize
+      Core.Uniquefy
+      Core.UnReturn
+      Core.Unroll
+      Interpreter.Command
+      Interpreter.Interpret
+      Kind.Assumption
+      Kind.Constructors
+      Kind.ImportMap
+      Kind.Infer
+      Kind.InferKind
+      Kind.InferMonad
+      Kind.Kind
+      Kind.Newtypes
+      Kind.Pretty
+      Kind.Repr
+      Kind.Synonym
+      Kind.Unify
+      Lib.JSON
+      Lib.PPrint
+      Lib.Printer
+      Lib.Scc
+      Lib.Trace
+      Static.BindingGroups
+      Static.FixityResolve
+      Syntax.Colorize
+      Syntax.GenDoc
+      Syntax.Highlight
+      Syntax.Layout
+      Syntax.Lexeme
+      Syntax.Lexer
+      Syntax.Parse
+      Syntax.Promote
+      Syntax.RangeMap
+      Syntax.Syntax
+      Type.Assumption
+      Type.Infer
+      Type.InferMonad
+      Type.InfGamma
+      Type.Kind
+      Type.Operations
+      Type.Pretty
+      Type.Type
+      Type.TypeVar
+      Type.Unify
+      Platform.Config
+      Platform.Console
+      Platform.Filetime
+      Platform.GetOptions
+      Platform.ReadLine
+      Platform.Runtime
+      Platform.Var
+  other-modules:
+      Paths_koka
+  hs-source-dirs:
+      src
+      src/Platform/cpp
+  other-extensions:
+      CPP
+      OverloadedStrings
+  ghc-options: -j8 -O2
+  cpp-options: -DKOKA_MAIN="koka" -DKOKA_VARIANT="release" -DKOKA_VERSION="3.0.5" -DREADLINE=0
+  include-dirs:
+      src/Platform/cpp/Platform
+  c-sources:
+      src/Platform/cpp/Platform/cconsole.c
+  build-tools:
+      alex
+  build-depends:
+      FloatingHex >=0.5
+    , array
+    , base >=4.9
+    , bytestring
+    , containers
+    , directory
+    , isocline >=1.0.6
+    , mtl
+    , parsec
+    , process
+    , text
+    , time
+  default-language: Haskell2010
+  if os(windows)
+    cpp-options: -DWINDOWS
+  if os(darwin)
+    cpp-options: -DDARWIN
+
+executable koka
+  main-is: Main.hs
+  other-modules:
+      LanguageServer.Conversions
+      LanguageServer.Handler.Commands
+      LanguageServer.Handler.Completion
+      LanguageServer.Handler.Definition
+      LanguageServer.Handler.DocumentSymbol
+      LanguageServer.Handler.Folding
+      LanguageServer.Handler.Hover
+      LanguageServer.Handler.InlayHints
+      LanguageServer.Handler.Pretty
+      LanguageServer.Handler.SignatureHelp
+      LanguageServer.Handler.TextDocument
+      LanguageServer.Handlers
+      LanguageServer.Monad
+      LanguageServer.Run
+      Paths_koka
+  hs-source-dirs:
+      src/Main/langserver
+  ghc-options: -rtsopts -j8 -O2 -threaded "-with-rtsopts=-N8"
+  build-depends:
+      FloatingHex >=0.5
+    , aeson
+    , array
+    , async
+    , base >=4.9
+    , bytestring
+    , co-log-core
+    , containers
+    , directory
+    , isocline >=1.0.6
+    , koka
+    , lens
+    , lsp
+    , mtl
+    , network
+    , network-simple
+    , parsec
+    , process
+    , stm
+    , text
+    , text-rope
+    , time
+  default-language: Haskell2010
+
+executable koka-plain
+  main-is: Main.hs
+  other-modules:
+      Paths_koka
+  hs-source-dirs:
+      src/Main/plain
+  ghc-options: -rtsopts -j8 -O2 -threaded "-with-rtsopts=-N8"
+  build-depends:
+      FloatingHex >=0.5
+    , array
+    , base >=4.9
+    , bytestring
+    , containers
+    , directory
+    , isocline >=1.0.6
+    , koka
+    , mtl
+    , parsec
+    , process
+    , text
+    , time
+  default-language: Haskell2010
+
+test-suite koka-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Paths_koka
+  hs-source-dirs:
+      test
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      FloatingHex >=0.5
+    , array
+    , base >=4.9
+    , bytestring
+    , containers
+    , directory
+    , extra
+    , filepath
+    , hspec
+    , hspec-core
+    , isocline >=1.0.6
+    , json
+    , mtl
+    , parsec
+    , process
+    , regex-compat >=0.95.2.1
+    , text
+    , time
+  default-language: Haskell2010

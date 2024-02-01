@@ -1241,6 +1241,9 @@ actions.which_key = function(prompt_bufnr, opts)
   opts.normal_hl = vim.F.if_nil(opts.normal_hl, "TelescopePrompt")
   opts.border_hl = vim.F.if_nil(opts.border_hl, "TelescopePromptBorder")
   opts.winblend = vim.F.if_nil(opts.winblend, conf.winblend)
+  if type(opts.winblend) == "function" then
+    opts.winblend = opts.winblend()
+  end
   opts.column_padding = vim.F.if_nil(opts.column_padding, "  ")
 
   -- Assigning into 'opts.column_indent' would override a number with a string and
@@ -1479,6 +1482,13 @@ actions.delete_mark = function(prompt_bufnr)
     end
     return success
   end)
+end
+
+--- Insert the word under the cursor of the original (pre-Telescope) window
+---@param prompt_bufnr number: The prompt bufnr
+actions.insert_original_cword = function(prompt_bufnr)
+  local current_picker = action_state.get_current_picker(prompt_bufnr)
+  current_picker:set_prompt(current_picker.original_cword, false)
 end
 
 actions.nop = function(_) end

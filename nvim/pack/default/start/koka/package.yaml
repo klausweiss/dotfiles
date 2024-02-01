@@ -1,0 +1,116 @@
+#
+# ** when increasing the version, increase the version below at the cpp-options as well! ***
+#
+# Other files that contain a version are:
+# - util/install.sh
+# - util/install.bat
+# - util/minbuild
+# - support/vscode/koka.language-koka/package.json
+# - whatsnew.md, readme.md
+
+
+name:       koka
+version:    3.0.5
+github:     "koka-lang/koka"
+license:    Apache-2.0
+author:     Daan Leijen
+maintainer: daan@microsoft.com
+
+extra-source-files:
+  - readme.md
+
+description: Please see the README on GitHub at <https://github.com/koka-lang/koka#readme>
+
+dependencies:
+  - base >= 4.9
+  - array
+  - bytestring
+  - containers
+  - directory
+  - mtl
+  - parsec
+  - process
+  - text
+  - time
+  - isocline >= 1.0.6
+  - FloatingHex >= 0.5
+
+library:
+  other-extensions:
+    - CPP
+    - OverloadedStrings
+  source-dirs:
+    - src
+    - src/Platform/cpp
+  c-sources:
+    - src/Platform/cpp/Platform/cconsole.c
+  include-dirs:
+    - src/Platform/cpp/Platform
+  build-tools:
+    - alex
+  ghc-options:
+    - -j8
+    - -O2
+
+  cpp-options:
+    - -DKOKA_MAIN="koka"
+    - -DKOKA_VARIANT="release"
+    - -DKOKA_VERSION="3.0.5"
+    - -DREADLINE=0   # 1:getline, 2:readline, 3:haskeline, or 0:isocline
+  when:
+    - condition: os(windows)
+      cpp-options: -DWINDOWS
+    - condition: os(darwin)
+      cpp-options: -DDARWIN
+
+executables:
+  koka:
+    main: Main.hs
+    source-dirs: src/Main/langserver
+    dependencies:
+      - aeson
+      - async
+      - co-log-core
+      - koka
+      - lens
+      - lsp
+      - network-simple
+      - network
+      - text-rope
+      - stm
+    ghc-options:
+      - -rtsopts
+      - -j8
+      - -O2
+      - -threaded
+      - '"-with-rtsopts=-N8"'
+
+  koka-plain:
+    main: Main.hs
+    source-dirs: src/Main/plain
+    dependencies: koka
+    ghc-options:
+      - -rtsopts
+      - -j8
+      - -O2
+      - -threaded
+      - '"-with-rtsopts=-N8"'
+
+tests:
+  koka-test:
+    main: Spec.hs
+    source-dirs: test
+    ghc-options:
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N
+    dependencies:
+      # - koka
+      - extra
+      - filepath
+      - hspec
+      - hspec-core
+      - process
+      - regex-compat >= 0.95.2.1
+      - json
+

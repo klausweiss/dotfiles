@@ -1,7 +1,11 @@
-(elementdecl (Name) @definition.type)
+(elementdecl
+  (Name) @local.definition.type)
 
 (elementdecl
   (contentspec
-    (children (Name) @reference)))
+    (children
+      (Name) @local.reference)))
 
-(AttlistDecl . (Name) @reference)
+(AttlistDecl
+  .
+  (Name) @local.reference)

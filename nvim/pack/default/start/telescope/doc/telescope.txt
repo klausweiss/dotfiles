@@ -214,9 +214,10 @@ telescope.setup({opts})                                    *telescope.setup()*
                                               *telescope.defaults.winblend*
     winblend: ~
         Configure winblend for telescope floating windows. See |winblend| for
-        more information.
+        more information. Type can be a number or a function returning a
+        number
 
-        Default: 0
+        Default: function() return vim.o.winblend end
 
                                           *telescope.defaults.wrap_results*
     wrap_results: ~
@@ -1938,7 +1939,7 @@ ordered from the lowest priority to the highest priority.
 
       map({"i", "n"}, "<C-r>", function(_prompt_bufnr)
         print "You typed <C-r>"
-      end)
+      end, { desc = "desc for which key"})
 
       -- needs to return true if you want to map default_mappings and
       -- false if not
@@ -3306,6 +3307,14 @@ actions.delete_mark({prompt_bufnr})          *telescope.actions.delete_mark()*
         {prompt_bufnr} (number)  The prompt bufnr
 
 
+actions.insert_original_cword({prompt_bufnr}) *telescope.actions.insert_original_cword()*
+    Insert the word under the cursor of the original (pre-Telescope) window
+
+
+    Parameters: ~
+        {prompt_bufnr} (number)  The prompt bufnr
+
+
 
 ================================================================================
 ACTIONS_STATE                                          *telescope.actions.state*
@@ -3320,7 +3329,7 @@ action_state.get_selected_entry() *telescope.actions.state.get_selected_entry()*
 
 
 action_state.get_current_line()   *telescope.actions.state.get_current_line()*
-    Gets the current line
+    Gets the current line in the search prompt
 
 
 

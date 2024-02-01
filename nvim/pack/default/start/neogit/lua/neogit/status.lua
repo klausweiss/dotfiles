@@ -1004,7 +1004,7 @@ local discard = operation("discard", function()
         table.insert(t, function()
           if section_name == "untracked" then
             a.util.scheduler()
-            vim.fn.delete(git.repo.git_root .. "/" .. item.name)
+            vim.fn.delete(vim.fn.fnameescape(item.absolute_path))
           elseif section_name == "unstaged" then
             git.index.checkout { item.name }
           elseif section_name == "staged" then
@@ -1418,7 +1418,7 @@ function M.create(kind, cwd)
     name = "NeogitStatus",
     filetype = "NeogitStatus",
     kind = kind,
-    disable_line_numbers = config.values.disable_line_numbers or true,
+    disable_line_numbers = config.values.disable_line_numbers,
     ---@param buffer Buffer
     initialize = function(buffer, win)
       logger.debug("[STATUS BUFFER]: Initializing...")
@@ -1478,8 +1478,10 @@ function M.create(kind, cwd)
           return not M.is_refresh_locked()
         end)
 
-        restore_cursor_location(unpack(M.cursor_location))
-        M.cursor_location = nil
+        local ok, _ = pcall(restore_cursor_location, unpack(M.cursor_location))
+        if ok then
+          M.cursor_location = nil
+        end
       end
     end,
   }

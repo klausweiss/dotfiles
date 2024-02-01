@@ -74,7 +74,7 @@ require('gitsigns').setup {
     follow_files = true
   },
   auto_attach = true,
-  attach_to_untracked = true,
+  attach_to_untracked = false,
   current_line_blame = false, -- Toggle with `:Gitsigns toggle_current_line_blame`
   current_line_blame_opts = {
     virt_text = true,
@@ -290,7 +290,7 @@ If you are using lspsaga.nvim you can config `code_action.extend_gitsigns` (defa
 [coc-git]: https://github.com/neoclide/coc-git
 [diff-linematch]: https://github.com/neovim/neovim/pull/14537
 [luv]: https://github.com/luvit/luv/blob/master/docs.md
-[nvim-lua-guide]: https://github.com/nanotee/nvim-lua-guide
+[nvim-lua-guide]: https://neovim.io/doc/user/lua-guide.html
 [release]: https://github.com/lewis6991/gitsigns.nvim/releases
 [trouble.nvim]: https://github.com/folke/trouble.nvim
 [vim-fugitive]: https://github.com/tpope/vim-fugitive

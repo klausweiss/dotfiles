@@ -1,4 +1,4 @@
-"source" @include
+"source" @keyword.import
 
 [
   "mainmenu"
@@ -24,7 +24,7 @@
   "select"
   "imply"
   "visible if"
-] @conditional
+] @keyword.conditional
 
 [
   "def_bool"
@@ -41,6 +41,7 @@
   "<="
   ">="
   "!"
+  ":="
 ] @operator
 
 [
@@ -51,9 +52,18 @@
   "string"
 ] @type.builtin
 
-[ "(" ")" ] @punctuation.bracket
+[
+  "("
+  ")"
+] @punctuation.bracket
 
-(macro_variable ["$(" ")"] @punctuation.special)
+"," @punctuation.delimiter
+
+(macro_variable
+  [
+    "$("
+    ")"
+  ] @punctuation.special)
 
 (symbol) @variable
 
@@ -63,17 +73,28 @@
   (text)
 ] @string
 
-(config name: (symbol) @constant)
-(menuconfig name: (symbol) @constant)
-(choice name: (symbol) @constant)
+(config
+  name: (symbol) @constant)
+
+(menuconfig
+  name: (symbol) @constant)
+
+(choice
+  name: (symbol) @constant)
 
 ((symbol) @constant
   (#lua-match? @constant "[A-Z0-9]+"))
 
-(mainmenu name: (prompt) @text.title)
-(comment_entry name: (prompt) @text.title)
-(menu name: (prompt) @text.title)
+(mainmenu
+  name: (prompt) @markup.heading)
 
-(source (prompt) @text.uri @string.special)
+(comment_entry
+  name: (prompt) @markup.heading)
+
+(menu
+  name: (prompt) @markup.heading)
+
+(source
+  (prompt) @string.special.url)
 
 (comment) @comment @spell

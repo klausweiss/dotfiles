@@ -1,6 +1,6 @@
 local lib = require "nvim-tree.lib"
 local log = require "nvim-tree.log"
-local colors = require "nvim-tree.colors"
+local appearance = require "nvim-tree.appearance"
 local renderer = require "nvim-tree.renderer"
 local view = require "nvim-tree.view"
 local commands = require "nvim-tree.commands"
@@ -10,7 +10,7 @@ local legacy = require "nvim-tree.legacy"
 local core = require "nvim-tree.core"
 local git = require "nvim-tree.git"
 local filters = require "nvim-tree.explorer.filters"
-local modified = require "nvim-tree.modified"
+local buffers = require "nvim-tree.buffers"
 local events = require "nvim-tree.events"
 local notify = require "nvim-tree.notify"
 
@@ -104,12 +104,6 @@ function M.open_on_directory()
   actions.root.change_dir.force_dirchange(bufname, true)
 end
 
-function M.reset_highlight()
-  colors.setup()
-  view.reset_winhl()
-  renderer.render_hl(view.get_bufnr())
-end
-
 function M.place_cursor_on_node()
   local search = vim.fn.searchcount()
   if search and search.exact_match == 1 then
@@ -168,8 +162,14 @@ local function setup_autocommands(opts)
     vim.api.nvim_create_autocmd(name, vim.tbl_extend("force", default_opts, custom_opts))
   end
 
-  -- reset highlights when colorscheme is changed
-  create_nvim_tree_autocmd("ColorScheme", { callback = M.reset_highlight })
+  -- reset and draw (highlights) when colorscheme is changed
+  create_nvim_tree_autocmd("ColorScheme", {
+    callback = function()
+      appearance.setup()
+      view.reset_winhl()
+      renderer.draw()
+    end,
+  })
 
   -- prevent new opened file from opening in the same window as nvim-tree
   create_nvim_tree_autocmd("BufWipeout", {
@@ -210,7 +210,7 @@ local function setup_autocommands(opts)
       -- update opened file buffers
       if (filters.config.filter_no_buffer or renderer.config.highlight_opened_files ~= "none") and vim.bo[data.buf].buftype == "" then
         utils.debounce("Buf:filter_buffer", opts.view.debounce_delay, function()
-          actions.reloaders.reload_explorer(nil, data.buf)
+          actions.reloaders.reload_explorer()
         end)
       end
     end,
@@ -314,7 +314,7 @@ local function setup_autocommands(opts)
     create_nvim_tree_autocmd({ "BufModifiedSet", "BufWritePost" }, {
       callback = function()
         utils.debounce("Buf:modified", opts.view.debounce_delay, function()
-          modified.reload()
+          buffers.reload_modified()
           actions.reloaders.reload_explorer()
         end)
       end,
@@ -386,8 +386,8 @@ local DEFAULT_OPTS = { -- BEGIN_DEFAULT_OPTS
     indent_width = 2,
     special_files = { "Cargo.toml", "Makefile", "README.md", "readme.md" },
     symlink_destination = true,
-    highlight_git = false,
-    highlight_diagnostics = false,
+    highlight_git = "none",
+    highlight_diagnostics = "none",
     highlight_opened_files = "none",
     highlight_modified = "none",
     highlight_bookmarks = "none",
@@ -641,9 +641,11 @@ local ACCEPTED_STRINGS = {
     signcolumn = { "yes", "no", "auto" },
   },
   renderer = {
+    highlight_git = { "none", "icon", "name", "all" },
     highlight_opened_files = { "none", "icon", "name", "all" },
     highlight_modified = { "none", "icon", "name", "all" },
     highlight_bookmarks = { "none", "icon", "name", "all" },
+    highlight_diagnostics = { "none", "icon", "name", "all" },
     highlight_clipboard = { "none", "icon", "name", "all" },
     icons = {
       git_placement = { "before", "after", "signcolumn" },
@@ -786,7 +788,7 @@ function M.setup(conf)
 
   require("nvim-tree.actions").setup(opts)
   require("nvim-tree.keymap").setup(opts)
-  require("nvim-tree.colors").setup()
+  require("nvim-tree.appearance").setup()
   require("nvim-tree.diagnostics").setup(opts)
   require("nvim-tree.explorer").setup(opts)
   require("nvim-tree.git").setup(opts)
@@ -796,7 +798,7 @@ function M.setup(conf)
   require("nvim-tree.renderer").setup(opts)
   require("nvim-tree.live-filter").setup(opts)
   require("nvim-tree.marks").setup(opts)
-  require("nvim-tree.modified").setup(opts)
+  require("nvim-tree.buffers").setup(opts)
   require("nvim-tree.help").setup(opts)
   require("nvim-tree.watcher").setup(opts)
   if M.config.renderer.icons.show.file and pcall(require, "nvim-web-devicons") then
