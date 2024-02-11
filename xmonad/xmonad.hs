@@ -3,6 +3,7 @@ import qualified Data.Map as M
 import UnliftIO.Directory (getHomeDirectory)
 import XMonad
 import XMonad.Actions.CycleWS (nextScreen, prevScreen, shiftNextScreen, shiftPrevScreen)
+import XMonad.Actions.DynamicWorkspaceGroups
 import XMonad.Actions.PhysicalScreens
 import XMonad.Actions.TiledWindowDragging
 import XMonad.Config.Desktop
@@ -31,6 +32,8 @@ main =
             `additionalKeysP` myKeysP
             `additionalMouseBindings` myMouseBindings
 
+myModMask = mod4Mask
+
 terminalCmd = "kitty"
 launcherCmd = "rofi -show combi"
 browserCmd = "firefox"
@@ -47,7 +50,9 @@ lockScreenCmd = "i3lock -n --color 000000"
 fileManagerCmd = "thunar"
 powerMenuCmd = "rofi -show power-menu -modi power-menu:~/.dotfiles/rofi/rofi-power-menu/rofi-power-menu"
 
-myModMask = mod4Mask
+screenComparator = horizontalScreenOrderer
+viewScreen' = viewScreen screenComparator
+sendToScreen' = sendToScreen screenComparator
 
 myKeysP =
     [ ("M-p", spawn launcherCmd)
@@ -83,13 +88,13 @@ myKeysP =
     , ("M-S-e", windows $ shift "6")
     , -- monitor shortcuts
       --   switch
-      ("M-u", viewScreen def 0)
-    , ("M-o", viewScreen def 1)
-    , ("M-y", viewScreen def 2)
+      ("M-u", viewScreen' 0)
+    , ("M-o", viewScreen' 1)
+    , ("M-y", viewScreen' 2)
     , --   move
-      ("M-S-u", sendToScreen def 0)
-    , ("M-S-o", sendToScreen def 1)
-    , ("M-S-y", sendToScreen def 2)
+      ("M-S-u", sendToScreen' 0)
+    , ("M-S-o", sendToScreen' 1)
+    , ("M-S-y", sendToScreen' 2)
     ]
 myMouseBindings :: [((ButtonMask, Button), Window -> X ())]
 myMouseBindings =
@@ -144,6 +149,7 @@ myManageHook =
 
 myStartupHook :: X ()
 myStartupHook = do
+    setupWorkspaceGroups
     fixJvmGuisNotWorking
     startNotificationDaemon
     setDefaultCursor xC_left_ptr
@@ -155,6 +161,9 @@ myStartupHook = do
     setWallpaper
     setAutoScreenLock
     populateTray
+
+setupWorkspaceGroups = do
+    addRawWSGroup "test" []
 
 fixJvmGuisNotWorking = do
     setWMName "LG3D"
