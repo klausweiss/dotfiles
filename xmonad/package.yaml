@@ -2,6 +2,7 @@ name: xmonad-config
 
 dependencies:
   - base
+  - containers
   - xmonad
   - xmonad-contrib
   - unliftio

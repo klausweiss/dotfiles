@@ -15,6 +15,7 @@ library
       ./
   build-depends:
       base
+    , containers
     , unliftio
     , xmonad
     , xmonad-contrib
@@ -27,6 +28,7 @@ executable xmonad
   build-depends:
       X11 >=1.10
     , base
+    , containers
     , unliftio
     , xmonad
     , xmonad-contrib

@@ -1,17 +1,20 @@
 import Data.Function ((&))
+import qualified Data.Map as M
 import UnliftIO.Directory (getHomeDirectory)
 import XMonad
 import XMonad.Actions.CycleWS (nextScreen, prevScreen, shiftNextScreen, shiftPrevScreen)
 import XMonad.Actions.PhysicalScreens
+import XMonad.Actions.TiledWindowDragging
 import XMonad.Config.Desktop
-import XMonad.Hooks.ManageDocks (ToggleStruts(..))
+import XMonad.Hooks.ManageDocks (ToggleStruts (..))
 import XMonad.Hooks.SetWMName (setWMName)
+import XMonad.Layout.DraggingVisualizer
 import XMonad.Layout.GridVariants
-import XMonad.Layout.Spacing (spacing, smartSpacing)
+import XMonad.Layout.Spacing (smartSpacing, spacing)
 import XMonad.StackSet (greedyView, shift)
 import qualified XMonad.StackSet as W
 import XMonad.Util.Cursor (setDefaultCursor)
-import XMonad.Util.EZConfig (additionalKeysP)
+import XMonad.Util.EZConfig (additionalKeys, additionalKeysP, additionalMouseBindings)
 import XMonad.Util.SpawnOnce
 import XMonad.Util.Themes
 
@@ -19,13 +22,14 @@ main =
     xmonad $
         desktopConfig
             { terminal = terminalCmd
-            , modMask = mod4Mask
+            , modMask = myModMask
             , startupHook = myStartupHook
             , workspaces = myWorkspaces
             , manageHook = myManageHook <> manageHook desktopConfig
             , layoutHook = myLayoutHook
             }
-            `additionalKeysP` myKeys
+            `additionalKeysP` myKeysP
+            `additionalMouseBindings` myMouseBindings
 
 terminalCmd = "kitty"
 launcherCmd = "rofi -show combi"
@@ -43,7 +47,9 @@ lockScreenCmd = "i3lock -n --color 000000"
 fileManagerCmd = "thunar"
 powerMenuCmd = "rofi -show power-menu -modi power-menu:~/.dotfiles/rofi/rofi-power-menu/rofi-power-menu"
 
-myKeys =
+myModMask = mod4Mask
+
+myKeysP =
     [ ("M-p", spawn launcherCmd)
     , ("M-q", kill)
     , ("C-M1-<Delete>", spawn powerMenuCmd)
@@ -85,6 +91,12 @@ myKeys =
     , ("M-S-o", sendToScreen def 1)
     , ("M-S-y", sendToScreen def 2)
     ]
+myMouseBindings :: [((ButtonMask, Button), Window -> X ())]
+myMouseBindings =
+    [ ((myModMask, button1), dragWindow)
+    -- if it was  the following instead, floating mode wouldn't be disabled, but I haven't needed it once
+    -- , ((myModMask .|. shiftMask, button1), dragWindow)
+    ]
 
 web = "1:web"
 dev = "2:dev"
@@ -99,13 +111,14 @@ myWorkspaces =
         <> fmap show [5 .. 9]
 
 myLayoutHook =
-    Grid (16 / 9) ||| Full
-        & desktopLayoutModifiers
-        & smartSpacing 10
+    draggingVisualizer $
+        Grid (16 / 9) ||| Full
+            & desktopLayoutModifiers
+            & smartSpacing 10
 
 myManageHook =
     mconcat
-        [ className =? "firefox" --> doShift web
+        [ internetBrowser --> doShift web
         , className =? "emacs" --> doShift dev
         , jetbrainsIde --> doShift dev
         , className =? "Signal" --> doShift mail
@@ -117,7 +130,17 @@ myManageHook =
   where
     jetbrainsIde :: Query Bool
     jetbrainsIde =
-        className =? "jetbrains-pycharm-ce"
+        foldl1
+            (<||>)
+            [ className =? "jetbrains-pycharm-ce"
+            , className =? "jetbrains-pycharm"
+            ]
+    internetBrowser =
+        foldl1
+            (<||>)
+            [ className =? "firefox"
+            , className =? "google-chrome"
+            ]
 
 myStartupHook :: X ()
 myStartupHook = do
