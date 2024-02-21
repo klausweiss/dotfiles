@@ -43,6 +43,7 @@
   "<<-"
   "<<<"
   ".."
+  "!"
 ] @operator
 
 ; Do *not* spell check strings since they typically have some sort of
@@ -67,10 +68,6 @@
   argument: "$" @string) ; bare dollar
 
 (concatenation
-  [
-    (simple_expansion)
-    (expansion)
-  ]
   (word) @string)
 
 [

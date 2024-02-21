@@ -2,7 +2,11 @@
 (command_name) @function
 
 (text_mode
-  "\\text" @function)
+  [
+    "\\text"
+    "\\intertext"
+    "\\shortintertext"
+  ] @function)
 
 (caption
   command: _ @function)
@@ -10,15 +14,6 @@
 (key_value_pair
   key: (_) @variable.parameter
   value: (_))
-
-[
-  (line_comment)
-  (block_comment)
-  (comment_environment)
-] @comment @spell
-
-((line_comment) @keyword.directive
-  (#lua-match? @keyword.directive "^%% !TeX"))
 
 [
   (brack_group)
@@ -163,12 +158,6 @@
   content:
     (curly_group
       (_) @none @spell))
-
-; Math
-[
-  (displayed_equation)
-  (inline_formula)
-] @markup.math
 
 (math_environment
   (begin
@@ -331,9 +320,13 @@
   directory: (curly_group_path) @string
   file: (curly_group_path) @string)
 
-(bibtex_include
+(bibstyle_include
   command: _ @keyword.import
   path: (curly_group_path) @string)
+
+(bibtex_include
+  command: _ @keyword.import
+  paths: (curly_group_path_list) @string)
 
 (biblatex_include
   "\\addbibresource" @keyword.import
@@ -369,3 +362,21 @@
 (label_reference) @nospell
 
 (label_reference_range) @nospell
+
+; Math
+[
+  (displayed_equation)
+  (inline_formula)
+] @markup.math
+
+[
+  (line_comment)
+  (block_comment)
+  (comment_environment)
+] @comment @spell
+
+((line_comment) @keyword.directive
+  (#lua-match? @keyword.directive "^%% !TeX"))
+
+((line_comment) @keyword.directive
+  (#lua-match? @keyword.directive "^%%&"))

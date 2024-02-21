@@ -293,7 +293,7 @@ local search_cb_jump = function(self, bufnr, query)
   end
   vim.api.nvim_buf_call(bufnr, function()
     pcall(vim.fn.matchdelete, self.state.hl_id, self.state.winid)
-    vim.cmd "norm! gg"
+    vim.cmd "keepjumps norm! gg"
     vim.fn.search(query, "W")
     vim.cmd "norm! zz"
 
@@ -612,7 +612,7 @@ previewers.ctags = defaulter(function(opts)
         end)
 
         pcall(vim.fn.matchdelete, self.state.hl_id, self.state.winid)
-        vim.cmd "norm! gg"
+        vim.cmd "keepjumps norm! gg"
         vim.fn.search(scode, "W")
         vim.cmd "norm! zz"
 
@@ -747,9 +747,8 @@ previewers.git_branch_log = defaulter(function(opts)
   local highlight_buffer = function(bufnr, content)
     for i = 1, #content do
       local line = content[i]
-      local _, hstart = line:find "[%*%s|]*"
+      local hstart, hend = line:find "[0-9a-fA-F]+"
       if hstart then
-        local hend = hstart + 7
         if hend < #line then
           pcall(
             vim.api.nvim_buf_add_highlight,
@@ -1115,7 +1114,7 @@ previewers.highlights = defaulter(function(_)
 
       vim.schedule(function()
         vim.api.nvim_buf_call(self.state.bufnr, function()
-          vim.cmd "norm! gg"
+          vim.cmd "keepjumps norm! gg"
           vim.fn.search(entry.value .. " ")
           local lnum = vim.api.nvim_win_get_cursor(self.state.winid)[1]
           -- That one is actually a match but its better to use it like that then matchadd

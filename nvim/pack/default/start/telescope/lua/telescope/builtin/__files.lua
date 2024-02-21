@@ -537,16 +537,33 @@ files.current_buffer_fuzzy_find = function(opts)
       sorter = conf.generic_sorter(opts),
       previewer = conf.grep_previewer(opts),
       attach_mappings = function()
-        action_set.select:enhance {
-          post = function()
-            local selection = action_state.get_selected_entry()
-            if not selection then
-              return
+        actions.select_default:replace(function(prompt_bufnr)
+          local selection = action_state.get_selected_entry()
+          if not selection then
+            utils.__warn_no_selection "builtin.current_buffer_fuzzy_find"
+            return
+          end
+          local current_picker = action_state.get_current_picker(prompt_bufnr)
+          local searched_for = require("telescope.actions.state").get_current_line()
+          local highlighted = current_picker.sorter:highlighter(searched_for, selection.ordinal)
+          highlighted = highlighted or {}
+          local column = highlighted[1]
+          for _, v in ipairs(highlighted) do
+            if v < column then
+              column = v
             end
+          end
+          if column then
+            column = column - 1
+          else
+            column = 0
+          end
 
-            vim.api.nvim_win_set_cursor(0, { selection.lnum, 0 })
-          end,
-        }
+          actions.close(prompt_bufnr)
+          vim.schedule(function()
+            vim.api.nvim_win_set_cursor(0, { selection.lnum, column })
+          end)
+        end)
 
         return true
       end,
@@ -591,7 +608,7 @@ files.tags = function(opts)
                 return "\\" .. x
               end)
 
-              vim.cmd "norm! gg"
+              vim.cmd "keepjumps norm! gg"
               vim.fn.search(scode)
               vim.cmd "norm! zz"
             else

@@ -221,6 +221,7 @@ local DEFAULT_SETTINGS = {
 | EFM (general purpose server)        | `efm`                             |
 | ESLint                              | `eslint`                          |
 | Elixir                              | `elixirls`                        |
+| dprint                              | `dprint`                          |
 | Elm                                 | `elmls`                           |
 | Ember                               | `ember`                           |
 | Emmet                               | `emmet_language_server`           |
@@ -289,6 +290,7 @@ local DEFAULT_SETTINGS = {
 | OneScript, 1C:Enterprise            | `bsl_ls`                          |
 | OpenAPI                             | `spectral`                        |
 | OpenCL                              | `opencl_ls`                       |
+| OpenGL                              | `glsl_analyzer`                   |
 | OpenSCAD                            | `openscad_lsp`                    |
 | PHP                                 | `intelephense`                    |
 | PHP                                 | `phpactor`                        |
@@ -327,8 +329,10 @@ local DEFAULT_SETTINGS = {
 | Solidity                            | `solang`                          |
 | Solidity                            | `solc`                            |
 | Solidity                            | `solidity`                        |
+| Solidity                            | `solidity_ls`                     |
 | Solidity                            | `solidity_ls_nomicfoundation`     |
 | Sphinx                              | `esbonio`                         |
+| Standard ML                         | `millet`                          |
 | Starlark                            | `bzl`                             |
 | Stylelint                           | `stylelint_lsp`                   |
 | Svelte                              | `svelte`                          |
@@ -343,6 +347,7 @@ local DEFAULT_SETTINGS = {
 | Terraform                           | `terraformls`                     |
 | Terraform                           | `tflint`                          |
 | Thrift                              | `thriftls`                        |
+| Twiggy                              | `twig_language_server`            |
 | TypeScript                          | `biome`                           |
 | TypeScript                          | `tsserver`                        |
 | TypeScript                          | `vtsls`                           |

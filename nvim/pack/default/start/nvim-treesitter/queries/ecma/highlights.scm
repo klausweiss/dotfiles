@@ -12,10 +12,12 @@
 
 (private_property_identifier) @variable.member
 
-(variable_declarator
-  name:
-    (object_pattern
-      (shorthand_property_identifier_pattern))) @variable
+(object_pattern
+  (shorthand_property_identifier_pattern) @variable)
+
+(object_pattern
+  (object_assignment_pattern
+    (shorthand_property_identifier_pattern) @variable))
 
 ; Special identifiers
 ;--------------------
@@ -33,6 +35,8 @@
 
 ((identifier) @type.builtin
   (#any-of? @type.builtin "Object" "Function" "Boolean" "Symbol" "Number" "Math" "Date" "String" "RegExp" "Map" "Set" "WeakMap" "WeakSet" "Promise" "Array" "Int8Array" "Uint8Array" "Uint8ClampedArray" "Int16Array" "Uint16Array" "Int32Array" "Uint32Array" "Float32Array" "Float64Array" "ArrayBuffer" "DataView" "Error" "EvalError" "InternalError" "RangeError" "ReferenceError" "SyntaxError" "TypeError" "URIError"))
+
+(statement_identifier) @label
 
 ; Function and method definitions
 ;--------------------------------
@@ -138,6 +142,17 @@
   (call_expression
     (identifier) @attribute))
 
+(decorator
+  "@" @attribute
+  (member_expression
+    (property_identifier) @attribute))
+
+(decorator
+  "@" @attribute
+  (call_expression
+    (member_expression
+      (property_identifier) @attribute)))
+
 ; Literals
 ;---------
 [
@@ -191,23 +206,12 @@
 
 ; Punctuation
 ;------------
-";" @punctuation.delimiter
-
-"." @punctuation.delimiter
-
-"," @punctuation.delimiter
-
-(pair
-  ":" @punctuation.delimiter)
-
-(pair_pattern
-  ":" @punctuation.delimiter)
-
-(switch_case
-  ":" @punctuation.delimiter)
-
-(switch_default
-  ":" @punctuation.delimiter)
+[
+  ";"
+  "."
+  ","
+  ":"
+] @punctuation.delimiter
 
 [
   "--"
