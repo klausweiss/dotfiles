@@ -99,7 +99,7 @@ cmp.setup({
     documentation = cmp.config.window.bordered(),
   },
   mapping = {
-    ['<C-b>'] = cmp.mapping(cmp.mapping.scroll_docs( -4), { 'i', 'c' }),
+    ['<C-b>'] = cmp.mapping(cmp.mapping.scroll_docs(-4), { 'i', 'c' }),
     ['<C-f>'] = cmp.mapping(cmp.mapping.scroll_docs(4), { 'i', 'c' }),
     ['<C-Space>'] = cmp.mapping(cmp.mapping.complete(), { 'i', 'c' }),
     ['<C-y>'] = cmp.config.disable, -- Specify `cmp.config.disable` if you want to remove the default `<C-y>` mapping.
@@ -122,8 +122,8 @@ cmp.setup({
     ["<S-Tab>"] = cmp.mapping(function(fallback)
       if cmp.visible() then
         cmp.select_prev_item()
-      elseif luasnip.jumpable( -1) then
-        luasnip.jump( -1)
+      elseif luasnip.jumpable(-1) then
+        luasnip.jump(-1)
       else
         fallback()
       end
@@ -325,6 +325,7 @@ require 'nvim-treesitter.configs'.setup {
 
 -- lsp
 local lspconfig = require('lspconfig')
+local lspconfig_util = require('lspconfig.util')
 
 -- Use an on_attach function to only map the following keys
 -- after the language server attaches to the current buffer
@@ -366,7 +367,7 @@ local on_attach = function(client, bufnr)
 
   -- lsp signature
   local cfg = {
-    bind = true, -- This is mandatory, otherwise border config won't get registered.
+    bind = true,   -- This is mandatory, otherwise border config won't get registered.
     -- If you want to hook lspsaga or other signature handler, pls set to false
     doc_lines = 2, -- will show two lines of comment/doc(if there are more than two lines in doc, will be truncated);
     -- set to 0 if you DO NOT want any API comments be shown
@@ -434,6 +435,9 @@ require("mason-lspconfig").setup_handlers {
           formatter = "tidy",
         }
       },
+      root_dir = lspconfig_util.root_pattern('spago.dhall', 'psc-package.json', 'bower.json', 'flake.nix', 'shell.nix',
+        'spago.yaml')
+      ,
     })
   end,
 
