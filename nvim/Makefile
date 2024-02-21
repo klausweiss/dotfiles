@@ -144,6 +144,9 @@ update-mason-lspconfig: \
 
 	$(call download-from-repo, https://github.com/williamboman/mason-lspconfig.nvim)
 
+update-sonokai:
+	$(call download-from-repo, https://github.com/sainnhe/sonokai)
+
 update-neogit: \
 	update-plenary \
 

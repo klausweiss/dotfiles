@@ -19,9 +19,15 @@ end
 local is_gnvim = (vim.g.gnvim == 1)
 
 -- theme, powerline, font
+-- gruvbox
 vim.g.gruvbox_material_sign_column_background = 'clear' -- transparent signcolumn
 vim.g.gruvbox_material_enable_bold = 1
-cmd 'autocmd vimenter * ++nested colorscheme gruvbox-material'
+-- sonokai
+vim.opt.termguicolors = true
+-- vim.g.sonokai_style = 'andromeda'
+vim.g.sonokai_style = 'shusia'
+vim.g.sonokai_better_performance = 1
+cmd 'autocmd vimenter * ++nested colorscheme sonokai'
 vim.g.airline_powerline_fonts = 1
 cmd 'set guifont=JetBrains\\ Mono'
 cmd 'set termguicolors'
@@ -36,7 +42,7 @@ cmd 'set hidden'
 
 -- lualine
 require('lualine').setup {
-  options = { theme = 'gruvbox' },
+  options = { theme = 'sonokai' },
   extensions = { "nvim-tree" },
 }
 
