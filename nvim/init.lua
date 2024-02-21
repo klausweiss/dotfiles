@@ -27,7 +27,7 @@ vim.opt.termguicolors = true
 -- vim.g.sonokai_style = 'andromeda'
 vim.g.sonokai_style = 'shusia'
 vim.g.sonokai_better_performance = 1
-cmd 'autocmd vimenter * ++nested colorscheme sonokai'
+cmd 'autocmd vimenter * ++nested colorscheme gruvbox-material'
 vim.g.airline_powerline_fonts = 1
 cmd 'set guifont=JetBrains\\ Mono'
 cmd 'set termguicolors'
@@ -42,7 +42,7 @@ cmd 'set hidden'
 
 -- lualine
 require('lualine').setup {
-  options = { theme = 'sonokai' },
+  options = { theme = 'auto' },
   extensions = { "nvim-tree" },
 }
 
