@@ -476,6 +476,10 @@ local function nkeycmd(k, cmd)
   vim.api.nvim_set_keymap('n', k, '<cmd>' .. cmd .. '<CR>', noremap)
 end
 
+local function vkeycmd(k, cmd)
+  vim.api.nvim_set_keymap('v', k, '<cmd>' .. cmd .. '<CR>', noremap)
+end
+
 local function keycmd(k, cmd)
   ikeycmd(k, cmd)
   vim.api.nvim_set_keymap('', k, '<cmd>' .. cmd .. '<CR>', noremap)
@@ -502,6 +506,10 @@ keycmd('<S-F1>', 'NvimTreeClose')
 keycmd('<F4>', 'Trouble')
 keycmd('<S-F4>', 'TroubleClose')
 nkeycmd('U', 'UndotreeToggle')
+nkeycmd('H', 'HopChar1')
+vkeycmd('H', 'HopChar1')
+nkeycmd('h', 'HopChar2')
+vkeycmd('h', 'HopChar2')
 
 command_key('a', 'Telescope commands')
 
