@@ -555,7 +555,7 @@ window_key('l', window_select_right)
 window_key('p', window_select_top)
 window_key('t', window_select_left)
 window_key('n', window_select_down)
-window_key('s', window_select_right)
+window_key('r', window_select_right)
 
 leader_shortcut('h', 'HopChar1')
 leader_shortcut('sh', 'nohlsearch')
