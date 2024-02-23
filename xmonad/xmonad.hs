@@ -17,6 +17,7 @@ import XMonad.StackSet (greedyView, shift)
 import qualified XMonad.StackSet as W
 import XMonad.Util.Cursor (setDefaultCursor)
 import XMonad.Util.EZConfig (additionalKeys, additionalKeysP, additionalMouseBindings)
+import XMonad.Util.NamedScratchpad
 import XMonad.Util.SpawnOnce
 import XMonad.Util.Themes
 
@@ -72,8 +73,9 @@ myKeysP =
     , ("<Print>", spawn screenshotCmd)
     , ("S-<Print>", spawn lastScreenshotCmd)
     , ("M-f", sendMessage ToggleStruts)
-    , -- workspace-related shortcuts
-      --   switch
+      -- workspace-related shortcuts
+      -- scratchpads
+    , --   switch
       ("M-v", windows $ greedyView web)
     , ("M-x", windows $ greedyView dev)
     , ("M-c", windows $ greedyView notes)
@@ -105,6 +107,9 @@ myMouseBindings =
     -- if it was  the following instead, floating mode wouldn't be disabled, but I haven't needed it once
     -- , ((myModMask .|. shiftMask, button1), dragWindow)
     ]
+
+scratchpads =
+    []
 
 web = "1:web"
 dev = "2:dev"
