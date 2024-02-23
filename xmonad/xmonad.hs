@@ -164,6 +164,7 @@ myStartupHook = do
     setWallpaper
     setAutoScreenLock
     populateTray
+    startPolkitAgent
 
 setupWorkspaceGroups = do
     addRawWSGroup "test" []
@@ -193,6 +194,9 @@ startCompositionManager = do
 
 startTouchpadGesturesManager = do
     spawnOnce "touchegg"
+
+startPolkitAgent = do
+    spawnOnce "mate-polkit"
 
 populateTray = do
     spawnOnce "nm-applet"
