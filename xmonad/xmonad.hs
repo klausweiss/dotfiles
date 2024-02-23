@@ -6,6 +6,7 @@ import XMonad.Actions.CycleWS (nextScreen, prevScreen, shiftNextScreen, shiftPre
 import XMonad.Actions.DynamicWorkspaceGroups
 import XMonad.Actions.PhysicalScreens
 import XMonad.Actions.TiledWindowDragging
+import XMonad.Actions.Warp (warpToWindow)
 import XMonad.Config.Desktop
 import XMonad.Hooks.ManageDocks (ToggleStruts (..))
 import XMonad.Hooks.SetWMName (setWMName)
@@ -88,14 +89,16 @@ myKeysP =
     , ("M-S-e", windows $ shift "6")
     , -- monitor shortcuts
       --   switch
-      ("M-u", viewScreen' 0)
-    , ("M-o", viewScreen' 1)
-    , ("M-y", viewScreen' 2)
+      ("M-u", viewScreen' 0 >> centerMouseOnWindow)
+    , ("M-o", viewScreen' 1 >> centerMouseOnWindow)
+    , ("M-y", viewScreen' 2 >> centerMouseOnWindow)
     , --   move
       ("M-S-u", sendToScreen' 0)
     , ("M-S-o", sendToScreen' 1)
     , ("M-S-y", sendToScreen' 2)
     ]
+  where
+    centerMouseOnWindow = warpToWindow 0.5 0.5
 myMouseBindings :: [((ButtonMask, Button), Window -> X ())]
 myMouseBindings =
     [ ((myModMask, button1), dragWindow)
