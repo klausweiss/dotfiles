@@ -54,6 +54,7 @@ powerMenuCmd = "rofi -show power-menu -modi power-menu:~/.dotfiles/rofi/rofi-pow
 
 screenComparator = horizontalScreenOrderer
 viewScreen' = viewScreen screenComparator
+getScreen' = getScreen screenComparator
 sendToScreen' = sendToScreen screenComparator
 
 myKeysP =
@@ -172,7 +173,18 @@ myStartupHook = do
     startPolkitAgent
 
 setupWorkspaceGroups = do
-    addRawWSGroup "test" []
+    screenLeft <- getScreen' 1
+    screenMiddle <- getScreen' 2
+    screenRight <- getScreen' 3
+    devRules <- case (screenLeft, screenMiddle, screenRight) of
+        (Just l, Just m, Just r) -> do
+            return [(l, "4"), (m, dev), (r, web)]
+        (Just l, Just m, Nothing) -> do
+            return [(l, dev), (m, web)]
+        (Just l, Nothing, Nothing) -> do
+            return [(l, dev)]
+        _ -> return []
+    addRawWSGroup dev devRules
 
 fixJvmGuisNotWorking = do
     setWMName "LG3D"
