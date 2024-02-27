@@ -213,7 +213,8 @@ startTouchpadGesturesManager = do
     spawnOnce "touchegg"
 
 startPolkitAgent = do
-    spawnOnce "mate-polkit"
+    spawnOnce "mate-polkit" -- Ubuntu
+    spawnOnce "/usr/lib/mate-polkit/polkit-mate-authentication-agent-1" -- Arch
 
 populateTray = do
     spawnOnce "nm-applet"
