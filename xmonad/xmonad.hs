@@ -56,6 +56,8 @@ screenComparator = horizontalScreenOrderer
 viewScreen' = viewScreen screenComparator
 getScreen' = getScreen screenComparator
 sendToScreen' = sendToScreen screenComparator
+onNextNeighbour' = onNextNeighbour screenComparator
+onPrevNeighbour' = onPrevNeighbour screenComparator
 
 myKeysP =
     [ ("M-p", spawn launcherCmd)
@@ -74,9 +76,9 @@ myKeysP =
     , ("<Print>", spawn screenshotCmd)
     , ("S-<Print>", spawn lastScreenshotCmd)
     , ("M-f", sendMessage ToggleStruts)
-      -- workspace-related shortcuts
+    , -- workspace-related shortcuts
       -- scratchpads
-    , --   switch
+      --   switch
       ("M-v", windows $ greedyView web)
     , ("M-x", windows $ greedyView dev)
     , ("M-c", windows $ greedyView notes)
@@ -95,10 +97,14 @@ myKeysP =
       ("M-u", viewScreen' 0 >> centerMouseOnWindow)
     , ("M-o", viewScreen' 1 >> centerMouseOnWindow)
     , ("M-y", viewScreen' 2 >> centerMouseOnWindow)
+    , ("M-l", onPrevNeighbour' W.view >> centerMouseOnWindow)
+    , ("M-w", onNextNeighbour' W.view >> centerMouseOnWindow)
     , --   move
       ("M-S-u", sendToScreen' 0)
     , ("M-S-o", sendToScreen' 1)
     , ("M-S-y", sendToScreen' 2)
+    , ("M-S-l", onPrevNeighbour' W.shift)
+    , ("M-S-w", onNextNeighbour' W.shift)
     ]
   where
     centerMouseOnWindow = warpToWindow 0.5 0.5
