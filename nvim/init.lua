@@ -228,6 +228,15 @@ local auto_session_config = {
   auto_session_suppress_dirs = {
     '~',
   },
+  auto_session_use_git_branch = true,
+  -- fix for nvimtree
+  pre_save_cmds = { "NvimTreeClose" },
+  save_extra_cmds = {
+    "NvimTreeOpen"
+  },
+  post_restore_cmds = {
+    "NvimTreeOpen"
+  }
 }
 
 require('auto-session').setup(auto_session_config)
