@@ -3,9 +3,10 @@ name: xmonad-config
 dependencies:
   - base
   - containers
+  - template-haskell
+  - unliftio
   - xmonad
   - xmonad-contrib
-  - unliftio
 
 library:
   source-dirs: .

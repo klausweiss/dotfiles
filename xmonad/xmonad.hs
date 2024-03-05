@@ -1,14 +1,19 @@
+{-# LANGUAGE QuasiQuotes #-}
+
 import Data.Function ((&))
 import qualified Data.Map as M
+import Debug.Trace
 import UnliftIO.Directory (getHomeDirectory)
 import XMonad
 import XMonad.Actions.CycleWS (nextScreen, prevScreen, shiftNextScreen, shiftPrevScreen)
 import XMonad.Actions.DynamicWorkspaceGroups
 import XMonad.Actions.PhysicalScreens
 import XMonad.Actions.TiledWindowDragging
+import XMonad.Actions.TopicSpace
 import XMonad.Actions.Warp (warpToWindow)
 import XMonad.Config.Desktop
 import XMonad.Hooks.ManageDocks (ToggleStruts (..))
+import XMonad.Hooks.Rescreen
 import XMonad.Hooks.SetWMName (setWMName)
 import XMonad.Layout.DraggingVisualizer
 import XMonad.Layout.GridVariants
@@ -19,26 +24,29 @@ import XMonad.Util.Cursor (setDefaultCursor)
 import XMonad.Util.EZConfig (additionalKeys, additionalKeysP, additionalMouseBindings)
 import XMonad.Util.NamedScratchpad
 import XMonad.Util.SpawnOnce
-import XMonad.Util.Themes
+import XMonad.Util.Themes hiding (TI)
+import XmonadConfig.Presets (preset)
 
 main =
     xmonad $
-        desktopConfig
-            { terminal = terminalCmd
-            , modMask = myModMask
-            , startupHook = myStartupHook
-            , workspaces = myWorkspaces
-            , manageHook = myManageHook <> manageHook desktopConfig
-            , layoutHook = myLayoutHook
-            }
-            `additionalKeysP` myKeysP
-            `additionalMouseBindings` myMouseBindings
+        addAfterRescreenHook myAfterRescreenHook $
+            desktopConfig
+                { terminal = terminalCmd
+                , modMask = myModMask
+                , startupHook = myStartupHook
+                , workspaces = topicNames topicItems
+                , manageHook = myManageHook <> manageHook desktopConfig
+                , layoutHook = myLayoutHook
+                }
+                `additionalKeysP` myKeysP
+                `additionalMouseBindings` myMouseBindings
 
 myModMask = mod4Mask
 
 terminalCmd = "kitty"
 launcherCmd = "rofi -show combi"
 browserCmd = "firefox"
+notesCmd = "logseq"
 volumeUpCmd = "pactl set-sink-volume @DEFAULT_SINK@ +5%"
 volumeDownCmd = "pactl set-sink-volume @DEFAULT_SINK@ -5%"
 volumeMuteCmd = "pactl set-sink-mute @DEFAULT_SINK@ toggle"
@@ -58,6 +66,7 @@ getScreen' = getScreen screenComparator
 sendToScreen' = sendToScreen screenComparator
 onNextNeighbour' = onNextNeighbour screenComparator
 onPrevNeighbour' = onPrevNeighbour screenComparator
+switchTopic' = switchTopic myTopicConfig
 
 myKeysP =
     [ ("M-p", spawn launcherCmd)
@@ -77,21 +86,29 @@ myKeysP =
     , ("S-<Print>", spawn lastScreenshotCmd)
     , ("M-f", sendMessage ToggleStruts)
     , -- workspace-related shortcuts
-      -- scratchpads
+      -- workspace groups
+      ("M-<F7>", viewWSGroup "wg7")
+    , ("M-<F8>", viewWSGroup "wg8")
+    , ("M-<F9>", viewWSGroup "wg9")
+    , ("M-S-<F7>", addCurrentWSGroup "wg7")
+    , ("M-S-<F8>", addCurrentWSGroup "wg8")
+    , ("M-S-<F9>", addCurrentWSGroup "wg9")
+    , ("M-<F2>", viewWSGroup dev)
+    , -- scratchpads
       --   switch
-      ("M-v", windows $ greedyView web)
-    , ("M-x", windows $ greedyView dev)
-    , ("M-c", windows $ greedyView notes)
-    , ("M-i", windows $ greedyView mail)
-    , ("M-a", windows $ greedyView "5")
-    , ("M-e", windows $ greedyView "6")
+      ("M-v", switchTopic' web)
+    , ("M-x", switchTopic' dev)
+    , ("M-c", switchTopic' notes)
+    , ("M-i", switchTopic' chat)
+    , ("M-a", switchTopic' call)
+    , ("M-e", switchTopic' terminal')
     , --   move
       ("M-S-v", windows $ shift web)
     , ("M-S-x", windows $ shift dev)
     , ("M-S-c", windows $ shift notes)
-    , ("M-S-i", windows $ shift mail)
-    , ("M-S-a", windows $ shift "5")
-    , ("M-S-e", windows $ shift "6")
+    , ("M-S-i", windows $ shift chat)
+    , ("M-S-a", windows $ shift call)
+    , ("M-S-e", windows $ shift terminal')
     , -- monitor shortcuts
       --   switch
       ("M-u", viewScreen' 0 >> centerMouseOnWindow)
@@ -103,11 +120,10 @@ myKeysP =
       ("M-S-u", sendToScreen' 0)
     , ("M-S-o", sendToScreen' 1)
     , ("M-S-y", sendToScreen' 2)
-    , ("M-S-l", onPrevNeighbour' W.shift)
-    , ("M-S-w", onNextNeighbour' W.shift)
     ]
   where
     centerMouseOnWindow = warpToWindow 0.5 0.5
+
 myMouseBindings :: [((ButtonMask, Button), Window -> X ())]
 myMouseBindings =
     [ ((myModMask, button1), dragWindow)
@@ -115,20 +131,36 @@ myMouseBindings =
     -- , ((myModMask .|. shiftMask, button1), dragWindow)
     ]
 
-scratchpads =
-    []
-
 web = "1:web"
 dev = "2:dev"
 notes = "3:notes"
-mail = "4:mail"
-myWorkspaces =
-    [ web
-    , dev
-    , notes
-    , mail
-    ]
-        <> fmap show [5 .. 9]
+chat = "4:chat"
+call = "5:call"
+terminal' = "6:term"
+
+topicItems =
+    let firstTopics =
+            [ inHome web (spawn browserCmd)
+            , inHome dev (return ())
+            , inHome notes (spawn notesCmd)
+            , inHome chat (return ())
+            , inHome call (return ())
+            , inHome terminal' (spawn terminalCmd)
+            ]
+        lastTopics = [noAction (show i) "." | i <- [length firstTopics + 1 .. 10]]
+     in firstTopics <> lastTopics
+
+myTopicConfig :: TopicConfig
+myTopicConfig =
+    def
+        { topicDirs = tiDirs topicItems
+        , topicActions = tiActions topicItems
+        , defaultTopicAction = const (pure ()) -- by default, do nothing
+        , defaultTopic = web -- fallback
+        }
+
+scratchpads =
+    []
 
 myLayoutHook =
     draggingVisualizer $
@@ -141,10 +173,10 @@ myManageHook =
         [ internetBrowser --> doShift web
         , className =? "emacs" --> doShift dev
         , jetbrainsIde --> doShift dev
-        , className =? "Signal" --> doShift mail
-        , className =? "thunderbird" --> doShift mail
-        , className =? "zoom" --> doShift mail
-        , className =? "Slack" --> doShift mail
+        , className =? "Signal" --> doShift chat
+        , className =? "thunderbird" --> doShift chat
+        , className =? "zoom" --> doShift call
+        , className =? "Slack" --> doShift chat
         , className =? "Logseq" --> doShift notes
         ]
   where
@@ -161,6 +193,10 @@ myManageHook =
             [ className =? "firefox"
             , className =? "google-chrome"
             ]
+
+myAfterRescreenHook = do
+    setupWorkspaceGroups
+    startBars
 
 myStartupHook :: X ()
 myStartupHook = do
@@ -179,12 +215,24 @@ myStartupHook = do
     startPolkitAgent
 
 setupWorkspaceGroups = do
-    screenLeft <- getScreen' 1
-    screenMiddle <- getScreen' 2
-    screenRight <- getScreen' 3
+    screenLeft <- getScreen' 0
+    screenMiddle <- getScreen' 1
+    screenRight <- getScreen' 2
+    devPreset <-
+        [preset| 
+                chat | dev | web
+                       dev | web
+                       dev
+            |]
+    callPreset <-
+        [preset| 
+                chat | call | web
+                       call | web
+                       call
+            |]
     devRules <- case (screenLeft, screenMiddle, screenRight) of
         (Just l, Just m, Just r) -> do
-            return [(l, "4"), (m, dev), (r, web)]
+            return [(l, chat), (m, dev), (r, web)]
         (Just l, Just m, Nothing) -> do
             return [(l, dev), (m, web)]
         (Just l, Nothing, Nothing) -> do

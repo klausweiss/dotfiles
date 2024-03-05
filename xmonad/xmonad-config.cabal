@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.34.4.
+-- This file has been generated from package.yaml by hpack version 0.36.0.
 --
 -- see: https://github.com/sol/hpack
 
@@ -9,6 +9,8 @@ version:        0.0.0
 build-type:     Simple
 
 library
+  exposed-modules:
+      XmonadConfig.Presets
   other-modules:
       Paths_xmonad_config
   hs-source-dirs:
@@ -16,6 +18,7 @@ library
   build-depends:
       base
     , containers
+    , template-haskell
     , unliftio
     , xmonad
     , xmonad-contrib
@@ -29,6 +32,7 @@ executable xmonad
       X11 >=1.10
     , base
     , containers
+    , template-haskell
     , unliftio
     , xmonad
     , xmonad-contrib
