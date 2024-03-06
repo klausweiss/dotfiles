@@ -4,6 +4,7 @@ dependencies:
   - base
   - containers
   - template-haskell
+  - text
   - unliftio
   - xmonad
   - xmonad-contrib

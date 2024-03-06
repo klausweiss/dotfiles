@@ -19,6 +19,7 @@ library
       base
     , containers
     , template-haskell
+    , text
     , unliftio
     , xmonad
     , xmonad-contrib
@@ -33,6 +34,7 @@ executable xmonad
     , base
     , containers
     , template-haskell
+    , text
     , unliftio
     , xmonad
     , xmonad-contrib
