@@ -94,6 +94,7 @@ myKeysP =
     , ("M-S-<F8>", addCurrentWSGroup "wg8")
     , ("M-S-<F9>", addCurrentWSGroup "wg9")
     , ("M-<F2>", viewWSGroup dev)
+    , ("M-<F5>", viewWSGroup call)
     , -- scratchpads
       --   switch
       ("M-v", switchTopic' web)
@@ -225,30 +226,18 @@ myStartupHook = do
     startPolkitAgent
 
 setupWorkspaceGroups = do
-    screenLeft <- getScreen' 0
-    screenMiddle <- getScreen' 1
-    screenRight <- getScreen' 2
-    devPreset <-
-        [preset| 
+    addRawWSGroup dev
+        <$> [preset| 
                 chat | dev | web
                        dev | web
                        dev
             |]
-    callPreset <-
-        [preset| 
+    addRawWSGroup call
+        <$> [preset| 
                 chat | call | web
                        call | web
                        call
             |]
-    devRules <- case (screenLeft, screenMiddle, screenRight) of
-        (Just l, Just m, Just r) -> do
-            return [(l, chat), (m, dev), (r, web)]
-        (Just l, Just m, Nothing) -> do
-            return [(l, dev), (m, web)]
-        (Just l, Nothing, Nothing) -> do
-            return [(l, dev)]
-        _ -> return []
-    addRawWSGroup dev devRules
 
 fixJvmGuisNotWorking = do
     setWMName "LG3D"

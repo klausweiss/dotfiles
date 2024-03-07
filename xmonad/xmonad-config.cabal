@@ -28,7 +28,7 @@ library
 executable xmonad
   main-is: xmonad.hs
   other-modules:
-      Paths_xmonad_config
+      XmonadConfig.Presets
   build-depends:
       X11 >=1.10
     , base
