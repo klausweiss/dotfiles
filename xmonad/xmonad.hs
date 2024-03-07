@@ -126,9 +126,7 @@ myKeysP =
 
 myMouseBindings :: [((ButtonMask, Button), Window -> X ())]
 myMouseBindings =
-    [ ((myModMask, button1), dragWindow)
-    -- if it was  the following instead, floating mode wouldn't be disabled, but I haven't needed it once
-    -- , ((myModMask .|. shiftMask, button1), dragWindow)
+    [ ((myModMask .|. shiftMask, button1), dragWindow)
     ]
 
 web = "1:web"
@@ -169,16 +167,16 @@ myLayoutHook =
             & smartSpacing 10
 
 myManageHook =
-    mconcat
+    mconcat $
         [ internetBrowser --> doShift web
         , className =? "emacs" --> doShift dev
         , jetbrainsIde --> doShift dev
         , className =? "Signal" --> doShift chat
         , className =? "thunderbird" --> doShift chat
-        , className =? "zoom" --> doShift call
         , className =? "Slack" --> doShift chat
         , className =? "Logseq" --> doShift notes
         ]
+            <> zoomHooks
   where
     jetbrainsIde :: Query Bool
     jetbrainsIde =
@@ -193,6 +191,10 @@ myManageHook =
             [ className =? "firefox"
             , className =? "google-chrome"
             ]
+    zoomHooks =
+        [ className =? "zoom" --> doShift call
+        , (className =? "zoom") <&&> (stringProperty "WM_NAME" =? "") --> doFloat
+        ]
 
 myAfterRescreenHook = do
     setupWorkspaceGroups
