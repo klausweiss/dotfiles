@@ -174,9 +174,7 @@ myManageHook =
         [ internetBrowser --> doShift web
         , className =? "emacs" --> doShift dev
         , jetbrainsIde --> doShift dev
-        , className =? "Signal" --> doShift chat
-        , className =? "thunderbird" --> doShift chat
-        , className =? "Slack" --> doShift chat
+        , chatRules --> doShift chat
         , className =? "Logseq" --> doShift notes
         ]
             <> zoomHooks
@@ -193,6 +191,13 @@ myManageHook =
             (<||>)
             [ className =? "firefox"
             , className =? "google-chrome"
+            ]
+    chatRules =
+        foldl1
+            (<||>)
+            [ className =? "Signal"
+            , className =? "Slack"
+            , className =? "thunderbird" -- TODO: named scratchpad
             ]
     zoomHooks =
         [ className =? "zoom" --> doShift call
