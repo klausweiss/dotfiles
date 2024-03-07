@@ -159,6 +159,9 @@ myTopicConfig =
 
 scratchpads =
     []
+  where
+    pwa name appid = NS name ("google-chrome --new-window --app-id=" <> appid) (appName =? ("crx_" <> appid)) defaultFloating
+    webapp name url appname = NS name ("google-chrome --new-window --app=" <> url) (appName =? appname) defaultFloating
 
 myLayoutHook =
     draggingVisualizer $
