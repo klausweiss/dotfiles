@@ -227,13 +227,13 @@ myStartupHook = do
 
 setupWorkspaceGroups = do
     addRawWSGroup dev
-        <$> [preset| 
+        =<< [preset|
                 chat | dev | web
                        dev | web
                        dev
             |]
     addRawWSGroup call
-        <$> [preset| 
+        =<< [preset|
                 chat | call | web
                        call | web
                        call
