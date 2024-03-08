@@ -47,6 +47,8 @@ terminalCmd = "kitty"
 launcherCmd = "rofi -show combi"
 browserCmd = "firefox"
 notesCmd = "logseq"
+discordCmd = "discord"
+signalCmd = "signal-desktop"
 volumeUpCmd = "pactl set-sink-volume @DEFAULT_SINK@ +5%"
 volumeDownCmd = "pactl set-sink-volume @DEFAULT_SINK@ -5%"
 volumeMuteCmd = "pactl set-sink-mute @DEFAULT_SINK@ toggle"
@@ -142,7 +144,13 @@ topicItems =
             [ inHome web (spawn browserCmd)
             , inHome dev (return ())
             , inHome notes (spawn notesCmd)
-            , inHome chat (return ())
+            , inHome
+                chat
+                ( do
+                    spawnOnce discordCmd
+                    spawnOnce signalCmd
+                    return ()
+                )
             , inHome call (return ())
             , inHome terminal' (spawn terminalCmd)
             ]
@@ -198,6 +206,7 @@ myManageHook =
             (<||>)
             [ className =? "Signal"
             , className =? "Slack"
+            , className =? "discord"
             , className =? "thunderbird" -- TODO: named scratchpad
             ]
     zoomHooks =
