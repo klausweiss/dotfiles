@@ -16,6 +16,7 @@ import XMonad.Hooks.ManageDocks (ToggleStruts (..))
 import XMonad.Hooks.Rescreen
 import XMonad.Hooks.SetWMName (setWMName)
 import XMonad.Layout.DraggingVisualizer
+import XMonad.Layout.Fullscreen (fullscreenSupportBorder)
 import XMonad.Layout.GridVariants
 import XMonad.Layout.Spacing (smartSpacing, spacing)
 import XMonad.StackSet (greedyView, shift)
@@ -28,18 +29,19 @@ import XMonad.Util.Themes hiding (TI)
 import XmonadConfig.Presets (preset)
 
 main =
-    xmonad $
-        addAfterRescreenHook myAfterRescreenHook $
-            desktopConfig
-                { terminal = terminalCmd
-                , modMask = myModMask
-                , startupHook = myStartupHook
-                , workspaces = topicNames topicItems
-                , manageHook = myManageHook <> manageHook desktopConfig
-                , layoutHook = myLayoutHook
-                }
-                `additionalKeysP` myKeysP
-                `additionalMouseBindings` myMouseBindings
+    xmonad
+        . fullscreenSupportBorder
+        . addAfterRescreenHook myAfterRescreenHook
+        $ desktopConfig
+            { terminal = terminalCmd
+            , modMask = myModMask
+            , startupHook = startupHook desktopConfig >> myStartupHook
+            , workspaces = topicNames topicItems
+            , manageHook = myManageHook <> manageHook desktopConfig
+            , layoutHook = myLayoutHook
+            }
+            `additionalKeysP` myKeysP
+            `additionalMouseBindings` myMouseBindings
 
 myModMask = mod4Mask
 
@@ -169,14 +171,14 @@ myTopicConfig =
 scratchpads =
     []
   where
-    pwa name appid = NS name ("google-chrome --new-window --app-id=" <> appid) (appName =? ("crx_" <> appid)) defaultFloating
-    webapp name url appname = NS name ("google-chrome --new-window --app=" <> url) (appName =? appname) defaultFloating
+    chromePWA name appid = NS name ("google-chrome --new-window --app-id=" <> appid) (appName =? ("crx_" <> appid)) defaultFloating
+    chromeWebapp name url appname = NS name ("google-chrome --new-window --app=" <> url) (appName =? appname) defaultFloating
 
 myLayoutHook =
-    draggingVisualizer $
-        Grid (16 / 9) ||| Full
-            & desktopLayoutModifiers
-            & smartSpacing 10
+    Grid (16 / 9) ||| Full
+        & desktopLayoutModifiers
+        & smartSpacing 10
+        & draggingVisualizer
 
 myManageHook =
     mconcat $
@@ -223,7 +225,6 @@ myStartupHook = do
     setupWorkspaceGroups
     fixJvmGuisNotWorking
     startNotificationDaemon
-    setDefaultCursor xC_left_ptr
     startBars
     startRedshift
     startCompositionManager
