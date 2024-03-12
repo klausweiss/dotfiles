@@ -6,7 +6,6 @@ sudo pacman -Sy
 	dunst
 	feh
 	git-delta
-	i3lock
 	neovim
 	picom
 	playerctl
@@ -15,7 +14,8 @@ sudo pacman -Sy
 	rofi
 	touchegg
 	xmonad
-	xss-lock
+	xsecurelock
 yay -Sy
 	lux
+	xidlehook
 

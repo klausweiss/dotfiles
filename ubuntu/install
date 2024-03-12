@@ -8,7 +8,6 @@ sudo apt install -y
      awesome
      emacs
      fish
-     i3lock
      kitty
      moreutils
      nemo
@@ -21,8 +20,13 @@ sudo apt install -y
      uswsusp
      vim
      xclip
+		 xsecurelock
      xss-lock
      xterm
 
 # Allowing everyone to suspend to ram
 sudo chmod +s /usr/sbin/s2ram
+
+# Warning about required manual actions
+echo "Please also install xidlehook: https://gitlab.com/jD91mZM2/xidlehook"
+

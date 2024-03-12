@@ -60,7 +60,8 @@ brightnessUpCmd = "lux -a 5%"
 brightnessDownCmd = "lux -s 5%"
 screenshotCmd = "flameshot gui"
 lastScreenshotCmd = "flameshot gui --last-region"
-lockScreenCmd = "i3lock -n --color 000000"
+lockScreenCmd = "xsecurelock"
+idleHookCmd = "xidlehook --not-when-fullscreen --not-when-audio --timer 900 " <> lockScreenCmd <> "''"
 fileManagerCmd = "thunar"
 powerMenuCmd = "rofi -show power-menu -modi power-menu:~/.dotfiles/rofi/rofi-power-menu/rofi-power-menu"
 
@@ -285,4 +286,4 @@ populateTray = do
     spawnOnce "flameshot"
 
 setAutoScreenLock = do
-    spawnOnce $ "xss-lock -- " <> lockScreenCmd
+    spawnOnce idleHookCmd
