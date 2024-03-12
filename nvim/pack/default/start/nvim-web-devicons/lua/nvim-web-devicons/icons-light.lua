@@ -31,7 +31,7 @@ local icons_by_filename = {
   },
   [".editorconfig"] = {
     icon = "",
-    color = "#333333",
+    color = "#333030",
     cterm_color = "236",
     name = "EditorConfig",
   },
@@ -172,6 +172,12 @@ local icons_by_filename = {
     color = "#447028",
     cterm_color = "22",
     name = "BazelBuild",
+  },
+  ["checkhealth"] = {
+    icon = "󰓙",
+    color = "#3a5a7e",
+    cterm_color = "24",
+    name = "Checkhealth",
   },
   ["cmakelists.txt"] = {
     icon = "",
@@ -445,6 +451,12 @@ local icons_by_file_extension = {
     color = "#005a9f",
     cterm_color = "25",
     name = "AzureCli",
+  },
+  ["bak"] = {
+    icon = "󰁯",
+    color = "#526064",
+    cterm_color = "59",
+    name = "Backup",
   },
   ["bash"] = {
     icon = "",
@@ -1168,8 +1180,8 @@ local icons_by_file_extension = {
   },
   ["log"] = {
     icon = "󰌱",
-    color = "#333333",
-    cterm_color = "236",
+    color = "#4a4a4a",
+    cterm_color = "239",
     name = "Log",
   },
   ["lua"] = {
@@ -1210,8 +1222,8 @@ local icons_by_file_extension = {
   },
   ["markdown"] = {
     icon = "",
-    color = "#36677c",
-    cterm_color = "24",
+    color = "#4a4a4a",
+    cterm_color = "239",
     name = "Markdown",
   },
   ["material"] = {
@@ -1222,8 +1234,8 @@ local icons_by_file_extension = {
   },
   ["md"] = {
     icon = "",
-    color = "#333333",
-    cterm_color = "236",
+    color = "#4a4a4a",
+    cterm_color = "239",
     name = "Md",
   },
   ["mdx"] = {
@@ -1408,8 +1420,8 @@ local icons_by_file_extension = {
   },
   ["prisma"] = {
     icon = "",
-    color = "#333333",
-    cterm_color = "236",
+    color = "#444da2",
+    cterm_color = "61",
     name = "Prisma",
   },
   ["pro"] = {
@@ -1579,6 +1591,12 @@ local icons_by_file_extension = {
     color = "#992e33",
     cterm_color = "88",
     name = "sbt",
+  },
+  ["scad"] = {
+    icon = "",
+    color = "#53480f",
+    cterm_color = "58",
+    name = "OpenSCAD",
   },
   ["scala"] = {
     icon = "",
@@ -1798,8 +1816,8 @@ local icons_by_file_extension = {
   },
   ["toml"] = {
     icon = "",
-    color = "#333333",
-    cterm_color = "236",
+    color = "#753219",
+    cterm_color = "88",
     name = "Toml",
   },
   ["tres"] = {
@@ -2017,14 +2035,14 @@ local icons_by_operating_system = {
   },
   ["linux"] = {
     icon = "",
-    color = "#000000",
-    cterm_color = "16",
+    color = "#333332",
+    cterm_color = "236",
     name = "Linux",
   },
   ["alma"] = {
     icon = "",
-    color = "#000000",
-    cterm_color = "16",
+    color = "#bf3437",
+    cterm_color = "160",
     name = "Almalinux",
   },
   ["alpine"] = {
@@ -2035,8 +2053,8 @@ local icons_by_operating_system = {
   },
   ["aosc"] = {
     icon = "",
-    color = "#000000",
-    cterm_color = "16",
+    color = "#c00000",
+    cterm_color = "124",
     name = "AOSC",
   },
   ["arch"] = {
@@ -2053,8 +2071,8 @@ local icons_by_operating_system = {
   },
   ["budgie"] = {
     icon = "",
-    color = "#333333",
-    cterm_color = "236",
+    color = "#366397",
+    cterm_color = "25",
     name = "Budgie",
   },
   ["centos"] = {
@@ -2125,8 +2143,8 @@ local icons_by_operating_system = {
   },
   ["kali"] = {
     icon = "",
-    color = "#333333",
-    cterm_color = "236",
+    color = "#1d59bf",
+    cterm_color = "26",
     name = "Kali",
   },
   ["mint"] = {
@@ -2155,8 +2173,8 @@ local icons_by_operating_system = {
   },
   ["openbsd"] = {
     icon = "",
-    color = "#000000",
-    cterm_color = "16",
+    color = "#514310",
+    cterm_color = "58",
     name = "OpenBSD",
   },
   ["opensuse"] = {
@@ -2167,8 +2185,8 @@ local icons_by_operating_system = {
   },
   ["parrot"] = {
     icon = "",
-    color = "#000000",
-    cterm_color = "16",
+    color = "#2a6f80",
+    cterm_color = "23",
     name = "Parrot",
   },
   ["pop_os"] = {

@@ -367,23 +367,40 @@ append(
 append(
   "get_status_text",
   function(self, opts)
-    local ww = #(self:get_multi_selection())
-    local xx = (self.stats.processed or 0) - (self.stats.filtered or 0)
-    local yy = self.stats.processed or 0
+    local multi_select_cnt = #(self:get_multi_selection())
+    local showing_cnt = (self.stats.processed or 0) - (self.stats.filtered or 0)
+    local total_cnt = self.stats.processed or 0
 
     local status_icon = ""
+    local status_text
     if opts and not opts.completed then
       status_icon = "*"
     end
 
-    if xx == 0 and yy == 0 then
-      return status_icon
+    if showing_cnt == 0 and total_cnt == 0 then
+      status_text = status_icon
+    elseif multi_select_cnt == 0 then
+      status_text = string.format("%s %s / %s", status_icon, showing_cnt, total_cnt)
+    else
+      status_text = string.format("%s %s / %s / %s", status_icon, multi_select_cnt, showing_cnt, total_cnt)
     end
 
-    if ww == 0 then
-      return string.format("%s %s / %s", status_icon, xx, yy)
+    -- quick workaround for extmark right_align side-scrolling limitation
+    -- https://github.com/nvim-telescope/telescope.nvim/issues/2929
+    local prompt_width = vim.api.nvim_win_get_width(self.prompt_win)
+    local cursor_col = vim.api.nvim_win_get_cursor(self.prompt_win)[2]
+    local prefix_display_width = strings.strdisplaywidth(self.prompt_prefix) --[[@as integer]]
+    local prefix_width = #self.prompt_prefix
+    local prefix_shift = 0
+    if prefix_display_width ~= prefix_width then
+      prefix_shift = prefix_display_width
+    end
+
+    local cursor_occluded = (prompt_width - cursor_col - #status_text + prefix_shift) < 0
+    if cursor_occluded then
+      return ""
     else
-      return string.format("%s %s / %s / %s", status_icon, ww, xx, yy)
+      return status_text
     end
   end,
   [[
@@ -509,6 +526,7 @@ append(
   {
     num_pickers = 1,
     limit_entries = 1000,
+    ignore_empty_prompt = false,
   },
   [[
     This field handles the configuration for picker caching.
@@ -521,15 +539,19 @@ append(
     ('cache_picker.limit_entries`) are cached.
 
     Fields:
-      - num_pickers:      The number of pickers to be cached.
-                          Set to -1 to preserve all pickers of your session.
-                          If passed to a picker, the cached pickers with
-                          indices larger than `cache_picker.num_pickers` will
-                          be cleared.
-                          Default: 1
-      - limit_entries:    The amount of entries that will be saved for each
-                          picker.
-                          Default: 1000
+      - num_pickers:          The number of pickers to be cached.
+                              Set to -1 to preserve all pickers of your
+                              session. If passed to a picker, the cached
+                              pickers with indices larger than
+                              `cache_picker.num_pickers` will be cleared.
+                              Default: 1
+      - limit_entries:        The amount of entries that will be saved for
+                              each picker.
+                              Default: 1000
+      - ignore_empty_prompt:  If true, the picker will not be cached if
+                              the prompt is empty (i.e., no text has been
+                              typed at the time of closing the prompt).
+                              Default: false
     ]]
 )
 

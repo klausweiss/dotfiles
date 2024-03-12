@@ -1,4 +1,5 @@
 ; inherits: html_tags
+
 (identifier) @variable
 
 (pipe_operator) @operator
@@ -115,7 +116,7 @@
 (nullish_coalescing_expression
   (coalescing_operator) @operator)
 
-(concatination_expression
+(concatenation_expression
   "+" @operator)
 
 (binary_expression

@@ -13,6 +13,8 @@ all curl methods accepts
   output       = "where to download something." (filepath)
   timeout      = "request timeout in mseconds" (number)
   http_version = "HTTP version to use: 'HTTP/0.9', 'HTTP/1.0', 'HTTP/1.1', 'HTTP/2', or 'HTTP/3'" (string)
+  proxy        = "[protocol://]host[:port] Use this proxy" (string)
+  insecure     = "Allow insecure server connections" (boolean)
 
 and returns table:
 
@@ -218,6 +220,12 @@ parse.request = function(opts)
     end
   end
 
+  if opts.insecure then
+    table.insert(result, "--insecure")
+  end
+  if opts.proxy then
+    table.insert(result, { "--proxy", opts.proxy })
+  end
   if opts.compressed then
     table.insert(result, "--compressed")
   end
@@ -272,29 +280,30 @@ local request = function(specs)
     command = "curl",
     args = args,
   }
+
   if opts.stream then
     job_opts.on_stdout = opts.stream
-  else
-    job_opts.on_exit = function(j, code)
-      if code ~= 0 then
-        local stderr = vim.inspect(j:stderr_result())
-        local message = string.format("%s %s - curl error exit_code=%s stderr=%s", opts.method, opts.url, code, stderr)
-        if opts.on_error then
-          return opts.on_error {
-            message = message,
-            stderr = stderr,
-            exit = code,
-          }
-        else
-          error(message)
-        end
-      end
-      local output = parse.response(j:result(), opts.dump[2], code)
-      if opts.callback then
-        return opts.callback(output)
+  end
+
+  job_opts.on_exit = function(j, code)
+    if code ~= 0 then
+      local stderr = vim.inspect(j:stderr_result())
+      local message = string.format("%s %s - curl error exit_code=%s stderr=%s", opts.method, opts.url, code, stderr)
+      if opts.on_error then
+        return opts.on_error {
+          message = message,
+          stderr = stderr,
+          exit = code,
+        }
       else
-        response = output
+        error(message)
       end
+    end
+    local output = parse.response(j:result(), opts.dump[2], code)
+    if opts.callback then
+      return opts.callback(output)
+    else
+      response = output
     end
   end
   local job = J:new(job_opts)

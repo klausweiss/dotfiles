@@ -34,6 +34,7 @@ end)
 
 --- Control the indent here. Change to \t if uses tab instead
 local indent_str = "  "
+local textwidth = 100
 
 -- Query to control the formatter
 local format_queries = [[
@@ -60,6 +61,19 @@ local format_queries = [[
   (comment) @format.prepend-newline
   (#not-is-start-of-line? @_comment)
   (#is-start-of-line? @format.prepend-newline))
+; Extra newline for modelines
+(program
+  (comment) @_modeline
+  .
+  (_) @format.prepend-newline
+  (#is-start-of-line? @_modeline)
+  (#contains? @_modeline "^;+%s*inherits:"))
+(program
+  (comment) @_modeline
+  .
+  (_) @format.prepend-newline
+  (#is-start-of-line? @_modeline)
+  (#contains? @_modeline "^;+%s*extends%s*$"))
 ;; }}}
 ;; Making sure all top-level patterns are separated
 (program
@@ -87,7 +101,9 @@ local format_queries = [[
     (field_definition)
     (comment)
   ] @format.cancel-prepend
-  (#is-start-of-line? @_comment))
+  (#is-start-of-line? @_comment)
+  (#not-lua-match? @_comment "^;+%s*inherits:")
+  (#not-lua-match? @_comment "^;+%s*extends%s*$"))
 ;; }}}
 
 ;; delims
@@ -174,8 +190,8 @@ local format_queries = [[
   [
     "_"
     name: (identifier)
-  ]
-  (_) @format.cancel-append
+    (_)
+  ] @format.cancel-append
   .
   ")"
   (#not-has-type? @format.cancel-append comment))
@@ -254,9 +270,26 @@ local format_queries = [[
   .
   (capture))
 
+; Separate this query to avoid capture duplication
+(predicate
+  "(" @format.indent.begin @format.cancel-append)
 (predicate
   (parameters
-    (_) @format.prepend-space))
+    (comment) @format.prepend-newline
+    .
+    (_) @format.cancel-prepend)
+  (#is-start-of-line? @format.prepend-newline))
+(predicate
+  (parameters
+    (_) @format.prepend-space)
+  (#set! conditional-newline))
+(predicate
+  (parameters
+    .
+    (capture)
+    . (_) @format.prepend-space)
+  (#set! lookahead-newline)
+  (#set! conditional-newline))
 ;; Workaround to keep the string's content
 (string) @format.keep
 
@@ -322,7 +355,24 @@ local function iter(bufnr, node, lines, q, level)
         if q["format.prepend-newline"][id] then
           lines[#lines + 1] = string.rep(indent_str, level)
         elseif q["format.prepend-space"][id] then
-          lines[#lines] = lines[#lines] .. " "
+          if not q["format.prepend-space"][id]["conditional-newline"] then
+            lines[#lines] = lines[#lines] .. " "
+          elseif child:byte_length() + 1 + #lines[#lines] > textwidth then
+            lines[#lines + 1] = string.rep(indent_str, level)
+          else
+            -- Do a rough guess of the actual byte length. If it's larger than `columns` then add a newline first
+            -- column - byte_end + byte_start
+            local _, _, byte_start = child:start()
+            local _, _, byte_end = node:end_()
+            if
+              q["format.prepend-space"][id]["lookahead-newline"]
+              and textwidth - (byte_end - byte_start) - #lines[#lines] < 0
+            then
+              lines[#lines + 1] = string.rep(indent_str, level)
+            else
+              lines[#lines] = lines[#lines] .. " "
+            end
+          end
         end
       end
       if q["format.replace"][id] then

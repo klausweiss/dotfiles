@@ -65,7 +65,7 @@
 (yadayada) @keyword.exception
 
 (phaser_statement
-  phase: _ @keyword.phaser)
+  phase: _ @keyword)
 
 [
   "or"
@@ -169,7 +169,16 @@
   (expression_statement
     (bareword))
 ] @function.builtin
-  (#any-of? @function.builtin "accept" "atan2" "bind" "binmode" "bless" "crypt" "chmod" "chown" "connect" "die" "dbmopen" "exec" "fcntl" "flock" "formline" "getpriority" "getprotobynumber" "gethostbyaddr" "getnetbyaddr" "getservbyname" "getservbyport" "getsockopt" "glob" "index" "ioctl" "join" "kill" "link" "listen" "mkdir" "msgctl" "msgget" "msgrcv" "msgsend" "open" "opendir" "print" "printf" "push" "pack" "pipe" "return" "rename" "rindex" "read" "recv" "reverse" "say" "select" "seek" "semctl" "semget" "semop" "send" "setpgrp" "setpriority" "seekdir" "setsockopt" "shmctl" "shmread" "shmwrite" "shutdown" "socket" "socketpair" "split" "sprintf" "splice" "substr" "system" "symlink" "syscall" "sysopen" "sysseek" "sysread" "syswrite" "tie" "truncate" "unlink" "unpack" "utime" "unshift" "vec" "warn" "waitpid"))
+  (#any-of? @function.builtin
+    "accept" "atan2" "bind" "binmode" "bless" "crypt" "chmod" "chown" "connect" "die" "dbmopen"
+    "exec" "fcntl" "flock" "formline" "getpriority" "getprotobynumber" "gethostbyaddr"
+    "getnetbyaddr" "getservbyname" "getservbyport" "getsockopt" "glob" "index" "ioctl" "join" "kill"
+    "link" "listen" "mkdir" "msgctl" "msgget" "msgrcv" "msgsend" "open" "opendir" "print" "printf"
+    "push" "pack" "pipe" "return" "rename" "rindex" "read" "recv" "reverse" "say" "select" "seek"
+    "semctl" "semget" "semop" "send" "setpgrp" "setpriority" "seekdir" "setsockopt" "shmctl"
+    "shmread" "shmwrite" "shutdown" "socket" "socketpair" "split" "sprintf" "splice" "substr"
+    "system" "symlink" "syscall" "sysopen" "sysseek" "sysread" "syswrite" "tie" "truncate" "unlink"
+    "unpack" "utime" "unshift" "vec" "warn" "waitpid"))
 
 (function) @function
 
@@ -187,7 +196,8 @@
   (varname)
   (filehandle)
 ] @variable.builtin
-  (#any-of? @variable.builtin "ENV" "ARGV" "INC" "ARGVOUT" "SIG" "STDIN" "STDOUT" "STDERR" "a" "b" "_"))
+  (#any-of? @variable.builtin
+    "ENV" "ARGV" "INC" "ARGVOUT" "SIG" "STDIN" "STDOUT" "STDERR" "a" "b" "_"))
 
 ((varname) @variable.builtin
   ; highlights all the reserved ^ vars like ${^THINGS}
@@ -197,50 +207,50 @@
   ; highlights punc vars and also numeric only like $11
   (#lua-match? @variable.builtin "^%A+$"))
 
-(scalar) @variable.scalar
+(scalar) @variable
 
 (scalar_deref_expression
   [
     "$"
     "*"
-  ] @variable.scalar)
+  ] @variable)
 
 [
   (array)
   (arraylen)
-] @variable.array
+] @variable
 
 (array_deref_expression
   [
     "@"
     "*"
-  ] @variable.array)
+  ] @variable)
 
-(hash) @variable.hash
+(hash) @variable
 
 (hash_deref_expression
   [
     "%"
     "*"
-  ] @variable.hash)
+  ] @variable)
 
 (array_element_expression
-  array: (_) @variable.array)
+  array: (_) @variable)
 
 (slice_expression
-  array: (_) @variable.array)
+  array: (_) @variable)
 
 (keyval_expression
-  array: (_) @variable.array)
+  array: (_) @variable)
 
 (hash_element_expression
-  hash: (_) @variable.hash)
+  hash: (_) @variable)
 
 (slice_expression
-  hash: (_) @variable.hash)
+  hash: (_) @variable)
 
 (keyval_expression
-  hash: (_) @variable.hash)
+  hash: (_) @variable)
 
 (comment) @comment
 

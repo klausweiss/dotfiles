@@ -1,4 +1,5 @@
 ; inherits: c
+
 ((identifier) @variable.member
   (#lua-match? @variable.member "^m_.*$"))
 
@@ -219,12 +220,11 @@
   "constexpr"
 ] @keyword
 
-"co_await" @keyword.coroutine
-
 [
+  "co_await"
   "co_yield"
   "co_return"
-] @keyword.coroutine.return
+] @keyword.coroutine
 
 [
   "public"

@@ -93,6 +93,8 @@
   (interpolated_string_expression)
 ] @string
 
+(escape_sequence) @string.escape
+
 (boolean_literal) @boolean
 
 (predefined_type) @type.builtin
@@ -140,6 +142,9 @@
 
 (enum_declaration
   name: (identifier) @type)
+
+(enum_member_declaration
+  name: (identifier) @variable.member)
 
 (constructor_declaration
   name: (identifier) @constructor)

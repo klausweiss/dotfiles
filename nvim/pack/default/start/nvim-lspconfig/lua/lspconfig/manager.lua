@@ -5,7 +5,7 @@ local uv = vim.loop
 local async = require 'lspconfig.async'
 local util = require 'lspconfig.util'
 
----@param client lsp.Client
+---@param client vim.lsp.Client
 ---@param root_dir string
 ---@return boolean
 local function check_in_workspace(client, root_dir)
@@ -23,7 +23,7 @@ local function check_in_workspace(client, root_dir)
 end
 
 --- @class lspconfig.Manager
---- @field _clients table<string,table>
+--- @field _clients table<string,integer[]>
 --- @field config lspconfig.Config
 --- @field make_config fun(root_dir: string): lspconfig.Config
 local M = {}
@@ -42,9 +42,12 @@ function M.new(config, make_config)
 end
 
 --- @private
-function M:_get_client_from_cache(root_dir, client_name)
-  local clients = self._clients
-  if vim.tbl_count(clients) == 0 then
+--- @param clients table<string,integer[]>
+--- @param root_dir string
+--- @param client_name string
+--- @return vim.lsp.Client?
+local function get_client(clients, root_dir, client_name)
+  if vim.tbl_isempty(clients) then
     return
   end
 
@@ -57,15 +60,12 @@ function M:_get_client_from_cache(root_dir, client_name)
     end
   end
 
-  local all_client_ids = {}
-  vim.tbl_map(function(val)
-    vim.list_extend(all_client_ids, { unpack(val) })
-  end, clients)
-
-  for _, id in ipairs(all_client_ids) do
-    local client = lsp.get_client_by_id(id)
-    if client and client.name == client_name then
-      return client
+  for _, ids in pairs(clients) do
+    for _, id in ipairs(ids) do
+      local client = lsp.get_client_by_id(id)
+      if client and client.name == client_name then
+        return client
+      end
     end
   end
 end
@@ -88,7 +88,7 @@ end
 --- @private
 --- @param bufnr integer
 --- @param root_dir string
---- @param client lsp.Client
+--- @param client vim.lsp.Client
 function M:_register_workspace_folders(bufnr, root_dir, client)
   local params = {
     event = {
@@ -160,7 +160,7 @@ end
 --- @param bufnr integer
 --- @param new_config lspconfig.Config
 --- @param root_dir string
---- @param client lsp.Client
+--- @param client vim.lsp.Client
 --- @param single_file boolean
 function M:_attach_or_spawn(bufnr, new_config, root_dir, client, single_file)
   if check_in_workspace(client, root_dir) then
@@ -178,10 +178,10 @@ end
 --- @param bufnr integer
 --- @param new_config lspconfig.Config
 --- @param root_dir string
---- @param client lsp.Client
+--- @param client vim.lsp.Client
 --- @param single_file boolean
 function M:_attach_after_client_initialized(bufnr, new_config, root_dir, client, single_file)
-  local timer = assert(vim.loop.new_timer())
+  local timer = assert(uv.new_timer())
   timer:start(
     0,
     10,
@@ -201,7 +201,7 @@ end
 function M:add(root_dir, single_file, bufnr)
   root_dir = util.path.sanitize(root_dir)
   local new_config = self.make_config(root_dir)
-  local client = self:_get_client_from_cache(root_dir, new_config.name)
+  local client = get_client(self._clients, root_dir, new_config.name)
 
   ---If single_file_mode is false then root_dir should match client otherwise start a new client
   if not client or (not single_file and client.config.root_dir and client.config.root_dir ~= root_dir) then
@@ -222,7 +222,7 @@ function M:add(root_dir, single_file, bufnr)
   end
 end
 
---- @return lsp.Client[]
+--- @return vim.lsp.Client[]
 function M:clients()
   local res = {}
   for _, client_ids in pairs(self._clients) do

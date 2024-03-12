@@ -5,14 +5,14 @@ local tbl_deep_extend = vim.tbl_deep_extend
 
 local configs = {}
 
---- @class lspconfig.Config : lsp.ClientConfig
+--- @class lspconfig.Config : vim.lsp.ClientConfig
 --- @field enabled? boolean
 --- @field single_file_support? boolean
 --- @field filetypes? string[]
 --- @field filetype? string
 --- @field on_new_config? function
 --- @field autostart? boolean
---- @field package _on_attach? fun(client: lsp.Client, bufnr: integer)
+--- @field package _on_attach? fun(client: vim.lsp.Client, bufnr: integer)
 
 --- @param cmd any
 local function sanitize_cmd(cmd)
@@ -224,9 +224,6 @@ function configs.__newindex(t, config_name, config_def)
           return client.notify('workspace/didChangeConfiguration', {
             settings = settings,
           })
-        end
-        if not vim.tbl_isempty(new_config.settings) then
-          client.workspace_did_change_configuration(new_config.settings)
         end
       end)
 
