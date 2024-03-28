@@ -176,7 +176,9 @@ scratchpads =
     chromeWebapp name url appname = NS name ("google-chrome --new-window --app=" <> url) (appName =? appname) defaultFloating
 
 myLayoutHook =
-    Grid (16 / 9) ||| Full
+    Grid (16 / 9)
+        ||| SplitGrid R 1 1 (2 / 3) (16 / 9) (1 / 10)
+        ||| Full
         & desktopLayoutModifiers
         & smartSpacing 10
         & draggingVisualizer
