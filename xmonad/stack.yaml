@@ -6,3 +6,15 @@ packages:
 
 extra-deps: []
 
+nix:
+  enable: true
+  packages: 
+    - xorg.libX11
+    - xorg.libXrandr
+    - xorg.libXScrnSaver
+    - xorg.libXext
+    - xorg.libXft
+    - xorg.libXdmcp
+    - pkg-config
+    - expat
+
