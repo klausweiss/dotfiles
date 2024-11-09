@@ -2,3 +2,4 @@
 
 [symlink]
 .: ~/.fonts
+.: ~/.local/share/fonts
