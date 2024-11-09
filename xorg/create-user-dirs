@@ -16,7 +16,7 @@ function create-user-dirs {
         $HOME/doc/music
         $HOME/doc/shared
         $HOME/doc/videos
-        $HOME/src
+        $HOME/workspace
         $HOME/.templates
         $HOME/tmp
     "
