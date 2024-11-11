@@ -304,9 +304,13 @@ cmd "set nofoldenable" -- don't close all folds upon opening a file
 cmd "set foldlevel=99" -- don't close all folds upon opening a file
 cmd "set foldmethod=expr"
 cmd "set foldexpr=nvim_treesitter#foldexpr()"
+-- parser_install_dir must be in runtimepath and configured before treesitter.setup
+vim.opt.runtimepath:append("$HOME/.cache/tree-sitter")
 require 'nvim-treesitter.configs'.setup {
+  -- This needs to be customized to work with NixOS
+  parser_install_dir = "$HOME/.cache/tree-sitter",
   -- A list of parser names, or "all"
-  ensure_installed = { "lua", "haskell" },
+  -- ensure_installed = { "lua", "haskell" },
   -- Automatically install missing parsers when entering buffer
   auto_install = true,
 
