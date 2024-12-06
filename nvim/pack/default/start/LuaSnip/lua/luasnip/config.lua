@@ -58,10 +58,17 @@ c = {
 		if user_config.history ~= nil then
 			conf.keep_roots = user_config.history
 			conf.link_roots = user_config.history
+			conf.exit_roots = not user_config.history
 			conf.link_children = user_config.history
 
 			-- unset key to prevent handling twice.
 			conf.history = nil
+		end
+
+		if user_config.store_selection_keys ~= nil then
+			conf.cut_selection_keys = user_config.store_selection_keys
+
+			user_config.store_selection_keys = nil
 		end
 
 		for k, v in pairs(user_config) do
@@ -114,22 +121,18 @@ c = {
 		end)
 		if session.config.enable_autosnippets then
 			ls_autocmd("InsertCharPre", function()
-				Luasnip_just_inserted = true
-			end)
-			ls_autocmd({ "TextChangedI", "TextChangedP" }, function()
-				if Luasnip_just_inserted then
-					require("luasnip").expand_auto()
-					Luasnip_just_inserted = nil
-				end
+				require("luasnip.util.feedkeys").feedkeys_insert(
+					"<cmd>lua require('luasnip').expand_auto()<cr>"
+				)
 			end)
 		end
 
-		if session.config.store_selection_keys then
+		if session.config.cut_selection_keys then
 			vim.cmd(
 				string.format(
 					[[xnoremap <silent>  %s  %s]],
-					session.config.store_selection_keys,
-					require("luasnip.util.select").select_keys
+					session.config.cut_selection_keys,
+					require("luasnip.util.select").cut_keys
 				)
 			)
 		end

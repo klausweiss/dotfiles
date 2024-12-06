@@ -1,17 +1,16 @@
-local helpers = require("test.functional.helpers")(after_each)
-local exec_lua, feed, exec = helpers.exec_lua, helpers.feed, helpers.exec
 local ls_helpers = require("helpers")
+local exec_lua, feed, exec =
+	ls_helpers.exec_lua, ls_helpers.feed, ls_helpers.exec
 local Screen = require("test.functional.ui.screen")
 
 describe("snippets_basic", function()
 	local screen
 
 	before_each(function()
-		helpers.clear()
-		ls_helpers.session_setup_luasnip()
+		ls_helpers.clear()
+		ls_helpers.session_setup_luasnip({ setup_parsers = true })
 
-		screen = Screen.new(50, 3)
-		screen:attach()
+		screen = ls_helpers.new_screen(50, 3)
 		screen:set_default_attr_ids({
 			[0] = { bold = true, foreground = Screen.colors.Blue },
 			[1] = { bold = true, foreground = Screen.colors.Brown },
@@ -47,8 +46,6 @@ describe("snippets_basic", function()
 	end)
 
 	it("Can accept custom jump_into_func.", function()
-		local snip = [[
-		]]
 		exec_lua([[
 			ls.add_snippets("all", {
 				s("trig", {
@@ -188,6 +185,7 @@ describe("snippets_basic", function()
 			{ "a[]ab" }
 		)
 		exec_lua("ls.snip_expand(" .. snip .. ")")
+		exec_lua("vim.wait(10, function() end)")
 		exec_lua("ls.snip_expand(" .. snip .. ")")
 		screen:expect({
 			grid = [[
@@ -347,6 +345,7 @@ describe("snippets_basic", function()
 			}) )
 		]]
 			exec_lua(expand_snip)
+			exec_lua("vim.wait(10, function() end)")
 			exec_lua(expand_snip)
 			screen:expect({
 				grid = [[
@@ -741,11 +740,10 @@ describe("snippets_basic", function()
 	)
 
 	it("LuaSnipListAvailable works", function()
-		helpers.clear()
+		ls_helpers.clear()
 		ls_helpers.session_setup_luasnip()
 
-		screen = Screen.new(50, 40)
-		screen:attach()
+		screen = ls_helpers.new_screen(50, 40)
 		screen:set_default_attr_ids({
 			[0] = { bold = true, foreground = Screen.colors.Blue1 },
 			[1] = { bold = true, foreground = Screen.colors.Brown },
@@ -1323,6 +1321,108 @@ describe("snippets_basic", function()
 		})
 	end)
 
+	it(
+		"exit_roots exits when the last node of snippet-root is reached.",
+		function()
+			exec_lua([[
+			ls.setup({
+				exit_roots = true
+			})
+			ls.add_snippets("all", {
+			s("aa", { t{"( "}, i(1, "1"), t{" )"}, i(0, "0") })
+			})
+		]])
+
+			feed("iaa")
+			exec_lua("ls.expand()")
+			screen:expect({
+				grid = [[
+			( ^1 )0                                            |
+			{0:~                                                 }|
+			{2:-- SELECT --}                                      |]],
+			})
+			feed("aa")
+			exec_lua("ls.expand()")
+			screen:expect({
+				grid = [[
+			( ( ^1 )0 )0                                       |
+			{0:~                                                 }|
+			{2:-- SELECT --}                                      |]],
+			})
+			-- verify we do not exit when reaching to a child root
+			exec_lua("ls.jump(1) ls.jump(-1)")
+			screen:expect({
+				grid = [[
+			( ( ^1 )0 )0                                       |
+			{0:~                                                 }|
+			{2:-- SELECT --}                                      |]],
+			})
+			-- be sure that reaching root $0 exits.
+			exec_lua("ls.jump(1) ls.jump(1) ls.jump(-1)")
+			screen:expect({
+				grid = [[
+			( ( 1 )0 )^0                                       |
+			{0:~                                                 }|
+			{2:-- SELECT --}                                      |]],
+			})
+		end
+	)
+	it("exit_roots = false stays in the root node but exits child.", function()
+		exec_lua([[
+			ls.setup({
+				exit_roots = false
+			})
+			ls.add_snippets("all", {
+			s("aa", { t{"( "}, i(1, "1"), t{" )"}, i(0, "0") })
+			})
+		]])
+
+		feed("iaa")
+		exec_lua("ls.expand()")
+		screen:expect({
+			grid = [[
+			( ^1 )0                                            |
+			{0:~                                                 }|
+			{2:-- SELECT --}                                      |]],
+		})
+		-- screen:snapshot_util()
+		feed("aa")
+		exec_lua("ls.expand()")
+		screen:expect({
+			grid = [[
+			( ( ^1 )0 )0                                       |
+			{0:~                                                 }|
+			{2:-- SELECT --}                                      |]],
+		})
+		-- do not exit when reaching to a child root
+		exec_lua("ls.jump(1) ls.jump(-1)")
+		screen:expect({
+			grid = [[
+			( ( ^1 )0 )0                                       |
+			{0:~                                                 }|
+			{2:-- SELECT --}                                      |]],
+		})
+		-- root $0 does not exit.
+		exec_lua("ls.jump(1) ls.jump(1) ls.jump(-1)")
+		screen:expect({
+			grid = [[
+			( ^({3: 1 )0} )0                                       |
+			{0:~                                                 }|
+			{2:-- SELECT --}                                      |]],
+		})
+		-- new root snippet exits earlier root.
+		exec_lua("ls.jump(1)")
+		feed("aa")
+		exec_lua("ls.expand()")
+		exec_lua("ls.jump(-1) ls.jump(-1)")
+		screen:expect({
+			grid = [[
+			( ( 1 )0 )^( 1 )0                                  |
+			{0:~                                                 }|
+			{2:-- INSERT --}                                      |]],
+		})
+	end)
+
 	it("focus correctly adjusts gravities of parent-snippets.", function()
 		exec_lua([[
 			ls.setup{
@@ -1492,4 +1592,92 @@ describe("snippets_basic", function()
 		assert.are.same(true, exec_lua("return enter_snode_m1"))
 		assert.are.same(true, exec_lua("return enter_snode_via_parent"))
 	end)
+
+	it("Correct filetype is recognized via treesitter.", function()
+		exec_lua([=[
+			ls.setup({
+				ft_func = require("luasnip.extras.filetype_functions").from_cursor_pos
+			})
+			ls.add_snippets("lua", {
+				s("asdf", t[[print("qwer")]])
+			})
+		]=])
+		exec("set ft=lua")
+		feed([[ilocal function a()  end<Esc>hhhi]])
+		screen:expect({
+			grid = [[
+			  local function a() ^ end                           |
+			  {0:~                                                 }|
+			  {2:-- INSERT --}                                      |]],
+		})
+		feed([[asdf]])
+		exec_lua("ls.expand()")
+		screen:expect({
+			grid = [[
+			  local function a() print("qwer")^ end              |
+			  {0:~                                                 }|
+			  {2:-- INSERT --}                                      |]],
+		})
+	end)
+
+	it("expand-position may be moved in pre_expand.", function()
+		feed("i.")
+
+		exec_lua([[
+			snip = s("foo", {
+				t"asdf"
+			}, {callbacks = {[-1] = { [events.pre_expand] = function(node, event_args)
+				vim.api.nvim_buf_set_extmark(0, ls.session.ns_id, 0,0, {id = event_args.expand_pos_mark_id})
+			end}} } )
+
+			ls.snip_expand(snip)
+		]])
+
+		screen:expect({
+			grid = [[
+				asdf^.                                             |
+				{0:~                                                 }|
+				{2:-- INSERT --}                                      |]],
+		})
+	end)
+
+	it("autosnippets are triggered in macro.", function()
+		exec_lua([[
+			ls.add_snippets("all", {
+				s({trig="qwer", snippetType="autosnippet"}, { t"asdf" }) })
+		]])
+		feed("qaiqwer<Esc>qo<Esc>@a")
+		screen:expect({
+			grid = [[
+			  qwer                                              |
+			  qwe^r                                              |
+			                                                    |]],
+		})
+	end)
+
+	it(
+		"cursor position is correctly updated after expanding an autosnippet.",
+		function()
+			exec_lua([[
+			vim.o.concealcursor = 'i'
+
+			ls.setup{
+				history = true,
+				enable_autosnippets = true,
+			}
+			ls.add_snippets("all", {
+					ls.s({trig="asdf", snippetType="autosnippet"}, {ls.t"System.out.println(", ls.i(1, ""), ls.t")"})
+			})
+		]])
+			feed("iasdf")
+			-- this test seems to mostly fail on nvim0.7, but let's include it here anyway.
+			screen:expect({
+				grid = [[
+    System.out.println(^)                              |
+    {0:~                                                 }|
+    {2:-- INSERT --}                                      |
+  ]],
+			})
+		end
+	)
 end)

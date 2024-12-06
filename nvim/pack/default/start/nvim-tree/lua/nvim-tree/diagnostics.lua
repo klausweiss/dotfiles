@@ -1,6 +1,9 @@
-local utils = require "nvim-tree.utils"
-local view = require "nvim-tree.view"
-local log = require "nvim-tree.log"
+local core = require("nvim-tree.core")
+local utils = require("nvim-tree.utils")
+local view = require("nvim-tree.view")
+local log = require("nvim-tree.log")
+
+local DirectoryNode = require("nvim-tree.node.directory")
 
 local M = {}
 
@@ -14,7 +17,7 @@ local COC_SEVERITY_LEVELS = {
 }
 
 ---Absolute Node path to LSP severity level
----@alias NodeSeverities table<string, lsp.DiagnosticSeverity>
+---@alias NodeSeverities table<string, vim.diagnostic.Severity>
 
 ---@class DiagStatus
 ---@field value lsp.DiagnosticSeverity|nil
@@ -34,31 +37,6 @@ local function uniformize_path(path)
   return utils.canonical_path(path:gsub("\\", "/"))
 end
 
----Marshal severities from LSP. Does nothing when LSP disabled.
----@return NodeSeverities
-local function from_nvim_lsp()
-  local buffer_severity = {}
-
-  local is_disabled = false
-  if vim.fn.has "nvim-0.9" == 1 then
-    is_disabled = vim.diagnostic.is_disabled()
-  end
-
-  if not is_disabled then
-    for _, diagnostic in ipairs(vim.diagnostic.get(nil, { severity = M.severity })) do
-      local buf = diagnostic.bufnr
-      if vim.api.nvim_buf_is_valid(buf) then
-        local bufname = uniformize_path(vim.api.nvim_buf_get_name(buf))
-        local severity = diagnostic.severity
-        local highest_severity = buffer_severity[bufname] or severity
-        buffer_severity[bufname] = math.min(highest_severity, severity)
-      end
-    end
-  end
-
-  return buffer_severity
-end
-
 ---Severity is within diagnostics.severity.min, diagnostics.severity.max
 ---@param severity lsp.DiagnosticSeverity
 ---@param config table
@@ -74,7 +52,7 @@ local function handle_coc_exception(err)
   local notify = true
 
   -- avoid distractions on interrupts (CTRL-C)
-  if err:find "Vim:Interrupt" or err:find "Keyboard interrupt" then
+  if err:find("Vim:Interrupt") or err:find("Keyboard interrupt") then
     notify = false
   end
 
@@ -97,7 +75,7 @@ local function from_coc()
   end
 
   local ok, diagnostic_list = xpcall(function()
-    return vim.fn.CocAction "diagnosticList"
+    return vim.fn.CocAction("diagnosticList")
   end, handle_coc_exception)
   if not ok or type(diagnostic_list) ~= "table" or vim.tbl_isempty(diagnostic_list) then
     return {}
@@ -122,7 +100,7 @@ end
 local function from_cache(node)
   local nodepath = uniformize_path(node.absolute_path)
   local max_severity = nil
-  if not node.nodes then
+  if not node:is(DirectoryNode) then
     -- direct cache hit for files
     max_severity = NODE_SEVERITIES[nodepath]
   else
@@ -130,11 +108,8 @@ local function from_cache(node)
     for bufname, severity in pairs(NODE_SEVERITIES) do
       local node_contains_buf = vim.startswith(bufname, nodepath .. "/")
       if node_contains_buf then
-        if severity == M.severity.max then
+        if not max_severity or severity < max_severity then
           max_severity = severity
-          break
-        else
-          max_severity = math.min(max_severity or severity, severity)
         end
       end
     end
@@ -142,28 +117,79 @@ local function from_cache(node)
   return { value = max_severity, cache_version = NODE_SEVERITIES_VERSION }
 end
 
----Fired on DiagnosticChanged and CocDiagnosticChanged events:
+---Fired on DiagnosticChanged for a single buffer.
+---This will be called on set and reset of diagnostics.
+---On disabling LSP, a reset event will be sent for all buffers.
+---@param ev table standard event with data.diagnostics populated
+function M.update_lsp(ev)
+  if not M.enable or not ev or not ev.data or not ev.data.diagnostics then
+    return
+  end
+
+  local profile_event = log.profile_start("DiagnosticChanged event")
+
+  ---@type vim.Diagnostic[]
+  local diagnostics = ev.data.diagnostics
+
+  -- use the buffer from the event, as ev.data.diagnostics will be empty on resolved diagnostics
+  local bufname = uniformize_path(vim.api.nvim_buf_get_name(ev.buf))
+
+  ---@type vim.diagnostic.Severity?
+  local new_severity = nil
+
+  -- most severe (lowest) severity in user range
+  for _, diagnostic in ipairs(diagnostics) do
+    if diagnostic.severity >= M.severity.max and diagnostic.severity <= M.severity.min then
+      if not new_severity or diagnostic.severity < new_severity then
+        new_severity = diagnostic.severity
+      end
+    end
+  end
+
+  -- record delta and schedule a redraw
+  if new_severity ~= NODE_SEVERITIES[bufname] then
+    NODE_SEVERITIES[bufname] = new_severity
+    NODE_SEVERITIES_VERSION = NODE_SEVERITIES_VERSION + 1
+
+    utils.debounce("DiagnosticChanged redraw", M.debounce_delay, function()
+      local profile_redraw = log.profile_start("DiagnosticChanged redraw")
+
+      local explorer = core.get_explorer()
+      if explorer then
+        explorer.renderer:draw()
+      end
+
+      log.profile_end(profile_redraw)
+    end)
+  end
+
+  log.profile_end(profile_event)
+end
+
+---Fired on CocDiagnosticChanged events:
 ---debounced retrieval, cache update, version increment and draw
-function M.update()
+function M.update_coc()
   if not M.enable then
     return
   end
-  utils.debounce("diagnostics", M.debounce_delay, function()
-    local profile = log.profile_start "diagnostics update"
-    if is_using_coc() then
-      NODE_SEVERITIES = from_coc()
-    else
-      NODE_SEVERITIES = from_nvim_lsp()
-    end
+  utils.debounce("CocDiagnosticChanged update", M.debounce_delay, function()
+    local profile = log.profile_start("CocDiagnosticChanged update")
+    NODE_SEVERITIES = from_coc()
     NODE_SEVERITIES_VERSION = NODE_SEVERITIES_VERSION + 1
-    if log.enabled "diagnostics" then
+    if log.enabled("diagnostics") then
       for bufname, severity in pairs(NODE_SEVERITIES) do
-        log.line("diagnostics", "Indexing bufname '%s' with severity %d", bufname, severity)
+        log.line("diagnostics", "COC Indexing bufname '%s' with severity %d", bufname, severity)
       end
     end
     log.profile_end(profile)
-    if view.is_buf_valid(view.get_bufnr()) then
-      require("nvim-tree.renderer").draw()
+
+    local bufnr = view.get_bufnr()
+    local should_draw = bufnr and vim.api.nvim_buf_is_valid(bufnr) and vim.api.nvim_buf_is_loaded(bufnr)
+    if should_draw then
+      local explorer = core.get_explorer()
+      if explorer then
+        explorer.renderer:draw()
+      end
     end
   end)
 end
@@ -178,7 +204,7 @@ function M.get_diag_status(node)
   end
 
   -- dir but we shouldn't show on dirs at all
-  if node.nodes ~= nil and not M.show_on_dirs then
+  if node:is(DirectoryNode) and not M.show_on_dirs then
     return nil
   end
 
@@ -189,13 +215,15 @@ function M.get_diag_status(node)
     node.diag_status = from_cache(node)
   end
 
+  local dir = node:as(DirectoryNode)
+
   -- file
-  if not node.nodes then
+  if not dir then
     return node.diag_status
   end
 
   -- dir is closed or we should show on open_dirs
-  if not node.open or M.show_on_open_dirs then
+  if not dir.open or M.show_on_open_dirs then
     return node.diag_status
   end
   return nil

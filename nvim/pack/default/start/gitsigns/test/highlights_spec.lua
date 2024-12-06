@@ -1,4 +1,4 @@
-local Screen = require('test.screen')
+local Screen = require('nvim-test.screen')
 local helpers = require('test.gs_helpers')
 
 local clear = helpers.clear
@@ -16,7 +16,7 @@ helpers.env()
 
 describe('highlights', function()
   local screen --- @type test.screen
-  local config
+  local config --- @type Gitsigns.Config
 
   before_each(function()
     clear()
@@ -56,6 +56,7 @@ describe('highlights', function()
     cleanup()
     screen:detach()
   end)
+
   it('get set up correctly', function()
     command('set termguicolors')
 
@@ -74,26 +75,15 @@ describe('highlights', function()
 
     expectf(function()
       match_dag({
-        p('Deriving GitSignsAdd from DiffAdd'),
+        p('Deriving GitSignsAdd from ' .. (nvim10 and 'Added' or 'DiffAdd')),
         p('Deriving GitSignsAddLn from DiffAdd'),
         p('Deriving GitSignsAddNr from GitSignsAdd'),
         p('Deriving GitSignsChangeLn from DiffChange'),
         p('Deriving GitSignsChangeNr from GitSignsChange'),
-        -- TODO(lewis6991): huh?
-        nvim10 and p('Deriving GitSignsDelete from Removed')
-          or p('Deriving GitSignsDelete from DiffDelete'),
+        p('Deriving GitSignsDelete from ' .. (nvim10 and 'Removed' or 'DiffDelete')),
         p('Deriving GitSignsDeleteNr from GitSignsDelete'),
       })
     end)
-
-    -- eq('GitSignsChange xxx links to DiffChange',
-    -- exec_capture('hi GitSignsChange'))
-
-    -- eq('GitSignsDelete xxx links to DiffDelete',
-    -- exec_capture('hi GitSignsDelete'))
-
-    -- eq('GitSignsAdd    xxx links to DiffAdd',
-    -- exec_capture('hi GitSignsAdd'))
   end)
 
   it('update when colorscheme changes', function()
@@ -107,35 +97,5 @@ describe('highlights', function()
     config.linehl = true
 
     setup_gitsigns(config)
-
-    -- expectf(function()
-    --   eq('GitSignsChange xxx links to DiffChange',
-    --     exec_capture('hi GitSignsChange'))
-
-    --   eq('GitSignsDelete xxx links to DiffDelete',
-    --     exec_capture('hi GitSignsDelete'))
-
-    --   eq('GitSignsAdd    xxx links to DiffAdd',
-    --     exec_capture('hi GitSignsAdd'))
-
-    --   eq('GitSignsAddLn  xxx links to DiffAdd',
-    --     exec_capture('hi GitSignsAddLn'))
-    -- end)
-
-    -- command('colorscheme blue')
-
-    -- expectf(function()
-    --   eq('GitSignsChange xxx links to DiffChange',
-    --     exec_capture('hi GitSignsChange'))
-
-    --   eq('GitSignsDelete xxx links to DiffDelete',
-    --     exec_capture('hi GitSignsDelete'))
-
-    --   eq('GitSignsAdd    xxx links to DiffAdd',
-    --     exec_capture('hi GitSignsAdd'))
-
-    --   eq('GitSignsAddLn  xxx links to DiffAdd',
-    --     exec_capture('hi GitSignsAddLn'))
-    -- end)
   end)
 end)

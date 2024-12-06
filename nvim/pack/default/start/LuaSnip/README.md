@@ -14,20 +14,20 @@ https://user-images.githubusercontent.com/41961280/122515860-5179fa00-d00e-11eb-
 - Autotriggered Snippets
 - Easy Postfix Snippets
 - Fast
-- Parse [LSP-Style](https://microsoft.github.io/language-server-protocol/specification#snippet_syntax) Snippets either directly in lua, as a vscode package or a snipmate snippet collection.
+- Parse [LSP-Style](https://microsoft.github.io/language-server-protocol/specification#snippet_syntax) Snippets either directly in Lua, as a VSCode package or a SnipMate snippet collection.
 - Expand LSP-Snippets with [nvim-compe](https://github.com/hrsh7th/nvim-compe) (or its' successor, [nvim-cmp](https://github.com/hrsh7th/nvim-cmp) (requires [cmp_luasnip](https://github.com/saadparwaiz1/cmp_luasnip)))
 - Snippet history (jump back into older snippets)
 - Resolve filetype at the cursor using Treesitter
 
 # Drawbacks
-- Snippets that make use of the entire functionality of this plugin have to be defined in Lua (but 95% of snippets can be written in lsp-syntax).
+- Snippets that make use of the entire functionality of this plugin have to be defined in Lua (but 95% of snippets can be written in LSP-syntax).
 
 # Requirements
 Neovim >= 0.7 (extmarks)
-`jsregexp` for lsp-snippet-transformations (see [here](https://github.com/L3MON4D3/LuaSnip/blob/master/DOC.md#transformations) for some tips on installing it).
+`jsregexp` for `lsp-snippet-transformations` (see [here](https://github.com/L3MON4D3/LuaSnip/blob/master/DOC.md#transformations) for some tips on installing it).
 
 # Setup
-## Install 
+## Install
 * With your preferred plugin manager i.e. [vim-plug](https://github.com/junegunn/vim-plug), [Packer](https://github.com/wbthomason/packer.nvim) or [lazy](https://github.com/folke/lazy.nvim)  
   **Packer**:
   ```lua
@@ -58,16 +58,29 @@ Neovim >= 0.7 (extmarks)
 
 * LuaSnip uses [Semantic Versioning](https://semver.org) (with some leeway, big patches might end up as a Minor version)!  
   Releases will be tagged as `vMajor.Minor.Patch`, we recommend following the latest Major release.  
-  Consider watching the repos releases so you're notified when a new version becomes available.
+  Consider watching the repository's releases so you're notified when a new version becomes available.
+
+> [!NOTE]
+> On Windows, you need to use a shell that can run Unix commands (MinGW,MSYS2,etc).
+> Luckily, Git offers a `sh.exe`, so you don't need to install a heavy MSYS2 environment.
+> Other than Git, you also need a C compiler and `make` to install `jsregexp`.
+> You may also need to change the build command: `make install_jsregexp CC=gcc.exe SHELL=C:/path/to/sh.exe .SHELLFLAGS=-c`:
+
+```text
+SHELL=C:/path/to/Git/usr/bin/sh.exe # if Git/MinGW/MSYS2 `sh.exe` is not in PATH
+.SHELLFLAGS=-c # if Git/MinGW/MSYS2 `sh.exe` is not in PATH
+CC=gcc.exe # if CC's default value cc is not set (when `which cc` fails to find the compiler command)
+NEOVIM_BIN_PATH=C:/path/to/Neovim/bin # if the Makefile fails to automatically detect the Neovim/bin path
+```
 
 ## Keymaps
-In vimscript, with `<Tab>` for jumping forward/expanding a snippet, `<Shift-Tab>` for
+In Vim script, with `<Tab>` for jumping forward/expanding a snippet, `<Shift-Tab>` for
 jumping backward, and `<Ctrl-E>` for changing the current choice when in a
-choiceNode...
+`choiceNode`...
 ```vim
 " press <Tab> to expand or jump in a snippet. These can also be mapped separately
 " via <Plug>luasnip-expand-snippet and <Plug>luasnip-jump-next.
-imap <silent><expr> <Tab> luasnip#expand_or_jumpable() ? '<Plug>luasnip-expand-or-jump' : '<Tab>' 
+imap <silent><expr> <Tab> luasnip#expand_or_jumpable() ? '<Plug>luasnip-expand-or-jump' : '<Tab>'
 " -1 for jumping backwards.
 inoremap <silent> <S-Tab> <cmd>lua require'luasnip'.jump(-1)<Cr>
 
@@ -79,11 +92,13 @@ imap <silent><expr> <C-E> luasnip#choice_active() ? '<Plug>luasnip-next-choice' 
 smap <silent><expr> <C-E> luasnip#choice_active() ? '<Plug>luasnip-next-choice' : '<C-E>'
 ```
 
-... or in lua, with a different set of keys: `<Ctrl-K>` for expanding, `<Ctrl-L>`
+... or in Lua, with a different set of keys: `<Ctrl-K>` for expanding, `<Ctrl-L>`
 for jumping forward, `<Ctrl-J>` for jumping backward, and `<Ctrl-E>` for
 changing the active choice.
 
 ```lua
+local ls = require("luasnip")
+
 vim.keymap.set({"i"}, "<C-K>", function() ls.expand() end, {silent = true})
 vim.keymap.set({"i", "s"}, "<C-L>", function() ls.jump( 1) end, {silent = true})
 vim.keymap.set({"i", "s"}, "<C-J>", function() ls.jump(-1) end, {silent = true})
@@ -103,15 +118,17 @@ setting up a super-tab-like mapping.
 Check out [the doc](https://github.com/L3MON4D3/LuaSnip/blob/master/DOC.md#loaders) for a general explanation of the
 loaders and their benefits. The following list serves only as a short overview.
 
-- **VS Code-like**: To use existing VS Code style snippets from a plugin (eg. [rafamadriz/friendly-snippets](https://github.com/rafamadriz/friendly-snippets)) simply install the plugin and then add
+- **VS Code-like**: To use existing VS Code style snippets from a plugin (e.g. [rafamadriz/friendly-snippets](https://github.com/rafamadriz/friendly-snippets)) simply install the plugin and then add
     ```lua
     require("luasnip.loaders.from_vscode").lazy_load()
     ```
-	somewhere in your nvim-config. LuaSnip will then load the snippets contained in the plugin on startup.
-  You can also easily **load your own custom vscode style snippets** by passing the path to the custom snippet-directory to the load function:
+	somewhere in your Neovim config. LuaSnip will then load the snippets contained in the plugin on startup.
+  You can also easily **load your own custom VSCode style snippets** by passing the path to the custom snippet-directory to the load function:
     ```lua
     -- load snippets from path/of/your/nvim/config/my-cool-snippets
     require("luasnip.loaders.from_vscode").lazy_load({ paths = { "./my-cool-snippets" } })
+
+    (Note: It's mandatory to have a 'package.json' file in the snippet directory. For examples, see documentation.)
     ```
 	For more info on the VS Code loader, check the [examples](https://github.com/L3MON4D3/LuaSnip/blob/b5a72f1fbde545be101fcd10b70bcd51ea4367de/Examples/snippets.lua#L501) or [documentation](https://github.com/L3MON4D3/LuaSnip/blob/master/DOC.md#loaders).
 
@@ -132,7 +149,7 @@ loaders and their benefits. The following list serves only as a short overview.
         ```
     Again, there are some [examples](https://github.com/L3MON4D3/LuaSnip/blob/b5a72f1fbde545be101fcd10b70bcd51ea4367de/Examples/snippets.lua#L517) and [documentation](https://github.com/L3MON4D3/LuaSnip/blob/master/DOC.md#snipmate).  
 - **Lua**: Add the snippets by calling `require("luasnip").add_snippets(filetype, snippets)`. An example for this can be found [here](https://github.com/L3MON4D3/LuaSnip/blob/master/Examples/snippets.lua#L190).  
-This can also be done much cleaner, with all the benefits that come with using a loader, by using the [loader for lua](https://github.com/L3MON4D3/LuaSnip/blob/master/DOC.md#lua)
+This can also be done much cleaner, with all the benefits that come with using a loader, by using the [loader for Lua](https://github.com/L3MON4D3/LuaSnip/blob/master/DOC.md#lua)
 
 There's also a repository collecting snippets for various languages, [molleweide/LuaSnip-snippets.nvim](https://github.com/molleweide/LuaSnip-snippets.nvim)
 
@@ -155,7 +172,7 @@ Here are some suggestions for getting started in either case:
     `fmt` and `lambda` are especially useful.
   * [`lua-loader`](https://github.com/L3MON4D3/LuaSnip/blob/master/DOC.md#lua):
     A very useful way to load snippets, more comfortable than calling `add_snippets`.  
-    Also supports hot reload (limited to buffers in the same NeoVim instance as the edited file) and [jumping to the files that provide snippets to the
+    Also supports hot reload (limited to buffers in the same Neovim instance as the edited file) and [jumping to the files that provide snippets to the
     current buffer](https://github.com/L3MON4D3/LuaSnip/blob/master/DOC.md#edit_snippets).
   * Advanced nodes:
     [`functionNode`](https://github.com/L3MON4D3/LuaSnip/blob/master/DOC.md#functionnode),
@@ -175,13 +192,13 @@ Note: instead of immediately reading the official documentation, you may want to
 - The [Wiki](https://github.com/L3MON4D3/LuaSnip/wiki) contains some useful LuaSnip extensions and some examples of advanced snippets and configs.
 - Configuration is documented [in `DOC.md`](https://github.com/L3MON4D3/LuaSnip/blob/master/DOC.md#config-options) as well.
 
-【中文版】DOC in Chinese is [here](https://zjp-cn.github.io/neovim0.6-blogs/nvim/luasnip/doc1.html). 
+【中文版】DOC in Chinese is [here](https://zjp-cn.github.io/neovim0.6-blogs/nvim/luasnip/doc1.html).
 
 ### Resources for new users
 Here are some LuaSnip videos and tutorials on the Web:
 - [Introductory](https://www.youtube.com/watch?v=Dn800rlPIho) and [advanced](https://www.youtube.com/watch?v=KtQZRAkgLqo) YouTube videos by the one and only [TJ DeVries](https://github.com/tjdevries). Unfortunately there were some breaking changes in LuaSnip since these videos were recorded:
   * Snippets are now added via [`ls.add_snippets`](https://github.com/L3MON4D3/LuaSnip/blob/master/DOC.md#adding-snippets) instead of with `ls.snippets = {}`
-- A [guide to writing snippets in Lua](https://www.ejmastnak.com/tutorials/vim-latex/luasnip.html) with LaTeX-themed GIFs and real-life examples by [@ejmastnak](https://github.com/ejmastnak)
+- A [guide to writing snippets in Lua](https://www.ejmastnak.com/tutorials/vim-latex/luasnip/) with LaTeX-themed GIFs and real-life examples by [@ejmastnak](https://github.com/ejmastnak)
 - A [collection of LuaSnip guides](https://evesdropper.dev/files/luasnip) by [@evesdropper](https://github.com/evesdropper), with most of them also in a LaTeX context
 - An introductory LuaSnip [video tutorial for beginners](https://www.youtube.com/watch?v=ub0REXjhpmk) by Ziontee113
 

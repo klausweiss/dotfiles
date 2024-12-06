@@ -1,6 +1,6 @@
 ; Variables
 ((identifier) @variable
-  (#set! "priority" 95))
+  (#set! priority 95))
 
 ; Includes
 [
@@ -14,7 +14,7 @@
 
 ; Fields
 (field
-  (identifier) @variable.member)
+  (identifier) @property)
 
 ; Parameters
 (function_definition
@@ -67,17 +67,15 @@
   (#lua-match? @constant "^[_A-Z][A-Z0-9_]*$"))
 
 (enum_definition
-  "enum"
-  .
-  (identifier) @type
+  type: (identifier) @type)
+
+(enum_definition
   "{"
-  (identifier) @constant
-  "}")
+  (identifier) @constant)
 
 ; Builtin Types
-(primitive) @type.builtin
-
 [
+  (primitive)
   "list"
   "map"
   "set"
@@ -88,9 +86,12 @@
 
 ; Namespace
 (namespace_declaration
-  (namespace_scope) @string.special
+  (namespace_scope) @string.special)
+
+(namespace_declaration
+  (namespace_scope)
   [
-    (namespace) @module
+    type: (namespace) @module
     (_
       (identifier) @module)
   ])
@@ -120,18 +121,21 @@
 
 ; Keywords
 [
-  "enum"
   "exception"
   "extends"
-  "interaction"
-  "namespace"
-  "senum"
-  "service"
-  "struct"
   "typedef"
-  "union"
   "uri"
 ] @keyword
+
+[
+  "enum"
+  "struct"
+  "union"
+  "senum"
+  "interaction"
+  "namespace"
+  "service"
+] @keyword.type
 
 ; Deprecated Keywords
 [
@@ -177,7 +181,7 @@
   "server"
   "stateful"
   "transient"
-] @type.qualifier
+] @keyword.modifier
 
 ; Literals
 (string) @string
@@ -202,19 +206,10 @@
 [
   "{"
   "}"
-] @punctuation.bracket
-
-[
   "("
   ")"
-] @punctuation.bracket
-
-[
   "["
   "]"
-] @punctuation.bracket
-
-[
   "<"
   ">"
 ] @punctuation.bracket
@@ -238,5 +233,5 @@
 ((comment) @comment.documentation
   (#lua-match? @comment.documentation "^///$"))
 
-((comment) @keyword.directive
+((comment) @keyword.directive @nospell
   (#lua-match? @keyword.directive "#!.*"))

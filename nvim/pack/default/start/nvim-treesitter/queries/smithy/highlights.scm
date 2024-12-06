@@ -16,7 +16,13 @@
   "list"
   "map"
   "set"
-] @type.builtin
+  "structure"
+  "union"
+  "namespace"
+  "service"
+  "operation"
+  "resource"
+] @keyword.type
 
 ; Fields (Members)
 ; (field) @variable.member
@@ -45,7 +51,7 @@
 
 (trait_statement
   (shape_id
-    (#set! "priority" 105)) @attribute)
+    (#set! priority 105)) @attribute)
 
 ; Operators
 [
@@ -57,12 +63,6 @@
 
 ; Keywords
 [
-  "namespace"
-  "service"
-  "structure"
-  "operation"
-  "union"
-  "resource"
   "metadata"
   "apply"
   "for"

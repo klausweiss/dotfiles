@@ -27,7 +27,6 @@
   (type_declaration) @function.call)
 
 [
-  "struct"
   "bitcast"
   "discard"
   "enable"
@@ -39,18 +38,20 @@
   (texel_format)
 ] @keyword
 
+"struct" @keyword.type
+
 [
   "private"
   "storage"
   "uniform"
   "workgroup"
-] @keyword.storage
+] @keyword.modifier
 
 [
   "read"
   "read_write"
   "write"
-] @type.qualifier
+] @keyword.modifier
 
 "fn" @keyword.function
 

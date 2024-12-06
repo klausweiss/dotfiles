@@ -1,17 +1,15 @@
-local helpers = require("test.functional.helpers")(after_each)
-local exec_lua, feed = helpers.exec_lua, helpers.feed
 local ls_helpers = require("helpers")
+local exec_lua, feed = ls_helpers.exec_lua, ls_helpers.feed
 local Screen = require("test.functional.ui.screen")
 
 describe("selection", function()
 	local screen
 
 	before_each(function()
-		helpers.clear()
+		ls_helpers.clear()
 		ls_helpers.session_setup_luasnip()
 
-		screen = Screen.new(50, 3)
-		screen:attach()
+		screen = ls_helpers.new_screen(50, 3)
 		screen:set_default_attr_ids({
 			[0] = { bold = true, foreground = Screen.colors.Blue },
 			[1] = { bold = true, foreground = Screen.colors.Brown },
@@ -45,7 +43,7 @@ describe("selection", function()
 	it(
 		"Text inside an insertNode is SELECTed with selection=exclusive",
 		function()
-			helpers.exec("set selection=exclusive")
+			ls_helpers.exec("set selection=exclusive")
 			exec_lua([[
 			ls.snip_expand(
 				s("trig", {
@@ -84,7 +82,7 @@ describe("selection", function()
 	end)
 
 	it("Selection includes linebreak with selection=exclusive", function()
-		helpers.exec("set selection=exclusive")
+		ls_helpers.exec("set selection=exclusive")
 		exec_lua([[
 			ls.snip_expand(
 				s("trig", {
@@ -123,7 +121,7 @@ describe("selection", function()
 	end)
 
 	it("Multiline Selection works fine with selection=exclusive", function()
-		helpers.exec("set selection=exclusive")
+		ls_helpers.exec("set selection=exclusive")
 		exec_lua([[
 			ls.snip_expand(
 				s("trig", {
@@ -139,6 +137,22 @@ describe("selection", function()
 			{0:~                                                 }|
 			{2:-- INSERT --}                                      |]],
 			unchanged = true,
+		})
+	end)
+
+	it("Selection works when starting at a linebreak.", function()
+		exec_lua([[
+			ls.snip_expand(
+				s("trig", {
+					t"asdf", i(1, {"", "second line"})
+				}) )
+		]])
+		-- ^ denotes cursor, has to be behind "f".
+		screen:expect({
+			grid = [[
+		    asdf^                                              |
+		    {3:second line}                                       |
+		    {2:-- SELECT --}                                      |]],
 		})
 	end)
 end)

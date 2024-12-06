@@ -1,37 +1,36 @@
-local buffers = require "nvim-tree.buffers"
+local buffers = require("nvim-tree.buffers")
 
-local HL_POSITION = require("nvim-tree.enum").HL_POSITION
-local ICON_PLACEMENT = require("nvim-tree.enum").ICON_PLACEMENT
+local Decorator = require("nvim-tree.renderer.decorator")
+local DirectoryNode = require("nvim-tree.node.directory")
 
-local Decorator = require "nvim-tree.renderer.decorator"
+---@class (exact) DecoratorModified: Decorator
+---@field icon HighlightedString?
+local DecoratorModified = Decorator:extend()
 
----@class DecoratorModified: Decorator
----@field icon HighlightedString|nil
-local DecoratorModified = Decorator:new()
+---@class DecoratorModified
+---@overload fun(explorer: DecoratorArgs): DecoratorModified
 
----@param opts table
----@return DecoratorModified
-function DecoratorModified:new(opts)
-  local o = Decorator.new(self, {
-    enabled = opts.modified.enable,
-    hl_pos = HL_POSITION[opts.renderer.highlight_modified] or HL_POSITION.none,
-    icon_placement = ICON_PLACEMENT[opts.renderer.icons.modified_placement] or ICON_PLACEMENT.none,
+---@protected
+---@param args DecoratorArgs
+function DecoratorModified:new(args)
+  Decorator.new(self, {
+    explorer       = args.explorer,
+    enabled        = true,
+    hl_pos         = args.explorer.opts.renderer.highlight_modified or "none",
+    icon_placement = args.explorer.opts.renderer.icons.modified_placement or "none",
   })
-  ---@cast o DecoratorModified
 
-  if not o.enabled then
-    return o
+  if not self.enabled then
+    return
   end
 
-  if opts.renderer.icons.show.modified then
-    o.icon = {
-      str = opts.renderer.icons.glyphs.modified,
+  if self.explorer.opts.renderer.icons.show.modified then
+    self.icon = {
+      str = self.explorer.opts.renderer.icons.glyphs.modified,
       hl = { "NvimTreeModifiedIcon" },
     }
-    o:define_sign(o.icon)
+    self:define_sign(self.icon)
   end
-
-  return o
 end
 
 ---Modified icon: modified.enable, renderer.icons.show.modified and node is modified
@@ -47,11 +46,11 @@ end
 ---@param node Node
 ---@return string|nil group
 function DecoratorModified:calculate_highlight(node)
-  if not self.enabled or self.hl_pos == HL_POSITION.none or not buffers.is_modified(node) then
+  if not self.enabled or self.range == "none" or not buffers.is_modified(node) then
     return nil
   end
 
-  if node.nodes then
+  if node:is(DirectoryNode) then
     return "NvimTreeModifiedFolderHL"
   else
     return "NvimTreeModifiedFileHL"

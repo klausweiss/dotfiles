@@ -1,15 +1,12 @@
-local a = require("plenary.async")
+local git = require("neogit.lib.git")
 local state = require("neogit.lib.state")
-local config = require("neogit.lib.git.config")
 local util = require("neogit.lib.util")
 local notification = require("neogit.lib.notification")
-local logger = require("neogit.logger")
-local watcher = require("neogit.watcher")
 
-local M = {}
-
----@class Popup
+---@class PopupBuilder
 ---@field state PopupState
+---@field builder_fn PopupData
+local M = {}
 
 ---@class PopupState
 ---@field name string
@@ -28,46 +25,92 @@ local M = {}
 ---@field cli string
 ---@field cli_prefix string
 ---@field default string|integer|boolean
+---@field dependent table
 ---@field description string
 ---@field fn function
 ---@field id string
+---@field incompatible table
 ---@field key string
 ---@field key_prefix string
 ---@field separator string
 ---@field type string
----@field value string
+---@field value string?
 
 ---@class PopupSwitch
 ---@field cli string
 ---@field cli_base string
 ---@field cli_prefix string
 ---@field cli_suffix string
----@field dependant table
+---@field dependent table
 ---@field description string
 ---@field enabled boolean
 ---@field fn function
 ---@field id string
----@field incompatible table
+---@field incompatible string[]
 ---@field internal boolean
 ---@field key string
 ---@field key_prefix string
 ---@field options table
 ---@field type string
 ---@field user_input boolean
+---@field value string?
 
 ---@class PopupConfig
 ---@field id string
 ---@field key string
 ---@field name string
----@field entry string
----@field value string
+---@field entry ConfigEntry
+---@field value string?
 ---@field type string
+---@field passive boolean?
+---@field heading string?
+---@field options PopupConfigOption[]?
+---@field callback fun(popup: PopupData, config: self)? Called after the config is set
+---@field fn fun(popup: PopupData, config: self)? If set, overrides the actual config setting behavior
+
+---@class PopupConfigOption An option that can be selected as a value for a config
+---@field display string The display name for the option
+---@field value string The value to set in git config
+---@field condition? fun(): boolean An option predicate to determine if the option should appear
 
 ---@class PopupAction
----@field keys table
+---@field keys string[]
 ---@field description string
 ---@field callback function
+---@field heading string?
 
+---@class PopupSwitchOpts
+---@field enabled? boolean Controls if the switch should default to 'on' state
+---@field internal? boolean Whether the switch is internal to neogit or should be included in the cli command. If `true` we don't include it in the cli command.
+---@field incompatible? string[] A table of strings that represent other cli switches/options that this one cannot be used with
+---@field key_prefix? string Allows overwriting the default '-' to toggle switch
+---@field cli_prefix? string Allows overwriting the default '--' that's used to create the cli flag. Sometimes you may want to use '++' or '-'.
+---@field cli_suffix? string
+---@field options? table
+---@field value? string Allows for pre-building cli flags that can be customized by user input
+---@field user_input? boolean If true, allows user to customize the value of the cli flag
+---@field dependent? string[] other switches/options with a state dependency on this one
+
+---@class PopupOptionOpts
+---@field key_prefix? string Allows overwriting the default '=' to set option
+---@field cli_prefix? string Allows overwriting the default '--' cli prefix
+---@field choices? table Table of predefined choices that a user can select for option
+---@field default? string|integer|boolean Default value for option, if the user attempts to unset value
+---@field dependent? string[] other switches/options with a state dependency on this one
+---@field incompatible? string[] A table of strings that represent other cli switches/options that this one cannot be used with
+---@field separator? string Defaults to `=`, separating the key from the value. Some CLI options are weird.
+---@field setup? fun(PopupBuilder) function called before rendering
+---@field fn? fun() function called - like an action. Used to launch a popup from a popup.
+
+---@class PopupConfigOpts
+---@field options? PopupConfigOption[]
+---@field fn? fun(popup: PopupData, config: self) If set, overrides the actual config setting behavior
+---@field callback? fun(popup: PopupData, config: PopupConfig)? A callback that will be invoked after the config is set
+---@field passive? boolean? Controls if this config setting can be manipulated directly, or if it is managed by git, and should just be shown in UI
+---                       A 'condition' key with function value can also be present in the option, which controls if the option gets shown by returning boolean.
+
+---@param builder_fn fun(): PopupData
+---@return PopupBuilder
 function M.new(builder_fn)
   local instance = {
     state = {
@@ -86,27 +129,33 @@ function M.new(builder_fn)
   return instance
 end
 
-function M:name(x)
-  self.state.name = x
+-- Set the popup's name. This must be set for all popups.
+---@param name string The name
+---@return self
+function M:name(name)
+  self.state.name = name
   return self
 end
 
-function M:env(x)
-  self.state.env = x
+-- Set initial context for the popup
+---@param env table The initial context
+---@return self
+function M:env(env)
+  self.state.env = env or {}
   return self
 end
 
--- Adds new column to actions section of popup
----@param heading string|nil
+-- adds a new column to the actions section of the popup
+---@param heading string?
 ---@return self
 function M:new_action_group(heading)
   table.insert(self.state.actions, { { heading = heading or "" } })
   return self
 end
 
--- Conditionally adds new column to actions section of popup
+-- Conditionally adds a new column to the actions section of the popup
 ---@param cond boolean
----@param heading string|nil
+---@param heading string?
 ---@return self
 function M:new_action_group_if(cond, heading)
   if cond then
@@ -116,7 +165,7 @@ function M:new_action_group_if(cond, heading)
   return self
 end
 
--- Adds new heading to current column within actions section of popup
+-- adds a new heading to current column within the actions section of the popup
 ---@param heading string
 ---@return self
 function M:group_heading(heading)
@@ -124,7 +173,7 @@ function M:group_heading(heading)
   return self
 end
 
----Conditionally adds new heading to current column within actions section of popup
+-- Conditionally adds a new heading to current column within the actions section of the popup
 ---@param cond boolean
 ---@param heading string
 ---@return self
@@ -136,19 +185,11 @@ function M:group_heading_if(cond, heading)
   return self
 end
 
+-- Adds a switch to the popup
 ---@param key string Which key triggers switch
 ---@param cli string Git cli flag to use
 ---@param description string Description text to show user
----@param opts table|nil A table of options for the switch
----@param opts.enabled boolean Controls if the switch should default to 'on' state
----@param opts.internal boolean Whether the switch is internal to neogit or should be included in the cli command.
---                              If `true` we don't include it in the cli command.
----@param opts.incompatible table A table of strings that represent other cli flags that this one cannot be used with
----@param opts.key_prefix string Allows overwriting the default '-' to toggle switch
----@param opts.cli_prefix string Allows overwriting the default '--' thats used to create the cli flag. Sometimes you may want
---                               to use '++' or '-'.
----@param opts.value string Allows for pre-building cli flags that can be customised by user input
----@param opts.user_input boolean If true, allows user to customise the value of the cli flag
+---@param opts PopupSwitchOpts? Additional options
 ---@return self
 function M:switch(key, cli, description, opts)
   opts = opts or {}
@@ -165,8 +206,8 @@ function M:switch(key, cli, description, opts)
     opts.incompatible = {}
   end
 
-  if opts.dependant == nil then
-    opts.dependant = {}
+  if opts.dependent == nil then
+    opts.dependent = {}
   end
 
   if opts.key_prefix == nil then
@@ -214,15 +255,19 @@ function M:switch(key, cli, description, opts)
     cli_suffix = opts.cli_suffix,
     options = opts.options,
     incompatible = util.build_reverse_lookup(opts.incompatible),
-    dependant = util.build_reverse_lookup(opts.dependant),
+    dependent = util.build_reverse_lookup(opts.dependent),
   })
 
   return self
 end
 
--- Conditionally adds a switch.
+-- Conditionally adds a switch to the popup
 ---@see M:switch
----@param cond boolean
+---@param cond boolean The condition under which to add the config
+---@param key string Which key triggers switch
+---@param cli string Git cli flag to use
+---@param description string Description text to show user
+---@param opts PopupSwitchOpts? Additional options
 ---@return self
 function M:switch_if(cond, key, cli, description, opts)
   if cond then
@@ -232,15 +277,12 @@ function M:switch_if(cond, key, cli, description, opts)
   return self
 end
 
+-- Adds an option to the popup
 ---@param key string Key for the user to engage option
 ---@param cli string CLI value used
 ---@param value string Current value of option
 ---@param description string Description of option, presented to user
----@param opts table|nil
----@param opts.key_prefix string Allows overwriting the default '=' to set option
----@param opts.cli_prefix string Allows overwriting the default '--' cli prefix
----@param opts.choices table Table of predefined choices that a user can select for option
----@param opts.default string|integer|boolean Default value for option, if the user attempts to unset value
+---@param opts PopupOptionOpts? Additional options
 function M:option(key, cli, value, description, opts)
   opts = opts or {}
 
@@ -254,6 +296,14 @@ function M:option(key, cli, value, description, opts)
 
   if opts.separator == nil then
     opts.separator = "="
+  end
+
+  if opts.dependent == nil then
+    opts.dependent = {}
+  end
+
+  if opts.incompatible == nil then
+    opts.incompatible = {}
   end
 
   if opts.setup then
@@ -273,23 +323,29 @@ function M:option(key, cli, value, description, opts)
     choices = opts.choices,
     default = opts.default,
     separator = opts.separator,
+    dependent = util.build_reverse_lookup(opts.dependent),
+    incompatible = util.build_reverse_lookup(opts.incompatible),
     fn = opts.fn,
   })
 
   return self
 end
 
--- Adds heading text within Arguments (options/switches) section of popup
+-- adds a heading text within Arguments (options/switches) section of the popup
 ---@param heading string Heading to show
 ---@return self
 function M:arg_heading(heading)
-  ---@type PopupHeading
   table.insert(self.state.args, { type = "heading", heading = heading })
   return self
 end
 
+-- Conditionally adds an option to the popup
 ---@see M:option
----@param cond boolean
+---@param cond boolean The condition under which to add the config
+---@param key string Which key triggers switch
+---@param cli string Git cli flag to use
+---@param description string Description text to show user
+---@param opts PopupOptionOpts? Additional options
 ---@return self
 function M:option_if(cond, key, cli, value, description, opts)
   if cond then
@@ -299,23 +355,21 @@ function M:option_if(cond, key, cli, value, description, opts)
   return self
 end
 
----@param heading string Heading to render within config section of popup
+-- adds a heading text with the config section of the popup
+---@param heading string Heading to render
 ---@return self
 function M:config_heading(heading)
   table.insert(self.state.config, { heading = heading })
   return self
 end
 
+-- Adds config to the popup
 ---@param key string Key for user to use that engages config
 ---@param name string Name of config
----@param options table|nil
----@param options.options table Table of tables, each consisting of `{ display = "", value = "" }`
---                              where 'display' is what is shown to the user, and 'value' is what gets used by the cli.
---                              A 'condition' key with function value can also be present in the option, which controls if the option gets shown by returning boolean.
----@param options.passive boolean Controls if this config setting can be manipulated directly, or if it is managed by git, and should just be shown in UI
+---@param options PopupConfigOpts? Additional options
 ---@return self
 function M:config(key, name, options)
-  local entry = config.get(name)
+  local entry = git.config.get(name)
 
   ---@type PopupConfig
   local variable = {
@@ -336,9 +390,12 @@ function M:config(key, name, options)
   return self
 end
 
--- Conditionally adds config to popup
+-- Conditionally adds config to the popup
 ---@see M:config
----@param cond boolean
+---@param cond boolean The condition under which to add the config
+---@param key string Key for user to use that engages config
+---@param name string Name of config
+---@param options PopupConfigOpts? Additional options
 ---@return self
 function M:config_if(cond, key, name, options)
   if cond then
@@ -348,12 +405,10 @@ function M:config_if(cond, key, name, options)
   return self
 end
 
--- Allow user actions to be queued
-local action_lock = a.control.Semaphore.new(1)
-
+-- Adds an action to the popup
 ---@param keys string|string[] Key or list of keys for the user to press that runs the action
 ---@param description string Description of action in UI
----@param callback function Function that gets run in async context
+---@param callback? fun(popup: PopupData) Function that gets run in async context
 ---@return self
 function M:action(keys, description, callback)
   if type(keys) == "string" then
@@ -365,47 +420,36 @@ function M:action(keys, description, callback)
       notification.error(string.format("[POPUP] Duplicate key mapping %q", key))
       return self
     end
+
     self.state.keys[key] = true
-  end
-
-  local callback_fn
-  if callback then
-    callback_fn = a.void(function(...)
-      local permit = action_lock:acquire()
-      logger.debug(string.format("[ACTION] Running action from %s", self.state.name))
-
-      watcher.pause()
-      callback(...)
-      watcher.resume()
-
-      permit:forget()
-
-      logger.debug("[ACTION] Dispatching Refresh")
-      require("neogit.status").dispatch_refresh(nil, "action")
-    end)
   end
 
   table.insert(self.state.actions[#self.state.actions], {
     keys = keys,
     description = description,
-    callback = callback_fn,
+    callback = callback,
   })
 
   return self
 end
 
--- Conditionally adds action to popup
----@param cond boolean
+-- Conditionally adds an action to the popup
 ---@see M:action
+---@param cond boolean The condition under which to add the action
+---@param keys string|string[] Key or list of keys for the user to press that runs the action
+---@param description string Description of action in UI
+---@param callback? fun(popup: PopupData) Function that gets run in async context
 ---@return self
-function M:action_if(cond, key, description, callback)
+function M:action_if(cond, keys, description, callback)
   if cond then
-    return self:action(key, description, callback)
+    return self:action(keys, description, callback)
   end
 
   return self
 end
 
+-- Builds the popup
+---@return PopupData # The popup
 function M:build()
   if self.state.name == nil then
     error("A popup needs to have a name!")

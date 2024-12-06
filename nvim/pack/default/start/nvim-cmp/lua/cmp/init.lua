@@ -88,6 +88,12 @@ cmp.visible = cmp.sync(function()
   return cmp.core.view:visible() or vim.fn.pumvisible() == 1
 end)
 
+---Get what number candidates are currently selected.
+---If not selected, nil is returned.
+cmp.get_selected_index = cmp.sync(function()
+  return cmp.core.view:get_selected_index()
+end)
+
 ---Get current selected entry or nil
 cmp.get_selected_entry = cmp.sync(function()
   return cmp.core.view:get_selected_entry()
@@ -108,6 +114,7 @@ cmp.close = cmp.sync(function()
   if cmp.core.view:visible() then
     local release = cmp.core:suspend()
     cmp.core.view:close()
+    cmp.core:reset()
     vim.schedule(release)
     return true
   else
@@ -120,6 +127,7 @@ cmp.abort = cmp.sync(function()
   if cmp.core.view:visible() then
     local release = cmp.core:suspend()
     cmp.core.view:abort()
+    cmp.core:reset()
     vim.schedule(release)
     return true
   else

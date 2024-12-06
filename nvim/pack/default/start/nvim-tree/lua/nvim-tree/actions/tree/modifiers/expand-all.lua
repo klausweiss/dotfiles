@@ -1,8 +1,8 @@
-local core = require "nvim-tree.core"
-local renderer = require "nvim-tree.renderer"
-local Iterator = require "nvim-tree.iterators.node-iterator"
-local notify = require "nvim-tree.notify"
-local lib = require "nvim-tree.lib"
+local core = require("nvim-tree.core")
+local Iterator = require("nvim-tree.iterators.node-iterator")
+local notify = require("nvim-tree.notify")
+
+local DirectoryNode = require("nvim-tree.node.directory")
 
 local M = {}
 
@@ -17,9 +17,9 @@ local function to_lookup_table(list)
   return table
 end
 
----@param node Node
+---@param node DirectoryNode
 local function expand(node)
-  node = lib.get_last_group_node(node)
+  node = node:last_group_node()
   node.open = true
   if #node.nodes == 0 then
     core.get_explorer():expand(node)
@@ -30,9 +30,13 @@ end
 ---@param node Node
 ---@return boolean
 local function should_expand(expansion_count, node)
+  local dir = node:as(DirectoryNode)
+  if not dir then
+    return false
+  end
   local should_halt = expansion_count >= M.MAX_FOLDER_DISCOVERY
-  local should_exclude = M.EXCLUDE[node.name]
-  return not should_halt and node.nodes and not node.open and not should_exclude
+  local should_exclude = M.EXCLUDE[dir.name]
+  return not should_halt and not dir.open and not should_exclude
 end
 
 local function gen_iterator()
@@ -49,7 +53,10 @@ local function gen_iterator()
       :applier(function(node)
         if should_expand(expansion_count, node) then
           expansion_count = expansion_count + 1
-          expand(node)
+          node = node:as(DirectoryNode)
+          if node then
+            expand(node)
+          end
         end
       end)
       :recursor(function(node)
@@ -63,13 +70,21 @@ local function gen_iterator()
   end
 end
 
----@param base_node table
-function M.fn(base_node)
-  local node = base_node.nodes and base_node or core.get_explorer()
-  if gen_iterator()(node) then
+---Expand the directory node or the root
+---@param node Node
+function M.fn(node)
+  local explorer = core.get_explorer()
+  local parent = node:as(DirectoryNode) or explorer
+  if not parent then
+    return
+  end
+
+  if gen_iterator()(parent) then
     notify.warn("expansion iteration was halted after " .. M.MAX_FOLDER_DISCOVERY .. " discovered folders")
   end
-  renderer.draw()
+  if explorer then
+    explorer.renderer:draw()
+  end
 end
 
 function M.setup(opts)

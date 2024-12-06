@@ -1,5 +1,6 @@
-local log = require "nvim-tree.log"
-local utils = require "nvim-tree.utils"
+local log = require("nvim-tree.log")
+local git = require("nvim-tree.git")
+local utils = require("nvim-tree.utils")
 local Watcher = require("nvim-tree.watcher").Watcher
 
 local M = {
@@ -40,16 +41,20 @@ local function is_folder_ignored(path)
     end
   end
 
-  for _, ignore_dir in ipairs(M.config.filesystem_watchers.ignore_dirs) do
-    if vim.fn.match(path, ignore_dir) ~= -1 then
-      return true
+  if type(M.config.filesystem_watchers.ignore_dirs) == "table" then
+    for _, ignore_dir in ipairs(M.config.filesystem_watchers.ignore_dirs) do
+      if vim.fn.match(path, ignore_dir) ~= -1 then
+        return true
+      end
     end
+  elseif type(M.config.filesystem_watchers.ignore_dirs) == "function" then
+    return M.config.filesystem_watchers.ignore_dirs(path)
   end
 
   return false
 end
 
----@param node Node
+---@param node DirectoryNode
 ---@return Watcher|nil
 function M.create_watcher(node)
   if not M.config.filesystem_watchers.enable or type(node) ~= "table" then
@@ -61,9 +66,10 @@ function M.create_watcher(node)
     return nil
   end
 
+  ---@param watcher Watcher
   local function callback(watcher)
-    log.line("watcher", "node event scheduled refresh %s", watcher.context)
-    utils.debounce(watcher.context, M.config.filesystem_watchers.debounce_delay, function()
+    log.line("watcher", "node event scheduled refresh %s", watcher.data.context)
+    utils.debounce(watcher.data.context, M.config.filesystem_watchers.debounce_delay, function()
       if watcher.destroyed then
         return
       end
@@ -72,15 +78,17 @@ function M.create_watcher(node)
       else
         log.line("watcher", "node event executing refresh '%s'", node.absolute_path)
       end
-      require("nvim-tree.explorer.reload").refresh_node(node, function()
-        require("nvim-tree.renderer").draw()
-      end)
+      git.refresh_dir(node)
     end)
   end
 
   M.uid = M.uid + 1
-  return Watcher:new(path, nil, callback, {
-    context = "explorer:watch:" .. path .. ":" .. M.uid,
+  return Watcher:create({
+    path = path,
+    callback = callback,
+    data = {
+      context = "explorer:watch:" .. path .. ":" .. M.uid
+    }
   })
 end
 

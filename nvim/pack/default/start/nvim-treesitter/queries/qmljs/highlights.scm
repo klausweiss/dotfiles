@@ -1,15 +1,15 @@
-; temporarily removed the ecma inherit due to it breaking
+; inherits: ecma
+
 "pragma" @keyword.import
 
 ; Annotations
 (ui_annotation
   "@" @operator
-  type_name:
-    [
-      (identifier) @attribute
-      (nested_identifier
-        (identifier) @attribute)
-    ])
+  type_name: [
+    (identifier) @attribute
+    (nested_identifier
+      (identifier) @attribute)
+  ])
 
 ; type
 (ui_property
@@ -17,28 +17,25 @@
 
 ; Properties
 (ui_object_definition_binding
-  name:
-    [
-      (identifier) @property
-      (nested_identifier
-        (identifier) @property)
-    ])
+  name: [
+    (identifier) @property
+    (nested_identifier
+      (identifier) @property)
+  ])
 
 (ui_binding
-  name:
-    [
-      (identifier) @property
-      (nested_identifier
-        (identifier) @property)
-    ])
+  name: [
+    (identifier) @property
+    (nested_identifier
+      (identifier) @property)
+  ])
 
 ; locals query appears not working unless id: <ref> isn't a parameter.
 (ui_binding
   name: (identifier) @property
   (#eq? @property "id")
-  value:
-    (expression_statement
-      (identifier) @variable))
+  value: (expression_statement
+    (identifier) @variable))
 
 (ui_property
   name: (identifier) @property)
@@ -71,41 +68,6 @@
   (nested_identifier
     (identifier) @module))
 
-; Properties
-;-----------
-(property_identifier) @property
-
-; function
-(call_expression
-  function:
-    (member_expression
-      object: (identifier) @variable
-      property: (property_identifier) @function))
-
-; js
-; Literals
-;---------
-[
-  (true)
-  (false)
-] @boolean
-
-[
-  (null)
-  (undefined)
-] @constant.builtin
-
-(comment) @comment @spell
-
-[
-  (string)
-  (template_string)
-] @string
-
-(regex) @string.regexp
-
-(number) @number
-
 ; Tokens
 ;-------
 [
@@ -116,15 +78,12 @@
   "default"
   "readonly"
   "required"
-] @type.qualifier
+] @keyword.modifier
 
 ; from typescript
 (type_identifier) @type
 
 (predefined_type) @type.builtin
-
-((identifier) @type
-  (#lua-match? @type "^%u"))
 
 (type_arguments
   "<" @punctuation.bracket
@@ -143,12 +102,15 @@
   "property"
   "signal"
   "declare"
-  "enum"
-  "export"
   "implements"
-  "interface"
-  "keyof"
-  "namespace"
-  "type"
   "override"
 ] @keyword
+
+[
+  "interface"
+  "type"
+  "enum"
+  "namespace"
+] @keyword.type
+
+"keyof" @keyword.operator

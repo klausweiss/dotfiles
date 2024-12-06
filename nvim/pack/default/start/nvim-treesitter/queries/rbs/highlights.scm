@@ -16,10 +16,7 @@
 [
   "use"
   "as"
-  "class"
   "module"
-  "interface"
-  "type"
   "def"
   "attr_reader"
   "attr_writer"
@@ -27,6 +24,18 @@
   "end"
   "alias"
 ] @keyword
+
+[
+  "interface"
+  "type"
+  "class"
+] @keyword.type
+
+(class_decl
+  "end" @keyword.type)
+
+(interface_decl
+  "end" @keyword.type)
 
 "def" @keyword.function
 
@@ -37,7 +46,7 @@
   "prepend"
 ] @function.method
 
-(visibility) @type.qualifier
+(visibility) @keyword.modifier
 
 (comment) @comment @spell
 

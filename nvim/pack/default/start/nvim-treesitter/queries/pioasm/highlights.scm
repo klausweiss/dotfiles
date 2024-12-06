@@ -62,7 +62,7 @@
 [
   (optional)
   (irq_modifiers)
-] @type.qualifier
+] @keyword.modifier
 
 [
   "block"
@@ -75,7 +75,7 @@
   "ifempty"
 ] @keyword.conditional
 
-"public" @keyword.storage
+"public" @keyword.modifier
 
 (integer) @number
 

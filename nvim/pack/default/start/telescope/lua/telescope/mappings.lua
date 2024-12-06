@@ -133,6 +133,17 @@ local mappings = {}
 mappings.default_mappings = config.values.default_mappings
   or {
     i = {
+      ["<LeftMouse>"] = {
+        actions.mouse_click,
+        type = "action",
+        opts = { expr = true },
+      },
+      ["<2-LeftMouse>"] = {
+        actions.double_mouse_click,
+        type = "action",
+        opts = { expr = true },
+      },
+
       ["<C-n>"] = actions.move_selection_next,
       ["<C-p>"] = actions.move_selection_previous,
 
@@ -165,12 +176,25 @@ mappings.default_mappings = config.values.default_mappings
       ["<C-_>"] = actions.which_key, -- keys from pressing <C-/>
       ["<C-w>"] = { "<c-s-w>", type = "command" },
       ["<C-r><C-w>"] = actions.insert_original_cword,
+      ["<C-r><C-a>"] = actions.insert_original_cWORD,
+      ["<C-r><C-f>"] = actions.insert_original_cfile,
+      ["<C-r><C-l>"] = actions.insert_original_cline,
 
       -- disable c-j because we dont want to allow new lines #2123
       ["<C-j>"] = actions.nop,
     },
-
     n = {
+      ["<LeftMouse>"] = {
+        actions.mouse_click,
+        type = "action",
+        opts = { expr = true },
+      },
+      ["<2-LeftMouse>"] = {
+        actions.double_mouse_click,
+        type = "action",
+        opts = { expr = true },
+      },
+
       ["<esc>"] = actions.close,
       ["<CR>"] = actions.select_default,
       ["<C-x>"] = actions.select_horizontal,

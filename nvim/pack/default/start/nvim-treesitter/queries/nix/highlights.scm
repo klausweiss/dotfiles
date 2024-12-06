@@ -8,17 +8,6 @@
   "with"
 ] @keyword
 
-(variable_expression
-  name: (identifier) @keyword
-  (#eq? @keyword "derivation")
-  (#set! "priority" 101))
-
-; exceptions
-(variable_expression
-  name: (identifier) @keyword.exception
-  (#any-of? @keyword.exception "abort" "throw")
-  (#set! "priority" 101))
-
 ; if/then/else
 [
   "if"
@@ -33,11 +22,13 @@
 (comment) @comment @spell
 
 ; strings
-([
-  (string_expression)
-  (indented_string_expression)
-]
-  (#set! "priority" 99)) @string
+(string_fragment) @string
+
+(string_expression
+  "\"" @string)
+
+(indented_string_expression
+  "''" @string)
 
 ; paths and URLs
 [
@@ -55,6 +46,7 @@
 [
   "."
   ";"
+  ":"
   ","
 ] @punctuation.delimiter
 
@@ -74,7 +66,7 @@
   "?"? @operator)
 
 ; `...` in `{ ... }`, used to ignore unknown named function arguments (see above)
-(ellipses) @punctuation.special
+(ellipses) @variable.parameter.builtin
 
 ; universal is the parameter of the function expression
 ; `:` in `x: y`, used to separate function argument from body (see above)
@@ -84,9 +76,8 @@
 
 ; function calls
 (apply_expression
-  function:
-    (variable_expression
-      name: (identifier) @function.call))
+  function: (variable_expression
+    name: (identifier) @function.call))
 
 ; basic identifiers
 (variable_expression) @variable
@@ -101,28 +92,26 @@
 
 ; builtin functions (with builtins prefix)
 (select_expression
-  expression:
-    (variable_expression
-      name: (identifier) @_id)
-  attrpath:
-    (attrpath
-      attr: (identifier) @function.builtin)
+  expression: (variable_expression
+    name: (identifier) @_id)
+  attrpath: (attrpath
+    attr: (identifier) @function.builtin)
   (#eq? @_id "builtins"))
 
 ; builtin functions (without builtins prefix)
 (variable_expression
   name: (identifier) @function.builtin
   (#any-of? @function.builtin
-    ; nix eval --impure --expr 'with builtins; filter (x: !(elem x [ "abort" "derivation" "import" "throw" ]) && isFunction builtins.${x}) (attrNames builtins)'
+    ; nix eval --impure --expr 'with builtins; filter (x: !(elem x [ "abort" "import" "throw" ]) && isFunction builtins.${x}) (attrNames builtins)'
     "add" "addErrorContext" "all" "any" "appendContext" "attrNames" "attrValues" "baseNameOf"
     "bitAnd" "bitOr" "bitXor" "break" "catAttrs" "ceil" "compareVersions" "concatLists" "concatMap"
-    "concatStringsSep" "deepSeq" "derivationStrict" "dirOf" "div" "elem" "elemAt" "fetchGit"
-    "fetchMercurial" "fetchTarball" "fetchTree" "fetchurl" "filter" "filterSource" "findFile"
-    "floor" "foldl'" "fromJSON" "fromTOML" "functionArgs" "genList" "genericClosure" "getAttr"
-    "getContext" "getEnv" "getFlake" "groupBy" "hasAttr" "hasContext" "hashFile" "hashString" "head"
-    "intersectAttrs" "isAttrs" "isBool" "isFloat" "isFunction" "isInt" "isList" "isNull" "isPath"
-    "isString" "length" "lessThan" "listToAttrs" "map" "mapAttrs" "match" "mul" "parseDrvName"
-    "partition" "path" "pathExists" "placeholder" "readDir" "readFile" "removeAttrs"
+    "concatStringsSep" "deepSeq" "derivation" "derivationStrict" "dirOf" "div" "elem" "elemAt"
+    "fetchGit" "fetchMercurial" "fetchTarball" "fetchTree" "fetchurl" "filter" "filterSource"
+    "findFile" "floor" "foldl'" "fromJSON" "fromTOML" "functionArgs" "genList" "genericClosure"
+    "getAttr" "getContext" "getEnv" "getFlake" "groupBy" "hasAttr" "hasContext" "hashFile"
+    "hashString" "head" "intersectAttrs" "isAttrs" "isBool" "isFloat" "isFunction" "isInt" "isList"
+    "isNull" "isPath" "isString" "length" "lessThan" "listToAttrs" "map" "mapAttrs" "match" "mul"
+    "parseDrvName" "partition" "path" "pathExists" "placeholder" "readDir" "readFile" "removeAttrs"
     "replaceStrings" "scopedImport" "seq" "sort" "split" "splitVersion" "storePath" "stringLength"
     "sub" "substring" "tail" "toFile" "toJSON" "toPath" "toString" "toXML" "trace" "traceVerbose"
     "tryEval" "typeOf" "unsafeDiscardOutputDependency" "unsafeDiscardStringContext"
@@ -140,8 +129,7 @@
     "__currentSystem" "__hashFile" "__path" "__unsafeDiscardOutputDependency" "__currentTime"
     "__hashString" "__pathExists" "__unsafeDiscardStringContext" "__deepSeq" "__head" "__readDir"
     "__unsafeGetAttrPos" "__div" "__intersectAttrs" "__readFile" "__zipAttrsWith" "__elem"
-    "__isAttrs" "__replaceStrings" "__elemAt" "__isBool" "__seq" "__fetchurl" "__isFloat" "__sort")
-  )
+    "__isAttrs" "__replaceStrings" "__elemAt" "__isBool" "__seq" "__fetchurl" "__isFloat" "__sort"))
 
 ; constants
 (variable_expression
@@ -158,9 +146,8 @@
 
 (select_expression
   expression: (_) @_expr
-  attrpath:
-    (attrpath
-      attr: (identifier) @variable.member)
+  attrpath: (attrpath
+    attr: (identifier) @variable.member)
   (#not-eq? @_expr "builtins"))
 
 (attrset_expression
@@ -179,9 +166,8 @@
 
 ; function definition
 (binding
-  attrpath:
-    (attrpath
-      attr: (identifier) @function)
+  attrpath: (attrpath
+    attr: (identifier) @function)
   expression: (function_expression))
 
 ; unary operators
@@ -191,6 +177,12 @@
 ; binary operators
 (binary_expression
   operator: _ @operator)
+
+[
+  "="
+  "@"
+  "?"
+] @operator
 
 ; integers, also highlight a unary -
 [
@@ -207,3 +199,8 @@
     (float_expression))
   (float_expression)
 ] @number.float
+
+; exceptions
+(variable_expression
+  name: (identifier) @keyword.exception
+  (#any-of? @keyword.exception "abort" "throw"))

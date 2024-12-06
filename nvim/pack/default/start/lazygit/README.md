@@ -32,22 +32,26 @@ Install using [`lazy.nvim`](https://github.com/folke/lazy.nvim):
 
 ```lua
 -- nvim v0.8.0
-require("lazy").setup({
-    {
-        "kdheepak/lazygit.nvim",
-    	cmd = {
-    		"LazyGit",
-    		"LazyGitConfig",
-    		"LazyGitCurrentFile",
-    		"LazyGitFilter",
-    		"LazyGitFilterCurrentFile",
-    	},
-        -- optional for floating window border decoration
-        dependencies = {
-            "nvim-lua/plenary.nvim",
-        },
+return {
+    "kdheepak/lazygit.nvim",
+    lazy = true,
+    cmd = {
+        "LazyGit",
+        "LazyGitConfig",
+        "LazyGitCurrentFile",
+        "LazyGitFilter",
+        "LazyGitFilterCurrentFile",
     },
-})
+    -- optional for floating window border decoration
+    dependencies = {
+        "nvim-lua/plenary.nvim",
+    },
+    -- setting the keybinding for LazyGit with 'keys' is recommended in
+    -- order to load the plugin when the command is run for the first time
+    keys = {
+        { "<leader>lg", "<cmd>LazyGit<cr>", desc = "LazyGit" }
+    }
+}
 ```
 
 Feel free to use any plugin manager.
@@ -88,6 +92,8 @@ vim.g.lazygit_use_custom_config_file_path = 0 -- config file path is evaluated i
 vim.g.lazygit_config_file_path = '' -- custom config file path
 -- OR
 vim.g.lazygit_config_file_path = {} -- table of custom config file paths
+
+vim.g.lazygit_on_exit_callback = nil -- optional function callback when exiting lazygit (useful for example to refresh some UI elements after lazy git has made some changes)
 ```
 
 Call `:LazyGit` to start a floating window with `lazygit` in the current working directory.
@@ -184,9 +190,6 @@ os:
 
 The Telescope plugin is used to track all git repository visited in one nvim session.
 
-![lazygittelplugin](https://user-images.githubusercontent.com/10464534/156933468-c89abee4-6afb-457c-8b02-55b67913aef2.png)
-(background image is not included :smirk:)
-
 **Why a telescope Plugin** ?
 
 Assuming you have one or more submodule(s) in your project and you want to commit changes in both the submodule(s)
@@ -226,18 +229,25 @@ Install using [`lazy.nvim`](https://github.com/folke/lazy.nvim):
 
 ```lua
 -- nvim v0.8.0
-require("lazy").setup({
-    {
-        "kdheepak/lazygit.nvim",
-        dependencies =  {
-            "nvim-telescope/telescope.nvim",
-            "nvim-lua/plenary.nvim"
-        },
-        config = function()
-            require("telescope").load_extension("lazygit")
-        end,
+{
+    "kdheepak/lazygit.nvim",
+    lazy = false,
+    cmd = {
+        "LazyGit",
+        "LazyGitConfig",
+        "LazyGitCurrentFile",
+        "LazyGitFilter",
+        "LazyGitFilterCurrentFile",
     },
-})
+    -- optional for floating window border decoration
+    dependencies = {
+        "nvim-telescope/telescope.nvim",
+        "nvim-lua/plenary.nvim",
+    },
+    config = function()
+        require("telescope").load_extension("lazygit")
+    end,
+}
 ```
 
 Lazy loading `lazygit.nvim` for telescope functionality is not supported. Open an issue if you wish to have this feature.

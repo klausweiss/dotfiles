@@ -1,7 +1,4 @@
-#!/bin/sh
-_=[[
-exec nvim -l "$0" "$@"
-]]
+#!/usr/bin/env -S nvim -l
 -- Simple script to update the help doc by reading the config schema.
 
 local inspect = vim.inspect
@@ -10,22 +7,13 @@ local startswith = vim.startswith
 
 local config = require('lua.gitsigns.config')
 
---- @param path string
---- @return string
-local function read_file(path)
-  local f = assert(io.open(path, 'r'))
-  local t = f:read('*all')
-  f:close()
-  return t
-end
-
 -- To make sure the output is consistent between runs (to minimise diffs), we
 -- need to iterate through the schema keys in a deterministic way. To do this we
 -- do a smple scan over the file the schema is defined in and collect the keys
 -- in the order they are defined.
 --- @return string[]
 local function get_ordered_schema_keys()
-  local ci = read_file('lua/gitsigns/config.lua'):gmatch('[^\n\r]+')
+  local ci = io.lines('lua/gitsigns/config.lua') --- @type Iterator[string]
 
   for l in ci do
     if startswith(l, 'M.schema = {') then
@@ -95,18 +83,19 @@ local function gen_config_doc_field(field, out)
 
   if v.description then
     local d --- @type string
-    if v.default_help ~= nil then
-      d = v.default_help
+    local default_help = v.default_help
+    if default_help ~= nil then
+      d = default_help
     else
       d = inspect(v.default):gsub('\n', '\n    ')
       d = ('`%s`'):format(d)
     end
 
     local vtype = (function()
-      if v.type == 'table' and v.deep_extend then
+      local ty = v.type_help or v.type
+      if ty == 'table' and v.deep_extend then
         return 'table[extended]'
       end
-      local ty = v.type
       if type(ty) == 'table' then
         v.type = table.concat(ty, '|')
       end
@@ -160,6 +149,11 @@ local function parse_func_header(line)
       args[#args + 1] = string.format('{%s}', k)
     end
   end
+
+  if line:match('async.create%(%d, function%(') then
+    args[#args + 1] = '{callback?}'
+  end
+
   return string.format(
     '%-40s%38s',
     string.format('%s(%s)', func, table.concat(args, ', ')),
@@ -292,13 +286,22 @@ end
 --- @param block string[]
 --- @param params {[1]: string, [2]: string, [3]: string[]}[]
 --- @param returns {[1]: string, [2]: string, [3]: string[]}[]
+--- @param deprecated string?
 --- @return string[]?
-local function render_block(header, block, params, returns)
+local function render_block(header, block, params, returns, deprecated)
   if vim.startswith(header, '_') then
     return
   end
 
   local res = { header }
+
+  if deprecated then
+    list_extend(res, {
+      '                DEPRECATED: '..deprecated,
+      ''
+    })
+  end
+
   list_extend(res, block)
 
   -- filter arguments beginning with '_'
@@ -344,7 +347,7 @@ end
 --- @param path string
 --- @return string
 local function gen_functions_doc_from_file(path)
-  local i = read_file(path):gmatch('([^\n]*)\n?') --- @type Iterator[string]
+  local i = io.lines(path) --- @type Iterator[string]
 
   local blocks = {} --- @type string[][]
 
@@ -353,21 +356,28 @@ local function gen_functions_doc_from_file(path)
   local desc = {} --- @type string[]
   local params = {} --- @type {[1]: string, [2]: string, [3]: string[]}[]
   local returns = {} --- @type {[1]: string, [2]: string, [3]: string[]}[]
+  local deprecated --- @type string?
 
   for l in i do
     local doc_comment = l:match('^%-%-%- ?(.*)') --- @type string?
     if doc_comment then
-      state = process_doc_comment(state, doc_comment, desc, params, returns)
+      local depre = doc_comment:match('@deprecated ?(.*)')
+      if depre then
+        deprecated = depre
+      else
+        state = process_doc_comment(state, doc_comment, desc, params, returns)
+      end
     elseif state ~= 'none' then
       -- First line after block
       local ok, header = pcall(parse_func_header, l)
       if ok then
-        blocks[#blocks + 1] = render_block(header, desc, params, returns)
+        blocks[#blocks + 1] = render_block(header, desc, params, returns, deprecated)
       end
       state = 'none'
       desc = {}
       params = {}
       returns = {}
+      deprecated = nil
     end
   end
 
@@ -431,7 +441,7 @@ end
 
 --- @return string
 local function get_setup_from_readme()
-  local readme = read_file('README.md'):gmatch('([^\n]*)\n?') --- @type Iterator
+  local readme = io.lines('README.md') --- @type Iterator[string]
   local res = {} --- @type string[]
 
   local function append(line)
@@ -459,7 +469,7 @@ end
 --- @return string|fun():string
 local function get_marker_text(marker)
   return ({
-    VERSION = '0.7-dev',
+    VERSION = 'v0.9.0', -- x-release-please-version
     CONFIG = gen_config_doc,
     FUNCTIONS = function()
       return gen_functions_doc({
@@ -474,7 +484,7 @@ local function get_marker_text(marker)
 end
 
 local function main()
-  local template = read_file('etc/doc_template.txt'):gmatch('([^\n]*)\n?') --- @type Iterator
+  local template = io.lines('etc/doc_template.txt') --- @type Iterator[string]
 
   local out = assert(io.open('doc/gitsigns.txt', 'w'))
 
@@ -486,6 +496,7 @@ local function main()
         if type(sub) == 'function' then
           sub = sub()
         end
+        --- @type string
         sub = sub:gsub('%%', '%%%%')
         l = l:gsub('{{' .. marker .. '}}', sub)
       end

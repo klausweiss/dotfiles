@@ -21,7 +21,7 @@
     ; https://docs.python.org/3/library/constants.html
     "NotImplemented" "Ellipsis" "quit" "exit" "copyright" "credits" "license"))
 
-"_" @constant.builtin ; match wildcard
+"_" @character.special ; match wildcard
 
 ((attribute
   attribute: (identifier) @variable.member)
@@ -35,9 +35,8 @@
 
 ((assignment
   left: (identifier) @type.definition
-  right:
-    (call
-      function: (identifier) @_func))
+  right: (call
+    function: (identifier) @_func))
   (#any-of? @_func "TypeVar" "NewType"))
 
 ; Function calls
@@ -45,24 +44,22 @@
   function: (identifier) @function.call)
 
 (call
-  function:
-    (attribute
-      attribute: (identifier) @function.method.call))
+  function: (attribute
+    attribute: (identifier) @function.method.call))
 
 ((call
   function: (identifier) @constructor)
   (#lua-match? @constructor "^%u"))
 
 ((call
-  function:
-    (attribute
-      attribute: (identifier) @constructor))
+  function: (attribute
+    attribute: (identifier) @constructor))
   (#lua-match? @constructor "^%u"))
 
 ; Decorators
 ((decorator
   "@" @attribute)
-  (#set! "priority" 101))
+  (#set! priority 101))
 
 (decorator
   (identifier) @attribute)
@@ -82,7 +79,7 @@
 
 ((decorator
   (identifier) @attribute.builtin)
-  (#any-of? @attribute.builtin "classmethod" "property"))
+  (#any-of? @attribute.builtin "classmethod" "property" "staticmethod"))
 
 ; Builtin functions
 ((call
@@ -109,10 +106,9 @@
 
 ((call
   function: (identifier) @_isinstance
-  arguments:
-    (argument_list
-      (_)
-      (identifier) @type))
+  arguments: (argument_list
+    (_)
+    (identifier) @type))
   (#eq? @_isinstance "isinstance"))
 
 ; Normal parameters
@@ -192,7 +188,7 @@
 
 ((module
   .
-  (comment) @keyword.directive)
+  (comment) @keyword.directive @nospell)
   (#lua-match? @keyword.directive "^#!/"))
 
 (string) @string
@@ -208,21 +204,22 @@
   (comment)*
   .
   (expression_statement
-    (string) @string.documentation @spell))
+    (string
+      (string_content) @spell) @string.documentation))
 
 (class_definition
-  body:
-    (block
-      .
-      (expression_statement
-        (string) @string.documentation @spell)))
+  body: (block
+    .
+    (expression_statement
+      (string
+        (string_content) @spell) @string.documentation)))
 
 (function_definition
-  body:
-    (block
-      .
-      (expression_statement
-        (string) @string.documentation @spell)))
+  body: (block
+    .
+    (expression_statement
+      (string
+        (string_content) @spell) @string.documentation)))
 
 ; Tokens
 [
@@ -284,7 +281,6 @@
 
 [
   "assert"
-  "class"
   "exec"
   "global"
   "nonlocal"
@@ -292,8 +288,12 @@
   "print"
   "with"
   "as"
-  "type"
 ] @keyword
+
+[
+  "type"
+  "class"
+] @keyword.type
 
 [
   "async"
@@ -310,7 +310,7 @@
 
 (future_import_statement
   "from" @keyword.import
-  "__future__" @constant.builtin)
+  "__future__" @module.builtin)
 
 (import_from_statement
   "from" @keyword.import)
@@ -319,6 +319,28 @@
 
 (aliased_import
   "as" @keyword.import)
+
+(wildcard_import
+  "*" @character.special)
+
+(import_statement
+  name: (dotted_name
+    (identifier) @module))
+
+(import_statement
+  name: (aliased_import
+    name: (dotted_name
+      (identifier) @module)
+    alias: (identifier) @module))
+
+(import_from_statement
+  module_name: (dotted_name
+    (identifier) @module))
+
+(import_from_statement
+  module_name: (relative_import
+    (dotted_name
+      (identifier) @module)))
 
 [
   "if"
@@ -378,32 +400,27 @@
   name: (identifier) @type)
 
 (class_definition
-  body:
-    (block
-      (function_definition
-        name: (identifier) @function.method)))
+  body: (block
+    (function_definition
+      name: (identifier) @function.method)))
 
 (class_definition
-  superclasses:
-    (argument_list
-      (identifier) @type))
+  superclasses: (argument_list
+    (identifier) @type))
 
 ((class_definition
-  body:
-    (block
-      (expression_statement
-        (assignment
-          left: (identifier) @variable.member))))
+  body: (block
+    (expression_statement
+      (assignment
+        left: (identifier) @variable.member))))
   (#lua-match? @variable.member "^[%l_].*$"))
 
 ((class_definition
-  body:
-    (block
-      (expression_statement
-        (assignment
-          left:
-            (_
-              (identifier) @variable.member)))))
+  body: (block
+    (expression_statement
+      (assignment
+        left: (_
+          (identifier) @variable.member)))))
   (#lua-match? @variable.member "^[%l_].*$"))
 
 ((class_definition
@@ -434,12 +451,10 @@
 
 ; Regex from the `re` module
 (call
-  function:
-    (attribute
-      object: (identifier) @_re)
-  arguments:
-    (argument_list
-      .
-      (string
-        (string_content) @string.regexp))
+  function: (attribute
+    object: (identifier) @_re)
+  arguments: (argument_list
+    .
+    (string
+      (string_content) @string.regexp))
   (#eq? @_re "re"))

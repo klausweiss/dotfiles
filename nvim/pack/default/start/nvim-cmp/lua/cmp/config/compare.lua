@@ -17,7 +17,7 @@ local compare = {}
 ---offset: Entries with smaller offset will be ranked higher.
 ---@type cmp.ComparatorFunction
 compare.offset = function(entry1, entry2)
-  local diff = entry1:get_offset() - entry2:get_offset()
+  local diff = entry1.offset - entry2.offset
   if diff < 0 then
     return true
   elseif diff > 0 then
@@ -180,8 +180,8 @@ compare.locality = setmetatable({
 }, {
   ---@type fun(self: table, entry1: cmp.Entry, entry2: cmp.Entry): boolean|nil
   __call = function(self, entry1, entry2)
-    local local1 = self.locality_map[entry1:get_word()]
-    local local2 = self.locality_map[entry2:get_word()]
+    local local1 = self.locality_map[entry1.word]
+    local local2 = self.locality_map[entry2.word]
     if local1 ~= local2 then
       if local1 == nil then
         return false
@@ -212,7 +212,9 @@ compare.scopes = setmetatable({
 
       -- Cursor scope.
       local cursor_scope = nil
-      for _, scope in ipairs(locals.get_scopes(buf)) do
+      -- Prioritize the older get_scopes method from nvim-treesitter `master` over get from `main`
+      local scopes = locals.get_scopes and locals.get_scopes(buf) or select(3, locals.get(buf))
+      for _, scope in ipairs(scopes) do
         if scope:start() <= cursor_row and cursor_row <= scope:end_() then
           if not cursor_scope then
             cursor_scope = scope
@@ -253,8 +255,8 @@ compare.scopes = setmetatable({
 }, {
   ---@type fun(self: table, entry1: cmp.Entry, entry2: cmp.Entry): boolean|nil
   __call = function(self, entry1, entry2)
-    local local1 = self.scopes_map[entry1:get_word()]
-    local local2 = self.scopes_map[entry2:get_word()]
+    local local1 = self.scopes_map[entry1.word]
+    local local2 = self.scopes_map[entry2.word]
     if local1 ~= local2 then
       if local1 == nil then
         return false

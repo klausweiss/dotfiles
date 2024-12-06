@@ -1,6 +1,6 @@
-local M = {}
-
 local api = vim.api
+
+local M = {}
 
 --- @param bufnr integer
 --- @param lines string[]
@@ -204,6 +204,8 @@ local function create_win(bufnr, opts, id)
   local group = 'gitsigns_popup'
   local group_id = api.nvim_create_augroup(group, {})
   local old_cursor = api.nvim_win_get_cursor(0)
+
+  vim.keymap.set('n', 'q', '<cmd>quit!<cr>', { silent = true, buffer = bufnr })
 
   api.nvim_create_autocmd({ 'CursorMoved', 'CursorMovedI' }, {
     group = group_id,

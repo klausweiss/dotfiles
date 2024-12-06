@@ -86,13 +86,13 @@
 [
   "before"
   "after"
-] @keyword.storage
+] @keyword.modifier
 
 [
   "append"
   "prepend"
   "remove"
-] @type.qualifier
+] @keyword.modifier
 
 ; Variables
 [
@@ -102,7 +102,6 @@
 
 [
   "noexec"
-  "INHERIT"
   "OVERRIDES"
   "$BB_ENV_PASSTHROUGH"
   "$BB_ENV_PASSTHROUGH_ADDITIONS"
@@ -137,9 +136,8 @@
 
 ((assignment
   left: (python_identifier) @type.definition
-  right:
-    (call
-      function: (python_identifier) @_func))
+  right: (call
+    function: (python_identifier) @_func))
   (#any-of? @_func "TypeVar" "NewType"))
 
 ; Fields
@@ -154,18 +152,16 @@
   function: (python_identifier) @function.call)
 
 (call
-  function:
-    (attribute
-      attribute: (python_identifier) @function.method.call))
+  function: (attribute
+    attribute: (python_identifier) @function.method.call))
 
 ((call
   function: (python_identifier) @constructor)
   (#lua-match? @constructor "^%u"))
 
 ((call
-  function:
-    (attribute
-      attribute: (python_identifier) @constructor))
+  function: (attribute
+    attribute: (python_identifier) @constructor))
   (#lua-match? @constructor "^%u"))
 
 ((call
@@ -191,10 +187,9 @@
 
 ((call
   function: (python_identifier) @_isinstance
-  arguments:
-    (argument_list
-      (_)
-      (python_identifier) @type))
+  arguments: (argument_list
+    (_)
+    (python_identifier) @type))
   (#eq? @_isinstance "isinstance"))
 
 (anonymous_python_function
@@ -216,11 +211,10 @@
   (identifier) @function)
 
 (python_function_definition
-  body:
-    (block
-      .
-      (expression_statement
-        (python_string) @string.documentation @spell)))
+  body: (block
+    .
+    (expression_statement
+      (python_string) @string.documentation @spell)))
 
 ; Namespace
 (inherit_path) @module

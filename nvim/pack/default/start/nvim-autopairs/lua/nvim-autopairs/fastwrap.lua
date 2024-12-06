@@ -8,6 +8,7 @@ local default_config = {
     chars = { '{', '[', '(', '"', "'" },
     pattern = [=[[%'%"%>%]%)%}%,%`]]=],
     end_key = '$',
+    avoid_move_to_end = true, -- choose your move behaviour for non-alphabetical end_keys' 
     before_key = 'h',
     after_key = 'l',
     cursor_pos_before = true,
@@ -57,7 +58,7 @@ M.show = function(line)
         if end_pair == '' then
             return
         end
-        local list_pos = {}
+        local list_pos = {} --holds target locations
         local index = 1
         local str_length = #line
         local offset = -1
@@ -90,6 +91,7 @@ M.show = function(line)
                 )
             end
         end
+        log.debug(list_pos)
 
         local end_col, end_pos
         if config.manual_position then
@@ -107,18 +109,33 @@ M.show = function(line)
             )
         end
 
-        M.highlight_wrap(list_pos, row, col, #line)
+        -- Create a whitespace string for the current line which replaces every non whitespace
+        -- character with a space and preserves tabs, so we can use it for highlighting with
+        -- virtual lines so that highlighting lines up correctly.
+        -- The string is limited to the last position in list_pos
+        local whitespace_line = line:sub(1, list_pos[#list_pos].end_pos):gsub("[^ \t]", " ")
+
+        M.highlight_wrap(list_pos, row, col, #line, whitespace_line)
         vim.defer_fn(function()
             -- get the first char
             local char = #list_pos == 1 and config.end_key or M.getchar_handler()
             vim.api.nvim_buf_clear_namespace(0, M.ns_fast_wrap, row, row + 1)
+
             for _, pos in pairs(list_pos) do
+                -- handle end_key specially
+                if char == config.end_key and char == pos.key then
+                    vim.print("Run to end!")
+                    -- M.highlight_wrap({pos = pos.pos, key = config.end_key}, row, col, #line, whitespace_line)
+                    local move_end_key = (not config.avoid_move_to_end and char == string.upper(config.end_key))
+                    M.move_bracket(line, pos.col+1, end_pair, move_end_key)
+                    break
+                end
                 local hl_mark = {
                     { pos = pos.pos - 1, key = config.before_key },
                     { pos = pos.pos + 1, key = config.after_key },
                 }
                 if config.manual_position and (char == pos.key or char == string.upper(pos.key)) then
-                    M.highlight_wrap(hl_mark, row, col, #line)
+                    M.highlight_wrap(hl_mark, row, col, #line, whitespace_line)
                     M.choose_pos(row, line, pos, end_pair)
                     break
                 end
@@ -178,13 +195,17 @@ M.move_bracket = function(line, target_pos, end_pair, change_pos)
     end
 end
 
-M.highlight_wrap = function(tbl_pos, row, col, end_col)
+M.highlight_wrap = function(tbl_pos, row, col, end_col, whitespace_line)
     local bufnr = vim.api.nvim_win_get_buf(0)
     if config.use_virt_lines then
         local virt_lines = {}
         local start = 0
+        local left_col = vim.fn.winsaveview().leftcol
+        if left_col > 0 then
+            vim.fn.winrestview({ leftcol = 0 })
+        end
         for _, pos in ipairs(tbl_pos) do
-            virt_lines[#virt_lines + 1] = { string.rep(' ', pos.pos - start - 1), 'Normal' }
+            virt_lines[#virt_lines + 1] = { whitespace_line:sub(start + 1, pos.pos - 1), 'Normal' }
             virt_lines[#virt_lines + 1] = { pos.key, config.highlight }
             start = pos.pos
         end
@@ -194,7 +215,7 @@ M.highlight_wrap = function(tbl_pos, row, col, end_col)
         })
     else
         if config.highlight_grey then
-            vim.highlight.range(
+            (vim.hl or vim.highlight).range(
                 bufnr,
                 M.ns_fast_wrap,
                 config.highlight_grey,

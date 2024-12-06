@@ -10,9 +10,7 @@ local run = Runner:new(it, "tests/indent/r", {
 
 describe("indent R:", function()
   describe("whole file:", function()
-    run:whole_file(".", {
-      expected_failures = {},
-    })
+    run:whole_file(".", {})
   end)
 
   describe("new line:", function()
@@ -36,6 +34,8 @@ describe("indent R:", function()
 
     run:new_line("pipe.R", { on_line = 1, text = "head(n = 10L) |>", indent = 2 })
     run:new_line("pipe.R", { on_line = 9, text = "head()", indent = 2 })
+
+    run:new_line("incomplete_pipe.R", { on_line = 2, text = "head %>%", indent = 2 })
 
     run:new_line("aligned_indent.R", { on_line = 1, text = "z,", indent = 17 })
   end)

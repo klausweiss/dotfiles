@@ -1,17 +1,16 @@
-local helpers = require("test.functional.helpers")(after_each)
-local exec_lua, feed, exec = helpers.exec_lua, helpers.feed, helpers.exec
 local ls_helpers = require("helpers")
+local exec_lua, feed, exec =
+	ls_helpers.exec_lua, ls_helpers.feed, ls_helpers.exec
 local Screen = require("test.functional.ui.screen")
 
 describe("Selection", function()
 	local screen
 
 	before_each(function()
-		helpers.clear()
+		ls_helpers.clear()
 		ls_helpers.session_setup_luasnip()
 
-		screen = Screen.new(50, 7)
-		screen:attach()
+		screen = ls_helpers.new_screen(50, 7)
 		screen:set_default_attr_ids({
 			[0] = { bold = true, foreground = Screen.colors.Blue },
 			[1] = { bold = true, foreground = Screen.colors.Brown },
@@ -47,7 +46,7 @@ describe("Selection", function()
 		)
 	end)
 
-	it("works via manual keybinding.", function()
+	it("works via manual keybinding (deprecated api).", function()
 		exec_lua([[
 			vim.keymap.set({"x"}, "p", ls.select_keys, {silent = true})
 		]])
@@ -62,6 +61,50 @@ describe("Selection", function()
 			{0:~                                                 }|
 			{0:~                                                 }|
 			{2:-- INSERT --}                                      |]],
+		})
+	end)
+	it("works via manual keybinding.", function()
+		exec_lua([[
+			vim.keymap.set({"x"}, "p", ls.cut_keys, {silent = true})
+		]])
+		feed("iasdf qwer<Esc>v^p")
+		exec_lua([[ls.lsp_expand(".$LS_SELECT_RAW.")]])
+		screen:expect({
+			grid = [[
+			.asdf qwer.^                                       |
+			{0:~                                                 }|
+			{0:~                                                 }|
+			{0:~                                                 }|
+			{0:~                                                 }|
+			{0:~                                                 }|
+			{2:-- INSERT --}                                      |]],
+		})
+	end)
+	it("works via manual custom keybinding.", function()
+		exec_lua([=[
+			vim.keymap.set({"x"}, "y", [[<Esc><cmd>lua ls.pre_yank("d")<cr>gv"dy<cmd>lua ls.post_yank("d")<cr>]], {silent = true})
+		]=])
+		feed("iasdf qwer<Esc>v^y")
+		screen:expect({
+			grid = [[
+				^asdf qwer                                         |
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				                                                  |]],
+		})
+		exec_lua([[ls.lsp_expand(".$LS_SELECT_RAW.")]])
+		screen:expect({
+			grid = [[
+				.asdf qwer.^asdf qwer                              |
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{2:-- INSERT --}                                      |]],
 		})
 	end)
 

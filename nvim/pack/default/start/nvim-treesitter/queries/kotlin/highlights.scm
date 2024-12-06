@@ -73,6 +73,8 @@
 (import_header
   "import" @keyword.import)
 
+(wildcard_import) @character.special
+
 ; The last `simple_identifier` in a `import_header` will always either be a function
 ; or a type. Classes can appear anywhere in the import path, unlike functions
 (import_header
@@ -175,7 +177,7 @@
 ] @number
 
 [
-  "null"
+  (null_literal)
   ; should be highlighted the same as booleans
   (boolean_literal)
 ] @boolean
@@ -237,17 +239,20 @@
   (visibility_modifier)
   (reification_modifier)
   (inheritance_modifier)
-] @type.qualifier
+] @keyword.modifier
 
 [
   "val"
   "var"
+  ;	"typeof" ; NOTE: It is reserved for future use
+] @keyword
+
+[
   "enum"
   "class"
   "object"
   "interface"
-  ;	"typeof" ; NOTE: It is reserved for future use
-] @keyword
+] @keyword.type
 
 [
   "return"

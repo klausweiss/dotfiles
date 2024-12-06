@@ -174,17 +174,12 @@
 
 [
   "abstract"
-  "class"
   "construct"
   "continue"
   "default"
-  "delegate"
-  "enum"
   "errordomain"
   "get"
   "inline"
-  "interface"
-  "namespace"
   "new"
   "out"
   "override"
@@ -192,10 +187,19 @@
   "ref"
   "set"
   "signal"
-  "struct"
   "virtual"
   "with"
 ] @keyword
+
+[
+  "enum"
+  "class"
+  "struct"
+  "interface"
+  "namespace"
+] @keyword.type
+
+"delegate" @keyword.function
 
 [
   "async"
@@ -208,7 +212,7 @@
   "owned"
   "weak"
   "unowned"
-] @type.qualifier
+] @keyword.modifier
 
 [
   "case"
@@ -229,7 +233,7 @@
   "protected"
   "public"
   "static"
-] @keyword.storage
+] @keyword.modifier
 
 [
   "and"

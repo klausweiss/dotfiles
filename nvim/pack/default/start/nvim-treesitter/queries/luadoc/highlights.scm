@@ -62,7 +62,7 @@
   "@private"
   "(exact)"
   "(key)"
-] @type.qualifier @nospell
+] @keyword.modifier @nospell
 
 ; Variables
 (identifier) @variable @nospell
@@ -121,7 +121,7 @@
     "["
     "]"
   ] @type)
-  (#set! "priority" 105))
+  (#set! priority 105))
 
 (type) @type
 

@@ -7,12 +7,44 @@ local fn = vim.fn
 local special_chars = { '%', '*', '[', ']', '^', '$', '(', ')', '.', '+', '-', '?', '"' }
 
 local contains = vim.tbl_contains
--- local lsp_trigger_chars = {}
 
 local vim_version = vim.version().major * 100 + vim.version().minor * 10 + vim.version().patch
 
 local function is_special(ch)
   return contains(special_chars, ch)
+end
+
+helper.cursor_hold = function(enabled, bufnr)
+  if not _LSP_SIG_CFG.cursorhold_update then
+    return
+  end
+
+  local augroup = api.nvim_create_augroup('Signature', { clear = false })
+  if enabled then
+    api.nvim_create_autocmd({ 'CursorHold', 'CursorHoldI' }, {
+      group = augroup,
+      buffer = bufnr,
+      callback = function()
+        require('lsp_signature').on_UpdateSignature()
+      end,
+      desc = 'signature on cursor hold',
+    })
+    api.nvim_create_autocmd({ 'CursorHold', 'CursorHoldI' }, {
+      group = augroup,
+      buffer = bufnr,
+      callback = function()
+        require('lsp_signature').check_signature_should_close()
+      end,
+      desc = 'signature on cursor hold',
+    })
+  end
+  if not enabled then
+    api.nvim_clear_autocmds({
+      buffer = bufnr,
+      group = augroup,
+      event = { 'CursorHold', 'CursorHoldI' },
+    })
+  end
 end
 
 local function fs_write(path, data)
@@ -151,7 +183,7 @@ helper.ft2md = function(ft)
   end
 end
 
---  location of active parameter
+-- location of active parameter
 -- return result, next parameter, start of next parameter, end of next parameter
 helper.match_parameter = function(result, config)
   -- log("match para ", result, config)
@@ -400,6 +432,153 @@ local function get_border_height(opts)
   return height
 end
 
+-- copy neovim internal/private functions accorss as they can be removed without notice
+
+local default_border = {
+  { '', 'NormalFloat' },
+  { '', 'NormalFloat' },
+  { '', 'NormalFloat' },
+  { ' ', 'NormalFloat' },
+  { '', 'NormalFloat' },
+  { '', 'NormalFloat' },
+  { '', 'NormalFloat' },
+  { ' ', 'NormalFloat' },
+}
+
+local function get_border_size(opts)
+  local border = opts and opts.border or default_border
+  local height = 0
+  local width = 0
+
+  if type(border) == 'string' then
+    local border_size = {
+      none = { 0, 0 },
+      single = { 2, 2 },
+      double = { 2, 2 },
+      rounded = { 2, 2 },
+      solid = { 2, 2 },
+      shadow = { 1, 1 },
+    }
+    if border_size[border] == nil then
+      error(
+        string.format(
+          'invalid floating preview border: %s. :help vim.api.nvim_open_win()',
+          vim.inspect(border)
+        )
+      )
+    end
+    height, width = unpack(border_size[border])
+  else
+    if 8 % #border ~= 0 then
+      error(
+        string.format(
+          'invalid floating preview border: %s. :help vim.api.nvim_open_win()',
+          vim.inspect(border)
+        )
+      )
+    end
+    local function border_width(id)
+      id = (id - 1) % #border + 1
+      if type(border[id]) == 'table' then
+        -- border specified as a table of <character, highlight group>
+        return vim.fn.strdisplaywidth(border[id][1])
+      elseif type(border[id]) == 'string' then
+        -- border specified as a list of border characters
+        return vim.fn.strdisplaywidth(border[id])
+      end
+      error(
+        string.format(
+          'invalid floating preview border: %s. :help vim.api.nvim_open_win()',
+          vim.inspect(border)
+        )
+      )
+    end
+    local function border_height(id)
+      id = (id - 1) % #border + 1
+      if type(border[id]) == 'table' then
+        -- border specified as a table of <character, highlight group>
+        return #border[id][1] > 0 and 1 or 0
+      elseif type(border[id]) == 'string' then
+        -- border specified as a list of border characters
+        return #border[id] > 0 and 1 or 0
+      end
+      error(
+        string.format(
+          'invalid floating preview border: %s. :help vim.api.nvim_open_win()',
+          vim.inspect(border)
+        )
+      )
+    end
+    height = height + border_height(2) -- top
+    height = height + border_height(6) -- bottom
+    width = width + border_width(4) -- right
+    width = width + border_width(8) -- left
+  end
+
+  return { height = height, width = width }
+end
+
+-- note: this is a neovim internal function from lsp/util.lua
+local make_floating_popup_size = function(contents, opts)
+  opts = opts or {}
+
+  local width = opts.width
+  local height = opts.height
+  local wrap_at = opts.wrap_at
+  local max_width = opts.max_width
+  local max_height = opts.max_height
+  local line_widths = {}
+
+  if not width then
+    width = 0
+    for i, line in ipairs(contents) do
+      -- TODO(ashkan) use nvim_strdisplaywidth if/when that is introduced.
+      line_widths[i] = vim.fn.strdisplaywidth(line:gsub('%z', '\n'))
+      width = math.max(line_widths[i], width)
+    end
+  end
+
+  local border_width = get_border_size(opts).width
+  local screen_width = api.nvim_win_get_width(0)
+  width = math.min(width, screen_width)
+
+  -- make sure borders are always inside the screen
+  if width + border_width > screen_width then
+    width = width - (width + border_width - screen_width)
+  end
+
+  if wrap_at and wrap_at > width then
+    wrap_at = width
+  end
+
+  if max_width then
+    width = math.min(width, max_width)
+    wrap_at = math.min(wrap_at or max_width, max_width)
+  end
+
+  if not height then
+    height = #contents
+    if wrap_at and width >= wrap_at then
+      height = 0
+      if vim.tbl_isempty(line_widths) then
+        for _, line in ipairs(contents) do
+          local line_width = vim.fn.strdisplaywidth(line:gsub('%z', '\n'))
+          height = height + math.ceil(line_width / wrap_at)
+        end
+      else
+        for i = 1, #contents do
+          height = height + math.max(1, math.ceil(line_widths[i] / wrap_at))
+        end
+      end
+    end
+  end
+  if max_height then
+    height = math.min(height, max_height)
+  end
+
+  return width, height
+end
+
 helper.cal_pos = function(contents, opts)
   local lnum = fn.line('.') - fn.line('w0') + 1
 
@@ -415,10 +594,10 @@ helper.cal_pos = function(contents, opts)
   -- 1. contents[1] = "```{language_id}", and contents[#contents] = "```", the code fences will be removed
   --    and return language_id
   -- 2. in other cases, no lines will be removed, and return "markdown"
-  local filetype = util.try_trim_markdown_code_blocks(contents)
+  local filetype = helper.try_trim_markdown_code_blocks(contents)
   log(vim.inspect(contents))
 
-  local width, height = util._make_floating_popup_size(contents, opts)
+  local width, height = make_floating_popup_size(contents, opts)
   -- if the filetype returned is "markdown", and contents contains code fences, the height should minus 2,
   -- because the code fences won't be display
   local code_block_flag = contents[1]:match('^```')
@@ -574,7 +753,7 @@ function helper.check_lsp_cap(clients, line_to_cursor)
         total_lsp = total_lsp + 1
 
         local h = rslv_cap.hoverProvider
-        if h == true or (h ~= nil and h ~= {}) then
+        if h == true or fn.empty(h) == 0 then
           hover_cap = true
         end
 
@@ -654,6 +833,22 @@ helper.highlight_parameter = function(s, l)
   else
     log('failed get highlight parameter', s, l)
   end
+end
+
+helper.set_keymaps = function(winnr, bufnr)
+  if _LSP_SIG_CFG.keymaps then
+    local maps = _LSP_SIG_CFG.keymaps
+    if type(_LSP_SIG_CFG.keymaps) == 'function' then
+      maps = _LSP_SIG_CFG.keymaps(bufnr)
+    end
+    if maps and type(maps) == 'table' then
+      for _, map in ipairs(maps) do
+        vim.keymap.set('i', map[1], map[2], { buffer = bufnr })
+      end
+    end
+  end
+  vim.keymap.set('i', '<M-d>', '<C-o><C-d>', { buffer = bufnr })
+  vim.keymap.set('i', '<M-u>', '<C-o><C-u>', { buffer = bufnr })
 end
 
 helper.remove_doc = function(result)
@@ -756,17 +951,6 @@ function helper.try_trim_markdown_code_blocks(lines)
 end
 
 local validate = vim.validate
-local default_border = {
-  { '', 'NormalFloat' },
-  { '', 'NormalFloat' },
-  { '', 'NormalFloat' },
-  { ' ', 'NormalFloat' },
-  { '', 'NormalFloat' },
-  { '', 'NormalFloat' },
-  { '', 'NormalFloat' },
-  { ' ', 'NormalFloat' },
-}
-
 --- Creates a table with sensible default options for a floating window. The
 --- table can be passed to |nvim_open_win()|.
 ---

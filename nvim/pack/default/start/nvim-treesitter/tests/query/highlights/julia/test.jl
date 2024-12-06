@@ -1,14 +1,14 @@
 function load_data(::Symbol; ::Int) :: Tuple
 # <- @keyword.function
-#        ^ @function
+#        ^ @function.call
 #                 ^ @punctuation.bracket
-#                  ^^ @punctuation.delimiter
+#                  ^^ @operator
 #                    ^ @type.builtin
 #                          ^ @punctuation.delimiter
-#                            ^^ @punctuation.delimiter
+#                            ^^ @operator
 #                              ^^^ @type.builtin
 #                                 ^ @punctuation.bracket
-#                                   ^^ @punctuation.delimiter
+#                                   ^^ @operator
 #                                      ^ @type.builtin
     dataset = CIFAR10(; Tx = Float32, split = split)
 #   ^^^^^^^ @variable

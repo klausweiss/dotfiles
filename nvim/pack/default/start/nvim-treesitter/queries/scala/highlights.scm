@@ -97,9 +97,8 @@
   function: (operator_identifier) @function.call)
 
 (call_expression
-  function:
-    (field_expression
-      field: (identifier) @function.method.call))
+  function: (field_expression
+    field: (identifier) @function.method.call))
 
 ((call_expression
   function: (identifier) @constructor)
@@ -120,6 +119,9 @@
 
 (binding
   name: (identifier) @variable.parameter)
+
+(lambda_expression
+  parameters: (identifier) @variable.parameter)
 
 ; expressions
 (field_expression
@@ -155,24 +157,20 @@
 
 (character_literal) @character
 
-(symbol_literal) @string.special.symbol
-
 (interpolation
   "$" @punctuation.special)
 
 ; keywords
-(opaque_modifier) @type.qualifier
+(opaque_modifier) @keyword.modifier
 
 (infix_modifier) @keyword
 
-(transparent_modifier) @type.qualifier
+(transparent_modifier) @keyword.modifier
 
-(open_modifier) @type.qualifier
+(open_modifier) @keyword.modifier
 
 [
   "case"
-  "class"
-  "enum"
   "extends"
   "derives"
   "finally"
@@ -180,9 +178,6 @@
   ; `macro` not implemented yet
   "object"
   "override"
-  "package"
-  "trait"
-  "type"
   "val"
   "var"
   "with"
@@ -195,19 +190,33 @@
 ] @keyword
 
 [
+  "enum"
+  "class"
+  "trait"
+  "type"
+] @keyword.type
+
+[
   "abstract"
   "final"
   "lazy"
   "sealed"
   "private"
   "protected"
-] @type.qualifier
+] @keyword.modifier
 
-(inline_modifier) @keyword.storage
+(inline_modifier) @keyword.modifier
 
 (null_literal) @constant.builtin
 
-(wildcard) @variable.parameter
+(wildcard
+  "_") @character.special
+
+(namespace_wildcard
+  [
+    "*"
+    "_"
+  ] @character.special)
 
 (annotation) @attribute
 
@@ -233,6 +242,7 @@
 [
   "."
   ","
+  ":"
 ] @punctuation.delimiter
 
 [
@@ -246,6 +256,9 @@
 
 [
   "=>"
+  "?=>"
+  "="
+  "!"
   "<-"
   "@"
 ] @operator
@@ -253,6 +266,7 @@
 [
   "import"
   "export"
+  "package"
 ] @keyword.import
 
 [
@@ -275,6 +289,10 @@
 (case_block
   (case_clause
     "case" @keyword.conditional))
+
+(case_block
+  (case_clause
+    "=>" @punctuation.delimiter))
 
 (operator_identifier) @operator
 

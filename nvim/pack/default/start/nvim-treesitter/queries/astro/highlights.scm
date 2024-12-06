@@ -1,4 +1,8 @@
-; inherits: html
+; inherits: html_tags
+
+(doctype) @constant
+
+"<!" @tag.delimiter
 
 "---" @punctuation.delimiter
 
@@ -13,6 +17,10 @@
   (#lua-match? @type "^[A-Z]"))
 
 ((end_tag
+  (tag_name) @type)
+  (#lua-match? @type "^[A-Z]"))
+
+((self_closing_tag
   (tag_name) @type)
   (#lua-match? @type "^[A-Z]"))
 

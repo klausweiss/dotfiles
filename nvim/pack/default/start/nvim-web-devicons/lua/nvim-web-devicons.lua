@@ -1,7 +1,8 @@
 local M = {}
 
--- When adding new icons, remember to add an entry to the `filetypes` table, if applicable.
+-- NOTE: When adding new icons, remember to add an entry to the `filetypes` table, if applicable.
 local icons, icons_by_filename, icons_by_file_extension, icons_by_operating_system
+local icons_by_desktop_environment, icons_by_window_manager
 
 local default_icon = {
   icon = "",
@@ -14,42 +15,85 @@ function M.get_icons()
   return icons
 end
 
+function M.get_icons_by_filename()
+  return icons_by_filename
+end
+
+function M.get_icons_by_extension()
+  return icons_by_file_extension
+end
+
+function M.get_icons_by_operating_system()
+  return icons_by_operating_system
+end
+
+function M.get_icons_by_desktop_environment()
+  return icons_by_desktop_environment
+end
+
+function M.get_icons_by_window_manager()
+  return icons_by_window_manager
+end
+
 local global_opts = {
   override = {},
   strict = false,
   default = false,
   color_icons = true,
+  variant = nil,
 }
 
--- Set the current icons tables, depending on the 'background' option.
+-- Set the current icons tables, depending on variant option, then &background
 local function refresh_icons()
   local theme
-  if vim.o.background == "light" then
+  if global_opts.variant == "light" then
     theme = require "nvim-web-devicons.icons-light"
-  else
+  elseif global_opts.variant == "dark" then
     theme = require "nvim-web-devicons.icons-default"
+  else
+    if vim.o.background == "light" then
+      theme = require "nvim-web-devicons.icons-light"
+    else
+      theme = require "nvim-web-devicons.icons-default"
+    end
   end
 
   icons_by_filename = theme.icons_by_filename
   icons_by_file_extension = theme.icons_by_file_extension
   icons_by_operating_system = theme.icons_by_operating_system
-  icons = vim.tbl_extend("keep", {}, icons_by_filename, icons_by_file_extension, icons_by_operating_system)
+  icons_by_desktop_environment = theme.icons_by_desktop_environment
+  icons_by_window_manager = theme.icons_by_window_manager
+  icons = vim.tbl_extend(
+    "keep",
+    {},
+    icons_by_filename,
+    icons_by_file_extension,
+    icons_by_operating_system,
+    icons_by_desktop_environment,
+    icons_by_window_manager
+  )
   icons = vim.tbl_extend("force", icons, global_opts.override)
   icons[1] = default_icon
 end
 
 -- Map of filetypes -> icon names
 local filetypes = {
+  ["apl"] = "apl",
   ["avif"] = "avif",
+  ["bash"] = "bash",
+  ["bib"] = "bib",
+  ["bicep"] = "bicep",
+  ["bicepparam"] = "bicepparam",
+  ["bqn"] = "bqn",
   ["bzl"] = "bzl",
   ["brewfile"] = "brewfile",
+  ["blueprint"] = "blp",
   ["checkhealth"] = "checkhealth",
   ["commit"] = "commit_editmsg",
   ["copying"] = "copying",
   ["gemfile"] = "gemfile$",
   ["lesser"] = "copying.lesser",
   ["vagrantfile"] = "vagrantfile$",
-  ["aac"] = "aac",
   ["awk"] = "awk",
   ["bmp"] = "bmp",
   ["c"] = "c",
@@ -77,6 +121,7 @@ local filetypes = {
   ["dockerfile"] = "dockerfile",
   ["dosbatch"] = "bat",
   ["dosini"] = "ini",
+  ["dot"] = "dot",
   ["drools"] = "drl",
   ["dropbox"] = "dropbox",
   ["dump"] = "dump",
@@ -89,7 +134,6 @@ local filetypes = {
   ["eruby"] = "erb",
   ["fennel"] = "fnl",
   ["fish"] = "fish",
-  ["flac"] = "flac",
   ["forth"] = "fs",
   ["fortran"] = "f90",
   ["fsharp"] = "f#",
@@ -110,12 +154,14 @@ local filetypes = {
   ["groovy"] = "groovy",
   ["gql"] = "gql",
   ["gruntfile"] = "gruntfile",
+  ["gtkrc"] = "gtkrc",
   ["gulpfile"] = "gulpfile",
   ["haml"] = "haml",
   ["haxe"] = "hx",
   ["haskell"] = "hs",
   ["hbs"] = "hbs",
   ["heex"] = "heex",
+  ["hex"] = "hex",
   ["html"] = "html",
   ["ico"] = "ico",
   ["idlang"] = "pro",
@@ -146,22 +192,16 @@ local filetypes = {
   ["make"] = "makefile",
   ["markdown"] = "markdown",
   ["material"] = "material",
-  ["m4a"] = "m4a",
-  ["m4v"] = "m4v",
   ["mdx"] = "mdx",
   ["mint"] = "mint",
-  ["mkv"] = "mkv",
   ["motoko"] = "mo",
-  ["mov"] = "mov",
-  ["mp3"] = "mp3",
-  ["mp4"] = "mp4",
   ["mustache"] = "mustache",
   ["nim"] = "nim",
   ["nix"] = "nix",
   ["nu"] = "nu",
   ["node"] = "node_modules",
+  ["obj"] = "obj",
   ["ocaml"] = "ml",
-  ["ogg"] = "ogg",
   ["openscad"] = "scad",
   ["opus"] = "opus",
   ["otf"] = "otf",
@@ -171,6 +211,7 @@ local filetypes = {
   ["php"] = "php",
   ["plaintex"] = "tex",
   ["png"] = "png",
+  ["po"] = "po",
   ["postscr"] = "ai",
   ["ppt"] = "ppt",
   ["prisma"] = "prisma",
@@ -208,6 +249,8 @@ local filetypes = {
   ["sql"] = "sql",
   ["sqlite"] = "sqlite",
   ["sqlite3"] = "sqlite3",
+  ["srt"] = "srt",
+  ["ssa"] = "ssa",
   ["styl"] = "styl",
   ["sublime"] = "sublime",
   ["suo"] = "suo",
@@ -233,7 +276,6 @@ local filetypes = {
   ["vim"] = "vim",
   ["vue"] = "vue",
   ["wasm"] = "wasm",
-  ["wav"] = "wav",
   ["webm"] = "webm",
   ["webp"] = "webp",
   ["webpack"] = "webpack",
@@ -311,6 +353,27 @@ local function get_highlight_ctermfg(icon_data)
   return nvim_get_hl_by_name(get_highlight_name(icon_data), false).foreground
 end
 
+---Change all keys in a table to lowercase
+---Remove entry when lowercase entry already exists
+---@param t table
+local function lowercase_keys(t)
+  if not t then
+    return
+  end
+
+  for k, v in pairs(t) do
+    if type(k) == "string" then
+      local lower_k = k:lower()
+      if lower_k ~= k then
+        if not t[lower_k] then
+          t[lower_k] = v
+        end
+        t[k] = nil
+      end
+    end
+  end
+end
+
 local loaded = false
 
 function M.has_loaded()
@@ -337,21 +400,47 @@ function M.setup(opts)
 
   global_opts.color_icons = if_nil(user_icons.color_icons, global_opts.color_icons)
 
+  if user_icons.variant == "light" or user_icons.variant == "dark" then
+    global_opts.variant = user_icons.variant
+
+    -- Reload the icons after setting variant option
+    refresh_icons()
+  end
+
   if user_icons.override and user_icons.override.default_icon then
     default_icon = user_icons.override.default_icon
   end
 
   local user_filename_icons = user_icons.override_by_filename
   local user_file_ext_icons = user_icons.override_by_extension
+  local user_operating_system_icons = user_icons.override_by_operating_system
+  local user_desktop_environment_icons = user_icons.override_by_desktop_environment
+  local user_window_manager_icons = user_icons.override_by_window_manager
 
-  icons =
-    vim.tbl_extend("force", icons, user_icons.override or {}, user_filename_icons or {}, user_file_ext_icons or {})
+  -- filename matches are case insensitive
+  lowercase_keys(icons_by_filename)
+  lowercase_keys(user_icons.override)
+  lowercase_keys(user_icons.override_by_filename)
+
+  icons = vim.tbl_extend(
+    "force",
+    icons,
+    user_icons.override or {},
+    user_filename_icons or {},
+    user_file_ext_icons or {},
+    user_operating_system_icons or {},
+    user_desktop_environment_icons or {},
+    user_window_manager_icons or {}
+  )
   global_opts.override = vim.tbl_extend(
     "force",
     global_opts.override,
     user_icons.override or {},
     user_filename_icons or {},
-    user_file_ext_icons or {}
+    user_file_ext_icons or {},
+    user_operating_system_icons or {},
+    user_desktop_environment_icons or {},
+    user_window_manager_icons or {}
   )
 
   if user_filename_icons then
@@ -359,6 +448,15 @@ function M.setup(opts)
   end
   if user_file_ext_icons then
     icons_by_file_extension = vim.tbl_extend("force", icons_by_file_extension, user_file_ext_icons)
+  end
+  if user_operating_system_icons then
+    icons_by_operating_system = vim.tbl_extend("force", icons_by_operating_system, user_operating_system_icons)
+  end
+  if user_desktop_environment_icons then
+    icons_by_desktop_environment = vim.tbl_extend("force", icons_by_desktop_environment, user_desktop_environment_icons)
+  end
+  if user_window_manager_icons then
+    icons_by_window_manager = vim.tbl_extend("force", icons_by_window_manager, user_window_manager_icons)
   end
 
   icons[1] = default_icon
@@ -375,9 +473,12 @@ function M.setup(opts)
   vim.api.nvim_create_user_command("NvimWebDeviconsHiTest", function()
     require "nvim-web-devicons.hi-test"(
       default_icon,
+      global_opts.override,
       icons_by_filename,
       icons_by_file_extension,
-      icons_by_operating_system
+      icons_by_operating_system,
+      icons_by_desktop_environment,
+      icons_by_window_manager
     )
   end, {
     desc = "nvim-web-devicons: highlight test",
@@ -414,7 +515,7 @@ local function get_icon_by_extension(name, ext, opts)
   return iterate_multi_dotted_extension(name, icon_table)
 end
 
-function M.get_icon(name, ext, opts)
+local function get_icon_data(name, ext, opts)
   if type(name) == "string" then
     name = name:lower()
   end
@@ -431,6 +532,12 @@ function M.get_icon(name, ext, opts)
   else
     icon_data = icons[name] or get_icon_by_extension(name, ext, opts) or (has_default and default_icon)
   end
+
+  return icon_data
+end
+
+function M.get_icon(name, ext, opts)
+  local icon_data = get_icon_data(name, ext, opts)
 
   if icon_data then
     return icon_data.icon, get_highlight_name(icon_data)
@@ -449,18 +556,7 @@ function M.get_icon_by_filetype(ft, opts)
 end
 
 function M.get_icon_colors(name, ext, opts)
-  if not loaded then
-    M.setup()
-  end
-
-  local has_default = if_nil(opts and opts.default, global_opts.default)
-  local is_strict = if_nil(opts and opts.strict, global_opts.strict)
-  local icon_data
-  if is_strict then
-    icon_data = icons_by_filename[name] or get_icon_by_extension(name, ext, opts) or (has_default and default_icon)
-  else
-    icon_data = icons[name] or get_icon_by_extension(name, ext, opts) or (has_default and default_icon)
-  end
+  local icon_data = get_icon_data(name, ext, opts)
 
   if icon_data then
     local color = icon_data.color
@@ -502,6 +598,7 @@ end
 
 function M.set_icon(user_icons)
   icons = vim.tbl_extend("force", icons, user_icons or {})
+  global_opts.override = vim.tbl_extend("force", global_opts.override, user_icons or {})
   if not global_opts.color_icons then
     return
   end

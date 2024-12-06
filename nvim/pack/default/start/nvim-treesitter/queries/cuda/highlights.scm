@@ -9,8 +9,9 @@
   "__host__"
   "__device__"
   "__global__"
+  "__managed__"
   "__forceinline__"
   "__noinline__"
-] @keyword.storage
+] @keyword.modifier
 
-"__launch_bounds__" @type.qualifier
+"__launch_bounds__" @keyword.modifier

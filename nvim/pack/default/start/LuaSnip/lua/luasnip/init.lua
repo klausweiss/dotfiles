@@ -159,8 +159,18 @@ end
 local function jump(dir)
 	local current = session.current_nodes[vim.api.nvim_get_current_buf()]
 	if current then
-		session.current_nodes[vim.api.nvim_get_current_buf()] =
-			util.no_region_check_wrap(safe_jump_current, dir)
+		local next_node = util.no_region_check_wrap(safe_jump_current, dir)
+		if next_node == nil then
+			session.current_nodes[vim.api.nvim_get_current_buf()] = nil
+			return true
+		end
+		if session.config.exit_roots then
+			if next_node.pos == 0 and next_node.parent.parent_node == nil then
+				session.current_nodes[vim.api.nvim_get_current_buf()] = nil
+				return true
+			end
+		end
+		session.current_nodes[vim.api.nvim_get_current_buf()] = next_node
 		return true
 	else
 		return false
@@ -834,7 +844,11 @@ local ls_lazy = {
 	config = function() return require("luasnip.config") end,
 	multi_snippet = function() return require("luasnip.nodes.multiSnippet").new_multisnippet end,
 	snippet_source = function() return require("luasnip.session.snippet_collection.source") end,
-	select_keys = function() return require("luasnip.util.select").select_keys end
+	cut_keys = function() return require("luasnip.util.select").cut_keys end,
+	-- keep select_keys for backwards-compatibility.
+	select_keys = function() return require("luasnip.util.select").cut_keys end,
+	pre_yank =  function() return require("luasnip.util.select").pre_yank end,
+	post_yank = function() return require("luasnip.util.select").post_yank end,
 }
 
 ls = lazy_table({

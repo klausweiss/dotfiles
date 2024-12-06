@@ -58,11 +58,10 @@
   name: (identifier) @function)
 
 (method_definition
-  name:
-    [
-      (property_identifier)
-      (private_property_identifier)
-    ] @function.method)
+  name: [
+    (property_identifier)
+    (private_property_identifier)
+  ] @function.method)
 
 (method_definition
   name: (property_identifier) @constructor
@@ -77,15 +76,13 @@
   value: (arrow_function))
 
 (assignment_expression
-  left:
-    (member_expression
-      property: (property_identifier) @function.method)
+  left: (member_expression
+    property: (property_identifier) @function.method)
   right: (arrow_function))
 
 (assignment_expression
-  left:
-    (member_expression
-      property: (property_identifier) @function.method)
+  left: (member_expression
+    property: (property_identifier) @function.method)
   right: (function_expression))
 
 (variable_declarator
@@ -110,13 +107,11 @@
   function: (identifier) @function.call)
 
 (call_expression
-  function:
-    (member_expression
-      property:
-        [
-          (property_identifier)
-          (private_property_identifier)
-        ] @function.method.call))
+  function: (member_expression
+    property: [
+      (property_identifier)
+      (private_property_identifier)
+    ] @function.method.call))
 
 ; Builtins
 ;---------
@@ -132,11 +127,6 @@
 ;------------
 (new_expression
   constructor: (identifier) @constructor)
-
-; Variables
-;----------
-(namespace_import
-  (identifier) @module)
 
 ; Decorators
 ;----------
@@ -303,6 +293,19 @@
     "}"
   ] @punctuation.special) @none
 
+; Imports
+;----------
+(namespace_import
+  "*" @character.special
+  (identifier) @module)
+
+(namespace_export
+  "*" @character.special
+  (identifier) @module)
+
+(export_statement
+  "*" @character.special)
+
 ; Keywords
 ;----------
 [
@@ -315,19 +318,9 @@
 [
   "import"
   "from"
+  "as"
+  "export"
 ] @keyword.import
-
-(export_specifier
-  "as" @keyword.import)
-
-(import_specifier
-  "as" @keyword.import)
-
-(namespace_export
-  "as" @keyword.import)
-
-(namespace_import
-  "as" @keyword.import)
 
 [
   "for"
@@ -339,10 +332,8 @@
 
 [
   "break"
-  "class"
   "const"
   "debugger"
-  "export"
   "extends"
   "get"
   "let"
@@ -352,6 +343,8 @@
   "var"
   "with"
 ] @keyword
+
+"class" @keyword.type
 
 [
   "async"

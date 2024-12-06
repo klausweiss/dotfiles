@@ -24,14 +24,14 @@
 
 ((for_statement
   body: (_) @_body) @indent.begin
-  (#not-has-type? @_body compound_statement))
+  (#not-kind-eq? @_body "compound_statement"))
 
 (while_statement
   condition: (_) @indent.begin)
 
 ((while_statement
   body: (_) @_body) @indent.begin
-  (#not-has-type? @_body compound_statement))
+  (#not-kind-eq? @_body "compound_statement"))
 
 ((if_statement)
   .
@@ -43,19 +43,17 @@
 
 ; Supports if without braces (but not both if-else without braces)
 (if_statement
-  consequence:
-    (_
-      ";" @indent.end) @_consequence
-  (#not-has-type? @_consequence compound_statement)
-  alternative:
-    (else_clause
-      "else" @indent.branch
-      [
-        (if_statement
-          (compound_statement) @indent.dedent)? @indent.dedent
-        (compound_statement)? @indent.dedent
-        (_)? @indent.dedent
-      ])?) @indent.begin
+  consequence: (_
+    ";" @indent.end) @_consequence
+  (#not-kind-eq? @_consequence "compound_statement")
+  alternative: (else_clause
+    "else" @indent.branch
+    [
+      (if_statement
+        (compound_statement) @indent.dedent)? @indent.dedent
+      (compound_statement)? @indent.dedent
+      (_)? @indent.dedent
+    ])?) @indent.begin
 
 (else_clause
   (_

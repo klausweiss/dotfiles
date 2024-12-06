@@ -1,9 +1,24 @@
-local helpers = require("test.functional.helpers")(after_each)
+local helpers_ok, helpers = pcall(require, "test.functional.testutil")
+if not helpers_ok then
+	helpers_ok, helpers = pcall(require, "test.functional.helpers")
+	if not helpers_ok then
+		helpers_ok, helpers = pcall(require, "test.functional.testnvim")
+	end
+end
+
+helpers = helpers()
+
 local exec_lua = helpers.exec_lua
 local exec = helpers.exec
 local assert = require("luassert")
+local Screen = require("test.functional.ui.screen")
 
-local M = {}
+local M = {
+	exec = exec,
+	exec_lua = exec_lua,
+	clear = helpers.clear,
+	feed = helpers.feed,
+}
 
 function M.jsregexp_it(it, name, fn)
 	for _, version in ipairs({ "005", "006", "luasnip" }) do
@@ -91,6 +106,11 @@ function M.session_setup_luasnip(opts)
 	end
 	-- nil or true.
 	local hl_choiceNode = opts.hl_choiceNode
+	local prevent_jsregexp = opts.prevent_jsregexp
+
+	if prevent_jsregexp then
+		M.prevent_jsregexp()
+	end
 
 	-- stylua: ignore
 	helpers.exec("set rtp+=" .. os.getenv("LUASNIP_SOURCE"))
@@ -360,6 +380,27 @@ end
 function M.scratch_mkdir(scratch_rel)
 	os.execute(('mkdir -p "%s/%s"'):format(scratchdir_path, scratch_rel))
 end
+function M.scratch_mv(scratch_from, scratch_to)
+	os.execute(
+		('mv "%s/%s" "%s/%s"'):format(
+			scratchdir_path,
+			scratch_from,
+			scratchdir_path,
+			scratch_to
+		)
+	)
+end
+-- mv -T
+function M.scratch_mv_T(scratch_from, scratch_to)
+	os.execute(
+		('mv -T "%s/%s" "%s/%s"'):format(
+			scratchdir_path,
+			scratch_from,
+			scratchdir_path,
+			scratch_to
+		)
+	)
+end
 function M.scratch_touch(scratch_rel)
 	os.execute(('touch "%s/%s"'):format(scratchdir_path, scratch_rel))
 end
@@ -375,6 +416,13 @@ function M.scratch_edit(scratch_rel)
 	-- can replace with "write ++p" once we drop support for old versions.
 	M.scratch_mkdir(scratch_rel:gsub("%/[^%/]+$", ""))
 	exec(("write"):format(scratchdir_path, scratch_rel))
+end
+
+function M.new_screen(...)
+	local screen = Screen.new(...)
+	-- screen.attach fails on nvim-0.11.0+
+	pcall(screen.attach, screen)
+	return screen
 end
 
 return M

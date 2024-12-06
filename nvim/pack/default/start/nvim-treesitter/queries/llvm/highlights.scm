@@ -100,7 +100,7 @@
   (dso_local)
   (linkage_aux)
   (visibility)
-] @type.qualifier
+] @keyword.modifier
 
 [
   "thread_local"
@@ -109,7 +109,7 @@
   "localexec"
   (unnamed_addr)
   (dll_storage_class)
-] @keyword.storage
+] @keyword.modifier
 
 (attribute_name) @attribute
 

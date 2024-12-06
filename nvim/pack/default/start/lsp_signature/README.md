@@ -2,8 +2,8 @@
 
 Show function signature when you type
 
-- This nvim plugin is made for completion plugins that do not support signature help.
-  Need neovim-0.6.1+ and enable nvim-lsp. (check neovim-0.5 branch for earlier version support)
+- This nvim plugin is made for completion plugins that do not support signature help. Need neovim-0.8+ and enable
+  nvim-lsp. (check neovim-0.5/neovim-0.6/neovim-0.9 branch for earlier version support)
 
 - Inspired by [completion-nvim](https://github.com/nvim-lua/completion-nvim), which does have lots of cool features.
 
@@ -44,7 +44,6 @@ In case some of the languages allow function overload, the plugin will show all 
 
 To switch between the signatures, use `select_signature_key`
 
-
 # Install:
 
 ```vim
@@ -77,7 +76,7 @@ local cfg = {…}  -- add your config here
 require "lsp_signature".setup(cfg)
 ```
 
-Alternatively, call on_attach(cfg, bufnr) when the LSP client attaches to a buffer
+Alternatively, call `on_attach(cfg, bufnr)` when the LSP client attaches to a buffer
 
 e.g. gopls:
 
@@ -92,22 +91,54 @@ local golang_setup = {
 }
 
 require'lspconfig'.gopls.setup(golang_setup)
+```
 
+Or use the newer `LspAttach` autocommands. The following example enables signatures for any attached language server:
+
+```lua
+vim.api.nvim_create_autocmd("LspAttach", {
+  callback = function(args)
+    local bufnr = args.buf
+    local client = vim.lsp.get_client_by_id(args.data.client_id)
+    if vim.tbl_contains({ 'null-ls' }, client.name) then  -- blacklist lsp
+      return
+    end
+    require("lsp_signature").on_attach({
+      -- ... setup options here ...
+    }, bufnr)
+  end,
+})
+```
+
+If you using Lazy.nvim, you can pass the config in the `opts` table:
+
+```lua
+{
+  "ray-x/lsp_signature.nvim",
+  event = "InsertEnter",
+  opts = {
+    bind = true,
+    handler_opts = {
+      border = "rounded"
+    }
+  },
+  config = function(_, opts) require'lsp_signature'.setup(opts) end
+}
 ```
 
 ## Configure
 
 ### Floating window borders
 
-If you have a recent enough build of Neovim, you can configure borders in the signature help
-floating window(Thanks [@Gabriel Sanches](https://github.com/gbrlsnchs) for the PR):
+If you have a recent enough build of Neovim, you can configure borders in the signature help floating window(Thanks
+[@Gabriel Sanches](https://github.com/gbrlsnchs) for the PR):
 
 ```lua
 local example_setup = {
   on_attach = function(client, bufnr)
     …
     require "lsp_signature".on_attach({
-      bind = true, -- This is mandatory, otherwise border config won't get registered.
+      bind = true,
       handler_opts = {
         border = "rounded"
       }
@@ -121,27 +152,29 @@ local example_setup = {
 Or:
 
 ```lua
-  require'lspconfig'.gopls.setup()
-  require "lsp_signature".setup({
-    bind = true, -- This is mandatory, otherwise border config won't get registered.
-    handler_opts = {
-      border = "rounded"
-    }
-  })
-
+require'lspconfig'.gopls.setup()
+require "lsp_signature".setup({
+  bind = true,
+  handler_opts = {
+    border = "rounded"
+  }
+})
 ```
 
 ### Keymap
-No default keymaps are provided.
-There are two keymaps available in config:
+
+No default keymaps are provided. There are two keymaps available in config:
+
 1. toggle_key: Toggle the signature help window. It manual toggle config.floating_windows on/off
-2. select_signature_key: Select the current signature when mulitple signature is avalible.
+2. select_signature_key: Select the current signature when multiple signature is available.
 
 #### Customize the keymap in your config:
 
-* To toggle floating windows in `Normal` mode, you need either define a keymap to `vim.lsp.buf.signature_help()` or `require('lsp_signature').toggle_float_win()`
+- To toggle floating windows in `Normal` mode, you need either define a keymap to `vim.lsp.buf.signature_help()` or
+  `require('lsp_signature').toggle_float_win()`
 
 e.g.
+
 ```lua
     vim.keymap.set({ 'n' }, '<C-k>', function()       require('lsp_signature').toggle_float_win()
     end, { silent = true, noremap = true, desc = 'toggle signature' })
@@ -149,14 +182,11 @@ e.g.
     vim.keymap.set({ 'n' }, '<Leader>k', function()
      vim.lsp.buf.signature_help()
     end, { silent = true, noremap = true, desc = 'toggle signature' })
-
 ```
-
 
 ### Full configuration (with default values)
 
 ```lua
-
  cfg = {
   debug = false, -- set to true to enable debug logging
   log_path = vim.fn.stdpath("cache") .. "/lsp_signature.log", -- log dir when debug is on
@@ -189,6 +219,12 @@ e.g.
   fix_pos = false,  -- set to true, the floating window will not auto-close until finish all parameters
   hint_enable = true, -- virtual hint enable
   hint_prefix = "🐼 ",  -- Panda for parameter, NOTE: for the terminal not support emoji, might crash
+  -- or, provide a table with 3 icons
+  -- hint_prefix = {
+  --     above = "↙ ",  -- when the hint is on the line above the current line
+  --     current = "← ",  -- when the hint is on the same line
+  --     below = "↖ "  -- when the hint is on the line below the current line
+  -- }
   hint_scheme = "String",
   hint_inline = function() return false end,  -- should the hint be inline(nvim 0.10 only)?  default false
   -- return true | 'inline' to show hint inline, return 'eol' to show hint at end of line, return false to disable
@@ -216,7 +252,14 @@ e.g.
      -- may not popup when typing depends on floating_window setting
 
   select_signature_key = nil, -- cycle to next signature, e.g. '<M-n>' function overloading
-  move_cursor_key = nil, -- imap, use nvim_set_current_win to move cursor between current win and floating
+  move_cursor_key = nil, -- imap, use nvim_set_current_win to move cursor between current win and floating window
+  -- e.g. move_cursor_key = '<M-p>',
+  -- once moved to floating window, you can use <M-d>, <M-u> to move cursor up and down
+  keymaps = {}  -- relate to move_cursor_key; the keymaps inside floating window with arguments of bufnr
+  -- e.g. keymaps = function(bufnr) vim.keymap.set(...) end
+  -- it can be function that set keymaps
+  -- e.g. keymaps = { { 'j', '<C-o>j' }, } this map j to <C-o>j in floating window
+  -- <M-d> and <M-u> are default keymaps to move cursor up and down
 }
 
 -- recommended:
@@ -246,9 +289,10 @@ return a table
   range = {start = 13, ['end'] = 17 }
   doc = 'func_name return arg1 + arg2 …'
 }
-
 ```
+
 In your statusline or winbar
+
 ```lua
 local current_signature = function(width)
   if not pcall(require, 'lsp_signature') then return end
@@ -258,7 +302,6 @@ end
 ```
 
 ![signature in status line](https://i.redd.it/b842vy1dm6681.png)
-
 
 #### set floating windows position based on cursor position
 
@@ -285,15 +328,11 @@ local cfg = {
   end,
 }
 require "lsp_signature".setup(cfg)
-
 ```
-
-
 
 ### Should signature floating windows fixed
 
-fix_pos can be a function, it took two element, first is the signature result for your signature, second is lsp
-client.
+fix_pos can be a function, it took two element, first is the signature result for your signature, second is lsp client.
 
 You can provide a function.
 
@@ -337,8 +376,8 @@ A: Redefine your `NormalFloat` and `FloatBorder`, esp if your colorscheme dose n
 
 Q: How to change parameter highlight
 
-A: By default, the highlight is using "LspSignatureActiveParameter" defined in your colorscheme, you can either override "LspSignatureActiveParameter" or
-define, e.g. use `IncSearch` setup({ hi_parameter = "IncSearch"})
+A: By default, the highlight is using "LspSignatureActiveParameter" defined in your colorscheme, you can either override
+"LspSignatureActiveParameter" or define, e.g. use `IncSearch` setup({ hi_parameter = "IncSearch"})
 
 Q: I can not see 🐼 in virtual text
 
@@ -346,4 +385,5 @@ A: It is emoji, not nerdfont. Please check how to enable emoji for your terminal
 
 Q: Working with cmp/coq. The floating windows block cmp/coq
 
-A: A few options here, z-index, floating_window_above_cur_line, floating_window_off_x/y, toggle_key. You can find the best setup for your workflow.
+A: A few options here, z-index, floating_window_above_cur_line, floating_window_off_x/y, toggle_key. You can find the
+best setup for your workflow.

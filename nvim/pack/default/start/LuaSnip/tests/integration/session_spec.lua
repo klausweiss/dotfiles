@@ -1,8 +1,8 @@
 -- Test longer-running sessions of snippets.
 -- Should cover things like deletion (handle removed text gracefully) and insertion.
-local helpers = require("test.functional.helpers")(after_each)
-local exec_lua, feed, exec = helpers.exec_lua, helpers.feed, helpers.exec
 local ls_helpers = require("helpers")
+local exec_lua, feed, exec =
+	ls_helpers.exec_lua, ls_helpers.feed, ls_helpers.exec
 local Screen = require("test.functional.ui.screen")
 
 local function expand()
@@ -19,8 +19,11 @@ describe("session", function()
 	local screen
 
 	before_each(function()
-		helpers.clear()
-		ls_helpers.session_setup_luasnip({ hl_choiceNode = true })
+		ls_helpers.clear()
+		ls_helpers.session_setup_luasnip({
+			setup_extend = { exit_roots = false },
+			hl_choiceNode = true,
+		})
 
 		-- add a rather complicated snippet.
 		-- It may be a bit hard to grasp, but will cover lots and lots of
@@ -131,8 +134,7 @@ describe("session", function()
 			})
 		]])
 
-		screen = Screen.new(50, 30)
-		screen:attach()
+		screen = ls_helpers.new_screen(50, 30)
 		screen:set_default_attr_ids({
 			[0] = { bold = true, foreground = Screen.colors.Blue },
 			[1] = { bold = true, foreground = Screen.colors.Brown },
@@ -217,6 +219,7 @@ describe("session", function()
 			{0:~                                                 }|
 			{2:-- INSERT --}                                      |]],
 		})
+
 		-- delete whole buffer.
 		feed("<Esc>ggVGcfn")
 		-- immediately expand at the old position of the snippet.
@@ -688,6 +691,7 @@ describe("session", function()
 			exec_lua(([[
 				ls.setup({
 					link_children = %s,
+					exit_roots = false,
 				})
 			]]):format(link_children_val))
 
@@ -1448,6 +1452,7 @@ describe("session", function()
 			ls.setup({
 				keep_roots = true,
 				link_roots = true,
+				exit_roots = false,
 				link_children = true,
 				delete_check_events = "TextChanged",
 				ext_opts = {
@@ -1906,12 +1911,12 @@ describe("session", function()
 			ls.setup({
 				keep_roots = true,
 				link_roots = true,
+				exit_roots = false,
 				link_children = true
 			})
 		]])
 			screen:detach()
-			screen = Screen.new(50, 4)
-			screen:attach()
+			screen = ls_helpers.new_screen(50, 4)
 			screen:set_default_attr_ids({
 				[0] = { bold = true, foreground = Screen.colors.Blue },
 				[1] = { bold = true, foreground = Screen.colors.Brown },
@@ -2046,8 +2051,7 @@ describe("session", function()
 		function()
 			screen:detach()
 			-- make screen smaller :)
-			screen = Screen.new(50, 3)
-			screen:attach()
+			screen = ls_helpers.new_screen(50, 3)
 			screen:set_default_attr_ids({
 				[0] = { bold = true, foreground = Screen.colors.Blue },
 				[1] = { bold = true, foreground = Screen.colors.Brown },
@@ -2105,4 +2109,160 @@ describe("session", function()
 			})
 		end
 	)
+
+	it("macro-replay is correct.", function()
+		local function expand()
+			feed("<Plug>luasnip-expand-snippet")
+		end
+		local function jump()
+			feed("<Plug>luasnip-jump-next")
+		end
+		local function change()
+			feed("<Plug>luasnip-next-choice")
+		end
+		feed("qaifn")
+		expand()
+		screen:expect({
+			grid = [[
+				/**                                               |
+				 * A short Description                            |
+				 */                                               |
+				^public void myFunc() { {4:●}                          |
+				                                                  |
+				}                                                 |
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{2:-- INSERT --recording @a}                          |]],
+		})
+		change()
+		jump()
+		screen:expect({
+			grid = [[
+				/**                                               |
+				 * A short Description                            |
+				 */                                               |
+				private ^void myFunc() { {4:●}                         |
+				                                                  |
+				}                                                 |
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{2:-- INSERT --recording @a}                          |]],
+		})
+		change()
+		feed("aa")
+		jump()
+		feed("bb")
+		jump()
+		jump()
+		change()
+		screen:expect({
+			grid = [[
+				/**                                               |
+				 * A short Description                            |
+				 *                                                |
+				 * @return                                        |
+				 *                                                |
+				 * @throws                                        |
+				 */                                               |
+				private aa bb() {4:●}                                 |
+				 throws ^ {                                        |
+				                                                  |
+				}                                                 |
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{2:-- INSERT --recording @a}                          |]],
+		})
+		feed("cc<Esc>Gqo<Esc>@a")
+		screen:expect({
+			grid = [[
+				/**                                               |
+				 * A short Description                            |
+				 *                                                |
+				 * @return                                        |
+				 *                                                |
+				 * @throws cc                                     |
+				 */                                               |
+				private aa bb()                                   |
+				 throws cc {                                      |
+				                                                  |
+				}                                                 |
+				/**                                               |
+				 * A short Description                            |
+				 *                                                |
+				 * @return                                        |
+				 *                                                |
+				 * @throws                                        |
+				 */                                               |
+				private aa bb() {4:●}                                 |
+				 throws cc {                                      |
+				                                                  |
+				^}                                                 |
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				{0:~                                                 }|
+				                                                  |]],
+		})
+	end)
 end)

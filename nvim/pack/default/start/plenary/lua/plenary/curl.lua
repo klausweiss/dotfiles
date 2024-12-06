@@ -36,6 +36,7 @@ local util, parse = {}, {}
 local F = require "plenary.functional"
 local J = require "plenary.job"
 local P = require "plenary.path"
+local compat = require "plenary.compat"
 
 -- Utils ----------------------------------------------------
 -------------------------------------------------------------
@@ -54,7 +55,7 @@ util.url_encode = function(str)
 end
 
 util.kv_to_list = function(kv, prefix, sep)
-  return vim.tbl_flatten(F.kv_map(function(kvp)
+  return compat.flatten(F.kv_map(function(kvp)
     return { prefix, kvp[1] .. sep .. kvp[2] }
   end, kv))
 end
@@ -243,7 +244,7 @@ parse.request = function(opts)
     table.insert(result, { "-o", opts.output })
   end
   table.insert(result, parse.url(opts.url, opts.query))
-  return vim.tbl_flatten(result), opts
+  return compat.flatten(result), opts
 end
 
 -- Parse response ------------------------------------------
@@ -277,7 +278,7 @@ local request = function(specs)
   end
 
   local job_opts = {
-    command = "curl",
+    command = vim.g.plenary_curl_bin_path or "curl",
     args = args,
   }
 

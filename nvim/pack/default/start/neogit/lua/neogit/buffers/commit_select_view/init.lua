@@ -7,15 +7,21 @@ local status_maps = require("neogit.config").get_reversed_status_maps()
 
 ---@class CommitSelectViewBuffer
 ---@field commits CommitLogEntry[]
+---@field remotes string[]
+---@field header string|nil
 local M = {}
 M.__index = M
 
 ---Opens a popup for selecting a commit
 ---@param commits CommitLogEntry[]|nil
+---@param remotes string[]
+---@param header? string
 ---@return CommitSelectViewBuffer
-function M.new(commits)
+function M.new(commits, remotes, header)
   local instance = {
     commits = commits,
+    remotes = remotes,
+    header = header,
     buffer = nil,
   }
 
@@ -25,22 +31,38 @@ function M.new(commits)
 end
 
 function M:close()
-  self.buffer:close()
-  self.buffer = nil
+  if self.buffer then
+    self.buffer:close()
+    self.buffer = nil
+  end
+
+  M.instance = nil
+end
+
+---@return boolean
+function M.is_open()
+  return (M.instance and M.instance.buffer and M.instance.buffer:is_visible()) == true
 end
 
 ---@param action fun(commit: CommitLogEntry[])
 function M:open(action)
-  -- TODO: Pass this in as a param instead of reading state from object
-  local _, item = require("neogit.status").get_current_section_item()
+  if M.is_open() then
+    M.instance.buffer:focus()
+    return
+  end
 
-  ---@type fun(commit: CommitLogEntry[])|nil
+  M.instance = self
+
+  ---@type fun(commit: string[])|nil
   local action = action
 
   self.buffer = Buffer.create {
     name = "NeogitCommitSelectView",
     filetype = "NeogitCommitSelectView",
+    status_column = not config.values.disable_signs and "" or nil,
     kind = config.values.commit_select_view.kind,
+    header = self.header or "Select a commit with <cr>, or <esc> to abort",
+    scroll_header = true,
     mappings = {
       v = {
         ["<enter>"] = function()
@@ -88,28 +110,14 @@ function M:open(action)
         end,
       },
     },
-    autocmds = {
-      ["BufUnload"] = function()
-        self.buffer = nil
-        if action then
-          action {}
-        end
-      end,
-    },
-    after = function(buffer, win)
-      if win and item and item.commit then
-        local found = buffer.ui:find_component(function(c)
-          return c.options.oid == item.commit.oid
-        end)
-
-        if found then
-          vim.api.nvim_win_set_cursor(win, { found.position.row_start, 0 })
-        end
+    on_detach = function()
+      self.buffer = nil
+      if action then
+        action {}
       end
-      vim.cmd([[setlocal nowrap]])
     end,
     render = function()
-      return ui.View(self.commits)
+      return ui.View(self.commits, self.remotes)
     end,
   }
 end

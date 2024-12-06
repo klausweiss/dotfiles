@@ -36,7 +36,7 @@ if !exists('g:rooter_patterns')
 endif
 
 if !exists('g:rooter_targets')
-  let g:rooter_targets = '/,*'
+  let g:rooter_targets = ['/', '*']
 endif
 
 if !exists('g:rooter_change_directory_for_non_project_files')
@@ -49,6 +49,10 @@ endif
 
 if !exists('g:rooter_resolve_links')
   let g:rooter_resolve_links = 0
+endif
+
+if !exists('g:rooter_ignore')
+  let g:rooter_ignore = 0
 endif
 
 
@@ -98,10 +102,12 @@ endfunction
 function! s:activate()
   if index(g:rooter_buftypes, &buftype) == -1 | return 0 | endif
 
-  let patterns = split(g:rooter_targets, ',')
-  let fn = expand('%:p', 1)
-
-  if fn =~ 'NERD_tree_\d\+$' | let fn = b:NERDTree.root.path.str().'/' | endif
+  if type(g:rooter_targets) == type([])
+    let patterns = g:rooter_targets
+  else
+    let patterns = split(g:rooter_targets, ',')
+  endif
+  let fn = s:current_file()
 
   " directory
   if empty(fn) || isdirectory(fn)
@@ -113,8 +119,13 @@ function! s:activate()
   if !exists('*glob2regpat') | return 1 | endif
 
   for p in filter(copy(patterns), 'v:val != "/"')
+    if p[0] == '!'
+      let [p, verdict] = [p[1:], 0]
+    else
+      let [p, verdict] = [p, 1]
+    endif
     if fn =~ glob2regpat(p)
-      return 1
+      return verdict
     endif
   endfor
 
@@ -126,9 +137,13 @@ endfunction
 function! s:root()
   let dir = s:current()
 
+  let patterns = g:rooter_ignore
+        \      ? s:remove_ignored(g:rooter_patterns, dir, s:current_file())
+        \      : g:rooter_patterns
+
   " breadth-first search
   while 1
-    for pattern in g:rooter_patterns
+    for pattern in patterns
       if pattern[0] == '!'
         let [p, exclude] = [pattern[1:], 1]
       else
@@ -148,6 +163,22 @@ function! s:root()
   endwhile
 
   return ''
+endfunction
+
+
+function! s:remove_ignored(patterns, dir, file)
+  let unignored_patterns = []
+  for pattern in a:patterns
+    if pattern == '.git'
+      call system('git -C ' .. shellescape(a:dir) .. ' check-ignore -q -- ' .. shellescape(a:file))
+      let ignored = !v:shell_error
+      if ignored
+        continue
+      endif
+    endif
+    call add(unignored_patterns, pattern)
+  endfor
+  return unignored_patterns
 endfunction
 
 
@@ -215,13 +246,19 @@ endfunction
 
 " Returns full path of directory of current file name (which may be a directory).
 function! s:current()
-  let fn = expand('%:p', 1)
-  if fn =~ 'NERD_tree_\d\+$' | let fn = b:NERDTree.root.path.str().'/' | endif
+  let fn = s:current_file()
   if empty(fn) | return getcwd() | endif  " opening vim without a file
-  if g:rooter_resolve_links | let fn = resolve(fn) | endif
   return fnamemodify(fn, ':h')
 endfunction
 
+" Returns full path of current file name
+function s:current_file()
+  let fn = expand('%:p', 1)
+  if fn =~ 'NERD_tree_\d\+$' | let fn = b:NERDTree.root.path.str().'/' | endif
+  if fn[:5] == 'oil://' | let fn = fn[5:] | endif
+  if g:rooter_resolve_links | let fn = resolve(fn) | endif
+  return fn
+endfunction
 
 " Returns full path of dir's parent directory.
 function! s:parent(dir)

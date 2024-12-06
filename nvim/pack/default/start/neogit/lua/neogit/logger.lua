@@ -75,7 +75,7 @@ log.new = function(config, standalone)
     if level < levels[config.level] then
       return
     end
-    local nameupper = level_config.name:upper()
+    local nameupper = level_config.name:upper():sub(1, 1)
 
     if vim.tbl_isempty { ... } then
       return
@@ -83,7 +83,7 @@ log.new = function(config, standalone)
 
     local msg = message_maker(...)
     local info = debug.getinfo(2, "Sl")
-    local lineinfo = info.short_src .. ":" .. info.currentline
+    local lineinfo = info.short_src:gsub(".+/neogit/lua/neogit/", "") .. ":" .. info.currentline
 
     -- Output to console
     if config.use_console then
@@ -105,10 +105,18 @@ log.new = function(config, standalone)
 
     -- Output to log file
     if config.use_file then
+      vim.uv.update_time()
+      local time = tostring(vim.uv.now())
+
+      local m = time:sub(4, 4)
+      local s = time:sub(5, 6)
+      local ms = time:sub(7)
       local fp = io.open(outfile, "a")
-      local str = string.format("[%-6s%s] %s: %s\n", nameupper, os.date(), lineinfo, msg)
-      fp:write(str)
-      fp:close()
+      local str = string.format("[%s %s.%s.%-3s] %-30s %s\n", nameupper, m, s, ms, lineinfo, msg)
+      if fp then
+        fp:write(str)
+        fp:close()
+      end
     end
   end
 

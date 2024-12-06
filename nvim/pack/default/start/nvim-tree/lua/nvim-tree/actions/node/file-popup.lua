@@ -1,4 +1,4 @@
-local utils = require "nvim-tree.utils"
+local utils = require("nvim-tree.utils")
 
 local M = {}
 
@@ -6,6 +6,14 @@ local M = {}
 ---@return table
 local function get_formatted_lines(node)
   local stats = node.fs_stat
+  if stats == nil then
+    return {
+      "",
+      "  Can't retrieve file information",
+      "",
+    }
+  end
+
   local fpath = " fullpath: " .. node.absolute_path
   local created_at = " created:  " .. os.date("%x %X", stats.birthtime.sec)
   local modified_at = " modified: " .. os.date("%x %X", stats.mtime.sec)
@@ -48,8 +56,8 @@ end
 
 function M.close_popup()
   if current_popup ~= nil then
-    vim.api.nvim_win_close(current_popup.winnr, { force = true })
-    vim.cmd "augroup NvimTreeRemoveFilePopup | au! CursorMoved | augroup END"
+    vim.api.nvim_win_close(current_popup.winnr, true)
+    vim.cmd("augroup NvimTreeRemoveFilePopup | au! CursorMoved | augroup END")
 
     current_popup = nil
   end

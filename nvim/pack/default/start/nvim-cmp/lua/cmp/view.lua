@@ -99,7 +99,7 @@ view.open = function(self, ctx, sources)
           for _, e in ipairs(s:get_entries(ctx)) do
             e.score = e.score + priority
             table.insert(group_entries, e)
-            offset = math.min(offset, e:get_offset())
+            offset = math.min(offset, e.offset)
           end
         end
       end
@@ -209,6 +209,13 @@ end
 ---@param delta integer
 view.scroll_docs = function(self, delta)
   self.docs_view:scroll(delta)
+end
+
+---Get what number candidates are currently selected.
+---If not selected, nil is returned.
+---@return integer|nil
+view.get_selected_index = function(self)
+  return self:_get_entries_view():get_selected_index()
 end
 
 ---Select prev menu item.

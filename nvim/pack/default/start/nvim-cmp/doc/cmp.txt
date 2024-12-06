@@ -85,6 +85,7 @@ A recommended configuration can be found below.
           -- require('luasnip').lsp_expand(args.body) -- For `luasnip` users.
           -- require'snippy'.expand_snippet(args.body) -- For `snippy` users.
           -- vim.fn["UltiSnips#Anon"](args.body) -- For `ultisnips` users.
+          -- vim.snippet.expand(args.body) -- For native neovim snippets (Neovim v0.10+)
         end,
       },
       window = {
@@ -123,7 +124,8 @@ A recommended configuration can be found below.
         { name = 'path' }
       }, {
         { name = 'cmdline' }
-      })
+      }),
+      matching = { disallow_symbol_nonprefix_matching = false }
     })
 
     -- Setup lspconfig.
@@ -255,7 +257,7 @@ NOTE: `<Cmd>lua require('cmp').complete()<CR>` can be used to call these functio
   `behavior=cmp.ConfirmBehavior.Insert`: inserts the selected item and
     moves adjacent text to the right (default).
   `behavior=cmp.ConfirmBehavior.Replace`: replaces adjacent text with
-    the selected item.    
+    the selected item.
 >lua
   cmp.setup {
     mapping = {
@@ -454,7 +456,13 @@ performance.fetching_timeout~
     Sets the timeout of candidate fetching process.
     The nvim-cmp will wait to display the most prioritized source.
 
-                                        *cmp-config.performance.confirm_resolve_timeout*
+                                *cmp-config.performance.filtering_context_budget*
+performance.filtering_context_budget~
+    `number`
+    Sets the filtering context budget in ms.
+    If filtering takes longer than this, it will be deferred.
+
+                                 *cmp-config.performance.confirm_resolve_timeout*
 performance.confirm_resolve_timeout~
     `number`
     Sets the timeout for resolving item before confirmation.
@@ -559,6 +567,11 @@ matching.disallow_partial_matching~
 matching.disallow_prefix_unmatching~
   `boolean`
   Whether to allow prefix unmatching.
+
+                                cmp-config.matching.disallow_symbol_nonprefix_matching
+matching.disallow_symbol_nonprefix_matching
+  `boolean`
+  Whether to allow symbols in matches if the match is not a prefix match.
 
                                             *cmp-config.sorting.priority_weight*
 sorting.priority_weight~
@@ -669,7 +682,8 @@ sources[n].entry_filter~
 
                                                                *cmp-config.view*
 view~
-  `{ entries: cmp.EntriesConfig|string }`
+  `{ docs: cmp.DocsViewConfig }`
+  `{ entries: cmp.EntriesViewConfig|string }`
   The view class used to customize nvim-cmp's appearance.
   Currently available configuration options are:
 
@@ -678,6 +692,22 @@ view.docs.auto_open~
   `boolean`
 
   Specify whether to show the docs_view when selecting an item.
+
+                                                *cmp-config.view.entries.selection_order*
+view.entries.selection_order~
+  `string`
+
+  Specify whether to select the option in the pmenu that is at
+  the top (`top_down`) or nearest to the cursor (`near_cursor`).
+  Useful if pmenu is above cursor and you want to change default
+  selection direction. Custom view only. `top_down` by default.
+
+                                                 *cmp-config.view.entries.follow_cursor*
+view.entries.follow_cursor~
+  `boolean`
+
+  Specify whether the pmenu should follow the current position of the cursor
+  as the user types. Custom view only. `false` by default.
 
                            *cmp-config.window.{completion,documentation}.border*
 window.{completion,documentation}.border~
@@ -689,6 +719,12 @@ window.{completion,documentation}.border~
 window.{completion,documentation}.winhighlight~
   `string | cmp.WinhighlightConfig`
   Specify the window's winhighlight option.
+  See |nvim_open_win|.
+
+                     *cmp-config.window.{completion,documentation}.winblend*
+window.{completion,documentation}.winblend~
+  `string | cmp.WinhighlightConfig`
+  Specify the window's winblend option.
   See |nvim_open_win|.
 
                            *cmp-config.window.{completion,documentation}.zindex*
@@ -721,12 +757,14 @@ window.completion.scrollbar~
                                      *cmp-config.window.documentation.max_width*
 window.documentation.max_width~
   `number`
-  The documentation window's max width.
+  The documentation window's max width, can be set to 0 to use all available
+  space.
 
                                     *cmp-config.window.documentation.max_height*
 window.documentation.max_height~
   `number`
-  The documentation window's max height.
+  The documentation window's max height, can be set to 0 to use all available
+  space.
 
                                             *cmp-config.experimental.ghost_text*
 experimental.ghost_text~

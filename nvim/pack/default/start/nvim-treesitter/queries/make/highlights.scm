@@ -37,8 +37,10 @@
     "|"
   ] @operator)
 
-(export_directive
-  "export" @keyword)
+[
+  "export"
+  "unexport"
+] @keyword.import
 
 (override_directive
   "override" @keyword)
@@ -48,9 +50,8 @@
     "include"
     "-include"
   ] @keyword.import
-  filenames:
-    (list
-      (word) @string.special.path))
+  filenames: (list
+    (word) @string.special.path))
 
 (variable_assignment
   name: (word) @string.special.symbol
@@ -112,6 +113,22 @@
     "("
     ")"
   ] @operator)
+
+(automatic_variable
+  "$"
+  _ @character.special
+  (#set! priority 105))
+
+(automatic_variable
+  [
+    "$"
+    "("
+    ")"
+  ] @operator
+  (#set! priority 105))
+
+(recipe_line
+  "@" @character.special)
 
 (function_call
   [

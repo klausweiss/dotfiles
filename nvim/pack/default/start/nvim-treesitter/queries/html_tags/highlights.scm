@@ -7,7 +7,7 @@
 
 ((attribute
   (quoted_attribute_value) @string)
-  (#set! "priority" 99))
+  (#set! priority 99))
 
 (text) @none @spell
 
@@ -86,14 +86,15 @@
 ((element
   (start_tag
     (tag_name) @_tag)
-  (text) @string.special.url)
+  (text) @markup.link.label)
   (#eq? @_tag "a"))
 
 ((attribute
   (attribute_name) @_attr
   (quoted_attribute_value
     (attribute_value) @string.special.url))
-  (#any-of? @_attr "href" "src"))
+  (#any-of? @_attr "href" "src")
+  (#set! @string.special.url url @string.special.url))
 
 [
   "<"

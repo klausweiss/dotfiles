@@ -1,5 +1,98 @@
 # Changelog
 
+## [1.31.0](https://github.com/williamboman/mason-lspconfig.nvim/compare/v1.30.0...v1.31.0) (2024-09-08)
+
+
+### Features
+
+* add nextls support ([#455](https://github.com/williamboman/mason-lspconfig.nvim/issues/455)) ([fee758e](https://github.com/williamboman/mason-lspconfig.nvim/commit/fee758e9829917888827ab80c1146bd48512f2f7))
+* add snakeskin_ls support ([#457](https://github.com/williamboman/mason-lspconfig.nvim/issues/457)) ([b953dae](https://github.com/williamboman/mason-lspconfig.nvim/commit/b953daeae170cbdf3c49352837ac564862af12b2))
+* add tsp_server support ([#448](https://github.com/williamboman/mason-lspconfig.nvim/issues/448)) ([c9387d7](https://github.com/williamboman/mason-lspconfig.nvim/commit/c9387d7516351c846fe964a3a6f98eb94a17eeb4))
+
+
+### Bug Fixes
+
+* rename tsserver to ts_ls ([#459](https://github.com/williamboman/mason-lspconfig.nvim/issues/459)) ([0d072b5](https://github.com/williamboman/mason-lspconfig.nvim/commit/0d072b5256cacfde5d5c120d0959edc95b68c4ab))
+
+## [1.30.0](https://github.com/williamboman/mason-lspconfig.nvim/compare/v1.29.0...v1.30.0) (2024-08-04)
+
+
+### Features
+
+* add hyprls ([#428](https://github.com/williamboman/mason-lspconfig.nvim/issues/428)) ([0e65781](https://github.com/williamboman/mason-lspconfig.nvim/commit/0e657813ae1b849dd6634d533edf4edc0185eb78))
+* add nginx-language-server support ([#421](https://github.com/williamboman/mason-lspconfig.nvim/issues/421)) ([37a336b](https://github.com/williamboman/mason-lspconfig.nvim/commit/37a336b653f8594df75c827ed589f1c91d91ff6c))
+* add pbls support ([#434](https://github.com/williamboman/mason-lspconfig.nvim/issues/434)) ([490d0a9](https://github.com/williamboman/mason-lspconfig.nvim/commit/490d0a9aff73ddc50a2a50d7a2d2953d65719811))
+* Add regal lsp support (OPA rego linter) ([#426](https://github.com/williamboman/mason-lspconfig.nvim/issues/426)) ([5716924](https://github.com/williamboman/mason-lspconfig.nvim/commit/5716924f8b66ba93f3da0973a622ee39e93ab360))
+* add shopify_theme_ls mapping ([#412](https://github.com/williamboman/mason-lspconfig.nvim/issues/412)) ([ce1b625](https://github.com/williamboman/mason-lspconfig.nvim/commit/ce1b6254afc0e7f4c91a273175361c18f20621ee))
+* add starpls LSP server ([#444](https://github.com/williamboman/mason-lspconfig.nvim/issues/444)) ([7c075f0](https://github.com/williamboman/mason-lspconfig.nvim/commit/7c075f07e6fcfd5b1c8df8b6983a1f6de4d914d0))
+* add steep configuration ([#422](https://github.com/williamboman/mason-lspconfig.nvim/issues/422)) ([fd69d5c](https://github.com/williamboman/mason-lspconfig.nvim/commit/fd69d5c782a28420d51b648a3d7fe88df569d391))
+* add textlsp ([#433](https://github.com/williamboman/mason-lspconfig.nvim/issues/433)) ([9ac210a](https://github.com/williamboman/mason-lspconfig.nvim/commit/9ac210a23ecd1bb14ff45135e65f6c2db8d5ebca))
+
+
+### Bug Fixes
+
+* prefer vim.islist over vim.tbl_islist ([#413](https://github.com/williamboman/mason-lspconfig.nvim/issues/413)) ([a4caa0d](https://github.com/williamboman/mason-lspconfig.nvim/commit/a4caa0d083aab56f6cd5acf2d42331b74614a585))
+
+## [1.29.0](https://github.com/williamboman/mason-lspconfig.nvim/compare/v1.28.0...v1.29.0) (2024-05-11)
+
+
+### Features
+
+* add `regols` support ([#403](https://github.com/williamboman/mason-lspconfig.nvim/issues/403)) ([dd615fe](https://github.com/williamboman/mason-lspconfig.nvim/commit/dd615fec891cd1b1ca34eeef4080c3f4cf40d891))
+* add cobol_ls ([#409](https://github.com/williamboman/mason-lspconfig.nvim/issues/409)) ([076de8c](https://github.com/williamboman/mason-lspconfig.nvim/commit/076de8c6e01c9518671fffae56f55cb19b3ac13c))
+* add css-variables-language-server ([#399](https://github.com/williamboman/mason-lspconfig.nvim/issues/399)) ([f7abbd2](https://github.com/williamboman/mason-lspconfig.nvim/commit/f7abbd25c931946b0c8372fa62d198c381183afe))
+* add harper-ls configuration ([#406](https://github.com/williamboman/mason-lspconfig.nvim/issues/406)) ([44688da](https://github.com/williamboman/mason-lspconfig.nvim/commit/44688daeeab7fa2ea06df7138d011099b3925e97))
+* add motoko-lsp support ([#408](https://github.com/williamboman/mason-lspconfig.nvim/issues/408)) ([6c4d744](https://github.com/williamboman/mason-lspconfig.nvim/commit/6c4d744288965a595ccba2b9779d8bebaba9275f))
+* add rust_hdl ([#402](https://github.com/williamboman/mason-lspconfig.nvim/issues/402)) ([e6a3b46](https://github.com/williamboman/mason-lspconfig.nvim/commit/e6a3b46c42f4c2bf2af6c0260334d096bffa6317))
+* add starlark_rust mapping ([#407](https://github.com/williamboman/mason-lspconfig.nvim/issues/407)) ([5278047](https://github.com/williamboman/mason-lspconfig.nvim/commit/52780478e9bdbe212a2ebac20116bc0375fb3dcf))
+* add tinymist ([#405](https://github.com/williamboman/mason-lspconfig.nvim/issues/405)) ([c3168b2](https://github.com/williamboman/mason-lspconfig.nvim/commit/c3168b2a6a09722d4567ef4a37364b9b30bf7f20))
+
+## [1.28.0](https://github.com/williamboman/mason-lspconfig.nvim/compare/v1.27.0...v1.28.0) (2024-04-23)
+
+
+### Features
+
+* add `coq_lsp` support ([#393](https://github.com/williamboman/mason-lspconfig.nvim/issues/393)) ([4b9cbbb](https://github.com/williamboman/mason-lspconfig.nvim/commit/4b9cbbbe34ddcfc4855eca1d0488bbdfb3c3d33b))
+* add `ruff` ([#385](https://github.com/williamboman/mason-lspconfig.nvim/issues/385)) ([7d4fa27](https://github.com/williamboman/mason-lspconfig.nvim/commit/7d4fa27dfe379ec3af289f472e3e410268e56032))
+* add earthlyls configuration ([#397](https://github.com/williamboman/mason-lspconfig.nvim/issues/397)) ([16309c7](https://github.com/williamboman/mason-lspconfig.nvim/commit/16309c79dbcd40c144ec43e4743146f52f771de4))
+* add fennel-ls ([#382](https://github.com/williamboman/mason-lspconfig.nvim/issues/382)) ([9dfcf20](https://github.com/williamboman/mason-lspconfig.nvim/commit/9dfcf2036c223920826140f0151d929a43f9eceb))
+* add gitlab-ci-ls ([#391](https://github.com/williamboman/mason-lspconfig.nvim/issues/391)) ([bc0e758](https://github.com/williamboman/mason-lspconfig.nvim/commit/bc0e7588519b435b3fdf9a04d1d4d0e0ed847837))
+* add lexical ([#389](https://github.com/williamboman/mason-lspconfig.nvim/issues/389)) ([4450968](https://github.com/williamboman/mason-lspconfig.nvim/commit/44509689b9bf3984d729cc264aacb31cb7f41668))
+* add mesonlsp ([#392](https://github.com/williamboman/mason-lspconfig.nvim/issues/392)) ([ce09670](https://github.com/williamboman/mason-lspconfig.nvim/commit/ce09670ff803911720bf3122e42c7f33571eaca1))
+* **lexical:** add default `cmd` for lexical ([#398](https://github.com/williamboman/mason-lspconfig.nvim/issues/398)) ([f3658bf](https://github.com/williamboman/mason-lspconfig.nvim/commit/f3658bfc667df6a0340194a015ac2f31c1e675e0))
+* rename ruby_ls to ruby_lsp ([#395](https://github.com/williamboman/mason-lspconfig.nvim/issues/395)) ([68d4663](https://github.com/williamboman/mason-lspconfig.nvim/commit/68d46635c533ab1439a53f845fd84cad74b0fafe))
+
+
+### Performance Improvements
+
+* lazy-require some modules during config ([#387](https://github.com/williamboman/mason-lspconfig.nvim/issues/387)) ([1505b7a](https://github.com/williamboman/mason-lspconfig.nvim/commit/1505b7a70e82d3aa8edef68b4a1b306a06187cb3))
+
+## [1.27.0](https://github.com/williamboman/mason-lspconfig.nvim/compare/v1.26.0...v1.27.0) (2024-03-20)
+
+
+### Features
+
+* add basedpyright lsp ([#379](https://github.com/williamboman/mason-lspconfig.nvim/issues/379)) ([b04a8f7](https://github.com/williamboman/mason-lspconfig.nvim/commit/b04a8f716c8c8086cd1fdc17827284dd9e37b193))
+* add bzl mapping ([#350](https://github.com/williamboman/mason-lspconfig.nvim/issues/350)) ([b9084b1](https://github.com/williamboman/mason-lspconfig.nvim/commit/b9084b1f42f790d6230dc66dbcb6bcc35b148552))
+* add dprint ([#355](https://github.com/williamboman/mason-lspconfig.nvim/issues/355)) ([5d07c2d](https://github.com/williamboman/mason-lspconfig.nvim/commit/5d07c2df76d33cc3e46eea8474f290bb1ba17452))
+* add glsl_analyzer language server ([#363](https://github.com/williamboman/mason-lspconfig.nvim/issues/363)) ([60f6805](https://github.com/williamboman/mason-lspconfig.nvim/commit/60f6805b12a12e8a912aeb2f975dec1794a8994e))
+* add glslls ([#347](https://github.com/williamboman/mason-lspconfig.nvim/issues/347)) ([82c7cb0](https://github.com/williamboman/mason-lspconfig.nvim/commit/82c7cb08ddb836ad938b2708e50085f12a8825d2))
+* add jinja-lsp ([#375](https://github.com/williamboman/mason-lspconfig.nvim/issues/375)) ([b5bf151](https://github.com/williamboman/mason-lspconfig.nvim/commit/b5bf1511961190f1409014cde6e5b8d3b3d8cf34))
+* add lwc language server ([#346](https://github.com/williamboman/mason-lspconfig.nvim/issues/346)) ([8831e43](https://github.com/williamboman/mason-lspconfig.nvim/commit/8831e43da8811d17e1694761cf5a2e7571e0cd71))
+* add markdown-oxide lsp ([#378](https://github.com/williamboman/mason-lspconfig.nvim/issues/378)) ([ca13885](https://github.com/williamboman/mason-lspconfig.nvim/commit/ca13885768669fc29777a92e8b5cff7b253eddc2))
+* add millet ([#361](https://github.com/williamboman/mason-lspconfig.nvim/issues/361)) ([06dbefc](https://github.com/williamboman/mason-lspconfig.nvim/commit/06dbefc9990d80ca2e52028fdecd9838674e0ba4))
+* add pico8 language server ([#369](https://github.com/williamboman/mason-lspconfig.nvim/issues/369)) ([8d6ef4c](https://github.com/williamboman/mason-lspconfig.nvim/commit/8d6ef4c96fe80c9f0cc47c9044b822d006e1bfce))
+* add solidity_ls ([#362](https://github.com/williamboman/mason-lspconfig.nvim/issues/362)) ([4c4a19d](https://github.com/williamboman/mason-lspconfig.nvim/commit/4c4a19dbaebd6e6b7ce3d3733d7e6669378b9111))
+* add somesass_ls ([#372](https://github.com/williamboman/mason-lspconfig.nvim/issues/372)) ([51797bc](https://github.com/williamboman/mason-lspconfig.nvim/commit/51797bc2bb08a67abf5c4205a63ce94e1612bad2))
+* add twig_language_server ([#365](https://github.com/williamboman/mason-lspconfig.nvim/issues/365)) ([646a3fc](https://github.com/williamboman/mason-lspconfig.nvim/commit/646a3fc6658641ac40e6fb9436b35d12d649dfd1))
+* add vacuum language server ([#374](https://github.com/williamboman/mason-lspconfig.nvim/issues/374)) ([9f459ac](https://github.com/williamboman/mason-lspconfig.nvim/commit/9f459ac336df436e455c645075ba04e5a0204d47))
+
+
+### Bug Fixes
+
+* remove gleam ([#377](https://github.com/williamboman/mason-lspconfig.nvim/issues/377)) ([1bed242](https://github.com/williamboman/mason-lspconfig.nvim/commit/1bed24274d911bb3ed730c516ffce27e8fdeeac3))
+* update lspconfig reference to twig-language-server ([#366](https://github.com/williamboman/mason-lspconfig.nvim/issues/366)) ([21d33d6](https://github.com/williamboman/mason-lspconfig.nvim/commit/21d33d69a81f6351e5a5f49078b2e4f0075c8e73))
+
 ## [1.26.0](https://github.com/williamboman/mason-lspconfig.nvim/compare/v1.25.0...v1.26.0) (2023-12-21)
 
 

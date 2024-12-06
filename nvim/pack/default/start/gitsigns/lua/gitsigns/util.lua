@@ -25,20 +25,12 @@ function M.dirname(file)
 end
 
 --- @param path string
---- @param opts {raw: boolean}?
 --- @return string[]
-function M.file_lines(path, opts)
-  opts = opts or {}
-  local file = assert(io.open(path))
+function M.file_lines(path)
+  local file = assert(io.open(path, 'rb'))
   local contents = file:read('*a')
-  local lines = vim.split(contents, '\n', { plain = true })
-  if not opts.raw then
-    -- If contents ends with a newline, then remove the final empty string after the split
-    if lines[#lines] == '' then
-      lines[#lines] = nil
-    end
-  end
-  return lines
+  file:close()
+  return vim.split(contents, '\n')
 end
 
 M.path_sep = package.config:sub(1, 1)
@@ -79,8 +71,9 @@ local function add_bom(x, encoding)
 end
 
 --- @param bufnr integer
+--- @param noendofline? boolean
 --- @return string[]
-function M.buf_lines(bufnr)
+function M.buf_lines(bufnr, noendofline)
   -- nvim_buf_get_lines strips carriage returns if fileformat==dos
   local buftext = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
 
@@ -92,7 +85,7 @@ function M.buf_lines(bufnr)
     end
   end
 
-  if vim.bo[bufnr].endofline then
+  if not noendofline and vim.bo[bufnr].endofline then
     -- Add CR to the last line
     if dos then
       buftext[#buftext] = buftext[#buftext] .. '\r'
@@ -122,6 +115,15 @@ end
 function M.buf_rename(bufnr, name)
   vim.api.nvim_buf_set_name(bufnr, name)
   delete_alt(bufnr)
+end
+
+--- @param events string[]
+--- @param f fun()
+function M.noautocmd(events, f)
+  local ei = vim.o.eventignore
+  vim.o.eventignore = table.concat(events, ',')
+  f()
+  vim.o.eventignore = ei
 end
 
 --- @param bufnr integer
@@ -191,6 +193,15 @@ function M.get_relative_time(timestamp)
   end
 end
 
+--- @param opts vim.api.keyset.redraw
+function M.redraw(opts)
+  if vim.fn.has('nvim-0.10') == 1 then
+    vim.api.nvim__redraw(opts)
+  else
+    vim.api.nvim__buf_redraw_range(opts.buf, opts.range[1], opts.range[2])
+  end
+end
+
 --- @param xs string[]
 --- @return boolean
 local function is_dos(xs)
@@ -222,7 +233,10 @@ end
 
 --- @param base? string
 --- @return string?
-function M.calc_base(base)
+function M.norm_base(base)
+  if base == ':0' then
+    return
+  end
   if base and base:sub(1, 1):match('[~\\^]') then
     base = 'HEAD' .. base
   end
@@ -250,9 +264,8 @@ end
 
 ---@param fmt string
 ---@param info table<string,any>
----@param reltime? boolean Use relative time as the default date format
 ---@return string
-function M.expand_format(fmt, info, reltime)
+function M.expand_format(fmt, info)
   local ret = {} --- @type string[]
 
   for _ = 1, 20 do -- loop protection
@@ -273,7 +286,7 @@ function M.expand_format(fmt, info, reltime)
       end
       if vim.endswith(key, '_time') then
         if time_fmt == '' then
-          time_fmt = reltime and '%R' or '%Y-%m-%d'
+          time_fmt = '%Y-%m-%d'
         end
         v = expand_date(time_fmt, v)
       end
@@ -314,7 +327,7 @@ end
 ---@param first integer
 ---@param last integer
 function M.list_remove(t, first, last)
-  local n = #t
+  local n = table.maxn(t)
   for i = 0, n - first do
     t[first + i] = t[last + 1 + i]
     t[last + 1 + i] = nil
@@ -334,7 +347,7 @@ end
 ---@param last integer
 ---@param v any
 function M.list_insert(t, first, last, v)
-  local n = #t
+  local n = table.maxn(t)
 
   -- Shift table forward
   for i = n - first, 0, -1 do
@@ -344,6 +357,21 @@ function M.list_insert(t, first, last, v)
   -- Fill in new values
   for i = first, last do
     t[i] = v
+  end
+end
+
+--- Run a function once and ignore subsequent calls
+--- @generic F: function
+--- @param fn F
+--- @return F
+function M.once(fn)
+  local called = false
+  return function(...)
+    if called then
+      return
+    end
+    called = true
+    return fn(...)
   end
 end
 

@@ -1,6 +1,14 @@
+local async = require('gitsigns.async')
+
 local create_hunk = require('gitsigns.hunks').create_hunk
 local config = require('gitsigns.config').config
-local async = require('gitsigns.async')
+
+local decode
+if jit and package.preload['string.buffer'] then
+  decode = require('string.buffer').decode
+else
+  decode = vim.mpack.decode
+end
 
 local M = {}
 
@@ -26,6 +34,7 @@ end
 
 --- @type Gitsigns.RawDifffn
 local run_diff_xdl_async = async.wrap(
+  4,
   --- @param a string
   --- @param b string
   --- @param linematch? integer
@@ -55,8 +64,15 @@ local run_diff_xdl_async = async.wrap(
             return bit.band(flags0, bit.lshift(1, pos)) ~= 0
           end
 
-          --- @diagnostic disable-next-line:return-type-mismatch
-          return vim.mpack.encode(vim.diff(a0, b0, {
+          local encode
+          if jit and package.preload['string.buffer'] then
+            encode = require('string.buffer').encode
+          else
+            encode = vim.mpack.encode
+          end
+
+          --- @diagnostic disable-next-line:redundant-return-value
+          return encode(vim.diff(a0, b0, {
             result_type = 'indices',
             algorithm = algorithm,
             linematch = linematch0,
@@ -69,12 +85,11 @@ local run_diff_xdl_async = async.wrap(
         end,
         --- @param r string
         function(r)
-          callback(vim.mpack.decode(r) --[[@as Gitsigns.RawHunk[] ]])
+          callback(decode(r) --[[@as Gitsigns.RawHunk[] ]])
         end
       )
       :queue(a, b, opts.algorithm, flags, linematch)
-  end,
-  4
+  end
 )
 
 --- @param fa string[]
@@ -102,10 +117,16 @@ function M.run_diff(fa, fb, linematch)
       for i = rs, rs + rc - 1 do
         hunk.removed.lines[#hunk.removed.lines + 1] = fa[i] or ''
       end
+      if rs + rc >= #fa and fa[#fa] ~= '' then
+        hunk.removed.no_nl_at_eof = true
+      end
     end
     if ac > 0 then
       for i = as, as + ac - 1 do
         hunk.added.lines[#hunk.added.lines + 1] = fb[i] or ''
+      end
+      if as + ac >= #fb and fb[#fb] ~= '' then
+        hunk.added.no_nl_at_eof = true
       end
     end
     hunks[#hunks + 1] = hunk

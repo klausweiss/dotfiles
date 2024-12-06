@@ -1,24 +1,24 @@
 pub fn add(x: Int, y: Int) -> Int {
-// <- @type.qualifier
+// <- @keyword.modifier
 //  ^^ @keyword.function
 //     ^^^ @function
 //        ^ @punctuation.bracket
 //         ^ @variable.parameter
 //          ^ @punctuation.delimiter
-//            ^^^ @type.builtin
+//            ^^^ @type
 //               ^ @punctuation.delimiter
 //                 ^ @variable.parameter
 //                  ^ @punctuation.delimiter
-//                    ^^^ @type.builtin
+//                    ^^^ @type
 //                       ^ @punctuation.bracket
 //                         ^ @punctuation.delimiter
-//                            ^^^ @type.builtin
+//                            ^^^ @type
 //                                ^ @punctuation.bracket
 }
 // <- @punctuation.bracket
 
 pub fn twice(f: fn(t) -> t, x: t) -> t {
-// <- @type.qualifier
+// <- @keyword.modifier
 //  ^ @keyword.function
 //     ^^^^^ @function
 //          ^ @punctuation.bracket
@@ -50,7 +50,7 @@ fn list_of_two(my_value: a) -> List(a) {
 //                       ^ @type
 //                        ^ @punctuation.bracket
 //                          ^ @punctuation.delimiter
-//                             ^^^^ @type.builtin
+//                             ^^^^ @type
 //                                 ^ @punctuation.bracket
 //                                  ^ @type
 //                                   ^ @punctuation.bracket
@@ -66,19 +66,19 @@ fn replace(
   // <- @label
   // ^^^^^^ @variable.parameter
   //       ^ @punctuation.delimiter
-  //         ^^^^^^ @type.builtin
+  //         ^^^^^^ @type
   //               ^ @punctuation.delimiter
   each pattern: String,
   // <- @label
   //   ^^^^^^^ @variable.parameter
   //          ^ @punctuation.delimiter
-  //            ^^^^^^ @type.builtin
+  //            ^^^^^^ @type
   //                  ^ @punctuation.delimiter
   with replacement: String,
   // <- @label
   //   ^^^^^^^^^^^ @variable.parameter
   //              ^ @punctuation.delimiter
-  //                ^^^^^^ @type.builtin
+  //                ^^^^^^ @type
   //                      ^ @punctuation.delimiter
 ) {
   replace(in: "A,B,C", each: ",", with: " ")
@@ -100,21 +100,21 @@ fn replace(
 // <- @punctuation.bracket
 
 pub external fn random_float() -> Float = "rand" "uniform"
-// <- @type.qualifier
-//  ^^^^^^^^ @type.qualifier
+// <- @keyword.modifier
+//  ^^^^^^^^ @keyword.modifier
 //           ^^ @keyword.function
 //              ^^^^^^^^^^^^ @function
 //                          ^ @punctuation.bracket
 //                           ^ @punctuation.bracket
 //                             ^^ @punctuation.delimiter
-//                                ^^^^^ @type.builtin
+//                                ^^^^^ @type
 //                                      ^ @operator
 //                                        ^^^^^^ @module
 //                                               ^^^^^^^^^ @function
 
 pub external fn inspect(a) -> a = "Elixir.IO" "inspect"
-// <- @type.qualifier
-//  ^^^^^^^^ @type.qualifier
+// <- @keyword.modifier
+//  ^^^^^^^^ @keyword.modifier
 //           ^^ @keyword.function
 //              ^^^^^^^ @function
 //                     ^ @punctuation.bracket

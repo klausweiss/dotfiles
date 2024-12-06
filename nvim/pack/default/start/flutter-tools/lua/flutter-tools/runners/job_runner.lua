@@ -15,18 +15,37 @@ local command_keys = {
   quit = "q",
   visual_debug = "p",
   detach = "d",
-  inspect = "i",
-  construction_lines = "p",
+  inspect_widget = "i",
+  paint_baselines = "p",
   open_dev_tools = "v",
   generate = "g",
 }
 
 function JobRunner:is_running() return run_job ~= nil end
 
-function JobRunner:run(paths, args, cwd, on_run_data, on_run_exit)
+function JobRunner:run(
+  paths,
+  args,
+  cwd,
+  on_run_data,
+  on_run_exit,
+  is_flutter_project,
+  project_config
+)
+  local command, command_args
+  if is_flutter_project then
+    command = paths.flutter_bin
+    command_args = args
+  else
+    command = paths.dart_bin
+    command_args = { "run" } ---@type string[]
+    if project_config and project_config.target then
+      table.insert(command_args, project_config.target)
+    end
+  end
   run_job = Job:new({
-    command = paths.flutter_bin,
-    args = args,
+    command = command,
+    args = command_args,
     cwd = cwd,
     on_start = function() utils.emit_event(utils.events.APP_STARTED) end,
     on_stdout = vim.schedule_wrap(function(_, data, _)

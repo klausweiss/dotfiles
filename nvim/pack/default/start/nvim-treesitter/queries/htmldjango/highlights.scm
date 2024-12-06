@@ -10,14 +10,26 @@
   "{%"
   "%}"
   (end_paired_statement)
-] @punctuation.bracket
+] @punctuation.special
 
-[
-  "end"
-  (tag_name)
-] @function
+(tag_name) @function
+
+((tag_name) @keyword.conditional
+  (#any-of? @keyword.conditional "if" "elif" "else" "endif"))
+
+((tag_name) @keyword.repeat
+  (#any-of? @keyword.repeat "for" "endfor"))
 
 (variable_name) @variable
+
+(unpaired_statement
+  (tag_name)
+  (variable
+    (variable_name) @variable.parameter)
+  .
+  "="
+  .
+  (_))
 
 (filter_name) @function.method
 
@@ -57,6 +69,5 @@
 
 [
   ":"
-  "'"
-  "\""
+  ","
 ] @punctuation.delimiter

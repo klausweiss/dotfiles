@@ -7,19 +7,20 @@
   "const"
   "varying"
   "uniform"
-  "struct"
 ] @keyword
+
+"struct" @keyword.type
 
 [
   (precision_qualifier)
   (interpolation_qualifier)
-] @type.qualifier
+] @keyword.modifier
 
 [
   "in"
   "out"
   "inout"
-] @keyword.storage
+] @keyword.modifier
 
 [
   "while"
@@ -130,11 +131,10 @@
   member: (ident) @property)
 
 (call_expr
-  function:
-    [
-      (ident)
-      (builtin_type)
-    ] @function)
+  function: [
+    (ident)
+    (builtin_type)
+  ] @function)
 
 (call_expr
   function: (builtin_type) @function.call)

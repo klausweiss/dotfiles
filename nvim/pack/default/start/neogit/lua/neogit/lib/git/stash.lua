@@ -1,67 +1,22 @@
-local cli = require("neogit.lib.git.cli")
+local git = require("neogit.lib.git")
 local input = require("neogit.lib.input")
-local rev_parse = require("neogit.lib.git.rev_parse")
 local util = require("neogit.lib.util")
+local config = require("neogit.config")
 
+---@class NeogitGitStash
 local M = {}
 
-local function perform_stash(include)
-  if not include then
-    return
-  end
-
-  local index =
-    cli["commit-tree"].no_gpg_sign.parent("HEAD").tree(cli["write-tree"].call().stdout).call().stdout
-
-  cli["read-tree"].merge.index_output(".git/NEOGIT_TMP_INDEX").args(index).call()
-
-  if include.worktree then
-    local files = cli.diff.no_ext_diff.name_only
-      .args("HEAD")
-      .env({
-        GIT_INDEX_FILE = ".git/NEOGIT_TMP_INDEX",
-      })
-      .call()
-
-    cli["update-index"].add.remove
-      .files(unpack(files))
-      .env({
-        GIT_INDEX_FILE = ".git/NEOGIT_TMP_INDEX",
-      })
-      .call()
-  end
-
-  local tree = cli["commit-tree"].no_gpg_sign
-    .parents("HEAD", index)
-    .tree(cli["write-tree"].call())
-    .env({
-      GIT_INDEX_FILE = ".git/NEOGIT_TMP_INDEX",
-    })
-    .call()
-
-  cli["update-ref"].create_reflog.args("refs/stash", tree).call()
-
-  -- selene: allow(empty_if)
-  if include.worktree and include.index then
-    -- disabled because stashing both worktree and index via this function
-    -- leaves a malformed stash entry, so reverting the changes is
-    -- destructive until fixed.
-    --
-    --cli.reset
-    --.hard
-    --.commit('HEAD')
-    --.call()
-  elseif include.index then
-    local diff = cli.diff.no_ext_diff.cached.call().stdout[1] .. "\n"
-
-    cli.apply.reverse.cached.input(diff).call()
-
-    cli.apply.reverse.input(diff).call()
-  end
+---@param success boolean
+local function fire_stash_event(success)
+  vim.api.nvim_exec_autocmds("User", {
+    pattern = "NeogitStash",
+    modeline = false,
+    data = { success = success },
+  })
 end
 
 function M.list_refs()
-  local result = cli.reflog.show.format("%h").args("stash").call { ignore_error = true }
+  local result = git.cli.reflog.show.format("%h").args("stash").call { ignore_error = true }
   if result.code > 0 then
     return {}
   else
@@ -69,67 +24,117 @@ function M.list_refs()
   end
 end
 
+---@param args string[]
 function M.stash_all(args)
-  cli.stash.arg_list(args).call()
-  -- this should work, but for some reason doesn't.
-  --return perform_stash({ worktree = true, index = true })
+  local result = git.cli.stash.push.files(".").arg_list(args).call()
+  fire_stash_event(result.code == 0)
 end
 
 function M.stash_index()
-  return perform_stash { worktree = false, index = true }
+  local result = git.cli.stash.staged.call()
+  fire_stash_event(result.code == 0)
 end
 
+function M.stash_keep_index()
+  local result = git.cli.stash.keep_index.files(".").call()
+  fire_stash_event(result.code == 0)
+end
+
+---@param args string[]
+---@param files string[]
 function M.push(args, files)
-  cli.stash.push.arg_list(args).files(unpack(files)).call()
+  local result = git.cli.stash.push.arg_list(args).files(unpack(files)).call()
+  fire_stash_event(result.code == 0)
 end
 
 function M.pop(stash)
-  local result = cli.stash.apply.index.args(stash).show_popup(false).call()
+  local result = git.cli.stash.apply.index.args(stash).call()
 
   if result.code == 0 then
-    cli.stash.drop.args(stash).call()
+    git.cli.stash.drop.args(stash).call()
   else
-    cli.stash.apply.args(stash).call()
+    git.cli.stash.apply.args(stash).call()
   end
+
+  fire_stash_event(result.code == 0)
 end
 
 function M.apply(stash)
-  local result = cli.stash.apply.index.args(stash).show_popup(false).call()
+  local result = git.cli.stash.apply.index.args(stash).call()
 
   if result.code ~= 0 then
-    cli.stash.apply.args(stash).call()
+    git.cli.stash.apply.args(stash).call()
   end
+
+  fire_stash_event(result.code == 0)
 end
 
 function M.drop(stash)
-  cli.stash.drop.args(stash).call()
+  local result = git.cli.stash.drop.args(stash).call()
+  fire_stash_event(result.code == 0)
 end
 
 function M.list()
-  return cli.stash.args("list").call({ hidden = true }).stdout
+  return git.cli.stash.args("list").call({ hidden = true }).stdout
 end
 
 function M.rename(stash)
   local message = input.get_user_input("New name")
-  if message == nil then
-    -- User pressed ESC or entered empty message, dont drop stash
-    return
+  if message then
+    local oid = git.rev_parse.abbreviate_commit(stash)
+    git.cli.stash.drop.args(stash).call()
+    git.cli.stash.store.message(message).args(oid).call()
   end
-  local oid = rev_parse.abbreviate_commit(stash)
-  cli.stash.drop.args(stash).call()
-  cli.stash.store.message(message).args(oid).call()
 end
+
+---@class StashItem
+---@field idx number string the id of the stash i.e. stash@{7}
+---@field name string
+---@field date string timestamp
+---@field rel_date string relative timestamp
+---@field message string the message associated with each stash.
 
 function M.register(meta)
   meta.update_stashes = function(state)
     state.stashes.items = util.map(M.list(), function(line)
       local idx, message = line:match("stash@{(%d*)}: (.*)")
 
-      return {
-        idx = tonumber(idx),
+      idx = tonumber(idx)
+      assert(idx, "indx cannot be nil")
+
+      ---@class StashItem
+      local item = {
+        idx = idx,
         name = line,
         message = message,
+        oid = git.rev_parse.oid("stash@{" .. idx .. "}"),
       }
+
+      -- These calls can be somewhat expensive, so lazy load them
+      setmetatable(item, {
+        __index = function(self, key)
+          if key == "rel_date" then
+            self.rel_date = git.cli.log
+              .max_count(1)
+              .format("%cr")
+              .args(("stash@{%s}"):format(idx))
+              .call({ hidden = true }).stdout[1]
+
+            return self.rel_date
+          elseif key == "date" then
+            self.date = git.cli.log
+              .max_count(1)
+              .format("%cd")
+              .args("--date=format:" .. config.values.log_date_format)
+              .args(("stash@{%s}"):format(idx))
+              .call({ hidden = true }).stdout[1]
+
+            return self.date
+          end
+        end,
+      })
+
+      return item
     end)
   end
 end

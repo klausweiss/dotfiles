@@ -28,7 +28,7 @@
 (get_body
   "get" @keyword.function)
 
-(static_keyword) @type.qualifier
+(static_keyword) @keyword.modifier
 
 (tool_statement) @keyword
 
@@ -50,7 +50,7 @@
   (name) @type) @keyword
 
 (const_statement
-  "const" @type.qualifier
+  "const" @keyword.modifier
   (name) @constant)
 
 (expression_statement
@@ -129,9 +129,10 @@
   (#eq? @keyword.operator "new"))
 
 ; Match Pattern
-(underscore) @constant ; The "_" pattern.
-
-(pattern_open_ending) @operator ; The ".." pattern.
+[
+  (underscore)
+  (pattern_open_ending)
+] @character.special
 
 ; Alternations
 [
@@ -210,14 +211,11 @@
 
 [
   "pass"
-  "class"
   "class_name"
   "extends"
   "signal"
-  "enum"
   "var"
   "onready"
-  "export"
   "setget"
   "remote"
   "master"
@@ -226,6 +224,13 @@
   "mastersync"
   "puppetsync"
 ] @keyword
+
+"export" @keyword.import
+
+[
+  "enum"
+  "class"
+] @keyword.type
 
 "func" @keyword.function
 
@@ -249,12 +254,13 @@
   (identifier) @attribute)
   (#any-of? @attribute
     ; from modules/gdscript/doc_classes/@GDScript.xml
-    "export" "export_category" "export_color_no_alpha" "export_dir" "export_enum"
+    "export" "export_category" "export_color_no_alpha" "export_custom" "export_dir" "export_enum"
     "export_exp_easing" "export_file" "export_flags" "export_flags_2d_navigation"
     "export_flags_2d_physics" "export_flags_2d_render" "export_flags_3d_navigation"
     "export_flags_3d_physics" "export_flags_3d_render" "export_flags_avoidance" "export_global_dir"
     "export_global_file" "export_group" "export_multiline" "export_node_path" "export_placeholder"
-    "export_range" "export_subgroup" "icon" "onready" "rpc" "static_unload" "tool" "warning_ignore"))
+    "export_range" "export_storage" "export_subgroup" "icon" "onready" "rpc" "static_unload" "tool"
+    "warning_ignore"))
 
 ; Builtin Types
 ((identifier) @type.builtin
@@ -297,8 +303,7 @@
     "var_to_str" "weakref" "wrap" "wrapf" "wrapi"
     ; from modules/gdscript/doc_classes/@GDScript.xml
     "Color8" "assert" "char" "convert" "dict_to_inst" "get_stack" "inst_to_dict" "is_instance_of"
-    "len" "load" "preload" "print_debug" "print_stack" "range" "type_exists")
-  )
+    "len" "load" "preload" "print_debug" "print_stack" "range" "type_exists"))
 
 ; Builtin Constants
 ((identifier) @constant.builtin

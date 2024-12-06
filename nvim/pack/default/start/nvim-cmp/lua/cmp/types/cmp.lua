@@ -103,13 +103,10 @@ cmp.ItemField = {
 ---@field public debounce integer
 ---@field public throttle integer
 ---@field public fetching_timeout integer
+---@field public filtering_context_budget integer
 ---@field public confirm_resolve_timeout integer
 ---@field public async_budget integer Maximum time (in ms) an async function is allowed to run during one step of the event loop.
 ---@field public max_view_entries integer
-
----@class cmp.WindowConfig
----@field completion? cmp.WindowConfig
----@field documentation? cmp.WindowConfig|nil
 
 ---@class cmp.CompletionConfig
 ---@field public autocomplete? cmp.TriggerEvent[]|false
@@ -119,13 +116,24 @@ cmp.ItemField = {
 ---@field public keyword_pattern? string
 
 ---@class cmp.WindowConfig
+---@field public completion? cmp.CompletionWindowOptions
+---@field public documentation? cmp.DocumentationWindowOptions|nil
+
+---@class cmp.WindowOptions
 ---@field public border? string|string[]
 ---@field public winhighlight? string
+---@field public winblend? number
 ---@field public zindex? integer|nil
----@field public max_width? integer|nil
----@field public max_height? integer|nil
+
+---@class cmp.CompletionWindowOptions: cmp.WindowOptions
 ---@field public scrolloff? integer|nil
+---@field public col_offset? integer|nil
+---@field public side_padding? integer|nil
 ---@field public scrollbar? boolean|true
+
+---@class cmp.DocumentationWindowOptions: cmp.WindowOptions
+---@field public max_height? integer|nil
+---@field public max_width? integer|nil
 
 ---@class cmp.ConfirmationConfig
 ---@field public default_behavior cmp.ConfirmBehavior
@@ -137,6 +145,7 @@ cmp.ItemField = {
 ---@field public disallow_partial_fuzzy_matching boolean
 ---@field public disallow_partial_matching boolean
 ---@field public disallow_prefix_unmatching boolean
+---@field public disallow_symbol_nonprefix_matching boolean
 
 ---@class cmp.SortingConfig
 ---@field public priority_weight integer
@@ -176,6 +185,7 @@ cmp.ItemField = {
 ---@class cmp.CustomEntriesViewConfig
 ---@field name 'custom'
 ---@field selection_order 'top_down'|'near_cursor'
+---@field follow_cursor boolean
 
 ---@class cmp.NativeEntriesViewConfig
 ---@field name 'native'

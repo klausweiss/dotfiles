@@ -21,7 +21,7 @@
   "__covariant"
   "__contravariant"
   (visibility_specification)
-] @type.qualifier
+] @keyword.modifier
 
 ; Storageclasses
 [
@@ -30,7 +30,7 @@
   "@dynamic"
   "volatile"
   (protocol_qualifier)
-] @keyword.storage
+] @keyword.modifier
 
 ; Keywords
 [
@@ -46,8 +46,8 @@
 ] @keyword
 
 (class_declaration
-  "@" @keyword
-  "class" @keyword) ; I hate Obj-C for allowing "@ class" :)
+  "@" @keyword.type
+  "class" @keyword.type) ; I hate Obj-C for allowing "@ class" :)
 
 (method_definition
   [
@@ -244,12 +244,10 @@
   declarator: (identifier) @variable.parameter)
 
 (parameter_declaration
-  declarator:
-    (function_declarator
-      declarator:
-        (parenthesized_declarator
-          (block_pointer_declarator
-            declarator: (identifier) @variable.parameter))))
+  declarator: (function_declarator
+    declarator: (parenthesized_declarator
+      (block_pointer_declarator
+        declarator: (identifier) @variable.parameter))))
 
 "..." @variable.parameter.builtin
 

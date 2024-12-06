@@ -49,66 +49,93 @@ Features~
 ==============================================================================
 INSTALLATION                                              *sonokai-installation*
 
+Note: For better syntax highlighting support, consider installing one of the
+following plugins additionally to this colorscheme:
+
+	https://github.com/sheerun/vim-polyglot
+	https://github.com/nvim-treesitter/nvim-treesitter.
+
 ------------------------------------------------------------------------------
+Via a Plugin Manager
 
-Via Plugin Manager~
-
-    Take [vim-plug](https://github.com/junegunn/vim-plug) for example:
+VIM-PLUG
 >
-        Plug 'sainnhe/sonokai'
+    Plug 'sainnhe/sonokai'
 <
-    For better syntax highlighting support, please install
-    https://github.com/sheerun/vim-polyglot or https://github.com/nvim-treesitter/nvim-treesitter.
+Refer to https://github.com/junegunn/vim-plug for further information.
+
+LAZY.NVIM
+
+In Neovim (Lua configuration):
+>
+    {
+      'sainnhe/sonokai',
+      lazy = false,
+      priority = 1000,
+      config = function()
+        -- Optionally configure and load the colorscheme
+        -- directly inside the plugin declaration.
+        vim.g.sonokai_enable_italic = true
+        vim.cmd.colorscheme('sonokai')
+      end
+    }
+<
+Refer to https://github.com/folke/lazy.nvim for further information.
 
 ------------------------------------------------------------------------------
+As a Native Vim Package
 
-Via Pack Feature~
+Users of Vim 8 and greater may leverage Vim's native |packages| system.
 
-    1. Create a new directory: `$ mkdir -p ~/.vim/pack/colors/opt`
+1. Create a new directory: `$ mkdir -p ~/.vim/pack/colors/opt`
 
-    2. Clone this repository: `$ git clone --depth 1 https://github.com/sainnhe/sonokai.git ~/.vim/pack/colors/opt/sonokai`
+2. Clone this repository: `$ git clone --depth 1 https://github.com/sainnhe/sonokai.git ~/.vim/pack/colors/opt/sonokai`
 
-    3. Generate help tags: `:helptags ~/.vim/pack/colors/opt/sonokai/doc/`
+3. Generate help tags: `:helptags ~/.vim/pack/colors/opt/sonokai/doc/`
 
-    4. Add `packadd! sonokai` to your vimrc.
+4. Add `packadd! sonokai` to your vimrc.
 
-Note: If you install this color scheme to `pack/*/start`, you still need to add `packadd! sonokai` to your vimrc. [sainnhe/gruvbox-material#60](https://github.com/sainnhe/gruvbox-material/issues/60)
-
-------------------------------------------------------------------------------
-
-Manually~
-
-    1. Clone the repository: `git clone --depth 1 https://github.com/sainnhe/sonokai.git`
-
-    2. Copy `/path/to/sonokai/autoload/sonokai.vim` to
-    `~/.vim/autoload/` .
-
-    3. Copy `/path/to/sonokai/colors/sonokai.vim` to
-    `~/.vim/colors/` .
-
-    4. Copy `/path/to/sonokai/doc/sonokai.txt` to
-    `~/.vim/doc/` and execute `:helptags ~/.vim/doc/` to generate help tags.
-
-    5. To install [airline](https://github.com/vim-airline/vim-airline) theme,
-    copy `/path/to/sonokai/autoload/airline/themes/sonokai.vim`
-    to `~/.vim/autoload/airline/themes/` .
-
-    6. To install [lightline](https://github.com/itchyny/lightline.vim) theme,
-    copy `/path/to/sonokai/autoload/lightline/colorscheme/sonokai.vim`
-    to `~/.vim/autoload/lightline/colorscheme/` .
-
-    7. To install [lualine](https://github.com/nvim-lualine/lualine.nvim) theme,
-    copy `/path/to/sonokai/lua/lualine/themes/sonokai.lua`
-    to `~/.config/nvim/lua/lualine/themes/` .
+Note: If you install this color scheme to `pack/*/start` instead of
+`pack/*/opt`, you still need to add `packadd! sonokai` to your vimrc,
+as discussed in the following issue:
+https://github.com/sainnhe/gruvbox-material/issues/60
 
 ------------------------------------------------------------------------------
+Manually
 
-AUR~
+Users of Vim 7 and lower may install the colorscheme manually.
 
-    There are some packages available for Arch Linux users in AUR:
+1. Clone the repository: `git clone --depth 1 https://github.com/sainnhe/sonokai.git`
 
-    - [vim-sonokai-git](https://aur.archlinux.org/pkgbase/vim-sonokai-git/)
-    - [neovim-sonokai-git](https://aur.archlinux.org/pkgbase/neovim-sonokai-git/)
+2. Copy `sonokai/autoload/sonokai.vim` to `~/.vim/autoload/`.
+
+3. Copy `sonokai/colors/sonokai.vim` to `~/.vim/colors/`.
+
+4. Copy `sonokai/doc/sonokai.txt` to `~/.vim/doc/` and
+   execute `:helptags ~/.vim/doc/` to generate help tags.
+
+5. To install the airline theme, copy
+   `sonokai/autoload/airline/themes/sonokai.vim`
+   to `~/.vim/autoload/airline/themes/`.
+   https://github.com/vim-airline/vim-airline
+
+6. To install the lightline theme,
+   copy `sonokai/autoload/lightline/colorscheme/sonokai.vim`
+   to `~/.vim/autoload/lightline/colorscheme/`.
+   https://github.com/itchyny/lightline.vim
+
+7. To install the lualine theme,
+   copy `sonokai/lua/lualine/themes/sonokai.lua`
+   to `~/.config/nvim/lua/lualine/themes/`.
+   https://github.com/nvim-lualine/lualine.nvim
+
+------------------------------------------------------------------------------
+AUR
+
+There are some packages available for Arch Linux users in AUR:
+
+	https://aur.archlinux.org/pkgbase/vim-sonokai-git (Vim)
+	https://aur.archlinux.org/pkgbase/neovim-sonokai-git (Neovim)
 
 ==============================================================================
 USAGE                                                            *sonokai-usage*
@@ -395,7 +422,8 @@ Some plugins can highlight the word under current cursor, you can use this
 option to control their behavior.
 
     Type:               |String|
-    Available values:   `'grey background'`, `'bold'`, `'underline'`, `'italic'`
+    Available values:   `'grey background'`, `'high contrast background'`, `'bold'`,
+    `'underline'`, `'italic'`
     Default value:      `'grey background'` when not in transparent mode, `'bold'`
     when in transparent mode.
 
@@ -406,6 +434,25 @@ Currently, the following plugins are supported:
 - https://github.com/RRethy/vim-illuminate
 - https://github.com/itchyny/vim-cursorword
 - https://github.com/prabirshrestha/vim-lsp
+
+------------------------------------------------------------------------------
+                                              *g:sonokai_inlay_hints_background*
+g:sonokai_inlay_hints_background~
+
+Inlay hints are special markers that are displayed inline with the code to
+provide you with additional information. You can use this option to customize
+the background color of inlay hints.
+
+    Type:               |String|
+    Available values:   `'none'`, `'dimmed'`
+    Default value:      `'none'`
+
+Currently, the following LSP clients are supported:
+
+- neovim's built-in language server client
+- https://github.com/neoclide/coc.nvim
+- https://github.com/prabirshrestha/vim-lsp
+- https://github.com/ycm-core/YouCompleteMe
 
 ------------------------------------------------------------------------------
                                              *g:sonokai_disable_terminal_colors*
@@ -524,7 +571,7 @@ How to use custom colors?~
       " See `colors/sonokai.vim` for all predefined highlight groups.
       highlight! link groupA groupB
       highlight! link groupC groupD
-    
+
       " Initialize the color palette.
       " The first parameter is a valid value for `g:sonokai_style`,
       " and the second parameter is a valid value for `g:sonokai_colors_override`.
@@ -538,15 +585,30 @@ How to use custom colors?~
       " See `autoload/sonokai.vim` for the format of `l:palette`.
       call sonokai#highlight('groupE', l:palette.red, l:palette.none, 'undercurl', l:palette.red)
     endfunction
-    
+
     augroup SonokaiCustom
       autocmd!
       autocmd ColorScheme sonokai call s:sonokai_custom()
     augroup END
-    
+
     colorscheme sonokai
 <
-Note: Make sure to define the `augroup` before declare the `colorscheme`.
+Or in Neovim (Lua configuration):
+>
+    vim.api.nvim_create_autocmd('ColorScheme', {
+      group = vim.api.nvim_create_augroup('custom_highlights_sonokai', {}),
+      pattern = 'sonokai',
+      callback = function()
+        local config = vim.fn['sonokai#get_configuration']()
+        local palette = vim.fn['sonokai#get_palette'](config.style, config.colors_override)
+        local set_hl = vim.fn['sonokai#highlight']
+
+        set_hl('Search', palette.none, palette.diff_green)
+        set_hl('IncSearch', palette.none, palette.diff_red)
+      end
+    })
+<
+Note: Make sure to define the `augroup` before calling `colorscheme`.
 
 ------------------------------------------------------------------------------
 

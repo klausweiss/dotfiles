@@ -13,13 +13,16 @@
 
 ; Keywords
 [
-  "class"
   "inherits"
   "node"
-  "type"
   "tag"
   "require"
 ] @keyword
+
+[
+  "type"
+  "class"
+] @keyword.type
 
 [
   "define"
@@ -42,9 +45,8 @@
   name: (identifier) @attribute)
 
 (attribute
-  name:
-    (variable
-      (identifier) @attribute))
+  name: (variable
+    (identifier) @attribute))
 
 ; Parameters
 (lambda

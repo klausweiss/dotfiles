@@ -1,7 +1,7 @@
-local cli = require("neogit.lib.git.cli")
 local notification = require("neogit.lib.notification")
-local a = require("plenary.async")
+local git = require("neogit.lib.git")
 
+---@class NeogitGitReset
 local M = {}
 
 local function fire_reset_event(data)
@@ -9,9 +9,7 @@ local function fire_reset_event(data)
 end
 
 function M.mixed(commit)
-  a.util.scheduler()
-
-  local result = cli.reset.mixed.args(commit).call()
+  local result = git.cli.reset.mixed.args(commit).call { await = true }
   if result.code ~= 0 then
     notification.error("Reset Failed")
   else
@@ -21,9 +19,7 @@ function M.mixed(commit)
 end
 
 function M.soft(commit)
-  a.util.scheduler()
-
-  local result = cli.reset.soft.args(commit).call()
+  local result = git.cli.reset.soft.args(commit).call { await = true }
   if result.code ~= 0 then
     notification.error("Reset Failed")
   else
@@ -33,9 +29,9 @@ function M.soft(commit)
 end
 
 function M.hard(commit)
-  a.util.scheduler()
+  git.index.create_backup()
 
-  local result = cli.reset.hard.args(commit).call()
+  local result = git.cli.reset.hard.args(commit).call { await = true }
   if result.code ~= 0 then
     notification.error("Reset Failed")
   else
@@ -45,9 +41,7 @@ function M.hard(commit)
 end
 
 function M.keep(commit)
-  a.util.scheduler()
-
-  local result = cli.reset.keep.args(commit).call()
+  local result = git.cli.reset.keep.args(commit).call { await = true }
   if result.code ~= 0 then
     notification.error("Reset Failed")
   else
@@ -57,9 +51,7 @@ function M.keep(commit)
 end
 
 function M.index(commit)
-  a.util.scheduler()
-
-  local result = cli.reset.args(commit).files(".").call()
+  local result = git.cli.reset.args(commit).files(".").call { await = true }
   if result.code ~= 0 then
     notification.error("Reset Failed")
   else
@@ -79,10 +71,11 @@ end
 -- end
 
 function M.file(commit, files)
-  local result = cli.checkout.rev(commit).files(unpack(files)).call_sync()
+  local result = git.cli.checkout.rev(commit).files(unpack(files)).call { await = true }
   if result.code ~= 0 then
     notification.error("Reset Failed")
   else
+    fire_reset_event { commit = commit, mode = "files" }
     if #files > 1 then
       notification.info("Reset " .. #files .. " files")
     else

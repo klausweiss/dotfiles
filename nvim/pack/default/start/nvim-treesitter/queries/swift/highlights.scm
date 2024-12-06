@@ -5,9 +5,7 @@
   ","
 ] @punctuation.delimiter
 
-; TODO: "\\(" ")" in interpolations should be @punctuation.special
 [
-  "\\("
   "("
   ")"
   "["
@@ -17,14 +15,18 @@
 ] @punctuation.bracket
 
 ; Identifiers
-(attribute) @variable
-
 (type_identifier) @type
 
-(self_expression) @variable.builtin
+[
+  (self_expression)
+  (super_expression)
+] @variable.builtin
 
 ; Declarations
-"func" @keyword.function
+[
+  "func"
+  "deinit"
+] @keyword.function
 
 [
   (visibility_modifier)
@@ -34,17 +36,18 @@
   (parameter_modifier)
   (inheritance_modifier)
   (mutation_modifier)
-] @type.qualifier
+] @keyword.modifier
+
+(simple_identifier) @variable
 
 (function_declaration
   (simple_identifier) @function.method)
 
-(function_declaration
+(protocol_function_declaration
+  name: (simple_identifier) @function.method)
+
+(init_declaration
   "init" @constructor)
-
-(throws) @keyword
-
-(where_keyword) @keyword
 
 (parameter
   external_name: (simple_identifier) @variable.parameter)
@@ -63,15 +66,7 @@
   (identifier
     (simple_identifier) @variable.parameter))
 
-(pattern
-  bound_identifier: (simple_identifier)) @variable
-
 [
-  "typealias"
-  "struct"
-  "class"
-  "actor"
-  "enum"
   "protocol"
   "extension"
   "indirect"
@@ -80,18 +75,36 @@
   "convenience"
   "required"
   "some"
+  "any"
+  "weak"
+  "unowned"
+  "didSet"
+  "willSet"
+  "subscript"
+  "let"
+  "var"
+  (throws)
+  (where_keyword)
+  (getter_specifier)
+  (setter_specifier)
+  (modify_specifier)
+  (else)
+  (as_operator)
 ] @keyword
+
+[
+  "enum"
+  "struct"
+  "class"
+  "typealias"
+] @keyword.type
 
 [
   "async"
   "await"
 ] @keyword.coroutine
 
-[
-  (getter_specifier)
-  (setter_specifier)
-  (modify_specifier)
-] @keyword
+(shebang_line) @keyword.directive
 
 (class_body
   (property_declaration
@@ -107,13 +120,20 @@
     (simple_identifier) @variable.member))
 
 (value_argument
-  name: (value_argument_label) @variable.member)
+  name: (value_argument_label
+    (simple_identifier) @variable.member))
 
 (import_declaration
   "import" @keyword.import)
 
 (enum_entry
   "case" @keyword)
+
+(modifiers
+  (attribute
+    "@" @attribute
+    (user_type
+      (type_identifier) @attribute)))
 
 ; Function calls
 (call_expression
@@ -133,9 +153,30 @@
   (simple_identifier) @type) ; SomeType.method(): highlight SomeType as a type
   (#lua-match? @type "^[A-Z]"))
 
-(directive) @function.macro
+(directive) @keyword.directive
 
-(diagnostic) @function.macro
+; See https://docs.swift.org/swift-book/documentation/the-swift-programming-language/lexicalstructure/#Keywords-and-Punctuation
+[
+  (diagnostic)
+  "#available"
+  "#unavailable"
+  "#fileLiteral"
+  "#colorLiteral"
+  "#imageLiteral"
+  "#keyPath"
+  "#selector"
+  "#externalMacro"
+] @function.macro
+
+[
+  "#column"
+  "#dsohandle"
+  "#fileID"
+  "#filePath"
+  "#file"
+  "#function"
+  "#line"
+] @constant.macro
 
 ; Statements
 (for_statement
@@ -144,24 +185,12 @@
 (for_statement
   "in" @keyword.repeat)
 
-(for_statement
-  (pattern) @variable)
-
-(else) @keyword
-
-(as_operator) @keyword
-
 [
   "while"
   "repeat"
   "continue"
   "break"
 ] @keyword.repeat
-
-[
-  "let"
-  "var"
-] @keyword
 
 (guard_statement
   "guard" @keyword.conditional)
@@ -187,13 +216,14 @@
   [
     "?"
     ":"
-  ] @keyword.conditional)
+  ] @keyword.conditional.ternary)
 
 [
+  (try_operator)
   "do"
   (throw_keyword)
   (catch_keyword)
-] @keyword
+] @keyword.exception
 
 (statement_label) @label
 
@@ -215,7 +245,7 @@
 ; String literals
 (line_str_text) @string
 
-(str_escaped_char) @string
+(str_escaped_char) @string.escape
 
 (multi_line_str_text) @string
 
@@ -223,7 +253,23 @@
 
 (raw_str_end_part) @string
 
-(raw_str_interpolation_start) @punctuation.special
+(line_string_literal
+  [
+    "\\("
+    ")"
+  ] @punctuation.special)
+
+(multi_line_string_literal
+  [
+    "\\("
+    ")"
+  ] @punctuation.special)
+
+(raw_str_interpolation
+  [
+    (raw_str_interpolation_start)
+    ")"
+  ] @punctuation.special)
 
 [
   "\""
@@ -248,6 +294,8 @@
 
 "nil" @constant.builtin
 
+(wildcard_pattern) @character.special
+
 ; Regex literals
 (regex_literal) @string.regexp
 
@@ -255,9 +303,6 @@
 (custom_operator) @operator
 
 [
-  "try"
-  "try?"
-  "try!"
   "+"
   "-"
   "*"
@@ -270,20 +315,33 @@
   "/="
   "<"
   ">"
+  "<<"
+  ">>"
   "<="
   ">="
   "++"
   "--"
+  "^"
   "&"
+  "&&"
+  "|"
+  "||"
   "~"
   "%="
   "!="
   "!=="
   "=="
   "==="
+  "?"
   "??"
   "->"
   "..<"
   "..."
   (bang)
 ] @operator
+
+(type_arguments
+  [
+    "<"
+    ">"
+  ] @punctuation.bracket)

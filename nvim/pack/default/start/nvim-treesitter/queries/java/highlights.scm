@@ -2,6 +2,8 @@
 ; Variables
 (identifier) @variable
 
+(underscore_pattern) @character.special
+
 ; Methods
 (method_declaration
   name: (identifier) @function.method)
@@ -13,9 +15,6 @@
 
 ; Parameters
 (formal_parameter
-  name: (identifier) @variable.parameter)
-
-(catch_formal_parameter
   name: (identifier) @variable.parameter)
 
 (spread_parameter
@@ -87,6 +86,9 @@
 (constructor_declaration
   name: (identifier) @type)
 
+(compact_constructor_declaration
+  name: (identifier) @type)
+
 (type_identifier) @type
 
 ((type_identifier) @type.builtin
@@ -111,9 +113,8 @@
 
 ; Fields
 (field_declaration
-  declarator:
-    (variable_declarator
-      name: (identifier) @variable.member))
+  declarator: (variable_declarator
+    name: (identifier) @variable.member))
 
 (field_access
   field: (identifier) @variable.member)
@@ -169,19 +170,22 @@
 ; Keywords
 [
   "assert"
-  "class"
-  "record"
   "default"
-  "enum"
   "extends"
   "implements"
   "instanceof"
-  "interface"
   "@interface"
   "permits"
   "to"
   "with"
 ] @keyword
+
+[
+  "record"
+  "class"
+  "enum"
+  "interface"
+] @keyword.type
 
 (synchronized_statement
   "synchronized" @keyword)
@@ -199,15 +203,15 @@
   "static"
   "strictfp"
   "transitive"
-] @type.qualifier
+] @keyword.modifier
 
 (modifiers
-  "synchronized" @type.qualifier)
+  "synchronized" @keyword.modifier)
 
 [
   "transient"
   "volatile"
-] @keyword.storage
+] @keyword.modifier
 
 [
   "return"
@@ -222,6 +226,7 @@
   "else"
   "switch"
   "case"
+  "when"
 ] @keyword.conditional
 
 (ternary_expression
@@ -250,6 +255,10 @@
   "requires"
   "uses"
 ] @keyword.import
+
+(import_declaration
+  (asterisk
+    "*" @character.special))
 
 ; Punctuation
 [

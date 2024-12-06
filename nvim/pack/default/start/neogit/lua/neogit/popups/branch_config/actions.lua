@@ -1,6 +1,5 @@
 local a = require("plenary.async")
 local git = require("neogit.lib.git")
-local util = require("neogit.lib.util")
 local client = require("neogit.client")
 
 local FuzzyFinderBuffer = require("neogit.buffers.fuzzy_finder")
@@ -23,30 +22,24 @@ function M.remotes_for_config()
   return remotes
 end
 
--- Update the text in config to reflect correct value
-function M.update_pull_rebase()
-  return a.void(function(popup, c)
-    local component = popup.buffer.ui:find_component(function(c)
-      return c.tag == "text" and c.value:match("^pull%.rebase:") and c.index == 6
-    end)
-
-    -- stylua: ignore
-    component.value = string.format(
-      "pull.rebase:%s",
-      c.value == "" and c.options[3].display:match("global:(.*)$") or c.value
-    )
-
-    popup.buffer.ui:update()
-  end)
-end
-
 function M.merge_config(branch)
-  local local_branches = git.branch.get_local_branches()
-  local remote_branches = git.branch.get_remote_branches()
-  local branches = util.merge(local_branches, remote_branches)
+  local fn = function()
+    -- When the values are set, clear them and return
+    if git.config.get_local("branch." .. branch .. ".merge"):is_set() then
+      git.config.set("branch." .. branch .. ".merge", nil)
+      git.config.set("branch." .. branch .. ".remote", nil)
 
-  return a.void(function(popup, c)
-    local target = FuzzyFinderBuffer.new(branches):open_async { prompt_prefix = "upstream" }
+      return
+    end
+
+    local eventignore = vim.o.eventignore
+    vim.o.eventignore = "WinLeave"
+    local target = FuzzyFinderBuffer.new(git.refs.list_branches()):open_async {
+      prompt_prefix = "upstream",
+      refocus_status = false,
+    }
+    vim.o.eventignore = eventignore
+
     if not target then
       return
     end
@@ -64,23 +57,27 @@ function M.merge_config(branch)
     git.config.set("branch." .. branch .. ".merge", merge_value)
     git.config.set("branch." .. branch .. ".remote", remote_value)
 
-    c.value = merge_value
-    popup:repaint_config()
-  end)
+    return merge_value
+  end
+
+  return a.wrap(fn, 2)
 end
 
 function M.description_config(branch)
-  return a.void(function(popup, c)
+  local fn = function()
+    vim.o.eventignore = "WinLeave"
     client.wrap(git.cli.branch.edit_description, {
       autocmd = "NeogitDescriptionComplete",
       msg = {
         success = "Description Updated",
       },
     })
+    vim.o.eventignore = ""
 
-    c.value = git.config.get("branch." .. branch .. ".description"):read()
-    popup:repaint_config()
-  end)
+    return git.config.get_local("branch." .. branch .. ".description"):read()
+  end
+
+  return a.wrap(fn, 2)
 end
 
 return M

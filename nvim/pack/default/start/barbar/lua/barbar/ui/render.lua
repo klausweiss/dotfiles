@@ -2,13 +2,12 @@
 -- render.lua
 --
 
+local ceil = math.ceil
 local max = math.max
 local table_insert = table.insert
 
 local buf_get_option = vim.api.nvim_buf_get_option --- @type function
-local buf_is_valid = vim.api.nvim_buf_is_valid --- @type function
 local command = vim.api.nvim_command --- @type function
-local defer_fn = vim.defer_fn
 local get_current_buf = vim.api.nvim_get_current_buf --- @type function
 local get_option = vim.api.nvim_get_option --- @type function
 local has = vim.fn.has --- @type function
@@ -21,8 +20,6 @@ local severity = vim.diagnostic.severity
 local strcharpart = vim.fn.strcharpart --- @type function
 local strwidth = vim.api.nvim_strwidth --- @type function
 local tabpagenr = vim.fn.tabpagenr --- @type function
-local tbl_contains = vim.tbl_contains
-local tbl_filter = vim.tbl_filter
 local win_get_buf = vim.api.nvim_win_get_buf --- @type function
 
 local animate = require('barbar.animate')
@@ -31,11 +28,11 @@ local config = require('barbar.config')
 -- local fs = require('barbar.fs') -- For debugging purposes
 local get_icon = require('barbar.icons').get_icon
 local get_letter = require('barbar.jump_mode').get_letter
-local index_of = require('barbar.utils.list').index_of
 local layout = require('barbar.ui.layout')
 local nodes = require('barbar.ui.nodes')
 local notify = require('barbar.utils').notify
 local state = require('barbar.state')
+local ANIMATION = require('barbar.constants').ANIMATION
 
 -- Digits for optional styling of buffer_number and buffer_index.
 local SUPERSCRIPT_DIGITS = { '⁰', '¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸', '⁹' }
@@ -64,18 +61,6 @@ local function wrap_hl(group)
   return '%#' .. group .. '#'
 end
 
---- @class barbar.ui.render.animation
---- @field OPEN_DELAY integer
---- @field OPEN_DURATION integer
---- @field CLOSE_DURATION integer
---- @field SCROLL_DURATION integer
-local ANIMATION = {
-  OPEN_DELAY = 10,
-  OPEN_DURATION = 150,
-  CLOSE_DURATION = 150,
-  SCROLL_DURATION = 200,
-}
-
 --- @class barbar.ui.render.scroll
 --- @field current integer the place where the bufferline is currently scrolled to
 --- @field target integer the place where the bufferline is scrolled/wants to scroll to.
@@ -84,200 +69,10 @@ local scroll = { current = 0, target = 0 }
 --- @class barbar.ui.Render
 local render = {}
 
---- An incremental animation for `close_buffer_animated`.
---- @param bufnr integer
---- @param new_width integer
---- @return nil
-local function close_buffer_animated_tick(bufnr, new_width, animation)
-  if new_width > 0 and state.data_by_bufnr[bufnr] ~= nil then
-    local buffer_data = state.get_buffer_data(bufnr)
-    buffer_data.width = new_width
-    return render.update()
-  end
-  animate.stop(animation)
-  render.close_buffer(bufnr, true)
-end
-
---- Stop tracking the `bufnr` with barbar, and update the bufferline.
---- WARN: does NOT close the buffer in Neovim (see `:h nvim_buf_delete`)
---- @param bufnr integer
---- @param do_name_update? boolean refreshes all buffer names iff `true`
---- @return nil
-function render.close_buffer(bufnr, do_name_update)
-  state.close_buffer(bufnr, do_name_update)
-  render.update()
-end
-
---- Same as `close_buffer`, but animated.
---- @param bufnr integer
---- @return nil
-function render.close_buffer_animated(bufnr)
-  if config.options.animation == false then
-    return render.close_buffer(bufnr)
-  end
-
-  local buffer_data = state.get_buffer_data(bufnr)
-  local current_width = buffer_data.computed_width or 0
-
-  buffer_data.closing = true
-  buffer_data.width = current_width
-
-  animate.start(
-    ANIMATION.CLOSE_DURATION, current_width, 0, vim.v.t_number,
-    function(new_width, m)
-      close_buffer_animated_tick(bufnr, new_width, m)
-    end)
-end
-
---- The incremental animation for `open_buffer_start_animation`.
---- @param bufnr integer
---- @param new_width integer
---- @param animation unknown
---- @return nil
-local function open_buffer_animated_tick(bufnr, new_width, animation)
-  local buffer_data = state.get_buffer_data(bufnr)
-  buffer_data.width = animation.running and new_width or nil
-
-  render.update()
-end
-
---- Opens a buffer with animation.
---- @param bufnr integer
---- @param data barbar.ui.layout.data
---- @return nil
-local function open_buffer_start_animation(data, bufnr)
-  local buffer_data = state.get_buffer_data(bufnr)
-  local index = index_of(layout.buffers, bufnr)
-
-  buffer_data.computed_width = layout.calculate_width(
-    data.buffers.base_widths[index] or layout.calculate_buffer_width(bufnr, #layout.buffers + 1),
-    data.buffers.padding
-  )
-
-  local target_width = buffer_data.computed_width or 0
-
-  buffer_data.width = 1
-
-  defer_fn(function()
-    animate.start(
-      ANIMATION.OPEN_DURATION, 1, target_width, vim.v.t_number,
-      function(new_width, animation)
-        open_buffer_animated_tick(bufnr, new_width, animation)
-      end)
-  end, ANIMATION.OPEN_DELAY)
-end
-
---- Open the `new_buffers` in the bufferline.
---- @return nil
-local function open_buffers(new_buffers)
-  local initial_buffers = #state.buffers
-
-  -- Open next to the currently opened tab
-  -- Find the new index where the tab will be inserted
-  local new_index = index_of(state.buffers, state.last_current_buffer)
-  if new_index ~= nil then
-    new_index = new_index + 1
-  else
-    new_index = #state.buffers + 1
-  end
-
-  local should_insert_at_start = config.options.insert_at_start
-
-  -- Insert the buffers where they go
-  for _, new_buffer in ipairs(new_buffers) do
-    if index_of(state.buffers, new_buffer) == nil then
-      local actual_index = new_index
-
-      local should_insert_at_end = config.options.insert_at_end or
-        -- We add special buffers at the end
-        buf_get_option(new_buffer, 'buftype') ~= ''
-
-      if should_insert_at_start then
-        actual_index = 1
-        new_index = new_index + 1
-      elseif should_insert_at_end then
-        actual_index = #state.buffers + 1
-      else
-        new_index = new_index + 1
-      end
-
-      table_insert(state.buffers, actual_index, new_buffer)
-    end
-  end
-
-  state.sort_pins_to_left()
-
-  -- We're done if there is no animations
-  if config.options.animation == false then
-    return
-  end
-
-  -- Case: opening a lot of buffers from a session
-  -- We avoid animating here as well as it's a bit
-  -- too much work otherwise.
-  if initial_buffers <= 1 and #new_buffers > 1 or
-     initial_buffers == 0 and #new_buffers == 1
-  then
-    return
-  end
-
-  -- Update names because they affect the layout
-  state.update_names()
-
-  local data = layout.calculate()
-
-  for _, buffer_number in ipairs(new_buffers) do
-    open_buffer_start_animation(data, buffer_number)
-  end
-end
 
 --- @return barbar.ui.render.scroll scroll
 function render.get_scroll()
   return scroll
-end
-
---- Refresh the buffer list.
---- @return integer[] state.buffers
-function render.get_updated_buffers(update_names)
-  local current_buffers = state.get_buffer_list()
-  local new_buffers =
-    tbl_filter(function(b) return not tbl_contains(state.buffers, b) end, current_buffers)
-
-  -- To know if we need to update names
-  local did_change = false
-
-  -- Remove closed or update closing buffers
-  local closed_buffers =
-    tbl_filter(function(b) return not tbl_contains(current_buffers, b) end, state.buffers)
-
-  for _, buffer_number in ipairs(closed_buffers) do
-    local buffer_data = state.get_buffer_data(buffer_number)
-    if not buffer_data.closing then
-      did_change = true
-
-      if buffer_data.computed_width == nil then
-        render.close_buffer(buffer_number)
-      else
-        render.close_buffer_animated(buffer_number)
-      end
-    end
-  end
-
-  -- Add new buffers
-  if #new_buffers > 0 then
-    did_change = true
-
-    open_buffers(new_buffers)
-  end
-
-  state.buffers =
-    tbl_filter(function(b) return buf_is_valid(b) end, state.buffers)
-
-  if did_change or update_names then
-    state.update_names()
-  end
-
-  return state.buffers
 end
 
 --- Open the window which contained the buffer which was clicked on.
@@ -425,8 +220,14 @@ local function get_bufferline_containers(data, bufnrs, refocus)
       end
     end
 
+    --- the start of all rendered highlight names
+    local hl_prefix = 'Buffer' .. activity_name
+
+    --- the suffix of some (eventually all) rendered highlight names
+    local hl_suffix = (modified and 'Mod') or (pinned and 'Pin') or ''
+
     local buffer_name = buffer_data.name or '[no name]'
-    local buffer_hl = wrap_hl('Buffer' .. activity_name .. (modified and 'Mod' or ''))
+    local buffer_hl = wrap_hl(hl_prefix .. hl_suffix)
 
     local icons_option = buffer.get_icons(activity_name, modified, pinned)
 
@@ -441,7 +242,7 @@ local function get_bufferline_containers(data, bufnrs, refocus)
     --- @type barbar.ui.node
     local buffer_index = { hl = '', text = '' }
     if icons_option.buffer_index then
-      buffer_index.hl = wrap_hl('Buffer' .. activity_name .. 'Index')
+      buffer_index.hl = wrap_hl(hl_prefix .. 'Index')
       buffer_index.text = style_number(i, icons_option.buffer_index) .. ' '
     end
 
@@ -449,13 +250,13 @@ local function get_bufferline_containers(data, bufnrs, refocus)
     --- @type barbar.ui.node
     local buffer_number = { hl = '', text = '' }
     if icons_option.buffer_number then
-      buffer_number.hl = wrap_hl('Buffer' .. activity_name .. 'Number')
+      buffer_number.hl = wrap_hl(hl_prefix .. 'Number')
       buffer_number.text = style_number(bufnr, icons_option.buffer_number) .. ' '
     end
 
     --- The close icon
-    --- @type barbar.ui.container
-    local button = {hl = buffer_hl, text = ''}
+    --- @type barbar.ui.node
+    local button = {hl = wrap_hl(hl_prefix .. hl_suffix .. 'Btn'), text = ''}
 
     local button_icon = icons_option.button
     if button_icon and #button_icon > 0 then
@@ -482,7 +283,7 @@ local function get_bufferline_containers(data, bufnrs, refocus)
         name.text = strcharpart(name.text, 1)
       end
 
-      jump_letter.hl = wrap_hl('Buffer' .. activity_name .. 'Target')
+      jump_letter.hl = wrap_hl(hl_prefix .. 'Target')
       if letter then
         jump_letter.text = letter
         if icons_option.filetype.enabled and #name.text > 0 then
@@ -498,14 +299,14 @@ local function get_bufferline_containers(data, bufnrs, refocus)
         or iconHl
 
       icon.hl = icons_option.filetype.custom_colors and
-        wrap_hl('Buffer' .. activity_name .. 'Icon') or
+        wrap_hl(hl_prefix .. 'Icon') or
         (hlName and wrap_hl(hlName) or buffer_hl)
       icon.text = #name.text > 0 and iconChar .. ' ' or iconChar
     end
 
     --- @type barbar.ui.node
     local left_separator = {
-      hl = clickable .. wrap_hl('Buffer' .. activity_name .. 'Sign'),
+      hl = clickable .. wrap_hl(hl_prefix .. 'Sign'),
       text = icons_option.separator.left,
     }
 
@@ -522,21 +323,21 @@ local function get_bufferline_containers(data, bufnrs, refocus)
 
     state.for_each_counted_enabled_diagnostic(bufnr, icons_option.diagnostics, function(count, idx, option)
       table_insert(container.nodes, {
-        hl = wrap_hl('Buffer' .. activity_name .. severity[idx]),
+        hl = wrap_hl(hl_prefix .. severity[idx]),
         text = ' ' .. option.icon .. count,
       })
     end)
 
     state.for_each_counted_enabled_git_status(bufnr, icons_option.gitsigns, function(count, idx, option)
       table_insert(container.nodes, {
-        hl = wrap_hl('Buffer' .. activity_name .. idx:upper()),
+        hl = wrap_hl(hl_prefix .. idx:upper()),
         text = ' ' .. option.icon .. count,
       })
     end)
 
     --- @type barbar.ui.node
     local right_separator = {
-      hl = clickable .. wrap_hl('Buffer' .. activity_name .. 'SignRight'),
+      hl = clickable .. wrap_hl(hl_prefix .. 'SignRight'),
       text = icons_option.separator.right,
     }
 
@@ -553,6 +354,39 @@ local function get_bufferline_containers(data, bufnrs, refocus)
   return pinned_containers, containers, current_buffer
 end
 
+--- Generate the syntax for the offset on `side`
+--- @param side side
+--- @return string
+local function generate_side_offset(side)
+  local offset = state.offset[side] --- @type barbar.state.offset.side
+
+  local align = offset.align
+  local hl = wrap_hl(offset.hl)
+  local text = offset.text
+  local width = offset.width
+
+  local max_content_width = width - 2
+  local content = nodes.slice_right({ { hl = hl, text = text } }, max_content_width)
+
+  if max_content_width > #text then
+    local offset_nodes = { { hl = hl, text = (' '):rep(width) } } --- @type barbar.ui.node[]
+
+    local insert_position
+    if align == 'left' then
+      insert_position = 1
+    else -- align to the right (NOTE: center alignment is a type of right alignment)
+      insert_position = width - #text - 1
+      if align == 'center' then
+        insert_position = ceil(insert_position / 2)
+      end
+    end
+
+    content = nodes.insert_many(offset_nodes, insert_position, content)
+  end
+
+  return nodes.to_string(content);
+end
+
 local HL = {
   FILL = wrap_hl('BufferTabpageFill'),
   TABPAGES = wrap_hl('BufferTabpages'),
@@ -566,7 +400,7 @@ local HL = {
 --- @param refocus? boolean if `true`, the bufferline will be refocused on the current buffer (default: `true`)
 --- @return nil|string syntax
 local function generate_tabline(bufnrs, refocus)
-  local data = layout.calculate()
+  local data = layout.calculate(state)
   if refocus ~= false and scroll.current > data.buffers.scroll_max then
     render.set_scroll(data.buffers.scroll_max)
   end
@@ -578,19 +412,12 @@ local function generate_tabline(bufnrs, refocus)
 
   -- Left offset
   if state.offset.left.width > 0 then
-    local hl = wrap_hl(state.offset.left.hl)
-    local offset_nodes = { { hl = hl, text = (' '):rep(state.offset.left.width) } }
-
-    local content = { { hl = hl, text = state.offset.left.text } }
-    local content_max_width = state.offset.left.width - 2
-
-    offset_nodes = nodes.insert_many(offset_nodes, 1, nodes.slice_right(content, content_max_width))
-    result = result .. nodes.to_string(offset_nodes)
+    result = result .. generate_side_offset('left')
   end
 
   -- Buffer tabs
   do
-    --- @type barbar.ui.container
+    --- @type barbar.ui.node[]
     local content = { { hl = HL.FILL, text = (' '):rep(data.buffers.width) } }
 
     do
@@ -680,15 +507,7 @@ local function generate_tabline(bufnrs, refocus)
 
   -- Right offset
   if state.offset.right.width > 0 then
-    local hl = wrap_hl(state.offset.right.hl)
-    local offset_nodes = { { hl = hl, text = (' '):rep(state.offset.right.width) } }
-
-    local content = { { hl = hl, text = state.offset.right.text } }
-    local content_max_width = state.offset.right.width - 2
-
-    offset_nodes = nodes.insert_many(offset_nodes, 1, nodes.slice_right(content, content_max_width))
-
-    result = result .. nodes.to_string(offset_nodes)
+    result = result .. generate_side_offset('right')
   end
 
   -- NOTE: For development or debugging purposes, the following code can be used:
@@ -713,7 +532,7 @@ function render.update(update_names, refocus)
     return
   end
 
-  local buffers = layout.hide(render.get_updated_buffers(update_names))
+  local buffers = layout.hide(state, state.get_updated_buffers(update_names))
 
   -- Auto hide/show if applicable
   if config.options.auto_hide > -1 then
@@ -755,5 +574,7 @@ function render.update(update_names, refocus)
     )
   end
 end
+
+state.update_callback = render.update
 
 return render

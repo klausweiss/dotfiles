@@ -2,32 +2,53 @@
 
 A pretty list for showing diagnostics, references, telescope results, quickfix and location lists to help you solve all the trouble your code is causing.
 
-![LSP Trouble Screenshot](./media/shot.png)
+![image](https://github.com/folke/trouble.nvim/assets/292349/481bc1f7-cb93-432d-8ab6-f54044334b96)
 
 ## ✨ Features
 
-- pretty list of:
-  - Diagnostics
-  - LSP references
-  - LSP implementations
-  - LSP definitions
-  - LSP type definitions
-  - quickfix list
-  - location list
-  - [Telescope](https://github.com/nvim-telescope/telescope.nvim) search results
-- automatically updates on new diagnostics
-- toggle **diagnostics** mode between **workspace** or **document**
-- **interactive preview** in your last accessed window
-- _cancel_ preview or _jump_ to the location
-- configurable actions, signs, highlights,...
+- Diagnostics
+- LSP references
+- LSP implementations
+- LSP definitions
+- LSP type definitions
+- LSP Document Symbols
+- LSP Incoming/Outgoing calls
+- quickfix list
+- location list
+- [Telescope](https://github.com/nvim-telescope/telescope.nvim) search results
+- [fzf-lua](https://github.com/ibhagwan/fzf-lua) results
+
+## 📰 What's new?
+
+This is a full rewrite of the original **trouble.nvim**.
+
+The new version is much more flexible and powerful,
+with a lot of new features and improvements:
+
+- multiple trouble windows at the same time
+- LSP document symbols
+- LSP incoming/outgoing calls
+- lots of options to configure trouble windows (floats or splits)
+- `focus` option to focus the trouble window when opened (or not)
+- `follow` option to follow the item under the cursor
+- `pinned` option to pin the buffer as the source for the opened trouble window
+- full tree views of anything
+- highly configurable views with custom formatters, filters, and sorters
+- show multiple sections in the same view
+- multi-line messages
+- prettier and configurable indent guides
+- tree view that follows the natural hierarchy of the items (like document symbols, or file structure)
+- expansive API and `Trouble` command
+- trouble `modes` to define custom views
+- statusline component (useful with document symbols)
 
 ## ⚡️ Requirements
 
-- Neovim >= 0.7.2
+- Neovim >= 0.9.2
+- Neovim >= 0.10.0 **OR** the `markdown` and `markdown_inline` [nvim-treesitter](https://github.com/nvim-treesitter/nvim-treesitter) parsers
 - Properly configured Neovim LSP client
 - [nvim-web-devicons](https://github.com/nvim-tree/nvim-web-devicons) is optional to enable file icons
 - a theme with properly configured highlight groups for Neovim Diagnostics
-- or install 🌈 [lsp-colors](https://github.com/folke/lsp-colors.nvim) to automatically create the missing highlight groups
 - a [patched font](https://www.nerdfonts.com/) for the default severity and fold icons
 
 ## 📦 Installation
@@ -37,14 +58,42 @@ Install the plugin with your preferred package manager:
 ### [lazy.nvim](https://github.com/folke/lazy.nvim)
 
 ```lua
-return {
- "folke/trouble.nvim",
- dependencies = { "nvim-tree/nvim-web-devicons" },
- opts = {
-  -- your configuration comes here
-  -- or leave it empty to use the default settings
-  -- refer to the configuration section below
- },
+{
+  "folke/trouble.nvim",
+  opts = {}, -- for default options, refer to the configuration section for custom setup.
+  cmd = "Trouble",
+  keys = {
+    {
+      "<leader>xx",
+      "<cmd>Trouble diagnostics toggle<cr>",
+      desc = "Diagnostics (Trouble)",
+    },
+    {
+      "<leader>xX",
+      "<cmd>Trouble diagnostics toggle filter.buf=0<cr>",
+      desc = "Buffer Diagnostics (Trouble)",
+    },
+    {
+      "<leader>cs",
+      "<cmd>Trouble symbols toggle focus=false<cr>",
+      desc = "Symbols (Trouble)",
+    },
+    {
+      "<leader>cl",
+      "<cmd>Trouble lsp toggle focus=false win.position=right<cr>",
+      desc = "LSP Definitions / references / ... (Trouble)",
+    },
+    {
+      "<leader>xL",
+      "<cmd>Trouble loclist toggle<cr>",
+      desc = "Location List (Trouble)",
+    },
+    {
+      "<leader>xQ",
+      "<cmd>Trouble qflist toggle<cr>",
+      desc = "Quickfix List (Trouble)",
+    },
+  },
 }
 ```
 
@@ -52,157 +101,514 @@ return {
 
 ### Setup
 
-Trouble comes with the following defaults:
+**Trouble** is highly configurable. Please refer to the default settings below.
+
+<details><summary>Default Settings</summary>
+
+<!-- config:start -->
 
 ```lua
-{
-    position = "bottom", -- position of the list can be: bottom, top, left, right
-    height = 10, -- height of the trouble list when position is top or bottom
-    width = 50, -- width of the list when position is left or right
-    icons = true, -- use devicons for filenames
-    mode = "workspace_diagnostics", -- "workspace_diagnostics", "document_diagnostics", "quickfix", "lsp_references", "loclist"
-    severity = nil, -- nil (ALL) or vim.diagnostic.severity.ERROR | WARN | INFO | HINT
-    fold_open = "", -- icon used for open folds
-    fold_closed = "", -- icon used for closed folds
-    group = true, -- group results by file
-    padding = true, -- add an extra new line on top of the list
-    cycle_results = true, -- cycle item list when reaching beginning or end of list
-    action_keys = { -- key mappings for actions in the trouble list
-        -- map to {} to remove a mapping, for example:
-        -- close = {},
-        close = "q", -- close the list
-        cancel = "<esc>", -- cancel the preview and get back to your last window / buffer / cursor
-        refresh = "r", -- manually refresh
-        jump = { "<cr>", "<tab>", "<2-leftmouse>" }, -- jump to the diagnostic or open / close folds
-        open_split = { "<c-x>" }, -- open buffer in new split
-        open_vsplit = { "<c-v>" }, -- open buffer in new vsplit
-        open_tab = { "<c-t>" }, -- open buffer in new tab
-        jump_close = {"o"}, -- jump to the diagnostic and close the list
-        toggle_mode = "m", -- toggle between "workspace" and "document" diagnostics mode
-        switch_severity = "s", -- switch "diagnostics" severity filter level to HINT / INFO / WARN / ERROR
-        toggle_preview = "P", -- toggle auto_preview
-        hover = "K", -- opens a small popup with the full multiline message
-        preview = "p", -- preview the diagnostic location
-        open_code_href = "c", -- if present, open a URI with more information about the diagnostic error
-        close_folds = {"zM", "zm"}, -- close all folds
-        open_folds = {"zR", "zr"}, -- open all folds
-        toggle_fold = {"zA", "za"}, -- toggle fold of current file
-        previous = "k", -- previous item
-        next = "j" -- next item
-        help = "?" -- help menu
+---@class trouble.Mode: trouble.Config,trouble.Section.spec
+---@field desc? string
+---@field sections? string[]
+
+---@class trouble.Config
+---@field mode? string
+---@field config? fun(opts:trouble.Config)
+---@field formatters? table<string,trouble.Formatter> custom formatters
+---@field filters? table<string, trouble.FilterFn> custom filters
+---@field sorters? table<string, trouble.SorterFn> custom sorters
+local defaults = {
+  auto_close = false, -- auto close when there are no items
+  auto_open = false, -- auto open when there are items
+  auto_preview = true, -- automatically open preview when on an item
+  auto_refresh = true, -- auto refresh when open
+  auto_jump = false, -- auto jump to the item when there's only one
+  focus = false, -- Focus the window when opened
+  restore = true, -- restores the last location in the list when opening
+  follow = true, -- Follow the current item
+  indent_guides = true, -- show indent guides
+  max_items = 200, -- limit number of items that can be displayed per section
+  multiline = true, -- render multi-line messages
+  pinned = false, -- When pinned, the opened trouble window will be bound to the current buffer
+  warn_no_results = true, -- show a warning when there are no results
+  open_no_results = false, -- open the trouble window when there are no results
+  ---@type trouble.Window.opts
+  win = {}, -- window options for the results window. Can be a split or a floating window.
+  -- Window options for the preview window. Can be a split, floating window,
+  -- or `main` to show the preview in the main editor window.
+  ---@type trouble.Window.opts
+  preview = {
+    type = "main",
+    -- when a buffer is not yet loaded, the preview window will be created
+    -- in a scratch buffer with only syntax highlighting enabled.
+    -- Set to false, if you want the preview to always be a real loaded buffer.
+    scratch = true,
+  },
+  -- Throttle/Debounce settings. Should usually not be changed.
+  ---@type table<string, number|{ms:number, debounce?:boolean}>
+  throttle = {
+    refresh = 20, -- fetches new data when needed
+    update = 10, -- updates the window
+    render = 10, -- renders the window
+    follow = 100, -- follows the current item
+    preview = { ms = 100, debounce = true }, -- shows the preview for the current item
+  },
+  -- Key mappings can be set to the name of a builtin action,
+  -- or you can define your own custom action.
+  ---@type table<string, trouble.Action.spec|false>
+  keys = {
+    ["?"] = "help",
+    r = "refresh",
+    R = "toggle_refresh",
+    q = "close",
+    o = "jump_close",
+    ["<esc>"] = "cancel",
+    ["<cr>"] = "jump",
+    ["<2-leftmouse>"] = "jump",
+    ["<c-s>"] = "jump_split",
+    ["<c-v>"] = "jump_vsplit",
+    -- go down to next item (accepts count)
+    -- j = "next",
+    ["}"] = "next",
+    ["]]"] = "next",
+    -- go up to prev item (accepts count)
+    -- k = "prev",
+    ["{"] = "prev",
+    ["[["] = "prev",
+    dd = "delete",
+    d = { action = "delete", mode = "v" },
+    i = "inspect",
+    p = "preview",
+    P = "toggle_preview",
+    zo = "fold_open",
+    zO = "fold_open_recursive",
+    zc = "fold_close",
+    zC = "fold_close_recursive",
+    za = "fold_toggle",
+    zA = "fold_toggle_recursive",
+    zm = "fold_more",
+    zM = "fold_close_all",
+    zr = "fold_reduce",
+    zR = "fold_open_all",
+    zx = "fold_update",
+    zX = "fold_update_all",
+    zn = "fold_disable",
+    zN = "fold_enable",
+    zi = "fold_toggle_enable",
+    gb = { -- example of a custom action that toggles the active view filter
+      action = function(view)
+        view:filter({ buf = 0 }, { toggle = true })
+      end,
+      desc = "Toggle Current Buffer Filter",
     },
-    multiline = true, -- render multi-line messages
-    indent_lines = true, -- add an indent guide below the fold icons
-    win_config = { border = "single" }, -- window configuration for floating windows. See |nvim_open_win()|.
-    auto_open = false, -- automatically open the list when you have diagnostics
-    auto_close = false, -- automatically close the list when you have no diagnostics
-    auto_preview = true, -- automatically preview the location of the diagnostic. <esc> to close preview and go back to last window
-    auto_fold = false, -- automatically fold a file trouble list at creation
-    auto_jump = {"lsp_definitions"}, -- for the given modes, automatically jump if there is only a single result
-    include_declaration = { "lsp_references", "lsp_implementations", "lsp_definitions"  }, -- for the given modes, include the declaration of the current symbol in the results
-    signs = {
-      -- icons / text used for a diagnostic
-      error = "",
-      warning = "",
-      hint = "",
-      information = "",
-      other = "",
+    s = { -- example of a custom action that toggles the severity
+      action = function(view)
+        local f = view:get_filter("severity")
+        local severity = ((f and f.filter.severity or 0) + 1) % 5
+        view:filter({ severity = severity }, {
+          id = "severity",
+          template = "{hl:Title}Filter:{hl} {severity}",
+          del = severity == 0,
+        })
+      end,
+      desc = "Toggle Severity Filter",
     },
-    use_diagnostic_signs = false -- enabling this will use the signs defined in your lsp client
+  },
+  ---@type table<string, trouble.Mode>
+  modes = {
+    -- sources define their own modes, which you can use directly,
+    -- or override like in the example below
+    lsp_references = {
+      -- some modes are configurable, see the source code for more details
+      params = {
+        include_declaration = true,
+      },
+    },
+    -- The LSP base mode for:
+    -- * lsp_definitions, lsp_references, lsp_implementations
+    -- * lsp_type_definitions, lsp_declarations, lsp_command
+    lsp_base = {
+      params = {
+        -- don't include the current location in the results
+        include_current = false,
+      },
+    },
+    -- more advanced example that extends the lsp_document_symbols
+    symbols = {
+      desc = "document symbols",
+      mode = "lsp_document_symbols",
+      focus = false,
+      win = { position = "right" },
+      filter = {
+        -- remove Package since luals uses it for control flow structures
+        ["not"] = { ft = "lua", kind = "Package" },
+        any = {
+          -- all symbol kinds for help / markdown files
+          ft = { "help", "markdown" },
+          -- default set of symbol kinds
+          kind = {
+            "Class",
+            "Constructor",
+            "Enum",
+            "Field",
+            "Function",
+            "Interface",
+            "Method",
+            "Module",
+            "Namespace",
+            "Package",
+            "Property",
+            "Struct",
+            "Trait",
+          },
+        },
+      },
+    },
+  },
+  -- stylua: ignore
+  icons = {
+    ---@type trouble.Indent.symbols
+    indent = {
+      top           = "│ ",
+      middle        = "├╴",
+      last          = "└╴",
+      -- last          = "-╴",
+      -- last       = "╰╴", -- rounded
+      fold_open     = " ",
+      fold_closed   = " ",
+      ws            = "  ",
+    },
+    folder_closed   = " ",
+    folder_open     = " ",
+    kinds = {
+      Array         = " ",
+      Boolean       = "󰨙 ",
+      Class         = " ",
+      Constant      = "󰏿 ",
+      Constructor   = " ",
+      Enum          = " ",
+      EnumMember    = " ",
+      Event         = " ",
+      Field         = " ",
+      File          = " ",
+      Function      = "󰊕 ",
+      Interface     = " ",
+      Key           = " ",
+      Method        = "󰊕 ",
+      Module        = " ",
+      Namespace     = "󰦮 ",
+      Null          = " ",
+      Number        = "󰎠 ",
+      Object        = " ",
+      Operator      = " ",
+      Package       = " ",
+      Property      = " ",
+      String        = " ",
+      Struct        = "󰆼 ",
+      TypeParameter = " ",
+      Variable      = "󰀫 ",
+    },
+  },
 }
 ```
 
-> 💡 if you don't want to use icons or a patched font, you can use the settings below
+<!-- config:end -->
 
-```lua
--- settings without a patched font or icons
-{
-    icons = false,
-    fold_open = "v", -- icon used for open folds
-    fold_closed = ">", -- icon used for closed folds
-    indent_lines = false, -- add an indent guide below the fold icons
-    signs = {
-        -- icons / text used for a diagnostic
-        error = "error",
-        warning = "warn",
-        hint = "hint",
-        information = "info"
-    },
-    use_diagnostic_signs = false -- enabling this will use the signs defined in your lsp client
-}
-```
+</details>
+
+Make sure to check the [Examples](/docs/examples.md)!
 
 ## 🚀 Usage
 
 ### Commands
 
-Trouble comes with the following commands:
+The **Trouble** command is a wrapper around the **Trouble** API.
+It can do anything the regular API can do.
 
-- `Trouble [mode]`: open the list
-- `TroubleClose [mode]`: close the list
-- `TroubleToggle [mode]`: toggle the list
-- `TroubleRefresh`: manually refresh the active list
+- `Trouble [mode] [action] [options]`
+
+Some examples:
+
+- Toggle diagnostics for the current buffer and stay in the current window:
+  - `Trouble diagnostics toggle focus=false filter.buf=0`
+- Show document symbols on the right of the current window.
+  Keep the document symbols in sync with the buffer you started the command in.
+  - `Trouble symbols toggle pinned=true win.relative=win win.position=right`
+- You can use **lua** code in the options for the `Trouble` command.
+  The examples below all do the same thing.
+  - `Trouble diagnostics filter.severity=vim.diagnostic.severity.ERROR`
+  - `Trouble diagnostics filter.severity = vim.diagnostic.severity.ERROR`
+  - `Trouble diagnostics filter = { severity=vim.diagnostic.severity.ERROR }`
+- Merging of nested options, with or without quoting strings:
+  - `Trouble diagnostics win.type = split win.position=right`
+  - `Trouble diagnostics win = { type = split, position=right}`
+  - `Trouble diagnostics win = { type = "split", position='right'}`
+
+Please refer to the API section for more information on the available actions and options.
 
 Modes:
 
-- **document_diagnostics:** document diagnostics from the builtin LSP client
-- **workspace_diagnostics:** workspace diagnostics from the builtin LSP client
-- **lsp_references:** references of the word under the cursor from the builtin LSP client
-- **lsp_definitions:** definitions of the word under the cursor from the builtin LSP client
+<!-- modes:start -->
 
-* **lsp_type_definitions:** type definitions of the word under the cursor from the builtin LSP client
+- **diagnostics**: diagnostics
+- **fzf**: FzfLua results previously opened with `require('trouble.sources.fzf').open()`.
+- **fzf_files**: FzfLua results previously opened with `require('trouble.sources.fzf').open()`.
+- **loclist**: Location List
+- **lsp**: LSP definitions, references, implementations, type definitions, and declarations
+- **lsp_command**: command
+- **lsp_declarations**: declarations
+- **lsp_definitions**: definitions
+- **lsp_document_symbols**: document symbols
+- **lsp_implementations**: implementations
+- **lsp_incoming_calls**: Incoming Calls
+- **lsp_outgoing_calls**: Outgoing Calls
+- **lsp_references**: references
+- **lsp_type_definitions**: type definitions
+- **qflist**: Quickfix List
+- **quickfix**: Quickfix List
+- **symbols**: document symbols
+- **telescope**: Telescope results previously opened with `require('trouble.sources.telescope').open()`.
+- **telescope_files**: Telescope results previously opened with `require('trouble.sources.telescope').open()`.
 
-- **quickfix:** [quickfix](https://neovim.io/doc/user/quickfix.html) items
-- **loclist:** items from the window's [location list](https://neovim.io/doc/user/quickfix.html)
+<!-- modes:end -->
 
-Example keybindings:
+### Filters
 
-```vim
-" Vim Script
-nnoremap <leader>xx <cmd>TroubleToggle<cr>
-nnoremap <leader>xw <cmd>TroubleToggle workspace_diagnostics<cr>
-nnoremap <leader>xd <cmd>TroubleToggle document_diagnostics<cr>
-nnoremap <leader>xq <cmd>TroubleToggle quickfix<cr>
-nnoremap <leader>xl <cmd>TroubleToggle loclist<cr>
-nnoremap gR <cmd>TroubleToggle lsp_references<cr>
-```
-
-```lua
--- Lua
-vim.keymap.set("n", "<leader>xx", function() require("trouble").toggle() end)
-vim.keymap.set("n", "<leader>xw", function() require("trouble").toggle("workspace_diagnostics") end)
-vim.keymap.set("n", "<leader>xd", function() require("trouble").toggle("document_diagnostics") end)
-vim.keymap.set("n", "<leader>xq", function() require("trouble").toggle("quickfix") end)
-vim.keymap.set("n", "<leader>xl", function() require("trouble").toggle("loclist") end)
-vim.keymap.set("n", "gR", function() require("trouble").toggle("lsp_references") end)
-```
+Please refer to the [filter docs](docs/filter.md) for more information examples on filters.
 
 ### API
 
 You can use the following functions in your keybindings:
 
+<details><summary>API</summary>
+
+<!-- api:start -->
+
 ```lua
--- toggle trouble with optional mode
-require("trouble").toggle(mode?)
+-- Opens trouble with the given mode.
+-- If a view is already open with the same mode,
+-- it will be focused unless `opts.focus = false`.
+-- When a view is already open and `opts.new = true`,
+-- a new view will be created.
+---@param opts? trouble.Mode | { new?: boolean, refresh?: boolean } | string
+---@return trouble.View?
+require("trouble").open(opts)
 
--- open trouble with optional mode
-require("trouble").open(mode?)
+-- Closes the last open view matching the filter.
+---@param opts? trouble.Mode|string
+---@return trouble.View?
+require("trouble").close(opts)
 
--- close trouble
-require("trouble").close()
+-- Toggle the view with the given mode.
+---@param opts? trouble.Mode|string
+---@return trouble.View?
+require("trouble").toggle(opts)
 
--- jump to the next item, skipping the groups
-require("trouble").next({skip_groups = true, jump = true});
+-- Returns true if there is an open view matching the mode.
+---@param opts? trouble.Mode|string
+require("trouble").is_open(opts)
 
--- jump to the previous item, skipping the groups
-require("trouble").previous({skip_groups = true, jump = true});
+-- Refresh all open views. Normally this is done automatically,
+-- unless you disabled auto refresh.
+---@param opts? trouble.Mode|string
+require("trouble").refresh(opts)
 
--- jump to the first item, skipping the groups
-require("trouble").first({skip_groups = true, jump = true});
+-- Get all items from the active view for a given mode.
+---@param opts? trouble.Mode|string
+require("trouble").get_items(opts)
 
--- jump to the last item, skipping the groups
-require("trouble").last({skip_groups = true, jump = true});
+-- Renders a trouble list as a statusline component.
+-- Check the docs for examples.
+---@param opts? trouble.Mode|string|{hl_group?:string}
+---@return {get: (fun():string), has: (fun():boolean)}
+require("trouble").statusline(opts)
+
+-- Closes the preview and goes to the main window.
+-- The Trouble window is not closed.
+---@param opts? trouble.Mode | { new? : boolean } | string
+---@return trouble.View
+require("trouble").cancel(opts)
+
+-- Open the preview
+---@param opts? trouble.Mode | { new? : boolean } | string
+---@return trouble.View
+require("trouble").delete(opts)
+
+-- filter
+---@param opts? trouble.Mode | { new? : boolean } | string
+---@return trouble.View
+require("trouble").filter(opts)
+
+-- Go to the first item
+---@param opts? trouble.Mode | { new? : boolean } | string
+---@return trouble.View
+require("trouble").first(opts)
+
+-- Focus the trouble window
+---@param opts? trouble.Mode | { new? : boolean } | string
+---@return trouble.View
+require("trouble").focus(opts)
+
+-- Fold close 
+---@param opts? trouble.Mode | { new? : boolean } | string
+---@return trouble.View
+require("trouble").fold_close(opts)
+
+-- fold close all
+---@param opts? trouble.Mode | { new? : boolean } | string
+---@return trouble.View
+require("trouble").fold_close_all(opts)
+
+-- Fold close recursive
+---@param opts? trouble.Mode | { new? : boolean } | string
+---@return trouble.View
+require("trouble").fold_close_recursive(opts)
+
+-- fold disable
+---@param opts? trouble.Mode | { new? : boolean } | string
+---@return trouble.View
+require("trouble").fold_disable(opts)
+
+-- fold enable
+---@param opts? trouble.Mode | { new? : boolean } | string
+---@return trouble.View
+require("trouble").fold_enable(opts)
+
+-- fold more
+---@param opts? trouble.Mode | { new? : boolean } | string
+---@return trouble.View
+require("trouble").fold_more(opts)
+
+-- Fold open 
+---@param opts? trouble.Mode | { new? : boolean } | string
+---@return trouble.View
+require("trouble").fold_open(opts)
+
+-- fold open all
+---@param opts? trouble.Mode | { new? : boolean } | string
+---@return trouble.View
+require("trouble").fold_open_all(opts)
+
+-- Fold open recursive
+---@param opts? trouble.Mode | { new? : boolean } | string
+---@return trouble.View
+require("trouble").fold_open_recursive(opts)
+
+-- fold reduce
+---@param opts? trouble.Mode | { new? : boolean } | string
+---@return trouble.View
+require("trouble").fold_reduce(opts)
+
+-- Fold toggle 
+---@param opts? trouble.Mode | { new? : boolean } | string
+---@return trouble.View
+require("trouble").fold_toggle(opts)
+
+-- fold toggle enable
+---@param opts? trouble.Mode | { new? : boolean } | string
+---@return trouble.View
+require("trouble").fold_toggle_enable(opts)
+
+-- Fold toggle recursive
+---@param opts? trouble.Mode | { new? : boolean } | string
+---@return trouble.View
+require("trouble").fold_toggle_recursive(opts)
+
+-- fold update
+---@param opts? trouble.Mode | { new? : boolean } | string
+---@return trouble.View
+require("trouble").fold_update(opts)
+
+-- fold update all
+---@param opts? trouble.Mode | { new? : boolean } | string
+---@return trouble.View
+require("trouble").fold_update_all(opts)
+
+-- Show the help
+---@param opts? trouble.Mode | { new? : boolean } | string
+---@return trouble.View
+require("trouble").help(opts)
+
+-- Dump the item to the console
+---@param opts? trouble.Mode | { new? : boolean } | string
+---@return trouble.View
+require("trouble").inspect(opts)
+
+-- Jump to the item if on an item, otherwise fold the node
+---@param opts? trouble.Mode | { new? : boolean } | string
+---@return trouble.View
+require("trouble").jump(opts)
+
+-- Jump to the item and close the trouble window
+---@param opts? trouble.Mode | { new? : boolean } | string
+---@return trouble.View
+require("trouble").jump_close(opts)
+
+-- Jump to the item if on an item, otherwise do nothing
+---@param opts? trouble.Mode | { new? : boolean } | string
+---@return trouble.View
+require("trouble").jump_only(opts)
+
+-- Open the item in a split
+---@param opts? trouble.Mode | { new? : boolean } | string
+---@return trouble.View
+require("trouble").jump_split(opts)
+
+-- Open the item in a split and close the trouble window
+---@param opts? trouble.Mode | { new? : boolean } | string
+---@return trouble.View
+require("trouble").jump_split_close(opts)
+
+-- Open the item in a vsplit
+---@param opts? trouble.Mode | { new? : boolean } | string
+---@return trouble.View
+require("trouble").jump_vsplit(opts)
+
+-- Open the item in a vsplit and close the trouble window
+---@param opts? trouble.Mode | { new? : boolean } | string
+---@return trouble.View
+require("trouble").jump_vsplit_close(opts)
+
+-- Go to the last item
+---@param opts? trouble.Mode | { new? : boolean } | string
+---@return trouble.View
+require("trouble").last(opts)
+
+-- Go to the next item
+---@param opts? trouble.Mode | { new? : boolean } | string
+---@return trouble.View
+require("trouble").next(opts)
+
+-- Go to the previous item
+---@param opts? trouble.Mode | { new? : boolean } | string
+---@return trouble.View
+require("trouble").prev(opts)
+
+-- Open the preview
+---@param opts? trouble.Mode | { new? : boolean } | string
+---@return trouble.View
+require("trouble").preview(opts)
+
+-- Refresh the trouble source
+---@param opts? trouble.Mode | { new? : boolean } | string
+---@return trouble.View
+require("trouble").refresh(opts)
+
+-- Toggle the preview
+---@param opts? trouble.Mode | { new? : boolean } | string
+---@return trouble.View
+require("trouble").toggle_preview(opts)
+
+-- Toggle the auto refresh
+---@param opts? trouble.Mode | { new? : boolean } | string
+---@return trouble.View
+require("trouble").toggle_refresh(opts)
 ```
+
+<!-- api:end -->
+
+</details>
 
 ### Telescope
 
@@ -210,48 +616,120 @@ You can easily open any search results in **Trouble**, by defining a custom acti
 
 ```lua
 local actions = require("telescope.actions")
-local trouble = require("trouble.providers.telescope")
+local open_with_trouble = require("trouble.sources.telescope").open
+
+-- Use this to add more results without clearing the trouble list
+local add_to_trouble = require("trouble.sources.telescope").add
 
 local telescope = require("telescope")
 
-telescope.setup {
+telescope.setup({
   defaults = {
     mappings = {
-      i = { ["<c-t>"] = trouble.open_with_trouble },
-      n = { ["<c-t>"] = trouble.open_with_trouble },
+      i = { ["<c-t>"] = open_with_trouble },
+      n = { ["<c-t>"] = open_with_trouble },
     },
   },
-}
+})
 ```
 
 When you open telescope, you can now hit `<c-t>` to open the results in **Trouble**
+
+### fzf-lua
+
+You can easily open any search results in **Trouble**, by defining a custom action:
+
+```lua
+local config = require("fzf-lua.config")
+local actions = require("trouble.sources.fzf").actions
+config.defaults.actions.files["ctrl-t"] = actions.open
+```
+
+When you open fzf-lua, you can now hit `<c-t>` to open the results in **Trouble**
+
+### Statusline Component
+
+Example for [lualine.nvim](https://github.com/nvim-lualine/lualine.nvim):
+
+```lua
+{
+  "nvim-lualine/lualine.nvim",
+  opts = function(_, opts)
+    local trouble = require("trouble")
+    local symbols = trouble.statusline({
+      mode = "lsp_document_symbols",
+      groups = {},
+      title = false,
+      filter = { range = true },
+      format = "{kind_icon}{symbol.name:Normal}",
+      -- The following line is needed to fix the background color
+      -- Set it to the lualine section you want to use
+      hl_group = "lualine_c_normal",
+    })
+    table.insert(opts.sections.lualine_c, {
+      symbols.get,
+      cond = symbols.has,
+    })
+  end,
+}
+```
 
 ## 🎨 Colors
 
 The table below shows all the highlight groups defined for Trouble.
 
-| Highlight Group          |
-| ------------------------ |
-| _TroubleCount_           |
-| _TroubleError_           |
-| _TroubleNormal_          |
-| _TroubleTextInformation_ |
-| _TroubleSignWarning_     |
-| _TroubleLocation_        |
-| _TroubleWarning_         |
-| _TroublePreview_         |
-| _TroubleTextError_       |
-| _TroubleSignInformation_ |
-| _TroubleIndent_          |
-| _TroubleSource_          |
-| _TroubleSignHint_        |
-| _TroubleSignOther_       |
-| _TroubleFoldIcon_        |
-| _TroubleTextWarning_     |
-| _TroubleCode_            |
-| _TroubleInformation_     |
-| _TroubleSignError_       |
-| _TroubleFile_            |
-| _TroubleHint_            |
-| _TroubleTextHint_        |
-| _TroubleText_            |
+<details><summary>Highlight Groups</summary>
+
+<!-- colors:start -->
+
+| Highlight Group | Default Group | Description |
+| --- | --- | --- |
+| **TroubleBasename** | ***TroubleFilename*** |  |
+| **TroubleCode** | ***Special*** |  |
+| **TroubleCount** | ***TabLineSel*** |  |
+| **TroubleDirectory** | ***Directory*** |  |
+| **TroubleFilename** | ***Directory*** |  |
+| **TroubleIconArray** | ***@punctuation.bracket*** |  |
+| **TroubleIconBoolean** | ***@boolean*** |  |
+| **TroubleIconClass** | ***@type*** |  |
+| **TroubleIconConstant** | ***@constant*** |  |
+| **TroubleIconConstructor** | ***@constructor*** |  |
+| **TroubleIconDirectory** | ***Special*** |  |
+| **TroubleIconEnum** | ***@lsp.type.enum*** |  |
+| **TroubleIconEnumMember** | ***@lsp.type.enumMember*** |  |
+| **TroubleIconEvent** | ***Special*** |  |
+| **TroubleIconField** | ***@variable.member*** |  |
+| **TroubleIconFile** | ***Normal*** |  |
+| **TroubleIconFunction** | ***@function*** |  |
+| **TroubleIconInterface** | ***@lsp.type.interface*** |  |
+| **TroubleIconKey** | ***@lsp.type.keyword*** |  |
+| **TroubleIconMethod** | ***@function.method*** |  |
+| **TroubleIconModule** | ***@module*** |  |
+| **TroubleIconNamespace** | ***@module*** |  |
+| **TroubleIconNull** | ***@constant.builtin*** |  |
+| **TroubleIconNumber** | ***@number*** |  |
+| **TroubleIconObject** | ***@constant*** |  |
+| **TroubleIconOperator** | ***@operator*** |  |
+| **TroubleIconPackage** | ***@module*** |  |
+| **TroubleIconProperty** | ***@property*** |  |
+| **TroubleIconString** | ***@string*** |  |
+| **TroubleIconStruct** | ***@lsp.type.struct*** |  |
+| **TroubleIconTypeParameter** | ***@lsp.type.typeParameter*** |  |
+| **TroubleIconVariable** | ***@variable*** |  |
+| **TroubleIndent** | ***LineNr*** |  |
+| **TroubleIndentFoldClosed** | ***CursorLineNr*** |  |
+| **TroubleIndentFoldOpen** | ***TroubleIndent*** |  |
+| **TroubleIndentLast** | ***TroubleIndent*** |  |
+| **TroubleIndentMiddle** | ***TroubleIndent*** |  |
+| **TroubleIndentTop** | ***TroubleIndent*** |  |
+| **TroubleIndentWs** | ***TroubleIndent*** |  |
+| **TroubleNormal** | ***NormalFloat*** |  |
+| **TroubleNormalNC** | ***NormalFloat*** |  |
+| **TroublePos** | ***LineNr*** |  |
+| **TroublePreview** | ***Visual*** |  |
+| **TroubleSource** | ***Comment*** |  |
+| **TroubleText** | ***Normal*** |  |
+
+<!-- colors:end -->
+
+</details>

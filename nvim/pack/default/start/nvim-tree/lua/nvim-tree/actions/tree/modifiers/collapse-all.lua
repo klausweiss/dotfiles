@@ -1,8 +1,8 @@
-local renderer = require "nvim-tree.renderer"
-local utils = require "nvim-tree.utils"
-local core = require "nvim-tree.core"
-local lib = require "nvim-tree.lib"
-local Iterator = require "nvim-tree.iterators.node-iterator"
+local utils = require("nvim-tree.utils")
+local core = require("nvim-tree.core")
+local Iterator = require("nvim-tree.iterators.node-iterator")
+
+local DirectoryNode = require("nvim-tree.node.directory")
 
 local M = {}
 
@@ -25,10 +25,13 @@ end
 
 ---@param keep_buffers boolean
 function M.fn(keep_buffers)
-  local node = lib.get_node_at_cursor()
   local explorer = core.get_explorer()
+  if not explorer then
+    return
+  end
 
-  if explorer == nil then
+  local node = explorer:get_node_at_cursor()
+  if not node then
     return
   end
 
@@ -37,8 +40,9 @@ function M.fn(keep_buffers)
   Iterator.builder(explorer.nodes)
     :hidden()
     :applier(function(n)
-      if n.nodes ~= nil then
-        n.open = keep_buffers == true and matches(n.absolute_path)
+      local dir = n:as(DirectoryNode)
+      if dir then
+        dir.open = keep_buffers and matches(dir.absolute_path)
       end
     end)
     :recursor(function(n)
@@ -46,7 +50,7 @@ function M.fn(keep_buffers)
     end)
     :iterate()
 
-  renderer.draw()
+  explorer.renderer:draw()
   utils.focus_node_or_parent(node)
 end
 

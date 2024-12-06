@@ -1,21 +1,16 @@
-local async = require('gitsigns.async')
-local void = require('gitsigns.async').void
-
-local log = require('gitsigns.debug.log')
-local dprintf = log.dprintf
-local message = require('gitsigns.message')
-
-local parse_args = require('gitsigns.cli.argparse').parse_args
-
 local actions = require('gitsigns.actions')
+local argparse = require('gitsigns.cli.argparse')
+local async = require('gitsigns.async')
 local attach = require('gitsigns.attach')
-local gs_debug = require('gitsigns.debug')
+local Debug = require('gitsigns.debug')
+local log = require('gitsigns.debug.log')
+local message = require('gitsigns.message')
 
 --- @type table<table<string,function>,boolean>
 local sources = {
   [actions] = true,
   [attach] = false,
-  [gs_debug] = false,
+  [Debug] = false,
 }
 
 -- try to parse each argument as a lua boolean, nil or number, if fails then
@@ -63,22 +58,14 @@ function M.complete(arglead, line)
   return matches
 end
 
-local function print_nonnil(x)
-  if x ~= nil then
-    print(vim.inspect(x))
-  end
-end
-
-local select = async.wrap(vim.ui.select, 3)
-
-M.run = void(function(params)
+M.run = async.create(1, function(params)
   local __FUNC__ = 'cli.run'
-  local pos_args_raw, named_args_raw = parse_args(params.args)
+  local pos_args_raw, named_args_raw = argparse.parse_args(params.args)
 
   local func = pos_args_raw[1]
 
   if not func then
-    func = select(M.complete('', 'Gitsigns '), {}) --[[@as string]]
+    func = async.wait(3, vim.ui.select, M.complete('', 'Gitsigns '), {}) --[[@as string]]
     if not func then
       return
     end
@@ -88,7 +75,7 @@ M.run = void(function(params)
   local named_args = vim.tbl_map(parse_to_lua, named_args_raw)
   local args = vim.tbl_extend('error', pos_args, named_args)
 
-  dprintf(
+  log.dprintf(
     "Running action '%s' with arguments %s",
     func,
     vim.inspect(args, { newline = ' ', indent = '' })
@@ -98,7 +85,7 @@ M.run = void(function(params)
   if cmd_func then
     -- Action has a specialised mapping function from command form to lua
     -- function
-    print_nonnil(cmd_func(args, params))
+    cmd_func(args, params)
     return
   end
 
@@ -106,7 +93,7 @@ M.run = void(function(params)
     local f = m[func]
     if type(f) == 'function' then
       -- Note functions here do not have named arguments
-      print_nonnil(f(unpack(pos_args), has_named and named_args or nil))
+      f(unpack(pos_args), has_named and named_args or nil)
       return
     end
   end

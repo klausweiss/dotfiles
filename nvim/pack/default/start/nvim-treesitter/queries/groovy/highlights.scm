@@ -1,11 +1,12 @@
 [
   "!instanceof"
   "assert"
-  "class"
   "extends"
   "instanceof"
   "package"
 ] @keyword
+
+"class" @keyword.type
 
 [
   "!in"
@@ -67,7 +68,7 @@
   "public"
   "static"
   "synchronized"
-] @type.qualifier
+] @keyword.modifier
 
 (comment) @comment @spell
 
@@ -147,6 +148,8 @@
   "!"
 ] @operator
 
+(wildcard_import) @character.special
+
 (string
   "/" @string)
 
@@ -215,9 +218,8 @@
   function: (identifier) @function)
 
 (function_call
-  function:
-    (dotted_identifier
-      (identifier) @function .))
+  function: (dotted_identifier
+    (identifier) @function .))
 
 (function_call
   (argument_list
@@ -228,9 +230,8 @@
   function: (identifier) @function)
 
 (juxt_function_call
-  function:
-    (dotted_identifier
-      (identifier) @function .))
+  function: (dotted_identifier
+    (identifier) @function .))
 
 (juxt_function_call
   (argument_list

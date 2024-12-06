@@ -5,21 +5,51 @@
 Koka is a strongly typed functional-style language with effect types and handlers --
 generating direct C code without needing a runtime system. To learn more:
 
-* Read the [Koka book][kokabook] for a tour of the Koka language and its specification.
 * View the Koka __Samples__ in VS Code by opening the command panel (`Ctrl/Cmd+Shift+P`),
-  and running the `Koka: Open samples` command.  
+  and running the **`Koka: Open samples`** command.  
   (when you start typing the command will surface to the top).
 
-### v3.1.2
+* Read the [Koka book][kokabook] for a tour of the Koka language and its specification.
+
+### v3.1.4, 2024
+
+- Fix optimized compilation from VS Code (which defaulted to lower optimization before)
+
+- Add applier syntax `.()` where `x.f.(42)` is sugar for `(x.f)(42)` which
+  can be convenient when calling functions selected from a `struct`.
+
+- Improve Windows installation, check clang version and Windows build tools.
+
+- Declare reference types as `reference type` (instead of `ref type`).  
+  All types are by default reference types except for enumerations (all singleton) or 
+  isomorphic types (single constructor with one field, i.e. a `newtype`).
+
+- Declare divergent types as `div type/effect` (instead of `rec type/effect`).
+
+- Various bug fixes.
+
+### v3.1.2, 2024-05-30
+
+- Interim release to fix the Koka installation from VS Code when starting outside of a workspace.
+
+- View the [talk](https://www.college-de-france.fr/fr/agenda/seminaire/structures-de-controle-de-goto-aux-effets-algebriques/design-and-compilation-of-efficient-effect-handlers-in-the-koka-language) 
+  on the design and compilation of efficient effect handlers in Koka as part 
+  of Xavier Leroy's beautiful
+  [lecture series](https://xavierleroy.org/CdF/2023-2024/index.html) on
+  control structures and algebraic effects at the Coll&egrave;ge de France 
+  (with many other invited talks available online).
+
+- Read the [paper](https://www.microsoft.com/en-us/research/uploads/prodnew/2024/05/fiptree-full.pdf)
+  on "_The Functional Essence of Binary Search Trees_" by Anton Lorenzen, Daan Leijen, Sam Lindley,
+  and Wouter Swierstra to be presented at [PLDI'24](https://pldi24.sigplan.org/) on June 27.
+
+- Various fixes and contributions from [Xia Li-yao](https://github.com/Lysxia), [Eduardo García Maleta](https://github.com/egmaleta), and [@samosica](https://github.com/samosica)
+
 
 ### v3.1.1, 2024-03-04
 
 - Fix crash in language server; fix build on older gcc versions.
 
-- Xavier Leroy is currently teaching a fantastic
-  [lecture series](https://www.college-de-france.fr/fr/agenda/cours/structures-de-controle-de-goto-aux-effets-algebriques) on
-  control structures and algebraic effects at the Coll&egrave;ge de France with many invited talks available online.
-  March 14 there will be a talk on the design and compilation of efficient effect handlers in Koka.
 
 ### v3.1.0, 2024-02-14
 
@@ -58,11 +88,11 @@ generating direct C code without needing a runtime system. To learn more:
 ### v2.6.0, 2023-12-30:
 
 - Using the new __first-class constructor contexts__ to improve efficiency of various `std/core` functions
-  like `partition`. See the `samples/syntax/contexts.kk` example for an overview, and 
+  like `partition`. See the `samples/learn/contexts.kk` example for an overview, and 
   the accompanying [paper][fccontext] for an in-depth discussion.
 
 - Using further __fully in-place__ `fip` and `fbip` annotations for various `std/core` functions.
-  See the `samples/syntax/fip.kk` example for an overview and the [paper][fip] for a more technical overview.
+  See the `samples/learn/fip.kk` example for an overview and the [paper][fip] for a more technical overview.
 
 - Initial VS Code language support with type information, jump to definition,
   run test functions directly from the editor, automatic Koka installation, and many more things.

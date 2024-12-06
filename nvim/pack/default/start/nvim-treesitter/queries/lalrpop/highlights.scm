@@ -1,11 +1,17 @@
+(comment) @comment @spell
+
+"grammar" @keyword
+
 [
-  "enum"
-  "extern"
-  "grammar"
-  "match"
   "type"
+  "enum"
+] @keyword.type
+
+[
   "pub"
-] @keyword
+  "extern"
+  (mut)
+] @keyword.modifier
 
 [
   "match"
@@ -20,28 +26,25 @@
   ; =>
   "=>@L"
   "=>@R"
+  "="
+  "&"
 ] @operator
-
-(grammar_type_params
-  [
-    "<"
-    ">"
-  ] @punctuation.bracket)
-
-(symbol
-  [
-    "<"
-    ">"
-  ] @punctuation.bracket)
-
-(binding_symbol
-  [
-    "<"
-    ">"
-  ] @punctuation.bracket)
 
 (binding_symbol
   name: (identifier) @variable.parameter)
+
+(annotation
+  "#" @punctuation.special)
+
+(grammar_parameter
+  (identifier) @variable.parameter)
+
+(associated_type
+  (identifier) @type)
+
+(parametrized_type
+  (path
+    (identifier) @type))
 
 (bare_symbol
   (macro
@@ -64,15 +67,28 @@
   ")"
   "["
   "]"
+  "}"
+  "{"
+  ">"
+  "<"
 ] @punctuation.bracket
 
 [
   ";"
   ":"
+  "::"
+  ","
 ] @punctuation.delimiter
 
 (lifetime
-  (identifier) @keyword.storage)
+  "'" @keyword.modifier)
+
+(lifetime
+  (identifier) @attribute)
+
+(lifetime
+  (identifier) @attribute.builtin
+  (#any-of? @attribute.builtin "static" "_"))
 
 (string_literal) @string
 

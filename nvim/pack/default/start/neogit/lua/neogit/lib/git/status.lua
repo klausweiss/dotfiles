@@ -1,209 +1,279 @@
 local Path = require("plenary.path")
+local git = require("neogit.lib.git")
 local util = require("neogit.lib.util")
 local Collection = require("neogit.lib.collection")
+local logger = require("neogit.logger")
 
----@class File: StatusItem
+---@class StatusItem
 ---@field mode string
----@field has_diff boolean
----@field diff string[]
+---@field diff Diff
 ---@field absolute_path string
+---@field escaped_path string
+---@field original_name string|nil
+---@field file_mode {head: number, index: number, worktree: number}|nil
+---@field submodule SubmoduleStatus|nil
+---@field name string
+---@field first number
+---@field last number
+---@field oid string|nil optional object id
+---@field commit CommitLogEntry|nil optional object id
+---@field folded boolean|nil
+---@field hunks Hunk[]|nil
 
-local function update_file(cwd, file, mode, name, original_name)
-  local mt, diff, has_diff
+---@class SubmoduleStatus
+---@field commit_changed boolean C
+---@field has_tracked_changes boolean M
+---@field has_untracked_changes boolean U
 
-  local absolute_path = Path:new(cwd, name):absolute()
-
-  if file then
-    mt = getmetatable(file)
-    has_diff = file.has_diff
-
-    if rawget(file, "diff") then
-      diff = file.diff
-    end
+---@param status string
+-- <sub>       A 4 character field describing the submodule state.
+--             "N..." when the entry is not a submodule.
+--             "S<c><m><u>" when the entry is a submodule.
+--             <c> is "C" if the commit changed; otherwise ".".
+--             <m> is "M" if it has tracked changes; otherwise ".".
+--             <u> is "U" if there are untracked changes; otherwise ".".
+local function parse_submodule_status(status)
+  local a, b, c, d = status:match("(.)(.)(.)(.)")
+  if a == "N" then
+    return nil
+  else
+    return {
+      commit_changed = b == "C",
+      has_tracked_changes = c == "M",
+      has_untracked_changes = d == "U",
+    }
   end
+end
 
-  return setmetatable({
+---@return StatusItem
+local function update_file(section, cwd, file, mode, name, original_name, file_mode, submodule)
+  local absolute_path = Path:new(cwd, name):absolute()
+  local escaped_path = vim.fn.fnameescape(vim.fn.fnamemodify(absolute_path, ":~:."))
+
+  local item = { --[[@class StatusItem]]
     mode = mode,
     name = name,
     original_name = original_name,
-    has_diff = has_diff,
-    diff = diff,
     absolute_path = absolute_path,
-  }, mt or {})
+    escaped_path = escaped_path,
+    file_mode = file_mode,
+    submodule = submodule,
+  }
+
+  if file and rawget(file, "diff") then
+    item.diff = file.diff
+  else
+    git.diff.build(section, item)
+  end
+
+  return item
 end
 
-local tag_pattern = "(.-)%-([0-9]+)%-g%x+$"
 local match_kind = "(.) (.+)"
 local match_u = "(..) (....) (%d+) (%d+) (%d+) (%d+) (%w+) (%w+) (%w+) (.+)"
 local match_1 = "(.)(.) (....) (%d+) (%d+) (%d+) (%w+) (%w+) (.+)"
 local match_2 = "(.)(.) (....) (%d+) (%d+) (%d+) (%w+) (%w+) (%a%d+) ([^\t]+)\t?(.+)"
 
-local function update_status(state)
-  local git = require("neogit.lib.git")
-  local cwd = state.git_root
+local function item_collection(state, section, filter)
+  local items = state[section].items or {}
+  for _, item in ipairs(items) do
+    if filter:accepts(section, item.name) then
+      logger.debug(("[STATUS] Invalidating cached diff for: %s"):format(item.name))
+      item.diff = nil
+      git.diff.build(section, item)
+    end
+  end
 
-  local head = {}
-  local upstream = { unmerged = { items = {} }, unpulled = { items = {} }, ref = nil }
+  return Collection.new(items):key_by("name")
+end
 
-  local untracked_files, unstaged_files, staged_files = {}, {}, {}
-  local old_files_hash = {
-    staged_files = Collection.new(state.staged.items or {}):key_by("name"),
-    unstaged_files = Collection.new(state.unstaged.items or {}):key_by("name"),
-    untracked_files = Collection.new(state.untracked.items or {}):key_by("name"),
+local function update_status(state, filter)
+  local old_files = {
+    staged_files = item_collection(state, "staged", filter),
+    unstaged_files = item_collection(state, "unstaged", filter),
+    untracked_files = item_collection(state, "untracked", filter),
   }
 
-  local result = git.cli.status.null_separated.porcelain(2).branch.call { hidden = true }
-  result = vim.split(result.stdout_raw[1], "\n")
+  state.staged.items = {}
+  state.untracked.items = {}
+  state.unstaged.items = {}
+
+  local result = git.cli.status.null_separated.porcelain(2).call { hidden = true, remove_ansi = false }
+  result = vim.split(result.stdout[1] or "", "\n")
   result = util.collect(result, function(line, collection)
     if line == "" then
       return
     end
 
-    if line ~= "" and (line:match("^[12u]%s[MTADRC%s%.%?!][MTDRC%s%.%?!]%s") or line:match("^[%?!#]%s")) then
+    if line ~= "" and (line:match("^[12u]%s[%u%s%.%?!][%u%s%.%?!]%s") or line:match("^[%?!#]%s")) then
       table.insert(collection, line)
     else
       collection[#collection] = ("%s\t%s"):format(collection[#collection], line)
     end
   end)
 
+  -- kinds:
+  -- u = Unmerged
+  -- 1 = Ordinary Entries
+  -- 2 = Renamed/Copied Entries
+  -- ? = Untracked
+  -- ! = Ignored
   for _, l in ipairs(result) do
-    local header, value = l:match("# ([%w%.]+) (.+)")
-    if header then
-      if header == "branch.head" then
-        head.branch = value
-      elseif header == "branch.oid" then
-        head.oid = value
-        head.abbrev = git.rev_parse.abbreviate_commit(value)
-      elseif header == "branch.upstream" then
-        upstream.ref = value
+    local kind, rest = l:match(match_kind)
+    if kind == "u" then
+      local mode, _, _, _, _, _, _, _, _, name = rest:match(match_u)
+      table.insert(
+        state.unstaged.items,
+        update_file("unstaged", state.worktree_root, old_files.unstaged_files[name], mode, name)
+      )
+    elseif kind == "?" then
+      table.insert(
+        state.untracked.items,
+        update_file("untracked", state.worktree_root, old_files.untracked_files[rest], "?", rest)
+      )
+    elseif kind == "1" then
+      local mode_staged, mode_unstaged, submodule, mH, mI, mW, hH, _, name = rest:match(match_1)
+      local file_mode = { head = mH, index = mI, worktree = mW }
+      local submodule = parse_submodule_status(submodule)
 
-        local commit = git.log.list({ value, "--max-count=1" }, nil, {}, true)[1]
-        if commit then
-          upstream.oid = commit.oid
-          upstream.abbrev = git.rev_parse.abbreviate_commit(commit.oid)
+      if mode_staged ~= "." then
+        if hH:match("^0+$") then
+          mode_staged = "N"
         end
 
-        local remote, branch = git.branch.parse_remote_branch(value)
-        upstream.remote = remote
-        upstream.branch = branch
+        table.insert(
+          state.staged.items,
+          update_file(
+            "staged",
+            state.worktree_root,
+            old_files.staged_files[name],
+            mode_staged,
+            name,
+            nil,
+            file_mode,
+            submodule
+          )
+        )
       end
-    else
-      local kind, rest = l:match(match_kind)
 
-      -- kinds:
-      -- u = Unmerged
-      -- 1 = Ordinary Entries
-      -- 2 = Renamed/Copied Entries
-      -- ? = Untracked
-      -- ! = Ignored
-
-      if kind == "u" then
-        local mode, _, _, _, _, _, _, _, _, name = rest:match(match_u)
-
-        table.insert(unstaged_files, update_file(cwd, old_files_hash.unstaged_files[name], mode, name))
-      elseif kind == "?" then
-        table.insert(untracked_files, update_file(cwd, old_files_hash.untracked_files[rest], nil, rest))
-      elseif kind == "1" then
-        local mode_staged, mode_unstaged, _, _, _, _, _, _, name = rest:match(match_1)
-
-        if mode_staged ~= "." then
-          table.insert(staged_files, update_file(cwd, old_files_hash.staged_files[name], mode_staged, name))
-        end
-
-        if mode_unstaged ~= "." then
-          table.insert(
-            unstaged_files,
-            update_file(cwd, old_files_hash.unstaged_files[name], mode_unstaged, name)
+      if mode_unstaged ~= "." then
+        table.insert(
+          state.unstaged.items,
+          update_file(
+            "unstaged",
+            state.worktree_root,
+            old_files.unstaged_files[name],
+            mode_unstaged,
+            name,
+            nil,
+            file_mode,
+            submodule
           )
-        end
-      elseif kind == "2" then
-        local mode_staged, mode_unstaged, _, _, _, _, _, _, _, name, orig_name = rest:match(match_2)
+        )
+      end
+    elseif kind == "2" then
+      local mode_staged, mode_unstaged, submodule, mH, mI, mW, _, _, _, name, orig_name = rest:match(match_2)
+      local file_mode = { head = mH, index = mI, worktree = mW }
+      local submodule = parse_submodule_status(submodule)
 
-        if mode_staged ~= "." then
-          table.insert(
-            staged_files,
-            update_file(cwd, old_files_hash.staged_files[name], mode_staged, name, orig_name)
+      if mode_staged ~= "." then
+        table.insert(
+          state.staged.items,
+          update_file(
+            "staged",
+            state.worktree_root,
+            old_files.staged_files[name],
+            mode_staged,
+            name,
+            orig_name,
+            file_mode,
+            submodule
           )
-        end
+        )
+      end
 
-        if mode_unstaged ~= "." then
-          table.insert(
-            unstaged_files,
-            update_file(cwd, old_files_hash.unstaged_files[name], mode_unstaged, name, orig_name)
+      if mode_unstaged ~= "." then
+        table.insert(
+          state.unstaged.items,
+          update_file(
+            "unstaged",
+            state.worktree_root,
+            old_files.unstaged_files[name],
+            mode_unstaged,
+            name,
+            orig_name,
+            file_mode,
+            submodule
           )
-        end
+        )
       end
     end
   end
-
-  -- These are a bit hacky - because we can _partially_ refresh repo state (for now),
-  -- some things need to be carried over here.
-  if not state.head.branch or head.branch == state.head.branch then
-    head.commit_message = state.head.commit_message
-  end
-
-  if not upstream.ref or upstream.ref == state.upstream.ref then
-    upstream.commit_message = state.upstream.commit_message
-  end
-
-  if #state.upstream.unmerged.items > 0 then
-    upstream.unmerged = state.upstream.unmerged
-  end
-
-  if #state.upstream.unpulled.items > 0 then
-    upstream.unpulled = state.upstream.unpulled
-  end
-
-  local tag = git.cli.describe.long.tags.args("HEAD").call({ hidden = true, ignore_error = true }).stdout
-  if #tag == 1 then
-    local tag, distance = tostring(tag[1]):match(tag_pattern)
-    if tag and distance then
-      head.tag = { name = tag, distance = tonumber(distance) }
-    else
-      head.tag = { name = nil, distance = nil }
-    end
-  else
-    head.tag = { name = nil, distance = nil }
-  end
-
-  state.head = head
-  state.upstream = upstream
-  state.untracked.items = untracked_files
-  state.unstaged.items = unstaged_files
-  state.staged.items = staged_files
 end
 
-local git = { cli = require("neogit.lib.git.cli") }
-local status = {
-  stage = function(files)
-    git.cli.add.files(unpack(files)).call()
-  end,
-  stage_modified = function()
-    git.cli.add.update.call()
-  end,
-  stage_all = function()
-    git.cli.add.all.call()
-  end,
-  unstage = function(files)
-    git.cli.reset.files(unpack(files)).call()
-  end,
-  unstage_all = function()
-    git.cli.reset.call()
-  end,
-  is_dirty = function()
-    local repo = require("neogit.lib.git.repository")
-    return #repo.staged.items > 0 or #repo.unstaged.items > 0
-  end,
-  anything_staged = function()
-    return #require("neogit.lib.git.repository").staged.items > 0
-  end,
-  anything_unstaged = function()
-    return #require("neogit.lib.git.repository").unstaged.items > 0
-  end,
-}
+---@class NeogitGitStatus
+local M = {}
 
-status.register = function(meta)
+---@param files string[]
+function M.stage(files)
+  git.cli.add.files(unpack(files)).call { await = true }
+end
+
+function M.stage_modified()
+  git.cli.add.update.call { await = true }
+end
+
+function M.stage_untracked()
+  local paths = util.map(git.repo.state.untracked.items, function(item)
+    return item.escaped_path
+  end)
+
+  git.cli.add.files(unpack(paths)).call { await = true }
+end
+
+function M.stage_all()
+  git.cli.add.all.call { await = true }
+end
+
+---@param files string[]
+function M.unstage(files)
+  git.cli.reset.files(unpack(files)).call { await = true }
+end
+
+function M.unstage_all()
+  git.cli.reset.call { await = true }
+end
+
+---@return boolean
+function M.is_dirty()
+  return M.anything_unstaged() or M.anything_staged()
+end
+
+---@return boolean
+function M.anything_staged()
+  local output = git.cli.status.porcelain(2).call({ hidden = true }).stdout
+  return vim.iter(output):any(function(line)
+    return line:match("^%d [^%.]")
+  end)
+end
+
+---@return boolean
+function M.anything_unstaged()
+  local output = git.cli.status.porcelain(2).call({ hidden = true }).stdout
+  return vim.iter(output):any(function(line)
+    return line:match("^%d %..")
+  end)
+end
+
+---@return boolean
+function M.any_unmerged()
+  return vim.iter(git.repo.state.unstaged.items):any(function(item)
+    return vim.tbl_contains({ "UU", "AA", "DU", "UD", "AU", "UA", "DD" }, item.mode)
+  end)
+end
+
+M.register = function(meta)
   meta.update_status = update_status
 end
 
-return status
+return M

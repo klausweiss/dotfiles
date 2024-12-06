@@ -74,6 +74,45 @@ function barbar.setup(options)
     }
   )
 
+  create_user_command(
+    'BufferGotoPinned',
+    function(tbl)
+      local index = tonumber(tbl.args)
+      if not index then
+        return notify(
+          'Invalid argument to ' .. markdown_inline_code':BufferGotoPinned',
+          vim.log.levels.ERROR
+        )
+      end
+
+      api.goto_buffer_pinned(index)
+    end,
+    {
+      desc = 'Go to the buffer at the specified index',
+      nargs = 1,
+    }
+  )
+
+  create_user_command(
+    'BufferGotoUnpinned',
+    function(tbl)
+      local index = tonumber(tbl.args)
+      if not index then
+        return notify(
+          'Invalid argument to ' .. markdown_inline_code':BufferGotoUnpinned',
+          vim.log.levels.ERROR
+        )
+      end
+
+      api.goto_buffer_unpinned(index)
+    end,
+    {
+      desc = 'Go to the buffer at the specified index',
+      nargs = 1,
+    }
+  )
+
+
   create_user_command('BufferFirst', 'BufferGoto 1', {desc = 'Go to the first buffer'})
   create_user_command('BufferLast', 'BufferGoto -1', {desc = 'Go to the last buffer'})
 
@@ -128,6 +167,12 @@ function barbar.setup(options)
     'BufferOrderByBufferNumber',
     api.order_by_buffer_number,
     {desc = 'Order the bufferline by buffer number'}
+  )
+
+  create_user_command(
+    'BufferOrderByName',
+    api.order_by_name,
+    {desc = 'Order the bufferline by name'}
   )
 
   create_user_command(

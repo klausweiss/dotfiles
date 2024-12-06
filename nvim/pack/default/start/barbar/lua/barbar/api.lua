@@ -13,16 +13,14 @@ local command = vim.api.nvim_command --- @type function
 local get_current_buf = vim.api.nvim_get_current_buf --- @type function
 local getchar = vim.fn.getchar --- @type function
 local set_current_buf = vim.api.nvim_set_current_buf --- @type function
-
--- TODO: remove `vim.fs and` after 0.8 release
-local normalize = vim.fs and vim.fs.normalize
+local tolower = vim.fn.tolower
 
 local animate = require('barbar.animate')
 local bdelete = require('barbar.bbye').bdelete
 local buffer = require('barbar.buffer')
 local config = require('barbar.config')
+local fs = require('barbar.fs') --- @type barbar.Fs
 local index_of = require('barbar.utils.list').index_of
-local is_relative_path = require('barbar.fs').is_relative_path
 local jump_mode = require('barbar.jump_mode')
 local layout = require('barbar.ui.layout')
 local notify = require('barbar.utils').notify
@@ -59,9 +57,13 @@ local function notify_buffer_not_found(buffer_number)
 end
 
 --- Forwards some `order_func` after ensuring that all buffers sorted in the order of pinned first.
---- @param order_func fun(bufnr_a: integer, bufnr_b: integer): boolean accepts `(integer, integer)` params.
+--- @param order_func fun(bufnr_a: integer, bufnr_b: integer, to_sort_case: fun(s: string): string): boolean accepts `(integer, integer)` params.
 --- @return fun(bufnr_a: integer, bufnr_b: integer): boolean
 local function with_pin_order(order_func)
+  local to_sort_case = config.options.sort.ignore_case and tolower or function(s)
+    return s
+  end
+
   return function(a, b)
     local a_pinned = state.is_pinned(a)
     local b_pinned = state.is_pinned(b)
@@ -71,7 +73,7 @@ local function with_pin_order(order_func)
     elseif b_pinned and not a_pinned then
       return false
     else
-      return order_func(a, b)
+      return order_func(a, b, to_sort_case)
     end
   end
 end
@@ -167,27 +169,61 @@ function api.restore_buffer()
   state.pop_recently_closed()
 end
 
---- Set the current buffer to the `number`
---- @param index integer
---- @return nil
-function api.goto_buffer(index)
+local function goto_buffer_impl(index, buffers)
   if index < 0 then
-    index = #state.buffers + index + 1
+    index = #buffers + index + 1
   else
-    index = min(index, #state.buffers)
+    index = min(index, #buffers)
   end
 
   index = max(1, index)
 
-  local buffer_number = state.buffers[index]
+  local buffer_number = buffers[index]
   if buffer_number then
     set_current_buf(buffer_number)
   else
     notify(
-      'E86: buffer at index ' .. index .. ' in list ' .. vim.inspect(state.buffers) .. ' does not exist.',
+      'E86: buffer at index ' .. index .. ' in list ' .. vim.inspect(buffers) .. ' does not exist.',
       vim.log.levels.ERROR
     )
   end
+end
+
+--- Set the current buffer to the `number`
+--- @param index integer
+--- @return nil
+function api.goto_buffer(index)
+  goto_buffer_impl(index, state.buffers)
+end
+
+--- Jump to pinned buffer at position `index`
+--- @param index integer
+--- @return nil
+function api.goto_buffer_pinned(index)
+  local buffers =
+    vim.tbl_filter(
+      function(number)
+        return state.get_buffer_data(number).pinned == true
+      end,
+      state.buffers
+    )
+
+  goto_buffer_impl(index, buffers)
+end
+
+--- Jump to unpinned buffer at position `index`
+--- @param index integer
+--- @return nil
+function api.goto_buffer_unpinned(index)
+  local buffers =
+    vim.tbl_filter(
+      function(number)
+        return state.get_buffer_data(number).pinned == false
+      end,
+      state.buffers
+    )
+
+  goto_buffer_impl(index, buffers)
 end
 
 --- Go to the buffer a certain number of buffers away from the current buffer.
@@ -195,7 +231,7 @@ end
 --- @param steps integer
 --- @return nil
 function api.goto_buffer_relative(steps)
-  render.get_updated_buffers()
+  state.get_updated_buffers()
 
   if #state.buffers < 1 then
     return notify('E85: There is no listed buffer', vim.log.levels.ERROR)
@@ -225,7 +261,7 @@ local move_animation_data = {
 --- An incremental animation for `move_buffer_animated`.
 --- @return nil
 local function move_buffer_animated_tick(ratio, current_animation)
-  for _, current_number in ipairs(layout.buffers) do
+  for _, current_number in ipairs(state.buffers_visible) do
     local current_data = state.get_buffer_data(current_number)
 
     if current_animation.running == true then
@@ -266,7 +302,7 @@ local function swap_buffer(from_idx, to_idx)
 
   local previous_positions
   if animation == true then
-    previous_positions = layout.calculate_buffers_position_by_buffer_number()
+    previous_positions = layout.calculate_buffers_position_by_buffer_number(state)
   end
 
   table_remove(state.buffers, from_idx)
@@ -274,7 +310,7 @@ local function swap_buffer(from_idx, to_idx)
   state.sort_pins_to_left()
 
   if animation == true then
-    local current_index = index_of(layout.buffers, buffer_number)
+    local current_index = index_of(state.buffers_visible, buffer_number)
     local start_index = min(from_idx, current_index)
     local end_index   = max(from_idx, current_index)
 
@@ -284,9 +320,9 @@ local function swap_buffer(from_idx, to_idx)
       animate.stop(move_animation)
     end
 
-    local next_positions = layout.calculate_buffers_position_by_buffer_number()
+    local next_positions = layout.calculate_buffers_position_by_buffer_number(state)
 
-    for _, layout_bufnr  in ipairs(layout.buffers) do
+    for _, layout_bufnr  in ipairs(state.buffers_visible) do
       local current_data = state.get_buffer_data(layout_bufnr)
 
       local previous_position = previous_positions[layout_bufnr]
@@ -361,32 +397,39 @@ function api.order_by_buffer_number()
   render.update()
 end
 
+--- Order the buffers by their name
+--- @return nil
+function api.order_by_name()
+  table_sort(state.buffers, with_pin_order(function(a, b, to_sort_case)
+    local parts_of_a = fs.split(buf_get_name(a))
+    local parts_of_b = fs.split(buf_get_name(b))
+    local name_of_a = parts_of_a[#parts_of_a]
+    local name_of_b = parts_of_b[#parts_of_b]
+    return to_sort_case(name_of_b) > to_sort_case(name_of_a)
+  end))
+
+  render.update()
+end
+
 --- Order the buffers by their parent directory.
 --- @return nil
 function api.order_by_directory()
-  table_sort(state.buffers, with_pin_order(function(a, b)
+  table_sort(state.buffers, with_pin_order(function(a, b, to_sort_case)
     local name_of_a = buf_get_name(a)
     local name_of_b = buf_get_name(b)
-    local a_less_than_b = name_of_b < name_of_a
 
-    -- TODO: remove this block after 0.8 releases
-    if not normalize then
-      local a_is_relative = is_relative_path(name_of_a)
-      if a_is_relative and is_relative_path(name_of_b) then
-        return a_less_than_b
-      end
+    name_of_a = fs.normalize(name_of_a)
+    name_of_b = fs.normalize(name_of_b)
 
-      return a_is_relative
-    end
-
-    local level_of_a = #vim.split(normalize(name_of_a), '/')
-    local level_of_b = #vim.split(normalize(name_of_b), '/')
+    local level_of_a = #fs.split(name_of_a)
+    local level_of_b = #fs.split(name_of_b)
 
     if level_of_a ~= level_of_b then
       return level_of_a < level_of_b
     end
 
-    return a_less_than_b
+    local compare_a_b = to_sort_case(name_of_b) > to_sort_case(name_of_a)
+    return compare_a_b
   end))
 
   render.update()
@@ -395,8 +438,8 @@ end
 --- Order the buffers by filetype.
 --- @return nil
 function api.order_by_language()
-  table_sort(state.buffers, with_pin_order(function(a, b)
-    return buf_get_option(a, 'filetype') < buf_get_option(b, 'filetype')
+  table_sort(state.buffers, with_pin_order(function(a, b, to_sort_case)
+    return to_sort_case(buf_get_option(a, 'filetype')) < to_sort_case(buf_get_option(b, 'filetype'))
   end))
 
   render.update()
@@ -459,27 +502,29 @@ end
 
 --- Offset the rendering of the bufferline
 --- @param width integer the amount to offset
---- @param text? string text to put in the offset
---- @param hl? string
+--- @param text? string text to put in the offset TODO: remove in v2.0
+--- @param hl? string TODO: remove in v2.0
 --- @param side? side
+--- @param opts? barbar.config.options.sidebar_filetype
 --- @return nil
-function api.set_offset(width, text, hl, side)
-  if side == nil then
-    side = 'left'
-  end
-
-  if text == nil then
-    text = ''
+function api.set_offset(width, text, hl, side, opts)
+  if opts == nil then
+    opts = {}
   end
 
   if hl == nil then
     hl = 'BufferOffset'
   end
 
-  state.offset[side] = width > 0 and
-    { hl = hl,  text = text, width = width } or
-    { hl = nil, text = '',   width = 0 }
+  if side == nil then
+    side = 'left'
+  end
 
+  if text == nil then
+    text = opts.text or ''
+  end
+
+  state.offset[side] = { align = opts.align or 'left', hl = hl, text = text, width = width }
   render.update()
 end
 

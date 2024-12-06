@@ -67,7 +67,7 @@
   (lower_case_identifier) @variable)
 
 (anything_pattern
-  (underscore) @variable)
+  (underscore) @character.special)
 
 (record_base_identifier
   (lower_case_identifier) @variable)
@@ -88,7 +88,7 @@
 
 (function_declaration_left
   (anything_pattern
-    (underscore) @variable.parameter))
+    (underscore) @character.special))
 
 (function_declaration_left
   (lower_pattern
@@ -97,40 +97,34 @@
 ; Functions
 ;----------
 (value_declaration
-  functionDeclarationLeft:
-    (function_declaration_left
-      (lower_case_identifier) @function
-      (pattern)))
+  functionDeclarationLeft: (function_declaration_left
+    (lower_case_identifier) @function
+    (pattern)))
 
 (value_declaration
-  functionDeclarationLeft:
-    (function_declaration_left
-      (lower_case_identifier) @function
-      pattern: (_)))
+  functionDeclarationLeft: (function_declaration_left
+    (lower_case_identifier) @function
+    pattern: (_)))
 
 (value_declaration
-  functionDeclarationLeft:
-    (function_declaration_left
-      (lower_case_identifier) @function)
+  functionDeclarationLeft: (function_declaration_left
+    (lower_case_identifier) @function)
   body: (anonymous_function_expr))
 
 (type_annotation
   name: (lower_case_identifier) @function
-  typeExpression:
-    (type_expression
-      (arrow)))
+  typeExpression: (type_expression
+    (arrow)))
 
 (port_annotation
   name: (lower_case_identifier) @function
-  typeExpression:
-    (type_expression
-      (arrow)))
+  typeExpression: (type_expression
+    (arrow)))
 
 (function_call_expr
-  target:
-    (value_expr
-      (value_qid
-        (lower_case_identifier) @function.call)))
+  target: (value_expr
+    (value_qid
+      (lower_case_identifier) @function.call)))
 
 ; Operators
 ;----------

@@ -141,11 +141,6 @@
     "description": "Outputs are a way to tell Terraform what data is important.",
     "body": ["output \"${myOutput}\" {", "   value = \"\"", "}"]
   },
-  "resource": {
-    "prefix": "tf-resource",
-    "description": "define a provisioner.",
-    "body": ["resource \"${1}\" \"${2}\" {", "\t${3}", "}"]
-  },
   "depends_on": {
     "prefix": "tf-depends_on",
     "description": "Define explicit dependencies.",
@@ -172,7 +167,7 @@
   },
   "git_module": {
     "prefix": "tf-git_module",
-    "description": "Define a module with genertic Git source.",
+    "description": "Define a module with generic Git source.",
     "body": ["module \"${myModuleName}\" {", "   source = \"git://\"", "}"]
   },
   "github_private_module": {
@@ -6943,6 +6938,46 @@
       "       name = \"hashicorp/vpc-prod\"",
       "   }",
       "}"
+    ]
+  },
+  "data_source": {
+    "prefix": "data",
+    "description": "Define a data source",
+    "body": [
+      "data \"${data_source_type}\" \"${data_source_name}\" {",
+      "   ${value} = \"${identifier}\"",
+      "}"
+    ]
+  },
+  "input_variable": {
+    "prefix": "input",
+    "description": "Define an input variable",
+    "body": [
+      "variable \"${name}\" {",
+      "   type = \"${type}\"",
+      "   description = \"${description}\"",
+      "   default = \"${default_value}\"",
+      "}"
+    ]
+  },
+  "output_variable": {
+    "prefix": "output",
+    "description": "Define an output value",
+    "body": [
+      "output \"${output_name}\" {",
+      "   value = ${resource_name_attribute}",
+      "   description = ${description}",
+      "}"
+    ]
+  },
+  "resource": {
+    "prefix": [ "resource", "res" ],
+    "description": "basic resource definition",
+    "body": [
+	    "resource \"${resource_type}\" \"${resource_name}\" {",
+		    "   ${field} = \"${value}\"",
+		    "}"
+
     ]
   }
 }

@@ -35,6 +35,10 @@ local function on_exit(job_id, code, event)
     buffer = -1
     win = -1
   end
+
+  if vim.g.lazygit_on_exit_callback ~= nil then
+    vim.g.lazygit_on_exit_callback()
+  end
 end
 
 --- Call lazygit
@@ -101,7 +105,9 @@ local function lazygit(path)
     cmd = cmd .. " -ucf '" .. config_path .. "'" -- quote config_path to avoid whitespace errors
   end
 
-  if path == nil then
+  if vim.env.GIT_DIR ~= nil and vim.env.GIT_WORK_TREE ~= nil then
+    cmd = cmd .. " -w " .. vim.env.GIT_WORK_TREE .. " -g " .. vim.env.GIT_DIR
+  elseif path == nil then
     if is_symlink() then
       path = project_root_dir()
     end
@@ -132,14 +138,17 @@ local function lazygitfilter(path)
   end
   prev_win = vim.api.nvim_get_current_win()
   win, buffer = open_floating_window()
-  local cmd = "lazygit " .. "-f " .. path
+  local cmd = "lazygit " .. "-f " .. "'" .. path .. "'"
   exec_lazygit_command(cmd)
 end
 
 --- :LazyGitFilterCurrentFile entry point
 local function lazygitfiltercurrentfile()
-  local current_file = vim.fn.expand("%")
-  lazygitfilter(current_file)
+  local current_dir = vim.fn.expand("%:p:h")
+  local git_root = get_root(current_dir)
+  local file_path = vim.fn.expand('%:p')
+  local relative_path = string.sub(file_path, #git_root + 2)
+  lazygitfilter(relative_path)
 end
 
 --- :LazyGitConfig entry point

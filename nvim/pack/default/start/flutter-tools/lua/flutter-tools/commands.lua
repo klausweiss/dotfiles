@@ -9,7 +9,9 @@ local dev_tools = lazy.require("flutter-tools.dev_tools") ---@module   "flutter-
 local lsp = lazy.require("flutter-tools.lsp") ---@module "flutter-tools.lsp"
 local job_runner = lazy.require("flutter-tools.runners.job_runner") ---@module "flutter-tools.runners.job_runner"
 local debugger_runner = lazy.require("flutter-tools.runners.debugger_runner") ---@module "flutter-tools.runners.debugger_runner"
+local path = lazy.require("flutter-tools.utils.path") ---@module "flutter-tools.utils.path"
 local dev_log = lazy.require("flutter-tools.log") ---@module "flutter-tools.log"
+local parser = lazy.require("flutter-tools.utils.yaml_parser")
 
 local M = {}
 
@@ -20,7 +22,7 @@ local current_device = nil
 
 ---@class flutter.Runner
 ---@field is_running fun(runner: flutter.Runner):boolean
----@field run fun(runner: flutter.Runner, paths:table, args:table, cwd:string, on_run_data:fun(is_err:boolean, data:string), on_run_exit:fun(data:string[], args: table))
+---@field run fun(runner: flutter.Runner, paths:table, args:table, cwd:string, on_run_data:fun(is_err:boolean, data:string), on_run_exit:fun(data:string[], args: table),  is_flutter_project: boolean, project_conf: flutter.ProjectConfig?)
 ---@field cleanup fun(funner: flutter.Runner)
 ---@field send fun(runner: flutter.Runner, cmd:string, quiet: boolean?)
 
@@ -28,13 +30,10 @@ local current_device = nil
 local runner = nil
 
 local function use_debugger_runner()
-  local dap_ok, dap = pcall(require, "dap")
-  if not config.debugger.run_via_dap then return false end
+  if not config.debugger.enabled then return false end
+  local dap_ok, _ = pcall(require, "dap")
   if dap_ok then return true end
-  ui.notify(
-    utils.join({ "debugger runner was request but nvim-dap is not installed!", dap }),
-    ui.ERROR
-  )
+  ui.notify("debugger runner was request but nvim-dap is not installed!", ui.ERROR)
   return false
 end
 
@@ -67,7 +66,7 @@ end
 ---@param is_err boolean if this is stdout or stderr
 local function on_run_data(is_err, data)
   if is_err and config.dev_log.notify_errors then ui.notify(data, ui.ERROR, { timeout = 5000 }) end
-  dev_log.log(data, config.dev_log)
+  dev_log.log(data)
 end
 
 local function shutdown()
@@ -136,6 +135,7 @@ local function get_run_args(opts, conf)
   local flutter_mode = conf and conf.flutter_mode
   local web_port = conf and conf.web_port
   local dev_url = dev_tools.get_url()
+  local additional_args = conf and conf.additional_args
 
   if not use_debugger_runner() then vim.list_extend(args, { "run" }) end
   if not cmd_args and device then vim.list_extend(args, { "-d", device }) end
@@ -159,6 +159,7 @@ local function get_run_args(opts, conf)
     end -- else default to debug
   end
   if dev_url then vim.list_extend(args, { "--devtools-server-address", dev_url }) end
+  if additional_args then vim.list_extend(args, additional_args) end
   return args
 end
 
@@ -170,6 +171,73 @@ local function get_device_from_args(args)
   end
 end
 
+local function get_absolute_path(input_path)
+  -- Check if the provided path is an absolute path
+  if
+    vim.fn.isdirectory(input_path) == 1
+    and not input_path:match("^/")
+    and not input_path:match("^%a:[/\\]")
+  then
+    -- It's a relative path, so expand it to an absolute path
+    local absolute_path = vim.fn.fnamemodify(input_path, ":p")
+    return absolute_path
+  else
+    -- It's already an absolute path
+    return input_path
+  end
+end
+
+---@param project_conf flutter.ProjectConfig?
+local function get_cwd(project_conf)
+  if project_conf and project_conf.cwd then
+    local resolved_path = get_absolute_path(project_conf.cwd)
+    if not vim.loop.fs_stat(resolved_path) then
+      return ui.notify("Provided cwd does not exist: " .. resolved_path, ui.ERROR)
+    end
+    return resolved_path
+  end
+  return lsp.get_lsp_root_dir()
+end
+
+--@return table?
+local function parse_yaml(str)
+  local ok, yaml = pcall(parser.parse, str)
+  if not ok then return nil end
+  return yaml
+end
+
+---@param cwd string
+local function has_flutter_dependency_in_pubspec(cwd)
+  -- As this plugin is tailored for flutter projects,
+  -- we assume that the project is a flutter project.
+  local default_has_flutter_dependency = true
+  local pubspec_path = vim.fn.glob(path.join(cwd, "pubspec.yaml"))
+  if pubspec_path == "" then return default_has_flutter_dependency end
+  local pubspec_content = vim.fn.readfile(pubspec_path)
+  local joined_content = table.concat(pubspec_content, "\n")
+  local pubspec = parse_yaml(joined_content)
+  if not pubspec then return default_has_flutter_dependency end
+  --https://github.com/Dart-Code/Dart-Code/blob/43914cd2709d77668e19a4edf3500f996d5c307b/src/shared/utils/fs.ts#L183
+  return (
+    pubspec.dependencies
+    and (
+      pubspec.dependencies.flutter
+      or pubspec.dependencies.flutter_test
+      or pubspec.dependencies.sky_engine
+      or pubspec.dependencies.flutter_goldens
+    )
+  )
+    or (
+      pubspec.devDependencies
+      and (
+        pubspec.devDependencies.flutter
+        or pubspec.devDependencies.flutter_test
+        or pubspec.devDependencies.sky_engine
+        or pubspec.devDependencies.flutter_goldens
+      )
+    )
+end
+
 ---@param opts RunOpts
 ---@param project_conf flutter.ProjectConfig?
 local function run(opts, project_conf)
@@ -178,9 +246,28 @@ local function run(opts, project_conf)
     local args = opts.cli_args or get_run_args(opts, project_conf)
 
     current_device = opts.device or get_device_from_args(args)
-    ui.notify("Starting flutter project...")
+    if project_conf then
+      if project_conf.pre_run_callback then
+        local callback_args = {
+          name = project_conf.name,
+          target = project_conf.target,
+          flavor = project_conf.flavor,
+          device = project_conf.device,
+        }
+        project_conf.pre_run_callback(callback_args)
+      end
+    end
+    local cwd = get_cwd(project_conf)
+    -- To determinate if the project is a flutter project we need to check if the pubspec.yaml
+    -- file has a flutter dependency in it. We need to get cwd first to pick correct pubspec.yaml file.
+    local is_flutter_project = has_flutter_dependency_in_pubspec(cwd)
+    if is_flutter_project then
+      ui.notify("Starting flutter project...")
+    else
+      ui.notify("Starting dart project...")
+    end
     runner = use_debugger_runner() and debugger_runner or job_runner
-    runner:run(paths, args, lsp.get_lsp_root_dir(), on_run_data, on_run_exit)
+    runner:run(paths, args, cwd, on_run_data, on_run_exit, is_flutter_project, project_conf)
   end)
 end
 
@@ -263,10 +350,10 @@ function M.open_dev_tools(quiet) send("open_dev_tools", quiet) end
 function M.generate(quiet) send("generate", quiet) end
 
 ---@param quiet boolean
-function M.widget_inspector(quiet) send("inspect", quiet) end
+function M.inspect_widget(quiet) send("inspect_widget", quiet) end
 
 ---@param quiet boolean
-function M.construction_lines(quiet) send("construction_lines", quiet) end
+function M.paint_baselines(quiet) send("paint_baselines", quiet) end
 
 -----------------------------------------------------------------------------//
 -- Pub commands
@@ -410,7 +497,6 @@ end
 
 ---@param args string[]
 ---@param project_conf flutter.ProjectConfig?
----@return string[]
 local function set_args_from_project_config(args, project_conf)
   local flavor = project_conf and project_conf.flavor
   local device = project_conf and project_conf.device
@@ -432,8 +518,8 @@ function M.install()
         install_job = Job:new({
           command = cmd,
           args = args,
-        -- stylua: ignore
-        cwd = lsp.get_lsp_root_dir() --[[@as string]],
+          -- stylua: ignore
+          cwd = lsp.get_lsp_root_dir() --[[@as string]],
         })
         install_job:after_success(vim.schedule_wrap(function(j)
           ui.notify(utils.join(j:result()), nil, { timeout = notify_timeout })
@@ -463,8 +549,8 @@ function M.uninstall()
         uninstall_job = Job:new({
           command = cmd,
           args = args,
-        -- stylua: ignore
-        cwd = lsp.get_lsp_root_dir() --[[@as string]],
+          -- stylua: ignore
+          cwd = lsp.get_lsp_root_dir() --[[@as string]],
         })
         uninstall_job:after_success(vim.schedule_wrap(function(j)
           ui.notify(utils.join(j:result()), nil, { timeout = notify_timeout })

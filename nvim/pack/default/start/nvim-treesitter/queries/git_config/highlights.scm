@@ -1,5 +1,5 @@
 ; Sections
-(section_name) @type
+(section_name) @markup.heading
 
 ((section_name) @keyword.import
   (#eq? @keyword.import "include"))
@@ -24,6 +24,8 @@
 ] @boolean
 
 (string) @string
+
+(escape_sequence) @string.escape
 
 ((string) @string.special.path
   (#lua-match? @string.special.path "^[.]?[.]?[/]"))

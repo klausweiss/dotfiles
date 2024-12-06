@@ -1,17 +1,15 @@
-local helpers = require("test.functional.helpers")(after_each)
-local exec_lua, feed = helpers.exec_lua, helpers.feed
 local ls_helpers = require("helpers")
+local exec_lua, feed = ls_helpers.exec_lua, ls_helpers.feed
 local Screen = require("test.functional.ui.screen")
 
 describe("ChoiceNode", function()
 	local screen
 
 	before_each(function()
-		helpers.clear()
+		ls_helpers.clear()
 		ls_helpers.session_setup_luasnip()
 
-		screen = Screen.new(50, 3)
-		screen:attach()
+		screen = ls_helpers.new_screen(50, 3)
 		screen:set_default_attr_ids({
 			[0] = { bold = true, foreground = Screen.colors.Blue },
 			[1] = { bold = true, foreground = Screen.colors.Brown },
@@ -269,6 +267,45 @@ describe("ChoiceNode", function()
 			"b",
 			"d",
 			"${e}",
+		})
+	end)
+
+	it("can depend on choiceNode.", function()
+		exec_lua([[
+			ls.snip_expand(
+				s("sss",{
+					c(1, {
+					  t("."),
+					  t("by bullet points"),
+					  t("by creating stories"),
+					}, { key = "sum-typ" }),
+					f(function(args)
+					  local res ={}
+					  if string.match(args[1][1],"bullet") then
+						table.insert(res, "by-bullet-points")
+					  elseif string.match(args[1][1],"stories") then
+						table.insert(res, "by-creating-stories")
+					  else
+						table.insert(res," -->")
+					  end
+					  return res
+					end, k("sum-typ")),
+				})
+			)
+		]])
+
+		screen:expect({
+			grid = [[
+			  ^. -->                                             |
+			  {0:~                                                 }|
+			  {2:-- INSERT --}                                      |]],
+		})
+		exec_lua("ls.change_choice(1)")
+		screen:expect({
+			grid = [[
+			  ^by bullet pointsby-bullet-points                  |
+			  {0:~                                                 }|
+			  {2:-- INSERT --}                                      |]],
 		})
 	end)
 end)

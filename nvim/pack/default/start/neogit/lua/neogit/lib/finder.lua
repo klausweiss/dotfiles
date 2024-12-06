@@ -2,10 +2,10 @@ local config = require("neogit.config")
 local a = require("plenary.async")
 
 local function refocus_status_buffer()
-  local status = require("neogit.status")
-  if status.status_buffer then
-    status.status_buffer:focus()
-    status.dispatch_refresh(nil, "finder.refocus")
+  local status = require("neogit.buffers.status")
+  if status.instance() then
+    status.instance():focus()
+    status.instance():dispatch_refresh(nil, "finder.refocus")
   end
 end
 
@@ -34,7 +34,13 @@ local function telescope_mappings(on_select, allow_multi, refocus_status)
       local entry = action_state.get_selected_entry()[1]
       local prompt = picker:_get_prompt()
 
-      if entry == ".." and #prompt > 0 then
+      local navigate_up_level = entry == ".." and #prompt > 0
+      local input_git_refspec = prompt:match("%^")
+        or prompt:match("~")
+        or prompt:match("@")
+        or prompt:match(":")
+
+      if navigate_up_level or input_git_refspec then
         table.insert(selection, prompt)
       else
         table.insert(selection, entry)
@@ -56,27 +62,50 @@ local function telescope_mappings(on_select, allow_multi, refocus_status)
     end
   end
 
+  local function close(...)
+    -- Make sure to notify the caller that we aborted to avoid hanging on the async task forever
+    on_select(nil)
+    close_action(...)
+  end
+
+  local function completion_action(prompt_bufnr)
+    local picker = action_state.get_current_picker(prompt_bufnr)
+    -- selene: allow(empty_if)
+    if #picker:get_multi_selection() > 0 then
+      -- Don't autocomplete with multiple selection
+    elseif action_state.get_selected_entry() ~= nil then
+      picker:set_prompt(action_state.get_selected_entry()[1])
+    end
+  end
+
   return function(_, map)
     local commands = {
       ["Select"] = select_action,
-      ["Close"] = function(...)
-        -- Make sure to notify the caller that we aborted to avoid hanging on the async task forever
-        on_select(nil)
-        close_action(...)
-      end,
+      ["Close"] = close,
+      ["InsertCompletion"] = completion_action,
       ["Next"] = actions.move_selection_next,
       ["Previous"] = actions.move_selection_previous,
       ["NOP"] = actions.nop,
       ["MultiselectToggleNext"] = actions.toggle_selection + actions.move_selection_worse,
       ["MultiselectTogglePrevious"] = actions.toggle_selection + actions.move_selection_better,
+      ["MultiselectToggle"] = actions.toggle_selection,
     }
 
+    -- Telescope HEAD has mouse click support, but not the latest tag. Need to check if the user has
+    -- support for mouse click, while avoiding the error that the metatable raises.
+    -- stylua: ignore
+    if pcall(function() return actions.mouse_click and true end) then
+      commands.ScrollWheelDown = actions.move_selection_next
+      commands.ScrollWheelUp = actions.move_selection_previous
+      commands.MouseClick = actions.mouse_click
+    end
+
     for mapping, command in pairs(config.values.mappings.finder) do
-      if command:match("^Multiselect") then
+      if command and command:match("^Multiselect") then
         if allow_multi then
           map({ "i" }, mapping, commands[command])
         end
-      else
+      elseif command then
         map({ "i" }, mapping, commands[command])
       end
     end
@@ -209,10 +238,22 @@ function Finder:find(on_select)
 
     self.opts.prompt_prefix = string.format(" %s > ", self.opts.prompt_prefix)
 
+    local default_sorter
+    local native_sorter = function()
+      local fzf_extension = require("telescope").extensions.fzf
+      if fzf_extension then
+        default_sorter = fzf_extension.native_fzf_sorter()
+      end
+    end
+
+    if not pcall(native_sorter) then
+      default_sorter = sorters.get_generic_fuzzy_sorter()
+    end
+
     pickers
       .new(self.opts, {
         finder = finders.new_table { results = self.entries },
-        sorter = config.values.telescope_sorter() or sorters.fuzzy_with_index_bias(),
+        sorter = config.values.telescope_sorter() or default_sorter,
         attach_mappings = telescope_mappings(on_select, self.opts.allow_multi, self.opts.refocus_status),
       })
       :find()
@@ -226,6 +267,9 @@ function Finder:find(on_select)
       },
       actions = fzf_actions(on_select, self.opts.allow_multi, self.opts.refocus_status),
     })
+  elseif config.check_integration("mini_pick") then
+    local mini_pick = require("mini.pick")
+    mini_pick.start { source = { items = self.entries, choose = on_select } }
   else
     vim.ui.select(self.entries, {
       prompt = string.format("%s: ", self.opts.prompt_prefix),

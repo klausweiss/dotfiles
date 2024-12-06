@@ -1,15 +1,18 @@
 [
-  "enum"
   "extend"
   "extensions"
-  "message"
   "oneof"
   "option"
   "reserved"
-  "service"
   "syntax"
   "to"
 ] @keyword
+
+[
+  "enum"
+  "service"
+  "message"
+] @keyword.type
 
 "rpc" @keyword.function
 
@@ -19,7 +22,7 @@
   "optional"
   "repeated"
   "required"
-] @type.qualifier
+] @keyword.modifier
 
 [
   "package"

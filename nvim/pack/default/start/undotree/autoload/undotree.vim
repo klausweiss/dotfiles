@@ -1163,7 +1163,7 @@ function! s:diffpanel.ParseDiff(diffresult, targetBufnr) abort
     " matchadd associates with windows.
     if exists("w:undotree_diffmatches")
         for i in w:undotree_diffmatches
-            call matchdelete(i)
+            silent! call matchdelete(i)
         endfor
     endif
 
@@ -1329,7 +1329,7 @@ function! s:diffpanel.CleanUpHighlight() abort
         call s:exec_silent("norm! ".i."\<c-w>\<c-w>")
         if exists("w:undotree_diffmatches")
             for j in w:undotree_diffmatches
-                call matchdelete(j)
+                silent! call matchdelete(j)
             endfor
             let w:undotree_diffmatches = []
         endif
@@ -1476,7 +1476,7 @@ function! undotree#UndotreePersistUndo(goSetUndofile) abort
             call mkdir(g:undotree_UndoDir, 'p', 0700)
             call s:log(" > [Dir " . g:undotree_UndoDir . "] created.")
         endif
-        exe "set undodir=" . g:undotree_UndoDir
+        exe "set undodir=" . fnameescape(g:undotree_UndoDir)
         call s:log(" > [set undodir=" . g:undotree_UndoDir . "] executed.")
         if filereadable(undofile(expand('%'))) || a:goSetUndofile
             setlocal undofile

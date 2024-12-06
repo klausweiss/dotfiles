@@ -30,18 +30,20 @@ local function expect_hunks(exp_hunks)
         #exp_hunks,
         #hunks
       )
-      msg[#msg + 1] = ''
-      msg[#msg + 1] = 'Expected hunks:'
+
+      msg[#msg + 1] = '\nExpected hunks:'
       for _, h in ipairs(exp_hunks) do
-        msg[#msg + 1] = h.head
+        msg[#msg + 1] = h
       end
-      msg[#msg + 1] = ''
-      msg[#msg + 1] = 'Passed in hunks:'
+
+      msg[#msg + 1] = '\nPassed in hunks:'
       for _, h in ipairs(hunks) do
         msg[#msg + 1] = h.head
       end
+
       error(table.concat(msg, '\n'))
     end
+
     for i, hunk in ipairs(hunks) do
       eq(exp_hunks[i], hunk.head)
     end
@@ -49,7 +51,7 @@ local function expect_hunks(exp_hunks)
 end
 
 describe('actions', function()
-  local config
+  local config --- @type Gitsigns.Config
 
   before_each(function()
     clear()
@@ -58,10 +60,6 @@ describe('actions', function()
     config = vim.deepcopy(test_config)
     command('cd ' .. system({ 'dirname', os.tmpname() }))
     setup_gitsigns(config)
-  end)
-
-  after_each(function()
-    -- helpers.cleanup()
   end)
 
   it('works with commands', function()
@@ -115,6 +113,7 @@ describe('actions', function()
 
   describe('staging partial hunks', function()
     setup(function()
+      clear()
       setup_test_repo({ test_file_text = { 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H' } })
     end)
 
@@ -124,16 +123,7 @@ describe('actions', function()
     end)
 
     local function set_lines(start, dend, lines)
-      exec_lua(
-        [[
-        local start, dend, lines = ...
-        vim.api.nvim_buf_set_lines(0, start, dend, false, lines)
-      ]],
-        start,
-        dend,
-        lines
-      )
-      -- command('write')
+      helpers.api.nvim_buf_set_lines(0, start, dend, false, lines)
     end
 
     describe('can stage add hunks', function()
@@ -244,5 +234,88 @@ describe('actions', function()
       command([[2 Gitsigns stage_hunk]])
       expect_hunks({})
     end)
+  end)
+
+  local function check_cursor(pos)
+    eq(pos, helpers.api.nvim_win_get_cursor(0))
+  end
+
+  it('can navigate hunks', function()
+    setup_test_repo()
+    edit(test_file)
+
+    feed('dd')
+    feed('4Gx')
+    feed('6Gx')
+
+    expect_hunks({
+      '@@ -1,1 +0 @@',
+      '@@ -5,1 +4,1 @@',
+      '@@ -7,1 +6,1 @@',
+    })
+
+    check_cursor({ 6, 0 })
+    command('Gitsigns next_hunk') -- Wrap
+    check_cursor({ 1, 0 })
+    command('Gitsigns next_hunk')
+    check_cursor({ 4, 0 })
+    command('Gitsigns next_hunk')
+    check_cursor({ 6, 0 })
+
+    command('Gitsigns prev_hunk')
+    check_cursor({ 4, 0 })
+    command('Gitsigns prev_hunk')
+    check_cursor({ 1, 0 })
+    command('Gitsigns prev_hunk') -- Wrap
+    check_cursor({ 6, 0 })
+  end)
+
+  it('can navigate hunks (nowrap)', function()
+    setup_test_repo()
+    edit(test_file)
+
+    feed('4Gx')
+    feed('6Gx')
+    feed('gg')
+
+    expect_hunks({
+      '@@ -4,1 +4,1 @@',
+      '@@ -6,1 +6,1 @@',
+    })
+
+    command('set nowrapscan')
+
+    check_cursor({ 1, 0 })
+    command('Gitsigns next_hunk')
+    check_cursor({ 4, 0 })
+    command('Gitsigns next_hunk')
+    check_cursor({ 6, 0 })
+    command('Gitsigns next_hunk')
+    check_cursor({ 6, 0 })
+
+    feed('G')
+    check_cursor({ 18, 0 })
+    command('Gitsigns prev_hunk')
+    check_cursor({ 6, 0 })
+    command('Gitsigns prev_hunk')
+    check_cursor({ 4, 0 })
+    command('Gitsigns prev_hunk')
+    check_cursor({ 4, 0 })
+  end)
+
+  it('can stage hunks with no NL at EOF', function()
+    setup_test_repo()
+    local newfile = helpers.newfile
+    exec_lua([[vim.g.editorconfig = false]])
+    system("printf 'This is a file with no nl at eof' > " .. newfile)
+    helpers.git({ 'add', newfile })
+    helpers.git({ 'commit', '-m', 'commit on main' })
+
+    edit(newfile)
+    check({ status = { head = 'master', added = 0, changed = 0, removed = 0 } })
+    feed('x')
+    check({ status = { head = 'master', added = 0, changed = 1, removed = 0 } })
+    command('Gitsigns stage_hunk')
+    check({ status = { head = 'master', added = 0, changed = 0, removed = 0 } })
   end)
 end)

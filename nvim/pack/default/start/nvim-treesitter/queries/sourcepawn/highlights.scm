@@ -23,9 +23,8 @@
   function: (identifier) @function)
 
 (call_expression
-  function:
-    (field_access
-      field: (identifier) @function.method.call))
+  function: (field_access
+    field: (identifier) @function.method.call))
 
 ; Types
 [
@@ -147,9 +146,9 @@
   name: (identifier) @function.method)
 
 ; Non-type Keywords
-(variable_storage_class) @keyword.storage
+(variable_storage_class) @keyword.modifier
 
-(visibility) @type.qualifier
+(visibility) @keyword.modifier
 
 (assertion) @function.builtin
 
@@ -277,8 +276,6 @@
   "__nullable__"
   "defined"
   "delete"
-  "enum"
-  "funcenum"
   "functag"
   "get"
   "methodmap"
@@ -286,11 +283,16 @@
   "property"
   "public"
   "set"
-  "struct"
-  "typedef"
   "typeset"
   "void"
 ] @keyword
+
+[
+  "enum"
+  "funcenum"
+  "struct"
+  "typedef"
+] @keyword.type
 
 [
   "const"
@@ -298,4 +300,4 @@
   "static"
   "stock"
   "forward"
-] @type.qualifier
+] @keyword.modifier

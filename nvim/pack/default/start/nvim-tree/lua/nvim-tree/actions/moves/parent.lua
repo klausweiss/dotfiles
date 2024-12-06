@@ -1,8 +1,7 @@
-local renderer = require "nvim-tree.renderer"
-local view = require "nvim-tree.view"
-local utils = require "nvim-tree.utils"
-local core = require "nvim-tree.core"
-local lib = require "nvim-tree.lib"
+local view = require("nvim-tree.view")
+local utils = require("nvim-tree.utils")
+
+local DirectoryNode = require("nvim-tree.node.directory")
 
 local M = {}
 
@@ -11,27 +10,33 @@ local M = {}
 function M.fn(should_close)
   should_close = should_close or false
 
+  ---@param node Node
   return function(node)
-    node = lib.get_last_group_node(node)
-    if should_close and node.open then
-      node.open = false
-      return renderer.draw()
+    local dir = node:as(DirectoryNode)
+    if dir then
+      dir = dir:last_group_node()
+      if should_close and dir.open then
+        dir.open = false
+        dir.explorer.renderer:draw()
+        return
+      end
     end
 
-    local parent = utils.get_parent_of_group(node).parent
+    local parent = (node:get_parent_of_group() or node).parent
 
     if not parent or not parent.parent then
-      return view.set_cursor { 1, 0 }
+      view.set_cursor({ 1, 0 })
+      return
     end
 
-    local _, line = utils.find_node(core.get_explorer().nodes, function(n)
+    local _, line = utils.find_node(parent.explorer.nodes, function(n)
       return n.absolute_path == parent.absolute_path
     end)
 
-    view.set_cursor { line + 1, 0 }
+    view.set_cursor({ line + 1, 0 })
     if should_close then
       parent.open = false
-      renderer.draw()
+      parent.explorer.renderer:draw()
     end
   end
 end

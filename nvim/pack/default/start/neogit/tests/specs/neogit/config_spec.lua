@@ -51,13 +51,13 @@ describe("Neogit config", function()
         assert.True(vim.tbl_count(require("neogit.config").validate_config()) ~= 0)
       end)
 
-      it("should return invalid when auto_refresh isn't a boolean", function()
-        config.values.auto_refresh = "not a boolean"
+      it("should return invalid when sort_branches isn't a string", function()
+        config.values.sort_branches = false
         assert.True(vim.tbl_count(require("neogit.config").validate_config()) ~= 0)
       end)
 
-      it("should return invalid when sort_branches isn't a string", function()
-        config.values.sort_branches = false
+      it("should return invalid when initial_branch_name isn't a string", function()
+        config.values.initial_branch_name = false
         assert.True(vim.tbl_count(require("neogit.config").validate_config()) ~= 0)
       end)
 
@@ -82,7 +82,12 @@ describe("Neogit config", function()
       end)
 
       it("should return invalid when auto_show_console isn't a boolean", function()
-        config.values.console_timeout = "not a boolean"
+        config.values.auto_show_console = "not a boolean"
+        assert.True(vim.tbl_count(require("neogit.config").validate_config()) ~= 0)
+      end)
+
+      it("should return invalid when auto_show_console_on isn't a string", function()
+        config.values.auto_show_console_on = true
         assert.True(vim.tbl_count(require("neogit.config").validate_config()) ~= 0)
       end)
 

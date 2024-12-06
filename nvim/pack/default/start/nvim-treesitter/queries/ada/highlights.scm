@@ -38,7 +38,6 @@
   "private"
   "protected"
   "range"
-  "record"
   "separate"
   "subtype"
   "synchronized"
@@ -50,11 +49,13 @@
   "when"
 ] @keyword
 
+"record" @keyword.type
+
 [
   "aliased"
   "constant"
   "renames"
-] @keyword.storage
+] @keyword.modifier
 
 [
   "with"

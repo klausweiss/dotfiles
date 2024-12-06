@@ -1,244 +1,157 @@
 local Lib = require "auto-session.lib"
+local Config = require "auto-session.config"
 local AutoCmds = require "auto-session.autocmds"
 
 ----------- Setup ----------
-local AutoSession = {
-  ---@type luaOnlyConf
-  conf = {},
-}
 
--- Run comand hooks
-local function run_hook_cmds(cmds, hook_name)
-  local results = {}
-  if not Lib.is_empty_table(cmds) then
-    for _, cmd in ipairs(cmds) do
-      Lib.logger.debug(string.format("Running %s command: %s", hook_name, cmd))
-      local success, result
-
-      if type(cmd) == "function" then
-        success, result = pcall(cmd)
-      else
-        ---@diagnostic disable-next-line: param-type-mismatch
-        success, result = pcall(vim.cmd, cmd)
-      end
-
-      if not success then
-        Lib.logger.error(string.format("Error running %s. error: %s", cmd, result))
-      else
-        table.insert(results, result)
-      end
-    end
-  end
-  return results
-end
-
----table default config for auto session
----@class defaultConf
----@field log_level string|integer "debug", "info", "warn", "error" or vim.log.levels.DEBUG, vim.log.levels.INFO, vim.log.levels.WARN, vim.log.levels.ERROR
----@field auto_session_enable_last_session boolean
----@field auto_session_last_session_dir string
----@field auto_session_root_dir string root directory for session files, by default is `vim.fn.stdpath('data')/sessions/`
----@field auto_session_enabled boolean enable auto session
----@field auto_session_create_enabled boolean|nil Enables/disables auto creating new sessions
----@field auto_save_enabled? boolean Enables/disables auto saving session
----@field auto_restore_enabled? boolean Enables/disables auto restoring session
----@field auto_session_suppress_dirs? table Suppress auto session for directories
----@field auto_session_allowed_dirs? table Allow auto session for directories, if empty then all directories are allowed except for suppressed ones
----@field auto_session_use_git_branch boolean|nil Include git branch name in session name to differentiate between sessions for different git branches
-
----Default config for auto session
----@type defaultConf
-local defaultConf = {
-  log_level = vim.g.auto_session_log_level or AutoSession.conf.log_level or AutoSession.conf.log_level or "error", -- Sets the log level of the plugin (debug, info, error). camelCase logLevel for compatibility.
-  auto_session_enable_last_session = vim.g.auto_session_enable_last_session or false, -- Enables/disables the "last session" feature
-  auto_session_root_dir = vim.fn.stdpath "data" .. "/sessions/", -- Root dir where sessions will be stored
-  auto_session_enabled = true, -- Enables/disables auto creating, saving and restoring
-  auto_session_create_enabled = nil, -- Enables/disables auto creating new sessions
-  auto_save_enabled = nil, -- Enables/disables auto save feature
-  auto_restore_enabled = nil, -- Enables/disables auto restore feature
-  auto_session_suppress_dirs = nil, -- Suppress session restore/create in certain directories
-  auto_session_allowed_dirs = nil, -- Allow session restore/create in certain directories
-  auto_session_use_git_branch = vim.g.auto_session_use_git_branch or false,
-}
-
----Lua Only Configs for Auto Session
----@class luaOnlyConf
----@field cwd_change_handling CwdChangeHandling
----@field bypass_session_save_file_types? table List of file types to bypass auto save when the only buffer open is one of the file types listed
-local luaOnlyConf = {
-  bypass_session_save_file_types = nil, -- Bypass auto save when only buffer open is one of these file types
-  ---CWD Change Handling Config
-  ---@class CwdChangeHandling
-  ---@field restore_upcoming_session boolean {true} restore session for upcoming cwd on cwd change
-  ---@field pre_cwd_changed_hook boolean? {true} This is called after auto_session code runs for the DirChangedPre autocmd
-  ---@field post_cwd_changed_hook boolean? {true} This is called after auto_session code runs for the DirChanged autocmd
-
-  ---@type CwdChangeHandling this config can also be set to `false` to disable cwd change handling altogether.
-  ---Can also be set to a table with any of the following keys:
-  --- {
-  ---   restore_upcoming_session = true,
-  ---   pre_cwd_changed_hook = nil, -- lua function hook. This is called after auto_session code runs for the `DirChangedPre` autocmd
-  ---   post_cwd_changed_hook = nil, -- lua function hook. This is called after auto_session code runs for the `DirChanged` autocmd
-  --- }
-  ---@diagnostic disable-next-line: assign-type-mismatch
-  cwd_change_handling = false,
-  ---Session Control Config
-  ---@class session_control
-  ---@field control_dir string
-  ---@field control_filename string
-
-  ---@type session_lens_config
-  session_lens = {
-    buftypes_to_ignore = {}, -- list of bufftypes to ignore when switching between sessions
-    load_on_setup = true,
-    session_control = {
-      control_dir = vim.fn.stdpath "data" .. "/auto_session/", -- Auto session control dir, for control files, like alternating between two sessions with session-lens
-      control_filename = "session_control.json", -- File name of the session control file
-    },
-  },
-}
-
--- Set default config on plugin load
-AutoSession.conf = vim.tbl_deep_extend("force", defaultConf, luaOnlyConf)
-
--- Pass configs to Lib
-Lib.conf = {
-  log_level = AutoSession.conf.log_level,
-}
+---@mod auto-session.api API
+local AutoSession = {}
 
 ---Setup function for AutoSession
----@param config defaultConf config for auto session
+---@param config AutoSession.Config|nil Config for auto session
 function AutoSession.setup(config)
-  AutoSession.conf = vim.tbl_deep_extend("force", AutoSession.conf, config or {})
-  Lib.ROOT_DIR = AutoSession.conf.auto_session_root_dir
-  Lib.setup(AutoSession.conf)
+  Config.setup(config)
+  Lib.setup(Config.log_level)
+  Lib.logger.debug("Config at start of setup", tostring(Config))
+  Config.check(Lib.logger)
 
-  if AutoSession.conf.session_lens.load_on_setup then
-    Lib.logger.debug("Loading session lens on setup", { conf = AutoSession.conf })
-    AutoSession.setup_session_lens()
-  else
-    Lib.logger.debug("Skipping loading session lens on setup", { conf = AutoSession.conf })
-  end
+  -- Validate the root dir here so it's always set up correctly
+  AutoSession.get_root_dir()
 
-  AutoCmds.setup_autocmds(AutoSession.conf, AutoSession)
-
-  SetupAutocmds()
-end
-
-function AutoSession.setup_session_lens()
-  local has_telescope, _ = pcall(require, "telescope")
-
-  if not has_telescope then
-    Lib.logger.info "Telescope.nvim is not installed. Session Lens cannot be setup!"
-    return
-  end
-
-  require("auto-session.session-lens").setup(AutoSession)
+  -- Will also setup session lens
+  AutoCmds.setup_autocmds(AutoSession)
 end
 
 local function is_enabled()
-  if vim.g.auto_session_enabled ~= nil then
-    return vim.g.auto_session_enabled == Lib._VIM_TRUE
-  elseif AutoSession.conf.auto_session_enabled ~= nil then
-    return AutoSession.conf.auto_session_enabled
-  end
-
-  return true
+  return Config.enabled
 end
 
 local function is_allowed_dirs_enabled()
-  local enabled = false
-
-  if vim.g.auto_session_allowed_dirs ~= nil then
-    enabled = not vim.tbl_isempty(vim.g.auto_session_allowed_dirs)
-  else
-    enabled = not vim.tbl_isempty(AutoSession.conf.auto_session_allowed_dirs or {})
-  end
-
-  Lib.logger.debug("is_allowed_dirs_enabled", enabled)
-  return enabled
+  return not vim.tbl_isempty(Config.allowed_dirs or {})
 end
 
 local function is_auto_create_enabled()
-  if vim.g.auto_session_create_enabled ~= nil then
-    return vim.g.auto_session_create_enabled == Lib._VIM_TRUE
-  elseif AutoSession.conf.auto_session_create_enabled ~= nil then
-    return AutoSession.conf.auto_session_create_enabled
+  if type(Config.auto_create) ~= "function" then
+    return Config.auto_create
   end
 
-  return true
+  local result = Config.auto_create()
+  Lib.logger.debug("auto_create() returned: ", result)
+  return result
 end
 
 -- get the current git branch name, if any, and only if configured to do so
-local function get_branch_name()
-  if AutoSession.conf.auto_session_use_git_branch then
-    local out = vim.fn.systemlist "git rev-parse --abbrev-ref HEAD"
-    if vim.v.shell_error ~= 0 then
-      Lib.logger.debug(string.format("git failed with: %s", table.concat(out, "\n")))
-      return ""
-    end
-    return out[1]
+local function get_git_branch_name()
+  if not Config.use_git_branch then
+    return ""
   end
 
-  return ""
+  -- WARN: this assumes you want the branch of the cwd
+  local out = vim.fn.systemlist "git rev-parse --abbrev-ref HEAD"
+  if vim.v.shell_error ~= 0 then
+    Lib.logger.debug(string.format("git failed with: %s", table.concat(out, "\n")))
+    return ""
+  end
+  return out[1]
 end
 
-local pager_mode = nil
 local in_pager_mode = function()
-  if pager_mode ~= nil then
-    return pager_mode
-  end -- Only evaluate this once
+  return vim.g.in_pager_mode == Lib._VIM_TRUE
+end
 
-  local opened_with_args = next(vim.fn.argv()) ~= nil -- Neovim was opened with args
-  local reading_from_stdin = vim.g.in_pager_mode == Lib._VIM_TRUE -- Set from StdinReadPre
+---Tracks the arguments nvim was launched with. Will be set to nil if a session is restored
+local launch_argv = nil
 
-  pager_mode = opened_with_args or reading_from_stdin
-  Lib.logger.debug("in pager mode", pager_mode)
-  return pager_mode
+---Returns whether Auto restoring / saving is enabled for the args nvim was launched with
+---@param is_save boolean Is this being called during saving or restoring
+---@return boolean Whether to allow saving/restoring
+local function enabled_for_command_line_argv(is_save)
+  is_save = is_save or false
+
+  -- If no args (or launch_argv has been unset, allow restoring/saving)
+  if not launch_argv then
+    Lib.logger.debug "launch_argv is nil, saving/restoring enabled"
+    return true
+  end
+
+  local argc = #launch_argv
+
+  Lib.logger.debug("enabled_for_command_line_argv, launch_argv: " .. vim.inspect(launch_argv))
+
+  if argc == 0 then
+    -- Launched with no args, saving is enabled
+    Lib.logger.debug "No arguments, saving/restoring enabled"
+    return true
+  end
+
+  -- if Config.args_allow_single_directory = true, then enable session handling if only param is a directory
+  if argc == 1 and vim.fn.isdirectory(launch_argv[1]) == Lib._VIM_TRUE and Config.args_allow_single_directory then
+    -- Actual session will be loaded in auto_restore_session_at_vim_enter
+    Lib.logger.debug("Allowing restore when launched with a single directory argument: " .. launch_argv[1])
+    return true
+  end
+
+  if not Config.args_allow_files_auto_save then
+    Lib.logger.debug "args_allow_files_auto_save is false, not enabling restoring/saving"
+    return false
+  end
+
+  if not is_save then
+    Lib.logger.debug "Not allowing restore when launched with argument"
+    return false
+  end
+
+  if type(Config.args_allow_files_auto_save) == "function" then
+    local ret = Config.args_allow_files_auto_save()
+    Lib.logger.debug("args_allow_files_auto_save() returned: " .. vim.inspect(ret))
+    return ret
+  end
+
+  Lib.logger.debug "Allowing possible save when launched with argument"
+  return true
 end
 
 local in_headless_mode = function()
+  -- Allow testing in headless mode
+  -- In theory, we could mock out vim.api.nvim_list_uis but that was causing
+  -- downstream issues with nvim_list_wins
+  if vim.env.AUTOSESSION_UNIT_TESTING then
+    return false
+  end
+
   return not vim.tbl_contains(vim.v.argv, "--embed") and not next(vim.api.nvim_list_uis())
 end
 
 local auto_save = function()
-  if in_pager_mode() or in_headless_mode() then
+  if in_pager_mode() or in_headless_mode() or not enabled_for_command_line_argv(true) then
+    Lib.logger.debug "auto_save, pager, headless, or enabled_for_command_line_argv returned false"
     return false
   end
 
-  if vim.g.auto_save_enabled ~= nil then
-    return vim.g.auto_save_enabled == Lib._VIM_TRUE
-  elseif AutoSession.conf.auto_save_enabled ~= nil then
-    return AutoSession.conf.auto_save_enabled
-  end
-
-  return true
+  return Config.auto_save
 end
 
 local auto_restore = function()
-  if in_pager_mode() or in_headless_mode() then
+  if in_pager_mode() or in_headless_mode() or not enabled_for_command_line_argv(false) then
     return false
   end
 
-  if vim.g.auto_restore_enabled ~= nil then
-    return vim.g.auto_restore_enabled == Lib._VIM_TRUE
-  elseif AutoSession.conf.auto_restore_enabled ~= nil then
-    return AutoSession.conf.auto_restore_enabled
-  end
-
-  return true
+  return Config.auto_restore
 end
 
 local function bypass_save_by_filetype()
-  local file_types_to_bypass = AutoSession.conf.bypass_session_save_file_types or {}
+  local filetypes_to_bypass = Config.bypass_save_filetypes or {}
   local windows = vim.api.nvim_list_wins()
 
   for _, current_window in ipairs(windows) do
     local buf = vim.api.nvim_win_get_buf(current_window)
+
+    -- Deprecated as 0.9.0, should update to following when we only want to support 0.9.0+
+    -- local buf_ft = vim.bo[buf].filetype
     local buf_ft = vim.api.nvim_buf_get_option(buf, "filetype")
 
     local local_return = false
-    for _, ft_to_bypass in ipairs(file_types_to_bypass) do
+    for _, ft_to_bypass in ipairs(filetypes_to_bypass) do
       if buf_ft == ft_to_bypass then
         local_return = true
         break
@@ -255,21 +168,19 @@ local function bypass_save_by_filetype()
   return true
 end
 
-local function suppress_session()
-  local dirs = vim.g.auto_session_suppress_dirs or AutoSession.conf.auto_session_suppress_dirs or {}
+local function suppress_session(session_dir)
+  local dirs = Config.suppressed_dirs or {}
 
-  local cwd = vim.fn.getcwd()
-  for _, s in pairs(dirs) do
-    if s ~= "/" then
-      s = string.gsub(vim.fn.simplify(Lib.expand(s)), "/+$", "")
-    end
-    for path in string.gmatch(s, "[^\r\n]+") do
-      if cwd == path then
-        return true
-      end
-    end
+  -- If session_dir is set, use that otherwise use cwd
+  -- session_dir will be set when loading a session from a directory at lauch (i.e. from argv)
+  local cwd = session_dir or vim.fn.getcwd()
+
+  if Lib.find_matching_directory(cwd, dirs) then
+    Lib.logger.debug "suppress_session found a match, suppressing"
+    return true
   end
 
+  Lib.logger.debug "suppress_session didn't find a match, returning false"
   return false
 end
 
@@ -278,675 +189,657 @@ local function is_allowed_dir()
     return true
   end
 
-  local dirs = vim.g.auto_session_allowed_dirs or AutoSession.conf.auto_session_allowed_dirs or {}
+  local dirs = Config.allowed_dirs or {}
   local cwd = vim.fn.getcwd()
-  for _, s in pairs(dirs) do
-    s = string.gsub(vim.fn.simplify(Lib.expand(s)), "/+$", "")
-    for path in string.gmatch(s, "[^\r\n]+") do
-      if cwd == path then
-        Lib.logger.debug("is_allowed_dir", true)
-        return true
-      end
-    end
+
+  if Lib.find_matching_directory(cwd, dirs) then
+    Lib.logger.debug "is_allowed_dir found a match, allowing"
+    return true
   end
 
-  Lib.logger.debug("is_allowed_dir", false)
+  Lib.logger.debug "is_allowed_dir didn't find a match, returning false"
   return false
 end
 
-local function get_session_file_name(upcoming_session_dir)
-  local session = upcoming_session_dir and upcoming_session_dir ~= "" and upcoming_session_dir or nil
-  local is_empty = Lib.is_empty(upcoming_session_dir)
+---Gets the file name for a session name.
+---If no filename is passed it, will generate one using the cwd and, if enabled, the git
+---branchname.
+---@param session_name string|nil The session name to use or nil
+---@param legacy? boolean Generate a legacy filename (default: false)
+---@return string Returns the escaped version of the name with .vim appended.
+local function get_session_file_name(session_name, legacy)
+  if not session_name or session_name == "" then
+    session_name = vim.fn.getcwd()
+    Lib.logger.debug("get_session_file_name no session_name, using cwd: " .. session_name)
 
-  if is_empty then
-    upcoming_session_dir = Lib.escaped_session_name_from_cwd()
-    Lib.logger.debug { is_empty = is_empty, upcoming_session_dir = upcoming_session_dir }
-  end
-
-  Lib.logger.debug("get_session_file_name", { session = session, upcoming_session_dir = upcoming_session_dir })
-
-  if not vim.fn.isdirectory(Lib.expand(session or upcoming_session_dir)) then
-    Lib.logger.debug(
-      "Session and sessions_dir either both point to a file or do not exist",
-      { session = session, upcoming_session_dir = upcoming_session_dir }
-    )
-    return session
-  else
-    local last_loaded_session_name = AutoSession.conf.auto_session_enable_last_session and Lib.conf.last_loaded_session
-
-    local session_name = Lib.escape_dir(upcoming_session_dir)
-
-    if not last_loaded_session_name then
-      local branch_name = get_branch_name()
-      branch_name = Lib.escape_branch_name(branch_name ~= "" and "_" .. branch_name or "")
-
-      Lib.logger.debug("not session_name", { sessions_dir = upcoming_session_dir, session_name = session_name })
-
-      -- Was getting %U issue on path without this, directory was unescaped
-      -- session_name = string.gsub(session_name, "%.", "%%%.")
-      session_name = string.format("%s%s", session_name, branch_name)
-
-      Lib.logger.debug("session name post-format", { session_name = session_name })
-    end
-
-    -- -- Was getting %U issue on path without this, directory was unescaped
-    -- session_name = string.gsub(session_name, "%%", "\\%%")
-
-    local final_path = string.format(AutoSession.get_root_dir() .. "%s.vim", session_name)
-    Lib.logger.debug("get_session_file_name", { upcoming_session_dir = upcoming_session_dir, final_path = final_path })
-
-    return final_path
-  end
-end
-
-do
-  ---Get latest session for the "last session" feature
-  ---@return string|nil
-  function AutoSession.get_latest_session()
-    local dir = Lib.expand(AutoSession.conf.auto_session_root_dir)
-    local latest_session = { session = nil, last_edited = 0 }
-
-    for _, filename in ipairs(vim.fn.readdir(dir)) do
-      local session = AutoSession.conf.auto_session_root_dir .. filename
-      local last_edited = vim.fn.getftime(session)
-
-      if last_edited > latest_session.last_edited then
-        latest_session.session = session
-        latest_session.last_edited = last_edited
+    local git_branch_name = get_git_branch_name()
+    if git_branch_name and git_branch_name ~= "" then
+      -- NOTE: By including it in the session name, there's the possibility of a collision
+      -- with an actual directory named session_name|branch_name. Meaning, that if someone
+      -- created a session in session_name (while branch_name is checked out) and then also
+      -- went to edit in a directory literally called session_name|branch_name. the sessions
+      -- would collide. Obviously, that's not perfect but I think it's an ok price to pay to
+      -- get branch specific sessions and still have a cwd derived text key to identify sessions
+      -- that can be used everywhere, incuding :SessionRestore
+      if legacy then
+        session_name = session_name .. "_" .. git_branch_name
+      else
+        -- now that we're percent encoding, we can pick a less likely character, even if it doesn't
+        -- avoid the problem entirely
+        session_name = session_name .. "|" .. git_branch_name
       end
     end
-
-    if latest_session.session ~= nil then
-      -- Need to escape % chars on the filename so expansion doesn't happen
-      return latest_session.session:gsub("%%", "\\%%")
-    else
-      return nil
-    end
   end
+
+  local escaped_session_name
+  if legacy then
+    escaped_session_name = Lib.legacy_escape_session_name(session_name)
+  else
+    escaped_session_name = Lib.escape_session_name(session_name)
+  end
+
+  -- Always add extension to session name
+  escaped_session_name = escaped_session_name .. ".vim"
+
+  return escaped_session_name
 end
 
 local function auto_save_conditions_met()
-  return is_enabled() and auto_save() and not suppress_session() and is_allowed_dir() and not bypass_save_by_filetype()
+  if not is_enabled() then
+    Lib.logger.debug "auto_save_conditions_met: is_enabled() is false, returning false"
+    return false
+  end
+
+  if not auto_save() then
+    Lib.logger.debug "auto_save_conditions_met: auto_save() is false, returning false"
+    return false
+  end
+
+  if suppress_session() then
+    Lib.logger.debug "auto_save_conditions_met: suppress_session() is true, returning false"
+    return false
+  end
+
+  if not is_allowed_dir() then
+    Lib.logger.debug "auto_save_conditions_met: is_allowed_dir() is false, returning false"
+    return false
+  end
+
+  if bypass_save_by_filetype() then
+    Lib.logger.debug "auto_save_conditions_met: bypass_save_by_filetype() is true, returning false"
+    return false
+  end
+
+  Lib.logger.debug "auto_save_conditions_met: returning true"
+  return true
+end
+
+---Quickly checks if a session file exists for the current working directory.
+---This is useful for starter plugins which don't want to display 'restore session'
+---unless a session for the current working directory exists.
+---@return boolean True if a session exists for the cwd
+function AutoSession.session_exists_for_cwd()
+  local session_file = get_session_file_name(vim.fn.getcwd())
+  if vim.fn.filereadable(AutoSession.get_root_dir() .. session_file) ~= 0 then
+    return true
+  end
+
+  -- Check legacy sessions
+  session_file = get_session_file_name(vim.fn.getcwd(), true)
+  return vim.fn.filereadable(AutoSession.get_root_dir() .. session_file) ~= 0
 end
 
 ---AutoSaveSession
 ---Function called by auto_session to trigger auto_saving sessions, for example on VimExit events.
----@param sessions_dir? string the session directory to auto_save a session for. If empty this function will end up using the cwd to infer what session to save for.
-function AutoSession.AutoSaveSession(sessions_dir)
-  if auto_save_conditions_met() then
-    if not is_auto_create_enabled() then
-      local session_file_name = get_session_file_name(sessions_dir)
-      if not Lib.is_readable(session_file_name) then
-        return
-      end
-    end
-
-    AutoSession.SaveSession(sessions_dir, true)
+---@return boolean True if a session was saved
+function AutoSession.AutoSaveSession()
+  if not auto_save_conditions_met() then
+    Lib.logger.debug "Auto save conditions not met"
+    return false
   end
+
+  -- If there's a manually named session, use that on exit instead of one named for cwd
+  local current_session = nil
+
+  if AutoSession.manually_named_session then
+    current_session = Lib.escaped_session_name_to_session_name(vim.fn.fnamemodify(vim.v.this_session, ":t"))
+    Lib.logger.debug("Using existing session name: " .. current_session)
+  end
+
+  if not is_auto_create_enabled() then
+    local session_file_name = get_session_file_name(current_session)
+    if vim.fn.filereadable(AutoSession.get_root_dir() .. session_file_name) == 0 then
+      Lib.logger.debug "Create not enabled and no existing session, not creating session"
+      return false
+    end
+  end
+
+  if Config.close_unsupported_windows then
+    -- Wrap in pcall in case there's an error while trying to close windows
+    local success, result = pcall(Lib.close_unsupported_windows)
+    if not success then
+      Lib.logger.debug("Error closing unsupported windows: " .. result)
+    end
+  end
+
+  -- Don't try to show a message as we're exiting
+  return AutoSession.SaveSession(current_session, false)
 end
 
+---@private
 ---Gets the root directory of where to save the sessions.
 ---By default this resolves to `vim.fn.stdpath "data" .. "/sessions/"`
+---@param with_trailing_separator? boolean whether to incude the trailing separator. A few places (e.g. telescope picker) don't expect a trailing separator (Defaults to true)
 ---@return string
-function AutoSession.get_root_dir()
-  if AutoSession.validated then
-    return AutoSession.conf.auto_session_root_dir
+function AutoSession.get_root_dir(with_trailing_separator)
+  if with_trailing_separator == nil then
+    with_trailing_separator = true
   end
 
-  local root_dir = vim.g["auto_session_root_dir"] or AutoSession.conf.auto_session_root_dir
-  Lib.init_dir(root_dir)
-
-  AutoSession.conf.auto_session_root_dir = Lib.validate_root_dir(root_dir)
-  AutoSession.validated = true
-  return root_dir
-end
-
----Get the hook commands to run
----This function gets cmds from both lua and vimscript configs
----@param typ string
----@return function[]|string[]
-function AutoSession.get_cmds(typ)
-  return AutoSession.conf[typ .. "_cmds"] or vim.g["auto_session_" .. typ .. "_cmds"]
-end
-
-local function message_after_saving(path, auto)
-  if auto then
-    Lib.logger.debug("Session saved at " .. path)
-  else
-    Lib.logger.info("Session saved at " .. path)
-  end
-end
-
----Save extra info to "{session_file}x.vim"
-local function save_extra_cmds(session_file_name)
-  local extra_cmds = AutoSession.get_cmds "save_extra"
-
-  if extra_cmds then
-    local datas = run_hook_cmds(extra_cmds, "save-extra")
-    local extra_file = string.gsub(session_file_name, ".vim$", "x.vim")
-    extra_file = string.gsub(extra_file, "\\%%", "%%")
-    vim.fn.writefile(datas, extra_file)
-  end
-end
-
----@class PickerItem
----@field display_name string
----@field path string
-
---- Formats an autosession file name to be more presentable to a user
----@param path string
----@return string
-function AutoSession.format_file_name(path)
-  return Lib.unescape_dir(path):match "(.+)%.vim"
-end
-
----@return PickerItem[]
-function AutoSession.get_session_files()
-  local files = {}
-  local sessions_dir = AutoSession.get_root_dir()
-
-  if not vim.fn.isdirectory(sessions_dir) then
-    return files
+  if not AutoSession.validated then
+    Config.root_dir = Lib.validate_root_dir(Config.root_dir)
+    Lib.logger.debug("Root dir set to: " .. Config.root_dir)
+    AutoSession.validated = true
   end
 
-  local entries = vim.fn.readdir(sessions_dir, function(item)
-    return vim.fn.isdirectory(item) == 0 and not string.find(item, "x.vim$")
-  end)
-
-  return vim.tbl_map(function(entry)
-    return { display_name = AutoSession.format_file_name(entry), path = entry }
-  end, entries)
-end
-
----@param files string[]
----@param prompt string
----@param callback fun(choice: PickerItem)
-local function open_picker(files, prompt, callback)
-  vim.ui.select(files, {
-    prompt = prompt,
-    kind = "auto-session",
-    format_item = function(item)
-      return item.display_name
-    end,
-  }, function(choice)
-    if choice then
-      callback(choice)
-    end
-  end)
-end
-
----@param data table
-local function handle_autosession_command(data)
-  local files = AutoSession.get_session_files()
-  if data.args:match "search" then
-    open_picker(files, "Select a session:", function(choice)
-      -- Change dir to selected session path, the DirChangePre and DirChange events will take care of the rest
-      vim.fn.chdir(choice.display_name)
-    end)
-  elseif data.args:match "delete" then
-    open_picker(files, "Delete a session:", function(choice)
-      AutoSession.DeleteSessionByName(choice.display_name)
-    end)
-  end
-end
-
-vim.api.nvim_create_user_command("Autosession", handle_autosession_command, { nargs = 1 })
-
--- local function write_to_session_control(session_file_name)
---   local control_dir = AutoSession.conf.session_control.control_dir
---   local control_file = AutoSession.conf.session_control.control_filename
---   session_file_name = Lib.expand(session_file_name)
-
---   Lib.init_dir(control_dir)
-
---   local session_control_file = control_dir .. control_file
-
---   if vim.fn.filereadable(session_control_file) == 1 then
---     local content = vim.fn.readfile(session_control_file)
---     local sessions = { current = session_file_name, alternate = Lib.expand(content[#content - 1]) }
-
---     Lib.logger.debug { sessions = sessions, content = content }
-
---     if sessions.current == sessions.alternate then
---       -- Do not write to file when the new session would be the same as the one already in the file
---       Lib.logger.debug "Not writing to session control file, alternate would be the same as current"
---       return
---     end
-
---     if #content >= 2 then
---       -- File is too big, keep only latest and second latest
---       Lib.logger.debug "Session control file is at or over the limit of 2, rewriting to keep size down"
---       vim.fn.writefile({ content[#content - 1] }, session_control_file)
---     end
---   end
-
---   -- Write latest restored session
---   vim.fn.writefile({ session_file_name }, session_control_file, "a")
-
---   local log_ending_state = function()
---     local content = vim.fn.readfile(session_control_file)
---     local sessions = { current = session_file_name, alternate = Lib.expand(content[#content - 1]) }
-
---     Lib.logger.debug("alternate state right before function end", { sessions = sessions, content = content })
---   end
-
---   log_ending_state()
--- end
-
-local function write_to_session_control_json(session_file_name)
-  local control_dir = AutoSession.conf.session_lens.session_control.control_dir
-  local control_file = AutoSession.conf.session_lens.session_control.control_filename
-  session_file_name = Lib.expand(session_file_name)
-
-  Lib.init_dir(control_dir)
-
-  local session_control_file = control_dir .. control_file
-
-  local log_ending_state = function()
-    local content = vim.fn.readfile(session_control_file)
-    local session_control = vim.json.decode(content[1] or "{}") or {}
-    local sessions = { current = session_control.current, alternate = session_control.alternate }
-
-    Lib.logger.debug("session control file contents", { sessions = sessions, content = content })
+  if with_trailing_separator then
+    return Config.root_dir
   end
 
-  if vim.fn.filereadable(session_control_file) == 1 then
-    local content = vim.fn.readfile(session_control_file)
-    Lib.logger.debug { content = content }
-    local json = vim.json.decode(content[1] or "{}") or {}
-
-    local sessions = {
-      current = session_file_name,
-      alternate = json.current,
-    }
-
-    Lib.logger.debug { sessions = sessions, content = content }
-
-    if sessions.current == sessions.alternate then
-      -- Do not write to file when the new session would be the same as the one already in the file
-      Lib.logger.debug "Not writing to session control file, alternate would be the same as current"
-      return
-    end
-
-    local json_to_save = vim.json.encode(sessions)
-
-    vim.fn.writefile({ json_to_save }, session_control_file)
-    log_ending_state()
-    return
-  end
-
-  -- Write latest restored session
-  local json = vim.json.encode { current = session_file_name }
-  vim.fn.writefile({ json }, session_control_file)
-
-  log_ending_state()
+  return Lib.remove_trailing_separator(Config.root_dir)
 end
 
---Saves the session, overriding if previously existing.
----@param sessions_dir? string
----@param auto boolean
-function AutoSession.SaveSession(sessions_dir, auto)
-  Lib.logger.debug { sessions_dir = sessions_dir, auto = auto }
-  local session_file_name = get_session_file_name(sessions_dir)
+---@private
+---Get the hook commands from the config and run them
+---@param hook_name string
+---@return table|nil Results of the commands
+function AutoSession.run_cmds(hook_name)
+  local cmds = Config[hook_name .. "_cmds"]
+  return Lib.run_hook_cmds(cmds, hook_name)
+end
 
-  Lib.logger.debug { session_file_name = session_file_name }
+---Calls a hook to get any user/extra commands and if any, saves them to *x.vim
+---@param session_path string The path of the session file to save the extra params for
+---@return boolean Returns whether extra commands were saved
+local function save_extra_cmds_new(session_path)
+  local data = AutoSession.run_cmds "save_extra"
+  local extra_file = string.gsub(session_path, "%.vim$", "x.vim")
 
-  local pre_cmds = AutoSession.get_cmds "pre_save"
-  run_hook_cmds(pre_cmds, "pre-save")
+  -- data is a table of strings or tables, one for each hook function
+  -- need to combine them all here into a single table of strings
+  local data_to_write = Lib.flatten_table_and_split_strings(data)
 
-  vim.cmd("mks! " .. session_file_name)
+  if not data_to_write or vim.tbl_isempty(data_to_write) then
+    -- Have to delete the file just in case there's an old file from a previous save
+    vim.fn.delete(extra_file)
+    return false
+  end
 
-  save_extra_cmds(session_file_name)
-  message_after_saving(session_file_name, auto)
-
-  local post_cmds = AutoSession.get_cmds "post_save"
-  run_hook_cmds(post_cmds, "post-save")
+  if vim.fn.writefile(data_to_write, extra_file) ~= 0 then
+    return false
+  end
 
   return true
 end
 
----Function called by AutoSession when automatically restoring a session.
----This function avoids calling RestoreSession automatically when argv is not nil.
----@param session_dir any
----@return boolean boolean returns whether restoring the session was successful or not.
-function AutoSession.AutoRestoreSession(session_dir)
-  if is_enabled() and auto_restore() and not suppress_session() then
-    return AutoSession.RestoreSession(session_dir)
+---@private
+---Handler for when a session is picked from the UI, either via Telescope or via AutoSession.select_session
+---Save the current session if the session we're loading isn't also for the cwd (if autosave allows)
+---and then restore the selected session
+---@param session_name string The session name to restore
+---@return boolean Was the session restored successfully
+function AutoSession.autosave_and_restore(session_name)
+  local cwd_session_name = Lib.escaped_session_name_to_session_name(get_session_file_name())
+  if cwd_session_name ~= session_name then
+    Lib.logger.debug("Autosaving before restoring", { cwd = cwd_session_name, session_name = session_name })
+    AutoSession.AutoSaveSession()
+  else
+    Lib.logger.debug("Not autosaving, cwd == session_name for: ", session_name)
   end
+
+  return AutoSession.RestoreSession(session_name)
+end
+
+local function write_to_session_control_json(session_file_name)
+  local control_dir = Config.session_lens.session_control.control_dir
+  local control_file = Config.session_lens.session_control.control_filename
+  session_file_name = Lib.expand(session_file_name)
+
+  -- expand the path
+  control_dir = vim.fn.expand(control_dir)
+  Lib.init_dir(control_dir)
+
+  -- Get the full path
+  local session_control_file_path = control_dir .. control_file
+
+  -- Load existing data, if it exists
+  local session_control = Lib.load_session_control_file(session_control_file_path)
+  Lib.logger.debug("Loaded session control data: ", session_control)
+
+  -- If there's existing data
+  if session_control.current then
+    if session_control.current == session_file_name then
+      Lib.logger.debug(
+        "Not writing to session control file, current is same as session_file_name: " .. session_file_name
+      )
+      return
+    end
+    session_control.alternate = session_control.current
+  end
+
+  session_control.current = session_file_name
+
+  Lib.logger.debug("Saving session control", session_control)
+
+  local json_to_save = vim.json.encode(session_control)
+
+  vim.fn.writefile({ json_to_save }, session_control_file_path)
+end
+
+---Function called by AutoSession when automatically restoring a session.
+---@param session_name? string An optional session to load
+---@param is_startup? boolean|nil Is this autorestore happening on startup
+---@return boolean boolean returns whether restoring the session was successful or not.
+function AutoSession.AutoRestoreSession(session_name, is_startup)
+  -- WARN: should this be checking is_allowed_dir as well?
+  if not is_enabled() or not auto_restore() or suppress_session(session_name) then
+    return false
+  end
+
+  local opts = {
+    show_message = Config.show_auto_restore_notif,
+    is_startup_autorestore = is_startup,
+  }
+  return AutoSession.RestoreSession(session_name, opts)
+end
+
+---@private
+---Called at VimEnter (after Lazy is done) to see if we should automatically restore a session
+---If launched with a single directory parameter and Config.args_allow_single_directory is true, pass
+---that in as the session_dir. Handles both 'nvim .' and 'nvim some/dir'
+---Also make sure to call no_restore if no session was restored
+---@return boolean Was a session restored
+function AutoSession.auto_restore_session_at_vim_enter()
+  -- Save the launch args here as restoring a session will replace vim.fn.argv. We clear
+  -- launch_argv in restore session so it's only used for the session launched from the command
+  -- line
+  launch_argv = vim.fn.argv()
+
+  -- Is there exactly one argument and is it a directory?
+  if
+    Config.args_allow_single_directory
+    and #launch_argv == 1
+    and vim.fn.isdirectory(launch_argv[1]) == Lib._VIM_TRUE
+  then
+    -- Get the full path of the directory and make sure it doesn't have a trailing path_separator
+    -- to make sure we find the session
+    local session_name = Lib.remove_trailing_separator(vim.fn.fnamemodify(launch_argv[1], ":p"))
+    Lib.logger.debug("Launched with single directory, using as session_dir: " .. session_name)
+
+    if AutoSession.AutoRestoreSession(session_name, true) then
+      return true
+    end
+
+    -- We failed to load a session for the other directory. Unless session name matches cwd, we don't
+    -- want to enable autosaving since it might replace the session for the cwd
+    if vim.fn.getcwd() ~= session_name then
+      Lib.logger.debug "Not enabling autosave because launch argument didn't load session and doesn't match cwd"
+      Config.auto_save = false
+    end
+  else
+    if AutoSession.AutoRestoreSession(nil, true) then
+      return true
+    end
+
+    -- Check to see if the last session feature is on
+    if Config.auto_restore_last_session then
+      Lib.logger.debug "Last session is enabled, checking for session"
+
+      local last_session_name = Lib.get_latest_session(AutoSession.get_root_dir())
+      if last_session_name then
+        Lib.logger.debug("Found last session: " .. last_session_name)
+        if
+          AutoSession.RestoreSession(
+            last_session_name,
+            { show_message = Config.show_auto_restore_notif, is_startup_autorestore = true }
+          )
+        then
+          return true
+        end
+      end
+      Lib.logger.debug "Failed to load last session"
+    end
+  end
+
+  -- No session was restored, dispatch no-restore hook
+  Lib.logger.debug "No session restored, call no_restore hooks"
+  AutoSession.run_cmds "no_restore"
 
   return false
 end
 
-local function extract_dir_or_file(session_dir_or_file)
-  local session_dir = nil
-  local session_file = nil
-
-  if Lib.is_empty(session_dir_or_file) then
-    session_dir = vim.fn.getcwd()
-  elseif vim.fn.isdirectory(Lib.expand(session_dir_or_file)) == Lib._VIM_TRUE then
-    if not Lib.ends_with(session_dir_or_file, "/") then
-      session_dir = session_dir_or_file
-    else
-      session_dir = session_dir_or_file
-    end
-  else
-    session_file = session_dir_or_file
-  end
-
-  return session_dir, session_file
+---Saves a session to the dir specified in the config. If no optional
+---session name is passed in, it uses the cwd as the session name
+---@param session_name? string|nil Optional session name
+---@param show_message? boolean Optional, whether to show a message on save (true by default)
+---@return boolean
+function AutoSession.SaveSession(session_name, show_message)
+  return AutoSession.SaveSessionToDir(AutoSession.get_root_dir(), session_name, show_message)
 end
 
----RestoreSessionFromFile takes a session_file and calls RestoreSession after parsing the provided parameter.
----@param session_file string
-function AutoSession.RestoreSessionFromFile(session_file)
-  AutoSession.RestoreSession(string.format(AutoSession.get_root_dir() .. "%s.vim", session_file:gsub("/", "%%")))
-end
+---Saves a session to the passed in directory. If no optional
+---session name is passed in, it uses the cwd as the session name
+---@param session_dir string Directory to write the session file to
+---@param session_name? string|nil Optional session name
+---@param show_message? boolean Optional, whether to show a message on save (true by default)
+---@return boolean
+function AutoSession.SaveSessionToDir(session_dir, session_name, show_message)
+  Lib.logger.debug("SaveSessionToDir start", { session_dir, session_name, show_message })
 
--- TODO: make this more readable!
----Restores the session by sourcing the session file if it exists/is readable.
----This function is intended to be called by the user but it is also called by `AutoRestoreSession`
----@param sessions_dir_or_file string a dir string or a file string
----@return boolean boolean returns whether restoring the session was successful or not.
-function AutoSession.RestoreSession(sessions_dir_or_file)
-  local session_dir, session_file = extract_dir_or_file(sessions_dir_or_file)
-  Lib.logger.debug("RestoreSession", { session_dir = session_dir, session_file = session_file })
+  -- Canonicalize and create session_dir if needed
+  session_dir = Lib.validate_root_dir(session_dir)
+  Lib.logger.debug("SaveSessionToDir validated session_dir: ", session_dir)
 
-  local restore = function(file_path, session_name)
-    local pre_cmds = AutoSession.get_cmds "pre_restore"
-    run_hook_cmds(pre_cmds, "pre-restore")
+  local escaped_session_name = get_session_file_name(session_name)
 
-    local cmd = "silent source " .. file_path
-    local success, result = pcall(vim.cmd, cmd)
+  Lib.logger.debug("SaveSessionToDir escaped session name: " .. escaped_session_name)
 
-    if not success then
-      Lib.logger.error([[
-Error restoring session! The session might be corrupted.
-Disabling auto save. Please check for errors in your config. Error:
-]] .. result)
-      AutoSession.conf.auto_save_enabled = false
-      return
+  -- If a session_name was passed in and it's different than the one for
+  -- the cwd, we know it's a manually named session. We track that so we
+  -- can write to that session on exit
+  if session_name then
+    local cwd_escaped_session_name = get_session_file_name(nil)
+
+    if escaped_session_name ~= cwd_escaped_session_name then
+      AutoSession.manually_named_session = true
+      Lib.logger.debug "Session is manually named"
     end
-
-    Lib.logger.info("Session restored from " .. file_path)
-
-    if AutoSession.conf.auto_session_enable_last_session then
-      Lib.conf.last_loaded_session = session_name
-    end
-
-    local post_cmds = AutoSession.get_cmds "post_restore"
-    run_hook_cmds(post_cmds, "post-restore")
-
-    write_to_session_control_json(file_path)
-
-    return file_path
   end
 
-  -- I still don't like reading this chunk, please cleanup
-  if session_dir then
-    Lib.logger.debug "Using session DIR"
+  local session_path = session_dir .. escaped_session_name
 
-    local last_loaded_session_name = AutoSession.conf.auto_session_enable_last_session and Lib.conf.last_loaded_session
+  AutoSession.run_cmds "pre_save"
 
-    local session_file_path
-    if not last_loaded_session_name then
-      session_file_path = get_session_file_name(session_dir)
-      last_loaded_session_name = vim.fn.fnamemodify(session_file_path, ":t:r")
+  -- We don't want to save arguments to the session as that can cause issues
+  -- with buffers that can't be removed from the session as they keep being
+  -- added back through an argadd
+  vim.cmd "%argdelete"
 
-      Lib.logger.debug {
-        "No session name, getting session file name",
-        session_file_path = session_file_path,
-        last_loaded_session_name = last_loaded_session_name,
-        session_dir = session_dir,
-      }
-    else
-      session_file_path = string.format(AutoSession.get_root_dir() .. "%s.vim", last_loaded_session_name)
-      Lib.logger.debug {
-        "Using session name",
-        session_file_path = session_file_path,
-        last_loaded_session_name = last_loaded_session_name,
-        session_dir = session_dir,
-      }
-    end
+  Lib.logger.debug("SaveSessionToDir writing session to: " .. session_path)
 
-    local legacy_session_name = Lib.legacy_session_name_from_cwd()
-    local legacy_file_path = string.format(AutoSession.get_root_dir() .. "%s.vim", legacy_session_name)
+  -- Vim cmds require escaping any % with a \ but we don't want to do that
+  -- for direct filesystem operations (like in save_extra_cmds_new) so we
+  -- that here, as late as possible and only for this operation
+  local vim_session_path = Lib.escape_string_for_vim(session_path)
+  vim.cmd("mks! " .. vim_session_path)
 
-    Lib.logger.debug {
-      last_loaded_session_name = last_loaded_session_name,
-      last_loaded_session_namesession_file_path = session_file_path,
-      last_loaded_session_namelegacy_file_path = legacy_file_path,
-    }
+  save_extra_cmds_new(session_path)
 
-    if Lib.is_readable(session_file_path) then
-      RESTORED_WITH = restore(session_file_path, last_loaded_session_name)
-    elseif Lib.is_readable(legacy_file_path) then
-      RESTORED_WITH = restore(legacy_file_path, last_loaded_session_name)
-    else
-      if AutoSession.conf.auto_session_enable_last_session then
-        local last_session_file_path = AutoSession.get_latest_session()
-        if last_session_file_path ~= nil then
-          Lib.logger.info("Restoring last session:", last_session_file_path)
-          RESTORED_WITH = restore(last_session_file_path)
-        end
-      else
-        Lib.logger.debug "File not readable, not restoring session"
-        return false
-      end
-    end
-  elseif session_file then
-    Lib.logger.debug "Using session FILE"
-    local escaped_file = session_file:gsub("%%", "\\%%")
-    if Lib.is_readable(escaped_file) then
-      Lib.logger.debug "isReadable, calling restore"
-      RESTORED_WITH = restore(escaped_file)
-    else
-      Lib.logger.debug "File not readable, not restoring session"
-    end
-  else
-    Lib.logger.error "Error while trying to parse session dir or file"
+  AutoSession.run_cmds "post_save"
+
+  -- session_name might be nil (e.g. when using cwd), unescape escaped_session_name instead
+  Lib.logger.debug("Saved session: " .. Lib.unescape_session_name(escaped_session_name))
+  if show_message == nil or show_message then
+    vim.notify("Saved session: " .. Lib.get_session_display_name(escaped_session_name))
   end
-
-  Lib.logger.debug { RESTORED_WITH = RESTORED_WITH }
-
-  -- AutoSession.SaveSession(RESTORED_WITH, true)
 
   return true
 end
 
-local maybe_disable_autosave = function(session_name)
-  local current_session = get_session_file_name()
+---@class RestoreOpts
+---@field show_message boolean|nil Should messages be shown
+---@field is_startup_autorestore boolean|nil True if this is the the startup autorestore
 
-  if session_name == current_session then
-    Lib.logger.debug("Auto Save disabled for current session.", {
-      session_name = session_name,
-      current_session = current_session,
-    })
-    AutoSession.conf.auto_save_enabled = false
-  else
-    Lib.logger.debug("Auto Save is still enabled for current session.", {
-      session_name = session_name,
-      current_session = current_session,
-    })
-  end
+---Restores a session from the passed in directory. If no optional session name
+---is passed in, it uses the cwd as the session name
+---@param session_name? string|nil Optional session name
+---@param opts? RestoreOpts|nil restore options
+function AutoSession.RestoreSession(session_name, opts)
+  return AutoSession.RestoreSessionFromDir(AutoSession.get_root_dir(), session_name, opts)
 end
 
----DisableAutoSave
----Intended to be called by the user
-function AutoSession.DisableAutoSave()
-  Lib.logger.debug "Auto Save disabled manually."
-  AutoSession.conf.auto_save_enabled = false
-end
+---Restores a session from the passed in directory. If no optional session name
+---is passed in, it uses the cwd as the session name
+---@param session_dir string Directory to write the session file to
+---@param session_name? string|nil Optional session name
+---@param opts? RestoreOpts|nil restore options
+function AutoSession.RestoreSessionFromDir(session_dir, session_name, opts)
+  Lib.logger.debug("RestoreSessionFromDir start", { session_dir, session_name })
+  opts = opts or {}
+  -- Canonicalize and create session_dir if needed
+  session_dir = Lib.validate_root_dir(session_dir)
+  Lib.logger.debug("RestoreSessionFromDir validated session_dir: ", session_dir)
 
----CompleteSessions is used by the vimscript command for session name/path completion.
----@return string
-function AutoSession.CompleteSessions()
-  local session_files = vim.fn.glob(AutoSession.get_root_dir() .. "/*", true, true)
-  local session_names = {}
+  local escaped_session_name = get_session_file_name(session_name)
 
-  for _, sf in ipairs(session_files) do
-    local name = Lib.unescape_dir(vim.fn.fnamemodify(sf, ":t:r"))
-    table.insert(session_names, name)
-  end
+  Lib.logger.debug("RestoreSessionFromDir escaped session name: " .. escaped_session_name)
 
-  return table.concat(session_names, "\n")
-end
+  local session_path = session_dir .. escaped_session_name
 
----DeleteSessionByName deletes sessions given a provided list of paths
----@param ... string[]
-function AutoSession.DeleteSessionByName(...)
-  local session_paths = {}
+  -- If a session_name was passed in and it's different than the one for
+  -- the cwd, we know it's a manually named session. We track that so we
+  -- can write to that session on exit
+  if session_name then
+    local cwd_escaped_session_name = get_session_file_name(nil)
 
-  for _, name in ipairs { ... } do
-    local escaped_session = Lib.escape_dir(name)
-    maybe_disable_autosave(escaped_session)
-    local session_path = string.format("%s/%s.vim", AutoSession.get_root_dir(), escaped_session)
-    Lib.logger.debug("Deleting session", session_path)
-    table.insert(session_paths, session_path)
-  end
-  AutoSession.DeleteSession(unpack(session_paths))
-end
-
----DeleteSession delets a single session given a provided path
----@param ... string[]
-function AutoSession.DeleteSession(...)
-  local pre_cmds = AutoSession.get_cmds "pre_delete"
-  run_hook_cmds(pre_cmds, "pre-delete")
-
-  if not Lib.is_empty(...) then
-    for _, file_path in ipairs { ... } do
-      Lib.logger.debug("session_file_path", file_path)
-
-      vim.fn.delete(Lib.expand(file_path))
-
-      Lib.logger.info("Deleted session " .. file_path)
-    end
-  else
-    local session_file_path = get_session_file_name()
-
-    vim.fn.delete(Lib.expand(session_file_path))
-
-    maybe_disable_autosave(session_file_path)
-    Lib.logger.info("Deleted session " .. session_file_path)
-  end
-
-  local post_cmds = AutoSession.get_cmds "post_delete"
-  run_hook_cmds(post_cmds, "post-delete")
-end
-
----PurgeOrphanedSessions deletes sessions with no working directory exist
-function AutoSession.PurgeOrphanedSessions()
-  local orphaned_sessions = {}
-
-  for _, session in ipairs(AutoSession.get_session_files()) do
-    if session.display_name:find('^/.*') and vim.fn.isdirectory(session.display_name) == Lib._VIM_FALSE then
-      table.insert(orphaned_sessions, session.display_name)
+    if escaped_session_name ~= cwd_escaped_session_name then
+      AutoSession.manually_named_session = true
+      Lib.logger.debug "Session is manually named"
     end
   end
 
-  if not Lib.is_empty_table(orphaned_sessions) then
-    for _, name in ipairs(orphaned_sessions) do
-      Lib.logger.info(string.format("Purging session: %s", name))
-      local escaped_session = Lib.escape_dir(name)
-      local session_path = string.format("%s/%s.vim", AutoSession.get_root_dir(), escaped_session)
-      vim.fn.delete(Lib.expand(session_path))
-    end
-  else
-    Lib.logger.info "Nothing to purge"
-  end
-end
+  if vim.fn.filereadable(session_path) ~= 1 then
+    Lib.logger.debug("RestoreSessionFromDir session does not exist: " .. session_path)
 
-function SetupAutocmds()
-  Lib.logger.info "Setting up autocmds"
+    -- NOTE: This won't work for legacy window session names containing dashes because
+    -- information was lost (i.e. was the dash part of the original parth or was it
+    -- a parth separator).
+    local legacy_escaped_session_name = get_session_file_name(session_name, true)
+    local legacy_session_path = session_dir .. legacy_escaped_session_name
 
-  -- Check if the auto-session plugin has already been loaded to prevent loading it twice
-  if vim.g.loaded_auto_session ~= nil then
-    return
-  end
-
-  -- Initialize variables
-  vim.g.in_pager_mode = false
-
-  local function SaveSession(args)
-    return AutoSession.SaveSession(args.args, false)
-  end
-
-  local function SessionRestore(args)
-    return AutoSession.RestoreSession(args.args)
-  end
-
-  local function SessionDelete(args)
-    return AutoSession.DeleteSession(args.args)
-  end
-
-  local function SessionPurgeOrphaned()
-    return AutoSession.PurgeOrphanedSessions()
-  end
-
-  local function DisableAutoSave()
-    return AutoSession.DisableAutoSave()
-  end
-
-  vim.api.nvim_create_user_command(
-    "SessionSave",
-    SaveSession,
-    { bang = true, desc = "Save the current session. Based in cwd if no arguments are passed" }
-  )
-
-  vim.api.nvim_create_user_command("SessionRestore", SessionRestore, { bang = true, desc = "Restore Session" })
-
-  vim.api.nvim_create_user_command("DisableAutoSave", DisableAutoSave, { bang = true, desc = "Disable Auto Save" })
-
-  vim.api.nvim_create_user_command(
-    "SessionRestoreFromFile",
-    SessionRestore,
-    { complete = AutoSession.CompleteSessions, bang = true, nargs = "*", desc = "Restore Session from file" }
-  )
-
-  vim.api.nvim_create_user_command(
-    "SessionDelete",
-    SessionDelete,
-    { complete = AutoSession.CompleteSessions, bang = true, nargs = "*", desc = "Delete Session" }
-  )
-
-  vim.api.nvim_create_user_command(
-    "SessionPurgeOrphaned",
-    SessionPurgeOrphaned,
-    { desc = "Remove all orphaned sessions with no directory left" }
-  )
-
-  local group = vim.api.nvim_create_augroup("auto_session_group", {})
-
-  vim.api.nvim_create_autocmd({ "StdinReadPre" }, {
-    group = group,
-    pattern = "*",
-    callback = function()
-      vim.g.in_pager_mode = true
-    end,
-  })
-
-  vim.api.nvim_create_autocmd({ "VimEnter" }, {
-    group = group,
-    pattern = "*",
-    nested = true,
-    callback = function()
-      if not vim.g.in_pager_mode then
-        AutoSession.AutoRestoreSession()
+    if vim.fn.filereadable(legacy_session_path) ~= 1 then
+      if opts.show_message == nil or opts.show_message then
+        vim.notify("Could not restore session: " .. Lib.get_session_display_name(escaped_session_name))
       end
-    end,
-  })
+      return false
+    end
 
-  vim.api.nvim_create_autocmd({ "VimLeave" }, {
-    group = group,
-    pattern = "*",
-    callback = function()
-      if not vim.g.in_pager_mode then
-        AutoSession.AutoSaveSession()
+    Lib.logger.debug("RestoreSessionFromDir renaming legacy session: " .. legacy_escaped_session_name)
+    ---@diagnostic disable-next-line: undefined-field
+    if not vim.loop.fs_rename(legacy_session_path, session_path) then
+      Lib.logger.debug(
+        "RestoreSessionFromDir rename failed!",
+        { session_path = session_path, legacy_session_path = legacy_session_path }
+      )
+      return false
+    end
+
+    -- Check for user commands
+    local legacy_user_commands_path = legacy_session_path:gsub("%.vim", "x.vim")
+    local user_commands_path = session_path:gsub("%.vim", "x.vim")
+
+    -- If there is a legacy commands file and it's not actually a session and there is already a user commands file,
+    -- then migrate
+    if vim.fn.filereadable(legacy_user_commands_path) == 1 and not Lib.is_session_file(legacy_user_commands_path) then
+      if vim.fn.filereadable(user_commands_path) == 0 then
+        Lib.logger.debug("RestoreSessionFromDir Renaming legacy user commands" .. legacy_user_commands_path)
+        vim.loop.fs_rename(legacy_user_commands_path, user_commands_path)
       end
-    end,
-  })
+    end
+  end
 
-  -- Set a flag to indicate that the plugin has been loaded
-  vim.g.loaded_auto_session = true
+  return AutoSession.RestoreSessionFile(session_path, opts)
+end
+
+---Restores a session from a specific file
+---@param session_path string The session file to load
+---@param opts? RestoreOpts|nil restore options
+---@return boolean Was a session restored
+function AutoSession.RestoreSessionFile(session_path, opts)
+  Lib.logger.debug("RestoreSessionFile restoring session from: " .. session_path)
+  opts = opts or {}
+
+  AutoSession.run_cmds "pre_restore"
+
+  -- Stop any language servers if config is set but don't do
+  -- this on startup as it causes a perceptible delay (and we
+  -- know there aren't any language servers anyway)
+  if not opts.is_startup_autorestore then
+    if Config.lsp_stop_on_restore then
+      if type(Config.lsp_stop_on_restore) == "function" then
+        Config.lsp_stop_on_restore()
+      else
+        local clients = vim.lsp.get_clients()
+        if #clients > 0 then
+          vim.lsp.stop_client(clients)
+        end
+      end
+    end
+  end
+  -- Vim cmds require escaping any % with a \ but we don't want to do that
+  -- for direct filesystem operations (like in save_extra_cmds_new) so we
+  -- that here, as late as possible and only for this operation
+  local vim_session_path = Lib.escape_string_for_vim(session_path)
+  local cmd = "source " .. vim_session_path
+
+  -- Set restore_in_progress here so we won't also try to save/load the session if
+  -- cwd_change_handling = true and the session contains a cd command
+  -- The session file will also set SessionLoad so we'll check that too but feels
+  -- safer to have our own flag as well, in case the vim flag changes
+  AutoSession.restore_in_progress = true
+
+  -- Clear the buffers and jumps
+  vim.cmd "silent %bw!"
+  vim.cmd "silent clearjumps"
+
+  ---@diagnostic disable-next-line: param-type-mismatch
+  local success, result = pcall(vim.cmd, "silent " .. cmd)
+
+  -- normal restore failed, source again but with silent! to restore as much as possible
+  if not success and Config.continue_restore_on_error then
+    vim.cmd "silent %bw!"
+    vim.cmd "silent clearjumps"
+
+    -- don't capture return values as we'll use success and result from the first call
+    ---@diagnostic disable-next-line: param-type-mismatch
+    pcall(vim.cmd, "silent! " .. cmd)
+  end
+
+  AutoSession.restore_in_progress = false
+
+  -- Clear any saved command line args since we don't need them anymore
+  launch_argv = nil
+
+  if not success then
+    Lib.logger.error([[
+Error restoring session, disabling auto save.
+Error: ]] .. result)
+    Config.auto_save = false
+    return false
+  end
+
+  local session_name = Lib.escaped_session_name_to_session_name(vim.fn.fnamemodify(session_path, ":t"))
+  Lib.logger.debug("Restored session: " .. session_name)
+  if opts.show_message == nil or opts.show_message then
+    vim.notify("Restored session: " .. session_name)
+  end
+
+  AutoSession.run_cmds "post_restore"
+
+  write_to_session_control_json(session_path)
+  return true
+end
+
+---Deletes a session from the config session dir. If no optional session name
+---is passed in, it uses the cwd as the session name
+---@param session_name? string|nil Optional session name
+function AutoSession.DeleteSession(session_name)
+  return AutoSession.DeleteSessionFromDir(AutoSession.get_root_dir(), session_name)
+end
+
+---Deletes a session from the passed in directory. If no optional session
+---name is passed in, it uses the cwd as the session name
+---@param session_dir string Directory to delete the session from
+---@param session_name? string|nil Optional session name
+function AutoSession.DeleteSessionFromDir(session_dir, session_name)
+  Lib.logger.debug("DeleteSessionFromDir start", { session_dir, session_name })
+
+  -- Canonicalize and create session_dir if needed
+  session_dir = Lib.validate_root_dir(session_dir)
+  Lib.logger.debug("DeleteSessionFromDir validated session_dir ", session_dir)
+
+  local escaped_session_name = get_session_file_name(session_name)
+
+  Lib.logger.debug("DeleteSessionFromDir escaped session name: " .. escaped_session_name)
+
+  local session_path = session_dir .. escaped_session_name
+
+  if vim.fn.filereadable(session_path) ~= 1 then
+    Lib.logger.debug("DeleteSessionFromDir session does not exist: " .. session_path)
+
+    -- Check for a legacy session to delete
+    local legacy_escaped_session_name = get_session_file_name(session_name, true)
+    local legacy_session_path = session_dir .. legacy_escaped_session_name
+
+    if vim.fn.filereadable(legacy_session_path) ~= 1 then
+      vim.notify("Session does not exist: " .. Lib.get_session_display_name(escaped_session_name))
+      return false
+    end
+    Lib.logger.debug("DeleteSessionFromDir using legacy session: " .. legacy_escaped_session_name)
+    session_path = legacy_session_path
+  end
+
+  -- session_name could be nil, so get name from escaped_session_name
+  return AutoSession.DeleteSessionFile(session_path, Lib.get_session_display_name(escaped_session_name))
+end
+
+---Delete a session file
+---@param session_path string The filename to delete
+---@param session_name string Session name being deleted, just use to display messages
+---@return boolean Was the session file delted
+function AutoSession.DeleteSessionFile(session_path, session_name)
+  AutoSession.run_cmds "pre_delete"
+
+  Lib.logger.debug("DeleteSessionFile deleting: " .. session_path)
+
+  local result = vim.fn.delete(Lib.expand(session_path)) == 0
+
+  if not result then
+    Lib.logger.error("DeleteSessionFile Failed to delete session: " .. session_name)
+  else
+    if vim.fn.fnamemodify(vim.v.this_session, ":t") == vim.fn.fnamemodify(session_path, ":t") then
+      -- session_name might be nil (e.g. when using cwd), unescape escaped_session_name instead
+      Lib.logger.info("Auto saving disabled because the current session was deleted: " .. session_name)
+      vim.v.this_session = ""
+      Config.auto_save = false
+    else
+      Lib.logger.debug("DeleteSessionFile Session deleted: " .. session_name)
+      vim.notify("Session deleted: " .. session_name)
+    end
+  end
+
+  -- check for extra user commands
+  local extra_commands_path = session_path:gsub("%.vim$", "x.vim")
+  if vim.fn.filereadable(extra_commands_path) == 1 and not Lib.is_session_file(extra_commands_path) then
+    vim.fn.delete(extra_commands_path)
+    Lib.logger.debug("DeleteSessionFile deleting extra user commands: " .. extra_commands_path)
+  end
+
+  AutoSession.run_cmds "post_delete"
+  return result
+end
+
+---Disables autosave. Enables autosave if enable is true
+---@param enable? boolean Optional paramter to enable autosaving
+---@return boolean Whether autosaving is enabled or not
+function AutoSession.DisableAutoSave(enable)
+  Config.auto_save = enable or false
+  if Config.auto_save then
+    vim.notify "Session auto-save enabled"
+  else
+    vim.notify "Session auto-save disabled"
+  end
+  return Config.auto_save
 end
 
 return AutoSession

@@ -73,8 +73,8 @@ use 'romgrk/barbar.nvim'
 #### Using [vim-plug](https://github.com/junegunn/vim-plug)
 
 ```vim
-Plug 'lewis6991/gitsigns.nvim' " OPTIONAL: for git status
 Plug 'nvim-tree/nvim-web-devicons' " OPTIONAL: for file icons
+Plug 'lewis6991/gitsigns.nvim' " OPTIONAL: for git status
 Plug 'romgrk/barbar.nvim'
 ```
 
@@ -101,7 +101,7 @@ home row (`asdfjkl;gh`) first, then other rows.
 
 ![jump](./static/sort.gif)
 
-`:BufferOrderByDirectory`, `:BufferOrderByLanguage`, `:BufferOrderByWindowNumber`, `:BufferOrderByBufferNumber`
+`:BufferOrderByName`, `:BufferOrderByDirectory`, `:BufferOrderByLanguage`, `:BufferOrderByWindowNumber`, `:BufferOrderByBufferNumber`
 
 ##### Clickable & closable tabs
 
@@ -172,6 +172,10 @@ nnoremap <silent>    <A-0> <Cmd>BufferLast<CR>
 " Pin/unpin buffer
 nnoremap <silent>    <A-p> <Cmd>BufferPin<CR>
 
+" Goto pinned/unpinned buffer
+"                          :BufferGotoPinned
+"                          :BufferGotoUnpinned
+
 " Close buffer
 nnoremap <silent>    <A-c> <Cmd>BufferClose<CR>
 " Restore buffer
@@ -189,10 +193,11 @@ nnoremap <silent>    <A-s-c> <Cmd>BufferRestore<CR>
 
 " Magic buffer-picking mode
 nnoremap <silent> <C-p>    <Cmd>BufferPick<CR>
-nnoremap <silent> <C-p>    <Cmd>BufferPickDelete<CR>
+nnoremap <silent> <C-s-p>  <Cmd>BufferPickDelete<CR>
 
 " Sort automatically by...
 nnoremap <silent> <Space>bb <Cmd>BufferOrderByBufferNumber<CR>
+nnoremap <silent> <Space>bn <Cmd>BufferOrderByName<CR>
 nnoremap <silent> <Space>bd <Cmd>BufferOrderByDirectory<CR>
 nnoremap <silent> <Space>bl <Cmd>BufferOrderByLanguage<CR>
 nnoremap <silent> <Space>bw <Cmd>BufferOrderByWindowNumber<CR>
@@ -211,9 +216,11 @@ local opts = { noremap = true, silent = true }
 -- Move to previous/next
 map('n', '<A-,>', '<Cmd>BufferPrevious<CR>', opts)
 map('n', '<A-.>', '<Cmd>BufferNext<CR>', opts)
+
 -- Re-order to previous/next
 map('n', '<A-<>', '<Cmd>BufferMovePrevious<CR>', opts)
 map('n', '<A->>', '<Cmd>BufferMoveNext<CR>', opts)
+
 -- Goto buffer in position...
 map('n', '<A-1>', '<Cmd>BufferGoto 1<CR>', opts)
 map('n', '<A-2>', '<Cmd>BufferGoto 2<CR>', opts)
@@ -225,22 +232,34 @@ map('n', '<A-7>', '<Cmd>BufferGoto 7<CR>', opts)
 map('n', '<A-8>', '<Cmd>BufferGoto 8<CR>', opts)
 map('n', '<A-9>', '<Cmd>BufferGoto 9<CR>', opts)
 map('n', '<A-0>', '<Cmd>BufferLast<CR>', opts)
+
 -- Pin/unpin buffer
 map('n', '<A-p>', '<Cmd>BufferPin<CR>', opts)
+
+-- Goto pinned/unpinned buffer
+--                 :BufferGotoPinned
+--                 :BufferGotoUnpinned
+
 -- Close buffer
 map('n', '<A-c>', '<Cmd>BufferClose<CR>', opts)
+
 -- Wipeout buffer
 --                 :BufferWipeout
+
 -- Close commands
 --                 :BufferCloseAllButCurrent
 --                 :BufferCloseAllButPinned
 --                 :BufferCloseAllButCurrentOrPinned
 --                 :BufferCloseBuffersLeft
 --                 :BufferCloseBuffersRight
+
 -- Magic buffer-picking mode
-map('n', '<C-p>', '<Cmd>BufferPick<CR>', opts)
+map('n', '<C-p>',   '<Cmd>BufferPick<CR>', opts)
+map('n', '<C-s-p>', '<Cmd>BufferPickDelete<CR>', opts)
+
 -- Sort automatically by...
 map('n', '<Space>bb', '<Cmd>BufferOrderByBufferNumber<CR>', opts)
+map('n', '<Space>bn', '<Cmd>BufferOrderByName<CR>', opts)
 map('n', '<Space>bd', '<Cmd>BufferOrderByDirectory<CR>', opts)
 map('n', '<Space>bl', '<Cmd>BufferOrderByLanguage<CR>', opts)
 map('n', '<Space>bw', '<Cmd>BufferOrderByWindowNumber<CR>', opts)
@@ -378,14 +397,17 @@ require'barbar'.setup {
 
   -- Set the filetypes which barbar will offset itself for
   sidebar_filetypes = {
-    -- Use the default values: {event = 'BufWinLeave', text = nil}
+    -- Use the default values: {event = 'BufWinLeave', text = '', align = 'left'}
     NvimTree = true,
     -- Or, specify the text used for the offset:
-    undotree = {text = 'undotree'},
+    undotree = {
+      text = 'undotree',
+      align = 'center', -- *optionally* specify an alignment (either 'left', 'center', or 'right')
+    },
     -- Or, specify the event which the sidebar executes when leaving:
     ['neo-tree'] = {event = 'BufWipeout'},
-    -- Or, specify both
-    Outline = {event = 'BufWinLeave', text = 'symbols-outline'},
+    -- Or, specify all three
+    Outline = {event = 'BufWinLeave', text = 'symbols-outline', align = 'right'},
   },
 
   -- New buffer letters are assigned in this order. This order is
@@ -396,6 +418,12 @@ require'barbar'.setup {
   -- Sets the name of unnamed buffers. By default format is "[Buffer X]"
   -- where X is the buffer number. But only a static string is accepted here.
   no_name_title = nil,
+
+  -- sorting options
+  sort = {
+    -- tells barbar to ignore case differences while sorting buffers
+    ignore_case = true,
+  },
 }
 ```
 
@@ -413,6 +441,7 @@ Highlight groups are created in this way: `Buffer<STATUS><PART>`.
 | `<PART>`       | Meaning                                                                              |
 |:---------------|:-------------------------------------------------------------------------------------|
 | `ADDED`        | Git status added.                                                                    |
+| `Btn`          | The button that shows when a buffer is unpinned and unmodified.                      |
 | `CHANGED`      | Git status changed.                                                                  |
 | `DELETED`      | Git status deleted.                                                                  |
 | `ERROR`        | Diagnostic errors.                                                                   |
@@ -421,7 +450,10 @@ Highlight groups are created in this way: `Buffer<STATUS><PART>`.
 | `Index`        | The buffer's position in the tabline.                                                |
 | `INFO`         | Diagnostic info.                                                                     |
 | `Mod`          | When the buffer is modified.                                                         |
+| `ModBtn`       | The button that shows when a buffer is modified.                                     |
 | `Number`       | The `:h bufnr()`.                                                                    |
+| `Pin`          | When the buffer is pinned.                                                           |
+| `PinBtn`       | The button that shows when a buffer is pinned.                                       |
 | `Sign`         | The separator between buffers.                                                       |
 | `SignRight`    | The separator between buffers.                                                       |
 | `Target`       | The letter in buffer-pick mode.                                                      |
@@ -429,19 +461,53 @@ Highlight groups are created in this way: `Buffer<STATUS><PART>`.
 
 * e.g. the current buffer's highlight when modified is `BufferCurrentMod`
 
+There are a few highlight groups which do not follow this rule. They are:
+
+| Group               | Usage                                                                                                      |
+|:--------------------|:-----------------------------------------------------------------------------------------------------------|
+| `BufferOffset`      | The background of the header for a `sidebar_filetype`                                                      |
+| `BufferScrollArrow` | The arrow which shows to indicate that there are more buffers to the left or right of the scroll position. |
+| `BufferTabpageFill` | The space between the open buffer list and the tabpage                                                     |
+| `BufferTabpages`    | The color of the tabpages indicator.                                                                       |
+| `BufferTabpagesSep` | The separator between the tabpages count.                                                                  |
+
 You can also use the [doom-one.vim](https://github.com/romgrk/doom-one.vim)
 colorscheme that defines those groups and is also very pleasant as you could see
 in the demos above.
 
 ## Integrations
 
+#### [scope.nvim]
+
+To preserve buffer order while using [scope.nvim], you can add this to your config:
+
+```lua
+require('scope').setup {
+  hooks = {
+    pre_tab_leave = function()
+      vim.api.nvim_exec_autocmds('User', {pattern = 'ScopeTabLeavePre'})
+      -- [other statements]
+    end,
+
+    post_tab_enter = function()
+      vim.api.nvim_exec_autocmds('User', {pattern = 'ScopeTabEnterPost'})
+      -- [other statements]
+    end,
+
+    -- [other hooks]
+  },
+
+  -- [other options]
+}
+```
+
 #### Sessions
 
 `barbar.nvim` can restore the order that your buffers were in, as well as whether a buffer was pinned. To do this, `sessionoptions` must contain `globals`, and the `User SessionSavePre` event must be executed before `:mksession`.
 
-##### mini.nvim
+##### [mini.nvim]
 
-Here is a `mini.sessions` config which can be used:
+Here is a [mini.sessions][mini.nvim] config which can be used:
 
 ```lua
 vim.opt.sessionoptions:append 'globals'
@@ -454,9 +520,9 @@ require'mini.sessions'.setup {
 }
 ```
 
-##### persistence.nvim
+##### [persistence.nvim]
 
-Here is a `persistence.nvim` config which can be used:
+Here is a [persistence.nvim] config which can be used:
 
 ```lua
 require'persistence'.setup {
@@ -464,6 +530,33 @@ require'persistence'.setup {
   pre_save = function() vim.api.nvim_exec_autocmds('User', {pattern = 'SessionSavePre'}) end,
 }
 ```
+
+##### [persisted.nvim]
+
+Here is a [persisted.nvim] config which can be used:
+
+```lua
+vim.opt.sessionoptions:append 'globals'
+vim.api.nvim_create_autocmd({ 'User' }, {
+  pattern = 'PersistedSavePre',
+  group = vim.api.nvim_create_augroup('PersistedHooks', {}),
+  callback = function()
+    vim.api.nvim_exec_autocmds('User', { pattern = 'SessionSavePre' })
+  end,
+})
+```
+
+##### [resession.nvim]
+
+This plugin comes with support for [resession.nvim] through an extension. To enable, add the following snippet to your resession config:
+
+```lua
+extensions = {
+  barbar = {},
+}
+```
+
+If using [lazy.nvim](https://github.com/folke/lazy.nvim) then ensure you add barbar.nvim as a dependency to resession, to ensure that the extension loads before resession.
 
 ##### Custom
 
@@ -519,3 +612,9 @@ No, barbar has nothing to do with barbarians.
 
 * **barbar.nvim:** Distributed under the terms of the JSON license.
 * **bbye.vim:** Distributed under the terms of the GNU Affero license.
+
+[mini.nvim]: https://github.com/echasnovski/mini.nvim
+[persistence.nvim]: https://github.com/folke/persistence.nvim
+[persisted.nvim]: https://github.com/olimorris/persisted.nvim
+[resession.nvim]: https://github.com/stevearc/resession.nvim
+[scope.nvim]: https://github.com/tiagovla/scope.nvim

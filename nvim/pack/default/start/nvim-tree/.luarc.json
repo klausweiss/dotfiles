@@ -1,17 +1,15 @@
 {
   "$schema": "https://raw.githubusercontent.com/sumneko/vscode-lua/master/setting/schema.json",
-  "runtime.version" : "Lua 5.1",
+  "runtime.version.luals-check-only": "Lua 5.1",
   "workspace": {
     "library": [
-      "$VIMRUNTIME/lua/vim/lsp",
+      "$VIMRUNTIME/lua/vim",
       "${3rd}/luv/library"
     ]
   },
   "diagnostics": {
     "libraryFiles": "Disable",
-    "globals": [
-      "vim"
-    ],
+    "globals": [],
     "neededFileStatus": {
       "ambiguity-1": "Any",
       "assign-type-mismatch": "Any",
@@ -33,11 +31,19 @@
       "duplicate-index": "Any",
       "duplicate-set-field": "Any",
       "empty-block": "Any",
+      "global-element": "Any",
       "global-in-nil-env": "Any",
+      "incomplete-signature-doc": "Any",
+      "inject-field": "Any",
+      "invisible": "Any",
       "lowercase-global": "Any",
+      "missing-fields": "Any",
+      "missing-global-doc": "Any",
+      "missing-local-export-doc": "Any",
       "missing-parameter": "Any",
       "missing-return": "Any",
       "missing-return-value": "Any",
+      "name-style-check": "None",
       "need-check-nil": "Any",
       "newfield-call": "Any",
       "newline-call": "Any",
@@ -70,4 +76,3 @@
     }
   }
 }
-

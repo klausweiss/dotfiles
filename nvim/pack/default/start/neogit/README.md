@@ -1,15 +1,18 @@
 <div align="center">
-    <h1>Neogit</h1>
+    <div>
+        <div><img src="https://github.com/NeogitOrg/neogit/assets/7228095/7684545f-47b5-40e2-aedd-ccf56e0553f4" width="400px"/></div>
+        <div><h1>Neogit</h1></div>
+    </div>
     <table>
         <tr>
             <td>
-               <strong>A git interface for <a href="https://neovim.io">Neovim</a>, inspired by <a href="https://magit.vc">Magit</a>.</strong>
+                <strong>A git interface for <a href="https://neovim.io">Neovim</a>, inspired by <a href="https://magit.vc">Magit</a>.</strong>
             </td>
         </tr>
     </table>
-  
+
   [![Lua](https://img.shields.io/badge/Lua-blue.svg?style=for-the-badge&logo=lua)](http://www.lua.org)
-  [![Neovim](https://img.shields.io/badge/Neovim%200.9+-green.svg?style=for-the-badge&logo=neovim)](https://neovim.io)
+  [![Neovim](https://img.shields.io/badge/Neovim%200.10+-green.svg?style=for-the-badge&logo=neovim)](https://neovim.io)
   [![MIT](https://img.shields.io/badge/MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
   <a href="https://dotfyle.com/plugins/NeogitOrg/neogit">
     <img src="https://dotfyle.com/plugins/NeogitOrg/neogit/shield?style=for-the-badge" />
@@ -31,9 +34,10 @@ Here's an example spec for [Lazy](https://github.com/folke/lazy.nvim), but you'r
     "nvim-lua/plenary.nvim",         -- required
     "sindrets/diffview.nvim",        -- optional - Diff integration
 
-    -- Only one of these is needed, not both.
+    -- Only one of these is needed.
     "nvim-telescope/telescope.nvim", -- optional
     "ibhagwan/fzf-lua",              -- optional
+    "echasnovski/mini.pick",         -- optional
   },
   config = true
 }
@@ -50,11 +54,7 @@ neogit.setup {}
 
 ## Compatibility
 
-The `master` branch will always be compatible with the latest **stable** release of Neovim, and with the latest **nightly** build as well.
-
-Some features may only be available using unreleased (neovim nightly) API's - to use them, set your plugin manager to track the `nightly` branch instead. 
-
-The `nightly` branch has the same stability guarantees as the `master` branch.
+The `master` branch will always be compatible with the latest **stable** release of Neovim, and usually with the latest **nightly** build as well.
 
 ## Configuration
 
@@ -85,12 +85,17 @@ neogit.setup {
   },
   -- "ascii"   is the graph the git CLI generates
   -- "unicode" is the graph like https://github.com/rbong/vim-flog
-  graph_style = "ascii", 
+  -- "kitty"   is the graph like https://github.com/isakbm/gitgraph.nvim - use https://github.com/rbong/flog-symbols if you don't use Kitty
+  graph_style = "ascii",
+  -- Show relative date by default. When set, use `strftime` to display dates
+  commit_date_format = nil,
+  log_date_format = nil,
   -- Used to generate URL's for branch popup action "pull request".
   git_services = {
     ["github.com"] = "https://github.com/${owner}/${repository}/compare/${branch_name}?expand=1",
     ["bitbucket.org"] = "https://bitbucket.org/${owner}/${repository}/pull-requests/new?source=${branch_name}&t=1",
     ["gitlab.com"] = "https://gitlab.com/${owner}/${repository}/merge_requests/new?merge_request[source_branch]=${branch_name}",
+    ["azure.com"] = "https://dev.azure.com/${owner}/_git/${repository}/pullrequestcreate?sourceRef=${branch_name}&targetRef=${target}",
   },
   -- Allows a different telescope sorter. Defaults to 'fuzzy_with_index_bias'. The example below will use the native fzf
   -- sorter instead. By default, this function returns `nil`.
@@ -125,26 +130,63 @@ neogit.setup {
   -- Flag description: https://git-scm.com/docs/git-branch#Documentation/git-branch.txt---sortltkeygt
   -- Sorting keys: https://git-scm.com/docs/git-for-each-ref#_options
   sort_branches = "-committerdate",
+  -- Default for new branch name prompts
+  initial_branch_name = "",
   -- Change the default way of opening neogit
   kind = "tab",
-  -- Disable line numbers and relative line numbers
+  -- Disable line numbers
   disable_line_numbers = true,
+  -- Disable relative line numbers
+  disable_relative_line_numbers = true,
   -- The time after which an output console is shown for slow running commands
   console_timeout = 2000,
   -- Automatically show console if a command takes more than console_timeout milliseconds
   auto_show_console = true,
+  -- Automatically close the console if the process exits with a 0 (success) status
+  auto_close_console = true,
+  notification_icon = "󰊢",
   status = {
+    show_head_commit_hash = true,
     recent_commit_count = 10,
+    HEAD_padding = 10,
+    HEAD_folded = false,
+    mode_padding = 3,
+    mode_text = {
+      M = "modified",
+      N = "new file",
+      A = "added",
+      D = "deleted",
+      C = "copied",
+      U = "updated",
+      R = "renamed",
+      DD = "unmerged",
+      AU = "unmerged",
+      UD = "unmerged",
+      UA = "unmerged",
+      DU = "unmerged",
+      AA = "unmerged",
+      UU = "unmerged",
+      ["?"] = "",
+    },
   },
   commit_editor = {
-    kind = "auto",
+    kind = "tab",
+    show_staged_diff = true,
+    -- Accepted values:
+    -- "split" to show the staged diff below the commit editor
+    -- "vsplit" to show it to the right
+    -- "split_above" Like :top split
+    -- "vsplit_left" like :vsplit, but open to the left
+    -- "auto" "vsplit" if window would have 80 cols, otherwise "split"
+    staged_diff_split_kind = "split",
+    spell_check = true,
   },
   commit_select_view = {
     kind = "tab",
   },
   commit_view = {
     kind = "vsplit",
-    verify_commit = os.execute("which gpg") == 0, -- Can be set to true or false, otherwise we try to find the binary
+    verify_commit = vim.fn.executable("gpg") == 1, -- Can be set to true or false, otherwise we try to find the binary
   },
   log_view = {
     kind = "tab",
@@ -158,14 +200,23 @@ neogit.setup {
   merge_editor = {
     kind = "auto",
   },
+  description_editor = {
+    kind = "auto",
+  },
   tag_editor = {
     kind = "auto",
   },
   preview_buffer = {
-    kind = "split",
+    kind = "floating_console",
   },
   popup = {
     kind = "split",
+  },
+  stash = {
+    kind = "tab",
+  },
+  refs_view = {
+    kind = "tab",
   },
   signs = {
     -- { CLOSED, OPENED }
@@ -188,6 +239,11 @@ neogit.setup {
     -- is also selected then telescope is used instead
     -- Requires you to have `ibhagwan/fzf-lua` installed.
     fzf_lua = nil,
+
+    -- If enabled, uses mini.pick for menu selection. If the telescope integration
+    -- is also selected then telescope is used instead
+    -- Requires you to have `echasnovski/mini.pick` installed.
+    mini_pick = nil,
   },
   sections = {
     -- Reverting/Cherry Picking
@@ -241,6 +297,13 @@ neogit.setup {
       ["q"] = "Close",
       ["<c-c><c-c>"] = "Submit",
       ["<c-c><c-k>"] = "Abort",
+      ["<m-p>"] = "PrevMessage",
+      ["<m-n>"] = "NextMessage",
+      ["<m-r>"] = "ResetMessage",
+    },
+    commit_editor_I = {
+      ["<c-c><c-c>"] = "Submit",
+      ["<c-c><c-k>"] = "Abort",
     },
     rebase_editor = {
       ["p"] = "Pick",
@@ -257,6 +320,12 @@ neogit.setup {
       ["gj"] = "MoveDown",
       ["<c-c><c-c>"] = "Submit",
       ["<c-c><c-k>"] = "Abort",
+      ["[c"] = "OpenOrScrollUp",
+      ["]c"] = "OpenOrScrollDown",
+    },
+    rebase_editor_I = {
+      ["<c-c><c-c>"] = "Submit",
+      ["<c-c><c-k>"] = "Abort",
     },
     finder = {
       ["<cr>"] = "Select",
@@ -266,20 +335,31 @@ neogit.setup {
       ["<c-p>"] = "Previous",
       ["<down>"] = "Next",
       ["<up>"] = "Previous",
-      ["<tab>"] = "MultiselectToggleNext",
-      ["<s-tab>"] = "MultiselectTogglePrevious",
+      ["<tab>"] = "InsertCompletion",
+      ["<space>"] = "MultiselectToggleNext",
+      ["<s-space>"] = "MultiselectTogglePrevious",
       ["<c-j>"] = "NOP",
+      ["<ScrollWheelDown>"] = "ScrollWheelDown",
+      ["<ScrollWheelUp>"] = "ScrollWheelUp",
+      ["<ScrollWheelLeft>"] = "NOP",
+      ["<ScrollWheelRight>"] = "NOP",
+      ["<LeftMouse>"] = "MouseClick",
+      ["<2-LeftMouse>"] = "NOP",
     },
     -- Setting any of these to `false` will disable the mapping.
     popup = {
       ["?"] = "HelpPopup",
       ["A"] = "CherryPickPopup",
-      ["D"] = "DiffPopup",
+      ["d"] = "DiffPopup",
       ["M"] = "RemotePopup",
       ["P"] = "PushPopup",
       ["X"] = "ResetPopup",
       ["Z"] = "StashPopup",
+      ["i"] = "IgnorePopup",
+      ["t"] = "TagPopup",
       ["b"] = "BranchPopup",
+      ["B"] = "BisectPopup",
+      ["w"] = "WorktreePopup",
       ["c"] = "CommitPopup",
       ["f"] = "FetchPopup",
       ["l"] = "LogPopup",
@@ -287,32 +367,41 @@ neogit.setup {
       ["p"] = "PullPopup",
       ["r"] = "RebasePopup",
       ["v"] = "RevertPopup",
-      ["w"] = "WorktreePopup",
     },
     status = {
+      ["j"] = "MoveDown",
+      ["k"] = "MoveUp",
+      ["o"] = "OpenTree",
       ["q"] = "Close",
       ["I"] = "InitRepo",
       ["1"] = "Depth1",
       ["2"] = "Depth2",
       ["3"] = "Depth3",
       ["4"] = "Depth4",
+      ["Q"] = "Command",
       ["<tab>"] = "Toggle",
       ["x"] = "Discard",
       ["s"] = "Stage",
       ["S"] = "StageUnstaged",
       ["<c-s>"] = "StageAll",
       ["u"] = "Unstage",
+      ["K"] = "Untrack",
       ["U"] = "UnstageStaged",
+      ["y"] = "ShowRefs",
       ["$"] = "CommandHistory",
-      ["#"] = "Console",
       ["Y"] = "YankSelected",
       ["<c-r>"] = "RefreshBuffer",
-      ["<enter>"] = "GoToFile",
+      ["<cr>"] = "GoToFile",
+      ["<s-cr>"] = "PeekFile",
       ["<c-v>"] = "VSplitOpen",
       ["<c-x>"] = "SplitOpen",
       ["<c-t>"] = "TabOpen",
       ["{"] = "GoToPreviousHunkHeader",
       ["}"] = "GoToNextHunkHeader",
+      ["[c"] = "OpenOrScrollUp",
+      ["]c"] = "OpenOrScrollDown",
+      ["<c-k>"] = "PeekUp",
+      ["<c-j>"] = "PeekDown",
     },
   },
 }
@@ -339,74 +428,53 @@ local neogit = require('neogit')
 -- open using defaults
 neogit.open()
 
--- open commit popup
+-- open a specific popup
 neogit.open({ "commit" })
 
--- open with split kind
+-- open as a split
 neogit.open({ kind = "split" })
 
--- open home directory
+-- open with different project
 neogit.open({ cwd = "~" })
 ```
 
 The `kind` option can be one of the following values:
 - `tab`      (default)
 - `replace`
-- `floating` (EXPERIMENTAL! This currently doesn't work with popups. Very unstable)
 - `split`
 - `split_above`
+- `split_above_all`
+- `split_below`
+- `split_below_all`
 - `vsplit`
+- `floating`
 - `auto` (`vsplit` if window would have 80 cols, otherwise `split`)
 
-## Buffers
+## Popups
 
-### Log Buffer
+The following popup menus are available from all buffers:
+- Bisect
+- Branch + Branch Config
+- Cherry Pick
+- Commit
+- Diff
+- Fetch
+- Ignore
+- Log
+- Merge
+- Pull
+- Push
+- Rebase
+- Remote + Remote Config
+- Reset
+- Revert
+- Stash
+- Tag
+- Worktree
 
-`ll`, `lh`, `lo`, ...
+Many popups will use whatever is currently under the cursor or selected as input for an action. For example, to cherry-pick a range of commits from the log view, a linewise visual selection can be made, and using either `apply` or `pick` from the cherry-pick menu will use the selection.
 
-Shows a graph of the commit history. Hitting `<cr>` will open the Commit View for that commit.
-
-The following popups are available from the log buffer, and will use the commit under the cursor, or selected, instead of prompting:
-* Branch Popup
-* Cherry Pick Popup
-* Revert Popup
-* Rebase Popup
-* Commit Popup
-* Reset Popup
-
-### Reflog Buffer
-
-`lr`, `lH`, `lO`
-
-Shows your reflog history. Hitting `<cr>` will open the Commit View for that commit.
-
-The following popups are available from the reflog buffer, and will use the commit under the cursor, or selected, instead of prompting:
-* Branch Popup
-* Cherry Pick Popup
-* Revert Popup
-* Rebase Popup
-* Commit Popup
-* Reset Popup
-
-### Commit View
-
-`<cr>` on a commit.
-
-Shows details for a specific commit.
-The following popups are available from the commit buffer, using it's SHA instead of prompting:
-* Branch Popup
-* Cherry Pick Popup
-* Revert Popup
-* Rebase Popup
-* Commit Popup
-* Reset Popup
-
-### Status Buffer
-A full list of status buffer commands can be found above under "configuration".
-
-### Fuzzy Finder
-A full list of fuzzy-finder commands can be found above under "configuration".
-If [nvim-telescope](https://github.com/nvim-telescope/telescope.nvim) is installed, a custom finder will be used that allows for multi-select (in some places) and some other cool things. Otherwise, `vim.ui.select` will be used as a slightly less featurefull fallback.
+This works for just about everything that has an object-ID in git, and if you find one that you think _should_ work but doesn't, open an issue :)
 
 ## Highlight Groups
 
@@ -435,39 +503,19 @@ Neogit emits the following events:
 | `NeogitTagDelete`     | A tag was removed                        | `{ name: string }`                                |
 | `NeogitCherryPick`    | One or more commits were cherry-picked    | `{ commits: string[] }`                          |
 | `NeogitMerge`         | A merge finished                          | `{ branch: string, args = string[], status: "ok"\|"conflict" }` |
+| `NeogitStash`         | A stash finished                          | `{ success: boolean }` |
 
-You can listen to the events using the following code:
+## Versioning
 
-```vim
-autocmd User NeogitStatusRefreshed echo "Hello World!"
-```
+Neogit follows semantic versioning.
 
-Or, if you prefer to configure autocommands via Lua:
-
-```lua
-local group = vim.api.nvim_create_augroup('MyCustomNeogitEvents', { clear = true })
-vim.api.nvim_create_autocmd('User', {
-  pattern = 'NeogitPushComplete',
-  group = group,
-  callback = require('neogit').close,
-})
-```
-
-## Refreshing Neogit
-
-If you would like to refresh Neogit manually, you can use `neogit#refresh_manually` in Vimscript or `require('neogit').refresh_manually` in lua. They both require a single file parameter.
-
-This allows you to refresh Neogit on your own custom events
-
-```vim
-augroup DefaultRefreshEvents
-  au!
-  au BufWritePost,BufEnter,FocusGained,ShellCmdPost,VimResume * call <SID>neogit#refresh_manually(expand('<afile>'))
-augroup END
-```
-
-## Testing
-
-Run `make test` after checking out the repo. All dependencies should get automatically downloaded to `/tmp/neogit-test/`
+## Contributing
 
 See [CONTRIBUTING.md](https://github.com/NeogitOrg/neogit/blob/master/CONTRIBUTING.md) for more details.
+
+## Special Thanks
+
+- [kolja](https://github.com/kolja) for the Neogit Logo
+- [gitgraph.nvim](https://github.com/isakbm/gitgraph.nvim) for the "kitty" git graph renderer
+- [vim-flog](https://github.com/rbong/vim-flog) for the "unicode" git graph renderer
+

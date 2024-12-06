@@ -10,13 +10,12 @@
 (declaration_expression
   name: (identifier) @local.definition.var)
 
-(for_each_statement
+(foreach_statement
   left: (identifier) @local.definition.var)
 
-(for_each_statement
-  left:
-    (tuple_pattern
-      (identifier) @local.definition.var))
+(foreach_statement
+  left: (tuple_pattern
+    (identifier) @local.definition.var))
 
 (parameter
   (identifier) @local.definition.parameter)

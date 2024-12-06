@@ -1,6 +1,5 @@
 local api = vim.api
 local lsp = vim.lsp
-local uv = vim.loop
 
 local async = require 'lspconfig.async'
 local util = require 'lspconfig.util'
@@ -8,7 +7,7 @@ local util = require 'lspconfig.util'
 ---@param client vim.lsp.Client
 ---@param root_dir string
 ---@return boolean
-local function check_in_workspace(client, root_dir)
+local function is_dir_in_workspace_folders(client, root_dir)
   if not client.workspace_folders then
     return false
   end
@@ -23,7 +22,7 @@ local function check_in_workspace(client, root_dir)
 end
 
 --- @class lspconfig.Manager
---- @field _clients table<string,integer[]>
+--- @field _clients table<string,table<string, vim.lsp.Client>> root dir -> (client name -> client)
 --- @field config lspconfig.Config
 --- @field make_config fun(root_dir: string): lspconfig.Config
 local M = {}
@@ -42,54 +41,31 @@ function M.new(config, make_config)
 end
 
 --- @private
---- @param clients table<string,integer[]>
---- @param root_dir string
---- @param client_name string
---- @return vim.lsp.Client?
-local function get_client(clients, root_dir, client_name)
-  if vim.tbl_isempty(clients) then
-    return
-  end
-
-  if clients[root_dir] then
-    for _, id in pairs(clients[root_dir]) do
-      local client = lsp.get_client_by_id(id)
-      if client and client.name == client_name then
-        return client
-      end
-    end
-  end
-
-  for _, ids in pairs(clients) do
-    for _, id in ipairs(ids) do
-      local client = lsp.get_client_by_id(id)
-      if client and client.name == client_name then
-        return client
-      end
-    end
-  end
-end
-
---- @private
---- @param bufnr integer
 --- @param root string
---- @param client_id integer
-function M:_attach_and_cache(bufnr, root, client_id)
+--- @param client vim.lsp.Client
+function M:_cache_client(root, client)
   local clients = self._clients
-  lsp.buf_attach_client(bufnr, client_id)
   if not clients[root] then
     clients[root] = {}
   end
-  if not vim.tbl_contains(clients[root], client_id) then
-    clients[root][#clients[root] + 1] = client_id
+  if not clients[root][client.name] then
+    clients[root][client.name] = client
   end
 end
 
 --- @private
---- @param bufnr integer
 --- @param root_dir string
 --- @param client vim.lsp.Client
-function M:_register_workspace_folders(bufnr, root_dir, client)
+function M:_notify_workspace_folder_added(root_dir, client)
+  if is_dir_in_workspace_folders(client, root_dir) then
+    return
+  end
+
+  local supported = vim.tbl_get(client, 'server_capabilities', 'workspace', 'workspaceFolders', 'supported')
+  if not supported then
+    return
+  end
+
   local params = {
     event = {
       added = { { uri = vim.uri_from_fname(root_dir), name = root_dir } },
@@ -101,7 +77,6 @@ function M:_register_workspace_folders(bufnr, root_dir, client)
     client.workspace_folders = {}
   end
   client.workspace_folders[#client.workspace_folders + 1] = params.event.added[1]
-  self:_attach_and_cache(bufnr, root_dir, client.id)
 end
 
 --- @private
@@ -109,7 +84,8 @@ end
 --- @param new_config lspconfig.Config
 --- @param root_dir string
 --- @param single_file boolean
-function M:_start_new_client(bufnr, new_config, root_dir, single_file)
+--- @param silent boolean
+function M:_start_client(bufnr, new_config, root_dir, single_file, silent)
   -- do nothing if the client is not enabled
   if new_config.enabled == false then
     return
@@ -117,7 +93,7 @@ function M:_start_new_client(bufnr, new_config, root_dir, single_file)
   if not new_config.cmd then
     vim.notify(
       string.format(
-        '[lspconfig] cmd not defined for %q. Manually set cmd in the setup {} call according to server_configurations.md, see :help lspconfig-index.',
+        '[lspconfig] cmd not defined for %q. Manually set cmd in the setup {} call according to configs.md, see :help lspconfig-setup.',
         new_config.name
       ),
       vim.log.levels.ERROR
@@ -125,20 +101,21 @@ function M:_start_new_client(bufnr, new_config, root_dir, single_file)
     return
   end
 
-  local clients = self._clients
+  new_config.on_init = util.add_hook_before(new_config.on_init, function(client)
+    self:_notify_workspace_folder_added(root_dir, client)
+  end)
 
   new_config.on_exit = util.add_hook_before(new_config.on_exit, function()
-    for index, id in pairs(clients[root_dir]) do
-      local exist = assert(lsp.get_client_by_id(id))
-      if exist.name == new_config.name then
-        table.remove(clients[root_dir], index)
+    for name in pairs(self._clients[root_dir]) do
+      if name == new_config.name then
+        self._clients[root_dir][name] = nil
       end
     end
   end)
 
   -- Launch the server in the root directory used internally by lspconfig, if otherwise unset
   -- also check that the path exist
-  if not new_config.cmd_cwd and uv.fs_realpath(root_dir) then
+  if not new_config.cmd_cwd and vim.loop.fs_realpath(root_dir) then
     new_config.cmd_cwd = root_dir
   end
 
@@ -149,85 +126,47 @@ function M:_start_new_client(bufnr, new_config, root_dir, single_file)
     new_config.root_dir = nil
     new_config.workspace_folders = nil
   end
-  local client_id = lsp.start_client(new_config)
-  if not client_id then
-    return
-  end
-  self:_attach_and_cache(bufnr, root_dir, client_id)
-end
 
---- @private
---- @param bufnr integer
---- @param new_config lspconfig.Config
---- @param root_dir string
---- @param client vim.lsp.Client
---- @param single_file boolean
-function M:_attach_or_spawn(bufnr, new_config, root_dir, client, single_file)
-  if check_in_workspace(client, root_dir) then
-    return self:_attach_and_cache(bufnr, root_dir, client.id)
-  end
-
-  local supported = vim.tbl_get(client, 'server_capabilities', 'workspace', 'workspaceFolders', 'supported')
-  if supported then
-    return self:_register_workspace_folders(bufnr, root_dir, client)
-  end
-  self:_start_new_client(bufnr, new_config, root_dir, single_file)
-end
-
---- @private
---- @param bufnr integer
---- @param new_config lspconfig.Config
---- @param root_dir string
---- @param client vim.lsp.Client
---- @param single_file boolean
-function M:_attach_after_client_initialized(bufnr, new_config, root_dir, client, single_file)
-  local timer = assert(uv.new_timer())
-  timer:start(
-    0,
-    10,
-    vim.schedule_wrap(function()
-      if client.initialized and client.server_capabilities and not timer:is_closing() then
-        self:_attach_or_spawn(bufnr, new_config, root_dir, client, single_file)
-        timer:stop()
-        timer:close()
+  local client_id = lsp.start(new_config, {
+    bufnr = bufnr,
+    silent = silent,
+    reuse_client = function(existing_client)
+      if (self._clients[root_dir] or {})[existing_client.name] then
+        self:_notify_workspace_folder_added(root_dir, existing_client)
+        return true
       end
-    end)
-  )
+
+      for _, dir_clients in pairs(self._clients) do
+        if dir_clients[existing_client.name] then
+          self:_notify_workspace_folder_added(root_dir, existing_client)
+          return true
+        end
+      end
+
+      return false
+    end,
+  })
+  if client_id then
+    self:_cache_client(root_dir, assert(lsp.get_client_by_id(client_id)))
+  end
 end
 
 ---@param root_dir string
 ---@param single_file boolean
 ---@param bufnr integer
-function M:add(root_dir, single_file, bufnr)
-  root_dir = util.path.sanitize(root_dir)
+---@param silent boolean
+function M:add(root_dir, single_file, bufnr, silent)
+  root_dir = vim.fs.normalize(root_dir)
   local new_config = self.make_config(root_dir)
-  local client = get_client(self._clients, root_dir, new_config.name)
-
-  ---If single_file_mode is false then root_dir should match client otherwise start a new client
-  if not client or (not single_file and client.config.root_dir and client.config.root_dir ~= root_dir) then
-    return self:_start_new_client(bufnr, new_config, root_dir, single_file)
-  end
-
-  if self._clients[root_dir] or single_file then
-    lsp.buf_attach_client(bufnr, client.id)
-    return
-  end
-
-  -- make sure neovim had exchanged capabilities from language server
-  -- it's useful to check server support workspaceFolders or not
-  if client.initialized and client.server_capabilities then
-    self:_attach_or_spawn(bufnr, new_config, root_dir, client, single_file)
-  else
-    self:_attach_after_client_initialized(bufnr, new_config, root_dir, client, single_file)
-  end
+  self:_start_client(bufnr, new_config, root_dir, single_file, silent)
 end
 
 --- @return vim.lsp.Client[]
 function M:clients()
   local res = {}
-  for _, client_ids in pairs(self._clients) do
-    for _, id in ipairs(client_ids) do
-      res[#res + 1] = lsp.get_client_by_id(id)
+  for _, dir_clients in pairs(self._clients) do
+    for _, client in pairs(dir_clients) do
+      res[#res + 1] = client
     end
   end
   return res
@@ -237,7 +176,8 @@ end
 --- a new client if one doesn't already exist for `bufnr`.
 --- @param bufnr integer
 --- @param project_root? string
-function M:try_add(bufnr, project_root)
+--- @param silent boolean
+function M:try_add(bufnr, project_root, silent)
   bufnr = bufnr or api.nvim_get_current_buf()
 
   if vim.bo[bufnr].buftype == 'nofile' then
@@ -254,31 +194,33 @@ function M:try_add(bufnr, project_root)
   end
 
   if project_root then
-    self:add(project_root, false, bufnr)
+    self:add(project_root, false, bufnr, silent)
     return
   end
 
-  local buf_path = util.path.sanitize(bufname)
+  local buf_path = vim.fs.normalize(bufname)
 
   local get_root_dir = self.config.root_dir
 
-  local pwd = assert(uv.cwd())
+  local pwd = assert(vim.loop.cwd())
 
   async.run(function()
     local root_dir
-    if get_root_dir then
+    if type(get_root_dir) == 'function' then
       root_dir = get_root_dir(buf_path, bufnr)
       async.reenter()
       if not api.nvim_buf_is_valid(bufnr) then
         return
       end
+    elseif type(get_root_dir) == 'string' then
+      root_dir = get_root_dir
     end
 
     if root_dir then
-      self:add(root_dir, false, bufnr)
+      self:add(root_dir, false, bufnr, silent)
     elseif self.config.single_file_support then
-      local pseudo_root = #bufname == 0 and pwd or util.path.dirname(buf_path)
-      self:add(pseudo_root, true, bufnr)
+      local pseudo_root = #bufname == 0 and pwd or vim.fs.dirname(buf_path)
+      self:add(pseudo_root, true, bufnr, silent)
     end
   end)
 end
@@ -291,7 +233,7 @@ function M:try_add_wrapper(bufnr, project_root)
   local config = self.config
   -- `config.filetypes = nil` means all filetypes are valid.
   if not config.filetypes or vim.tbl_contains(config.filetypes, vim.bo[bufnr].filetype) then
-    self:try_add(bufnr, project_root)
+    self:try_add(bufnr, project_root, config.silent)
   end
 end
 

@@ -1,123 +1,120 @@
-local Lib = require "auto-session.session-lens.library"
+local Config = require "auto-session.config"
+local Lib = require "auto-session.lib"
 local Actions = require "auto-session.session-lens.actions"
-
-local logger = require("auto-session.logger"):new {
-  log_level = vim.log.levels.INFO,
-}
+local AutoSession = require "auto-session"
 
 ----------- Setup ----------
-local SessionLens = {
-  conf = {},
-}
+local SessionLens = {}
 
----Session Lens Config
----@class session_lens_config
----@field shorten_path boolean
----@field theme_conf table
----@field buftypes_to_ignore table
----@field previewer boolean
----@field session_control session_control
----@field load_on_setup boolean
-
----@type session_lens_config
-local defaultConf = {
-  theme_conf = { winblend = 10, border = true },
-  previewer = false,
-  buftypes_to_ignore = {},
-}
-
--- Set default config on plugin load
-SessionLens.conf = defaultConf
-
-function SessionLens.setup(auto_session)
-  SessionLens.conf = vim.tbl_deep_extend("force", SessionLens.conf, auto_session.conf.session_lens)
-  SessionLens.conf.functions = auto_session
-
-  Lib.setup(SessionLens.conf, auto_session)
-  Actions.setup(SessionLens.conf, auto_session)
-  logger.log_level = auto_session.conf.log_level
-end
-
+---@private
 ---Search session
 ---Triggers the customized telescope picker for switching sessions
----@param custom_opts any
+---@param custom_opts table
 SessionLens.search_session = function(custom_opts)
-  local themes = require "telescope.themes"
+  local telescope_themes = require "telescope.themes"
   local telescope_actions = require "telescope.actions"
+  local telescope_finders = require "telescope.finders"
+  local telescope_conf = require("telescope.config").values
 
-  custom_opts = (vim.tbl_isempty(custom_opts or {}) or custom_opts == nil) and SessionLens.conf or custom_opts
+  -- use custom_opts if specified and non-empty. Otherwise use the config
+  if not custom_opts or vim.tbl_isempty(custom_opts) then
+    custom_opts = Config.session_lens
+  end
+  custom_opts = custom_opts or {}
 
-  -- Use auto_session_root_dir from the Auto Session plugin
-  local cwd = SessionLens.conf.functions.get_root_dir()
+  -- get the theme defaults, with any overrides in custom_opts.theme_conf
+  local theme_opts = telescope_themes.get_dropdown(custom_opts.theme_conf)
 
-  if custom_opts.shorten_path ~= nil then
-    logger.warn "`shorten_path` config is deprecated, use the new `path_display` config instead"
-    if custom_opts.shorten_path then
-      custom_opts.path_display = { "shorten" }
-    else
-      custom_opts.path_display = nil
-    end
-
-    custom_opts.shorten_path = nil
+  -- path_display could've been in theme_conf but that's not where we put it
+  if custom_opts.path_display then
+    -- copy over to the theme options
+    theme_opts.path_display = custom_opts.path_display
   end
 
-  local theme_opts = themes.get_dropdown(custom_opts.theme_conf)
+  if theme_opts.path_display then
+    -- If there's a path_display setting, we have to force path_display.absolute = true here,
+    -- otherwise the session for the cwd will be displayed as just a dot
+    theme_opts.path_display.absolute = true
+  end
 
-  -- -- Ignore last session dir on finder if feature is enabled
-  -- if AutoSession.conf.auto_session_enable_last_session then
-  --   if AutoSession.conf.auto_session_last_session_dir then
-  --     local last_session_dir = AutoSession.conf.auto_session_last_session_dir:gsub(cwd, "")
-  --     custom_opts["file_ignore_patterns"] = { last_session_dir }
-  --   end
-  -- end
+  theme_opts.previewer = custom_opts.previewer
 
-  -- Use default previewer config by setting the value to nil if some sets previewer to true in the custom config.
-  -- Passing in the boolean value errors out in the telescope code with the picker trying to index a boolean instead of a table.
-  -- This fixes it but also allows for someone to pass in a table with the actual preview configs if they want to.
-  if custom_opts.previewer ~= false and custom_opts.previewer == true then
-    custom_opts["previewer"] = nil
+  local session_root_dir = AutoSession.get_root_dir()
+
+  local session_entry_maker = function(session_entry)
+    return {
+
+      ordinal = session_entry.session_name,
+      value = session_entry.session_name,
+      session_name = session_entry.session_name,
+      filename = session_entry.file_name,
+      path = session_entry.path,
+      cwd = session_root_dir,
+
+      -- We can't calculate the vaue of display until the picker is acutally displayed
+      -- because telescope.utils.transform_path may depend on the window size,
+      -- specifically with the truncate option. So we use a function that will be
+      -- called when actually displaying the row
+      display = function(_)
+        if session_entry.already_set_display_name then
+          return session_entry.display_name
+        end
+
+        session_entry.already_set_display_name = true
+
+        if not theme_opts or not theme_opts.path_display then
+          return session_entry.display_name
+        end
+
+        local telescope_utils = require "telescope.utils"
+
+        return telescope_utils.transform_path(theme_opts, session_entry.display_name_component)
+          .. session_entry.annotation_component
+      end,
+    }
+  end
+
+  local finder_maker = function()
+    return telescope_finders.new_table {
+      results = Lib.get_session_list(session_root_dir),
+      entry_maker = session_entry_maker,
+    }
   end
 
   local opts = {
     prompt_title = "Sessions",
-    entry_maker = Lib.make_entry.gen_from_file(custom_opts),
-    cwd = cwd,
-    -- TOOD: support custom mappings?
-    attach_mappings = function(_, map)
+    attach_mappings = function(prompt_bufnr, map)
       telescope_actions.select_default:replace(Actions.source_session)
-      map("i", "<c-d>", Actions.delete_session)
-      map("i", "<c-s>", Actions.alternate_session)
+
+      local mappings = Config.session_lens.mappings
+      if mappings then
+        map(mappings.delete_session[1], mappings.delete_session[2], Actions.delete_session)
+        map(mappings.alternate_session[1], mappings.alternate_session[2], Actions.alternate_session)
+
+        Actions.copy_session:enhance {
+          post = function()
+            local action_state = require "telescope.actions.state"
+            local picker = action_state.get_current_picker(prompt_bufnr)
+            picker:refresh(finder_maker(), { reset_prompt = true })
+          end,
+        }
+
+        map(mappings.copy_session[1], mappings.copy_session[2], Actions.copy_session)
+      end
       return true
     end,
   }
-  opts = vim.tbl_deep_extend("force", opts, theme_opts, custom_opts or {})
 
-  local find_command = (function()
-    if opts.find_command then
-      if type(opts.find_command) == "function" then
-        return opts.find_command(opts)
-      end
-      return opts.find_command
-    elseif 1 == vim.fn.executable "rg" then
-      return { "rg", "--files", "--color", "never" }
-    elseif 1 == vim.fn.executable "fd" then
-      return { "fd", "--type", "f", "--color", "never" }
-    elseif 1 == vim.fn.executable "fdfind" then
-      return { "fdfind", "--type", "f", "--color", "never" }
-    elseif 1 == vim.fn.executable "find" and vim.fn.has "win32" == 0 then
-      return { "find", ".", "-type", "f" }
-    elseif 1 == vim.fn.executable "where" then
-      return { "where", "/r", ".", "*" }
-    end
-  end)()
+  -- add the theme options
+  opts = vim.tbl_deep_extend("force", opts, theme_opts)
 
-  local finders = require "telescope.finders"
-  local conf = require("telescope.config").values
-  require("telescope.pickers").new(opts, {
-    finder = finders.new_oneshot_job(find_command, opts),
-    previewer = conf.grep_previewer(opts),
-    sorter = conf.file_sorter(opts),
-  }):find()
+  require("telescope.pickers")
+    .new(opts, {
+      finder = finder_maker(),
+      previewer = telescope_conf.file_previewer(opts),
+      sorter = telescope_conf.file_sorter(opts),
+    })
+    :find()
 end
 
 return SessionLens

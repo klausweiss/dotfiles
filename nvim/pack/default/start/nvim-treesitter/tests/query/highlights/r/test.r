@@ -5,7 +5,6 @@ init <- 1
 
 r"{(\1\2)}" -> `%r%`
 #  ^ @string
-#    ^ @string.escape
 #           ^ @operator
 #               ^ @variable
 
@@ -38,8 +37,9 @@ add <- function(a, b = 1, ...) {
 #        ^ @keyword.function
 #               ^ @variable.parameter
 #                  ^ @variable.parameter
-#                         ^ @keyword
+#                         ^ @constant.builtin
   return(a + b)
+# ^ @keyword.return
 }
 
 base::letters

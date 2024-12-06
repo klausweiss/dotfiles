@@ -1,9 +1,11 @@
-local lib = require "nvim-tree.lib"
-local utils = require "nvim-tree.utils"
-local events = require "nvim-tree.events"
-local notify = require "nvim-tree.notify"
+local core = require("nvim-tree.core")
+local utils = require("nvim-tree.utils")
+local events = require("nvim-tree.events")
+local notify = require("nvim-tree.notify")
 
 local find_file = require("nvim-tree.actions.finders.find-file").fn
+
+local DirectoryNode = require("nvim-tree.node.directory")
 
 local M = {
   config = {},
@@ -30,13 +32,25 @@ local function err_fmt(from, to, reason)
   return string.format("Cannot rename %s -> %s: %s", from, to, reason)
 end
 
+local function rename_file_exists(node, to)
+  if not utils.is_macos then
+    return utils.file_exists(to)
+  end
+
+  if string.lower(node) == string.lower(to) then
+    return false
+  end
+
+  return utils.file_exists(to)
+end
+
 ---@param node Node
 ---@param to string
 function M.rename(node, to)
   local notify_from = notify.render_path(node.absolute_path)
   local notify_to = notify.render_path(to)
 
-  if utils.file_exists(to) then
+  if rename_file_exists(notify_from, notify_to) then
     notify.warn(err_fmt(notify_from, notify_to, "file already exists"))
     return
   end
@@ -51,10 +65,10 @@ function M.rename(node, to)
     idx = idx + 1
 
     local p = utils.path_remove_trailing(path)
-    if #path_to_create == 0 and vim.fn.has "win32" == 1 then
-      path_to_create = utils.path_join { p, path_to_create }
+    if #path_to_create == 0 and vim.fn.has("win32") == 1 then
+      path_to_create = utils.path_join({ p, path_to_create })
     else
-      path_to_create = utils.path_join { path_to_create, p }
+      path_to_create = utils.path_join({ path_to_create, p })
     end
 
     if idx == num_nodes then
@@ -65,7 +79,7 @@ function M.rename(node, to)
         notify.warn(err_fmt(notify_from, notify_to, err))
         return
       end
-    elseif not utils.file_exists(path_to_create) then
+    elseif not rename_file_exists(notify_from, path_to_create) then
       local success = vim.loop.fs_mkdir(path_to_create, 493)
       if not success then
         notify.error("Could not create folder " .. notify.render_path(path_to_create))
@@ -89,11 +103,15 @@ function M.fn(default_modifier)
   default_modifier = default_modifier or ":t"
 
   return function(node, modifier)
-    if type(node) ~= "table" then
-      node = lib.get_node_at_cursor()
+    local explorer = core.get_explorer()
+    if not explorer then
+      return
     end
 
-    if node == nil then
+    if type(node) ~= "table" then
+      node = explorer:get_node_at_cursor()
+    end
+    if not node then
       return
     end
 
@@ -107,7 +125,10 @@ function M.fn(default_modifier)
       return
     end
 
-    node = lib.get_last_group_node(node)
+    local dir = node:as(DirectoryNode)
+    if dir then
+      node = dir:last_group_node()
+    end
     if node.name == ".." then
       return
     end
@@ -141,12 +162,14 @@ function M.fn(default_modifier)
         return
       end
 
-      M.rename(node, prepend .. new_file_path .. append)
+      local full_new_path = prepend .. new_file_path .. append
+
+      M.rename(node, full_new_path)
       if not M.config.filesystem_watchers.enable then
-        require("nvim-tree.actions.reloaders").reload_explorer()
+        explorer:reload_explorer()
       end
 
-      find_file(utils.path_remove_trailing(new_file_path))
+      find_file(utils.path_remove_trailing(full_new_path))
     end)
   end
 end

@@ -12,14 +12,16 @@
   (return_statement)
   (table_constructor)
   (arguments)
-  (return_statement)
 ] @indent.begin
 
 [
   "end"
-  ")"
   "}"
+  "]]"
 ] @indent.end
+
+(")" @indent.end
+  (#not-has-parent? @indent.end parameters))
 
 (return_statement
   (expression_list
@@ -40,3 +42,6 @@
 (comment) @indent.auto
 
 (string) @indent.auto
+
+(ERROR
+  "function") @indent.begin

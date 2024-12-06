@@ -12,28 +12,32 @@ local log = require "telescope.log"
 
 local Path = require "plenary.path"
 
-local flatten = vim.tbl_flatten
+local flatten = utils.flatten
 local filter = vim.tbl_filter
 
 local files = {}
 
-local escape_chars = function(string)
-  return string.gsub(string, "[%(|%)|\\|%[|%]|%-|%{%}|%?|%+|%*|%^|%$|%.]", {
-    ["\\"] = "\\\\",
-    ["-"] = "\\-",
-    ["("] = "\\(",
-    [")"] = "\\)",
-    ["["] = "\\[",
-    ["]"] = "\\]",
-    ["{"] = "\\{",
-    ["}"] = "\\}",
-    ["?"] = "\\?",
-    ["+"] = "\\+",
-    ["*"] = "\\*",
-    ["^"] = "\\^",
-    ["$"] = "\\$",
-    ["."] = "\\.",
-  })
+---@param s string
+---@return string
+local escape_chars = function(s)
+  return (
+    s:gsub("[%(|%)|\\|%[|%]|%-|%{%}|%?|%+|%*|%^|%$|%.]", {
+      ["\\"] = "\\\\",
+      ["-"] = "\\-",
+      ["("] = "\\(",
+      [")"] = "\\)",
+      ["["] = "\\[",
+      ["]"] = "\\]",
+      ["{"] = "\\{",
+      ["}"] = "\\}",
+      ["?"] = "\\?",
+      ["+"] = "\\+",
+      ["*"] = "\\*",
+      ["^"] = "\\^",
+      ["$"] = "\\$",
+      ["."] = "\\.",
+    })
+  )
 end
 
 local has_rg_program = function(picker_name, program)
@@ -115,12 +119,12 @@ files.live_grep = function(opts)
   end
   local search_dirs = opts.search_dirs
   local grep_open_files = opts.grep_open_files
-  opts.cwd = opts.cwd and vim.fn.expand(opts.cwd) or vim.loop.cwd()
+  opts.cwd = opts.cwd and utils.path_expand(opts.cwd) or vim.loop.cwd()
 
   local filelist = get_open_filelist(grep_open_files, opts.cwd)
   if search_dirs then
     for i, path in ipairs(search_dirs) do
-      search_dirs[i] = vim.fn.expand(path)
+      search_dirs[i] = utils.path_expand(path)
     end
   end
 
@@ -180,6 +184,7 @@ files.live_grep = function(opts)
         map("i", "<c-space>", actions.to_fuzzy_refine)
         return true
       end,
+      push_cursor_on_edit = true,
     })
     :find()
 end
@@ -201,7 +206,10 @@ files.grep_string = function(opts)
   else
     word = vim.F.if_nil(opts.search, vim.fn.expand "<cword>")
   end
+
+  word = tostring(word)
   local search = opts.use_regex and word or escape_chars(word)
+  local search_args = search == "" and { "-v", "--", "^[[:space:]]*$" } or { "--", search }
 
   local additional_args = {}
   if opts.additional_args ~= nil then
@@ -216,37 +224,31 @@ files.grep_string = function(opts)
     additional_args[#additional_args + 1] = "--encoding=" .. opts.file_encoding
   end
 
-  if search == "" then
-    search = { "-v", "--", "^[[:space:]]*$" }
-  else
-    search = { "--", search }
-  end
-
   local args
   if visual == true then
     args = flatten {
       vimgrep_arguments,
       additional_args,
-      search,
+      search_args,
     }
   else
     args = flatten {
       vimgrep_arguments,
       additional_args,
       opts.word_match,
-      search,
+      search_args,
     }
   end
 
   opts.__inverted, opts.__matches = opts_contain_invert(args)
 
   if opts.grep_open_files then
-    for _, file in ipairs(get_open_filelist(opts.grep_open_files, opts.cwd)) do
+    for _, file in ipairs(get_open_filelist(opts.grep_open_files, opts.cwd) or {}) do
       table.insert(args, file)
     end
   elseif opts.search_dirs then
     for _, path in ipairs(opts.search_dirs) do
-      table.insert(args, vim.fn.expand(path))
+      table.insert(args, utils.path_expand(path))
     end
   end
 
@@ -257,6 +259,7 @@ files.grep_string = function(opts)
       finder = finders.new_oneshot_job(args, opts),
       previewer = conf.grep_previewer(opts),
       sorter = conf.generic_sorter(opts),
+      push_cursor_on_edit = true,
     })
     :find()
 end
@@ -299,7 +302,7 @@ files.find_files = function(opts)
 
   if search_dirs then
     for k, v in pairs(search_dirs) do
-      search_dirs[k] = vim.fn.expand(v)
+      search_dirs[k] = utils.path_expand(v)
     end
   end
 
@@ -376,7 +379,7 @@ files.find_files = function(opts)
   end
 
   if opts.cwd then
-    opts.cwd = vim.fn.expand(opts.cwd)
+    opts.cwd = utils.path_expand(opts.cwd)
   end
 
   opts.entry_maker = opts.entry_maker or make_entry.gen_from_file(opts)
@@ -439,7 +442,7 @@ files.treesitter = function(opts)
   end
 
   results = utils.filter_symbols(results, opts)
-  if results == nil then
+  if vim.tbl_isempty(results) then
     -- error message already printed in `utils.filter_symbols`
     return
   end
@@ -460,13 +463,14 @@ files.treesitter = function(opts)
         tag = "kind",
         sorter = conf.generic_sorter(opts),
       },
+      push_cursor_on_edit = true,
     })
     :find()
 end
 
 files.current_buffer_fuzzy_find = function(opts)
   -- All actions are on the current buffer
-  local filename = vim.fn.expand(vim.api.nvim_buf_get_name(opts.bufnr))
+  local filename = vim.api.nvim_buf_get_name(opts.bufnr)
   local filetype = vim.api.nvim_buf_get_option(opts.bufnr, "filetype")
 
   local lines = vim.api.nvim_buf_get_lines(opts.bufnr, 0, -1, false)
@@ -564,13 +568,13 @@ files.current_buffer_fuzzy_find = function(opts)
 
           actions.close(prompt_bufnr)
           vim.schedule(function()
+            vim.cmd "normal! m'"
             vim.api.nvim_win_set_cursor(0, { selection.lnum, first_col })
           end)
         end)
 
         return true
       end,
-      push_cursor_on_edit = true,
     })
     :find()
 end

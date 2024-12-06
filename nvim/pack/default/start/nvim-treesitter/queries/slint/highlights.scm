@@ -28,11 +28,11 @@
   (relative_font_size_value)
 ] @number.float
 
-(purity) @type.qualifier
+(purity) @keyword.modifier
 
-(function_visibility) @type.qualifier
+(function_visibility) @keyword.modifier
 
-(property_visibility) @type.qualifier
+(property_visibility) @keyword.modifier
 
 (builtin_type_identifier) @type.builtin
 
@@ -46,6 +46,9 @@
   ]) @type
 
 (user_type_identifier) @type
+
+(enum_block
+  (user_type_identifier) @constant)
 
 ; Functions and callbacks
 (argument) @variable.parameter
@@ -162,9 +165,8 @@
   (simple_identifier) @variable)
 
 (member_access
-  member:
-    (expression
-      (simple_identifier) @property))
+  member: (expression
+    (simple_identifier) @property))
 
 (states_definition
   name: (simple_identifier) @constant)
@@ -185,7 +187,7 @@
 ; Keywords:
 (animate_option_identifier) @keyword
 
-(export) @keyword
+(export) @keyword.import
 
 (if_statement
   "if" @keyword.conditional)
@@ -215,7 +217,7 @@
   ] @keyword)
 
 (enum_definition
-  "enum" @keyword)
+  "enum" @keyword.type)
 
 (for_loop
   [
@@ -251,7 +253,7 @@
   ] @keyword)
 
 (struct_definition
-  "struct" @keyword)
+  "struct" @keyword.type)
 
 (transitions_definition
   [

@@ -1,9 +1,9 @@
-local cli = require("neogit.lib.git.cli")
-local diff_lib = require("neogit.lib.git.diff")
+local git = require("neogit.lib.git")
 local util = require("neogit.lib.util")
 local config = require("neogit.config")
-local json = require("neogit.lib.json")
+local record = require("neogit.lib.record")
 
+---@class NeogitGitLog
 local M = {}
 
 local commit_header_pat = "([| ]*)(%*?)([| ]*)commit (%w+)"
@@ -21,7 +21,15 @@ local commit_header_pat = "([| ]*)(%*?)([| ]*)commit (%w+)"
 ---@field committer_date string when the committer committed
 ---@field description string a list of lines
 ---@field commit_arg string the passed argument of the git command
+---@field subject string
+---@field parent string
 ---@field diffs any[]
+---@field ref_name string
+---@field abbreviated_commit string
+---@field body string
+---@field verification_flag string?
+---@field rel_date string
+---@field log_date string
 
 ---Parses the provided list of lines into a CommitLogEntry
 ---@param raw string[]
@@ -134,7 +142,7 @@ function M.parse(raw)
       if not line or vim.startswith(line, "diff") then
         -- There was a previous diff, parse it
         if in_diff then
-          table.insert(commit.diffs, diff_lib.parse(current_diff))
+          table.insert(commit.diffs, git.diff.parse(current_diff, {}))
           current_diff = {}
         end
 
@@ -142,7 +150,7 @@ function M.parse(raw)
       elseif line == "" then -- A blank line signifies end of diffs
         -- Parse the last diff, consume the blankline, and exit
         if in_diff then
-          table.insert(commit.diffs, diff_lib.parse(current_diff))
+          table.insert(commit.diffs, git.diff.parse(current_diff, {}))
           current_diff = {}
         end
 
@@ -222,25 +230,12 @@ end
 ---@param options table
 ---@return table
 local function ensure_max(options)
-  if vim.fn.has("nvim-0.10") == 1 then
-    if
-      not vim.tbl_contains(options, function(item)
-        return item:match("%-%-max%-count=%d+")
-      end, { predicate = true })
-    then
-      table.insert(options, "--max-count=256")
-    end
-  else
-    local has_max = false
-    for _, v in ipairs(options) do
-      if v:match("%-%-max%-count=%d+") then
-        has_max = true
-        break
-      end
-    end
-    if not has_max then
-      table.insert(options, "--max-count=256")
-    end
+  if
+    not vim.tbl_contains(options, function(item)
+      return item:match("%-%-max%-count=%d+")
+    end, { predicate = true })
+  then
+    table.insert(options, "--max-count=256")
   end
 
   return options
@@ -293,6 +288,17 @@ local function determine_order(options, graph)
   return options
 end
 
+--- Specifies date format when not using relative dates
+--- @param options table
+--- @return table, string|nil
+local function set_date_format(options)
+  if config.values.log_date_format ~= nil then
+    table.insert(options, "--date=format:" .. config.values.log_date_format)
+  end
+
+  return options
+end
+
 ---@param options table|nil
 ---@param files? table
 ---@param color? boolean
@@ -301,11 +307,11 @@ M.graph = util.memoize(function(options, files, color)
   options = ensure_max(options or {})
   files = files or {}
 
-  local result = cli.log
+  local result = git.cli.log
     .format("%x1E%H%x00").graph.color
     .arg_list(options)
     .files(unpack(files))
-    .call({ ignore_error = true, hidden = true }).stdout_raw
+    .call({ ignore_error = true, hidden = true, remove_ansi = false }).stdout
 
   return util.filter_map(result, function(line)
     return require("neogit.lib.ansi").parse(util.trim(line), { recolor = not color })
@@ -333,6 +339,7 @@ local function format(show_signature)
     committer_email = "%cE",
     committer_date = "%cD",
     rel_date = "%cr",
+    log_date = "%cd",
   }
 
   if show_signature then
@@ -341,7 +348,7 @@ local function format(show_signature)
     fields.verification_flag = "%G?"
   end
 
-  return json.encode(fields)
+  return record.encode(fields, "log")
 end
 
 ---@param options? string[]
@@ -358,17 +365,16 @@ M.list = util.memoize(function(options, graph, files, hidden, graph_color)
   options = ensure_max(options or {})
   options = determine_order(options, graph)
   options, signature = show_signature(options)
+  options = set_date_format(options)
 
-  local output = cli.log
+  local output = git.cli.log
     .format(format(signature))
     .args("--no-patch")
     .arg_list(options)
     .files(unpack(files))
-    .show_popup(false)
     .call({ hidden = hidden, ignore_error = hidden }).stdout
 
-  local commits =
-    json.decode(output, { escaped_fields = { "body", "author_name", "committer_name", "subject" } })
+  local commits = record.decode(output) ---@type CommitLogEntry[]
   if vim.tbl_isempty(commits) then
     return {}
   end
@@ -376,7 +382,9 @@ M.list = util.memoize(function(options, graph, files, hidden, graph_color)
   local graph_output
   if graph then
     if config.values.graph_style == "unicode" then
-      graph_output = require("neogit.lib.graph").build(commits)
+      graph_output = require("neogit.lib.graph.unicode").build(commits)
+    elseif config.values.graph_style == "kitty" then
+      graph_output = require("neogit.lib.graph.kitty").build(commits, graph_color)
     elseif config.values.graph_style == "ascii" then
       util.remove_item_from_table(options, "--show-signature")
       graph_output = M.graph(options, files, graph_color)
@@ -389,49 +397,66 @@ M.list = util.memoize(function(options, graph, files, hidden, graph_color)
 end)
 
 ---Determines if commit a is an ancestor of commit b
----@param a string commit hash
----@param b string commit hash
+---@param ancestor string commit hash
+---@param descendant string commit hash
 ---@return boolean
-function M.is_ancestor(a, b)
-  return cli["merge-base"].is_ancestor.args(a, b).call_sync({ ignore_error = true, hidden = true }).code == 0
+function M.is_ancestor(ancestor, descendant)
+  return git.cli["merge-base"].is_ancestor
+    .args(ancestor, descendant)
+    .call({ ignore_error = true, hidden = true }).code == 0
 end
 
 ---Finds parent commit of a commit. If no parent exists, will return nil
 ---@param commit string
 ---@return string|nil
 function M.parent(commit)
-  return vim.split(cli["rev-list"].max_count(1).parents.args(commit).call({ hidden = true }).stdout[1], " ")[2]
-end
-
-local function update_recent(state)
-  local count = config.values.status.recent_commit_count
-  if count < 1 then
-    return
-  end
-
-  state.recent.items =
-    util.filter_map(M.list({ "--max-count=" .. tostring(count) }, nil, {}, true), M.present_commit)
+  return vim.split(
+    git.cli["rev-list"].max_count(1).parents.args(commit).call({ hidden = true }).stdout[1],
+    " "
+  )[2]
 end
 
 function M.register(meta)
-  meta.update_recent = update_recent
+  meta.update_recent = function(state)
+    state.recent = { items = {} }
+
+    local count = config.values.status.recent_commit_count
+    if count > 0 then
+      state.recent.items =
+        util.filter_map(M.list({ "--max-count=" .. tostring(count) }, nil, {}, true), M.present_commit)
+    end
+  end
 end
 
+---@param from string
+---@param to string
 function M.update_ref(from, to)
-  cli["update-ref"].message(string.format("reset: moving to %s", to)).args(from, to).call()
+  git.cli["update-ref"].message(string.format("reset: moving to %s", to)).args(from, to).call()
 end
 
 function M.message(commit)
-  return cli.log.max_count(1).format("%s").args(commit).call({ hidden = true }).stdout[1]
+  return git.cli.log.max_count(1).format("%s").args(commit).call({ hidden = true }).stdout[1]
 end
 
+function M.full_message(commit)
+  return git.cli.log.max_count(1).format("%B").args(commit).call({ hidden = true }).stdout
+end
+
+---@class CommitItem
+---@field name string
+---@field oid string
+---@field decoration CommitBranchInfo
+---@field commit CommitLogEntry[]
+
+---@return nil|CommitItem
 function M.present_commit(commit)
   if not commit.oid then
     return
   end
 
   return {
-    name = string.format("%s %s", commit.oid:sub(1, 7), commit.subject or "<empty>"),
+    name = string.format("%s %s", commit.abbreviated_commit, commit.subject or "<empty>"),
+    decoration = M.branch_info(commit.ref_name, git.remote.list()),
     oid = commit.oid,
     commit = commit,
   }
@@ -439,9 +464,9 @@ end
 
 --- Runs `git verify-commit`
 ---@param commit string Hash of commit
----@return string The stderr output of the command
+---@return string[] The stderr output of the command
 function M.verify_commit(commit)
-  return cli["verify-commit"].args(commit).call_sync({ ignore_error = true }).stderr
+  return git.cli["verify-commit"].args(commit).call({ ignore_error = true }).stderr
 end
 
 ---@class CommitBranchInfo
@@ -454,7 +479,7 @@ end
 ---@param ref string comma separated list of branches, tags and remotes, e.g.:
 ---   * "origin/main, main, origin/HEAD, tag: 1.2.3, fork/develop"
 ---   * "HEAD -> main, origin/main, origin/HEAD, tag: 1.2.3, fork/develop"
----@param remotes string[] list of remote names, e.g. by calling `require("neogit.lib.git.remote").list()`
+---@param remotes string[] list of remote names, e.g. by calling `require("neogit.lib.git").remote.list()`
 ---@return CommitBranchInfo
 M.branch_info = util.memoize(function(ref, remotes)
   local parts = vim.split(ref, ", ")
@@ -499,7 +524,11 @@ M.branch_info = util.memoize(function(ref, remotes)
         end
         table.insert(result.remotes[name], remote)
       else
-        result.locals[name] = true
+        if name == "HEAD" then
+          result.locals["@"] = true
+        elseif name ~= "" then
+          result.locals[name] = true
+        end
       end
     end
   end
@@ -508,11 +537,20 @@ M.branch_info = util.memoize(function(ref, remotes)
 end)
 
 function M.reflog_message(skip)
-  return cli.log
+  return git.cli.log
     .format("%B")
     .max_count(1)
     .args("--reflog", "--no-merges", "--skip=" .. tostring(skip))
-    .call_sync({ ignore_error = true }).stdout
+    .call({ ignore_error = true }).stdout
 end
+
+M.abbreviated_size = util.memoize(function()
+  local commits = M.list({ "HEAD", "--max-count=1" }, nil, {}, true)
+  if vim.tbl_isempty(commits) then
+    return 7
+  else
+    return string.len(commits[1].abbreviated_commit)
+  end
+end, { timeout = math.huge })
 
 return M

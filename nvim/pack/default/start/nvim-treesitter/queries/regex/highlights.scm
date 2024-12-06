@@ -6,6 +6,7 @@
   "(?"
   "(?:"
   "(?<"
+  "<"
   ">"
   "["
   "]"
@@ -20,6 +21,8 @@
 (identity_escape) @string.regexp
 
 (class_character) @constant
+
+(decimal_digits) @number
 
 [
   (control_letter_escape)
@@ -37,11 +40,14 @@
   "="
   "!"
   "-"
+  "\\k"
+  (lazy)
 ] @operator
 
 [
   (start_assertion)
   (end_assertion)
+  ","
 ] @punctuation.delimiter
 
 (any_character) @variable.builtin

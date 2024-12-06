@@ -1,6 +1,6 @@
 ((source_file
   .
-  (comment) @keyword.directive)
+  (comment) @keyword.directive @nospell)
   (#lua-match? @keyword.directive "^#!/"))
 
 [
@@ -32,9 +32,23 @@
 ("continue" @keyword.repeat
   (block))
 
+[
+  "try"
+  "catch"
+  "finally"
+] @keyword.exception
+
 "return" @keyword.return
 
-"sub" @keyword.function
+[
+  "sub"
+  "method"
+] @keyword.function
+
+[
+  "async"
+  "await"
+] @keyword.coroutine
 
 [
   "map"
@@ -42,14 +56,22 @@
   "sort"
 ] @function.builtin
 
-"package" @keyword.import
+[
+  "package"
+  "class"
+  "role"
+] @keyword.import
 
 [
+  "defer"
   "do"
+  "eval"
   "my"
   "our"
   "local"
+  "dynamically"
   "state"
+  "field"
   "last"
   "next"
   "redo"
@@ -67,10 +89,16 @@
 (phaser_statement
   phase: _ @keyword)
 
+(class_phaser_statement
+  phase: _ @keyword)
+
 [
   "or"
+  "xor"
   "and"
   "eq"
+  "equ"
+  "eqr"
   "ne"
   "cmp"
   "lt"
@@ -90,6 +118,8 @@
   (number)
   (version)
 ] @number
+
+(boolean) @boolean
 
 [
   (string_literal)
@@ -129,10 +159,16 @@
 (package_statement
   (package) @type)
 
+(class_statement
+  (package) @type)
+
 (require_expression
   (bareword) @type)
 
 (subroutine_declaration_statement
+  name: (bareword) @function)
+
+(method_declaration_statement
   name: (bareword) @function)
 
 (attribute_name) @attribute
@@ -252,7 +288,7 @@
 (keyval_expression
   hash: (_) @variable)
 
-(comment) @comment
+(comment) @comment @spell
 
 [
   "=>"
@@ -270,4 +306,4 @@
   ")"
 ] @punctuation.bracket
   ; priority hack so nvim + ts-cli behave the same
-  (#set! "priority" 90))
+  (#set! priority 90))

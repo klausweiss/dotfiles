@@ -13,8 +13,9 @@ else
   files = vim.fn.split(vim.fn.glob(arg .. "/**/*.scm"))
 end
 
-ts.query.add_predicate("has-type?", function(match, _, _, pred)
-  local node = match[pred[2]]
+ts.query.add_predicate("kind-eq?", function(match, _, _, pred)
+  local cap = match[pred[2]]
+  local node = type(cap) == "table" and cap[1] or cap
   if not node then
     return true
   end
@@ -24,7 +25,8 @@ ts.query.add_predicate("has-type?", function(match, _, _, pred)
 end, true)
 
 ts.query.add_predicate("is-start-of-line?", function(match, _, _, pred)
-  local node = match[pred[2]]
+  local cap = match[pred[2]]
+  local node = type(cap) == "table" and cap[1] or cap
   if not node then
     return true
   end
@@ -34,6 +36,7 @@ end)
 
 --- Control the indent here. Change to \t if uses tab instead
 local indent_str = "  "
+local indent_width_plus_one = 3
 local textwidth = 100
 
 -- Query to control the formatter
@@ -132,7 +135,7 @@ local format_queries = [[
 ;; Append newlines for nodes inside the list
 (list
   (_) @format.append-newline
-  (#not-has-type? @format.append-newline capture quantifier))
+  (#not-kind-eq? @format.append-newline "capture" "quantifier"))
 
 ;; (_), "_" and _ handler
 ;; Start indents if it's one of these patterns
@@ -194,23 +197,10 @@ local format_queries = [[
   ] @format.cancel-append
   .
   ")"
-  (#not-has-type? @format.cancel-append comment))
+  (#not-kind-eq? @format.cancel-append "comment"))
 
 ;; All captures should be separated with a space
 (capture) @format.prepend-space
-
-;; Workaround to just use the string's content
-(anonymous_node (identifier) @format.keep)
-(field_definition
-  name: (_)
-  ":" @format.indent.begin @format.append-newline ; suppress trailing whitespaces with forced newlines
-  [
-    (named_node [ (named_node) (list) (grouping) (anonymous_node) (field_definition) ])
-    (list "[" . (_) . (_) "]")
-    (grouping "(" . (_) . (_) ")")
-    (grouping
-      quantifier: (quantifier))
-  ])
 
 ; ( (_) ) handler
 (grouping
@@ -237,13 +227,14 @@ local format_queries = [[
     (list)
     (predicate)
     (grouping . (_))
+    (field_definition)
     "."
   ] @format.append-newline
   (_) .)
 ;; Collapsing closing parens
 (grouping
   (_) @format.cancel-append . ")"
-  (#not-has-type? @format.cancel-append comment))
+  (#not-kind-eq? @format.cancel-append "comment"))
 (grouping
   (capture) @format.prepend-space)
 ;; Remove unnecessary parens
@@ -257,8 +248,9 @@ local format_queries = [[
   "(" @format.remove
   .
   [
+    (grouping)
     (anonymous_node
-      name: (identifier) .)
+      name: (string) .)
     (named_node
       [
         "_"
@@ -290,8 +282,6 @@ local format_queries = [[
     . (_) @format.prepend-space)
   (#set! lookahead-newline)
   (#set! conditional-newline))
-;; Workaround to keep the string's content
-(string) @format.keep
 
 ;; Comment related handlers
 (comment) @format.append-newline
@@ -332,25 +322,21 @@ end
 ---@param bufnr integer
 ---@param node TSNode
 ---@param lines string[]
----@param q table<string, TSMetadata>
+---@param q table<string, vim.treesitter.query.TSMetadata>
 ---@param level integer
 local function iter(bufnr, node, lines, q, level)
   --- Sometimes 2 queries apply append twice. This is to prevent the case from happening
   local apply_newline = false
   for child, _ in node:iter_children() do
     local id = child:id()
-    repeat
-      if apply_newline then
-        apply_newline = false
-        lines[#lines + 1] = string.rep(indent_str, level)
-      end
-      if q["format.ignore"][id] then
-        local text = vim.split(get_node_text(child, bufnr):gsub("\r\n?", "\n"), "\n", { trimempty = true })
-        append_lines(lines, text)
-        break
-      elseif q["format.remove"][id] then
-        break
-      end
+    if apply_newline then
+      apply_newline = false
+      lines[#lines + 1] = string.rep(indent_str, level)
+    end
+    if q["format.ignore"][id] then
+      local text = vim.split(get_node_text(child, bufnr):gsub("\r\n?", "\n"), "\n", { trimempty = true })
+      append_lines(lines, text)
+    elseif not q["format.remove"][id] then
       if not q["format.cancel-prepend"][id] then
         if q["format.prepend-newline"][id] then
           lines[#lines + 1] = string.rep(indent_str, level)
@@ -366,7 +352,7 @@ local function iter(bufnr, node, lines, q, level)
             local _, _, byte_end = node:end_()
             if
               q["format.prepend-space"][id]["lookahead-newline"]
-              and textwidth - (byte_end - byte_start) - #lines[#lines] < 0
+              and (byte_end - byte_start) + #lines[#lines] > textwidth
             then
               lines[#lines + 1] = string.rep(indent_str, level)
             else
@@ -377,7 +363,11 @@ local function iter(bufnr, node, lines, q, level)
       end
       if q["format.replace"][id] then
         append_lines(lines, vim.split(q["format.replace"][id].text, "\n", { trimempty = true }))
-      elseif child:named_child_count() == 0 or q["format.keep"][id] then
+      elseif
+        child:named_child_count() == 0
+        -- Workaround to preserve string content
+        or child:type() == "string"
+      then
         append_lines(
           lines,
           vim.split(string.gsub(get_node_text(child, bufnr), "\r\n?", "\n"), "\n+", { trimempty = true })
@@ -388,33 +378,17 @@ local function iter(bufnr, node, lines, q, level)
       if q["format.indent.begin"][id] then
         level = level + 1
         apply_newline = true
-        break
+      elseif q["format.indent.dedent"][id] then
+        lines[#lines] = string.sub(lines[#lines], indent_width_plus_one)
       end
-      if q["format.indent.dedent"][id] then
-        if string.match(lines[#lines], "^%s*" .. get_node_text(child, bufnr)) then
-          lines[#lines] = string.sub(lines[#lines], 1 + #string.rep(indent_str, 1))
-        end
-      end
-      if q["format.indent.end"][id] then
-        level = math.max(level - 1, 0)
-        if string.match(lines[#lines], "^%s*" .. get_node_text(child, bufnr)) then
-          lines[#lines] = string.sub(lines[#lines], 1 + #string.rep(indent_str, 1))
-        end
-        break
-      end
-    until true
-    repeat
-      if q["format.cancel-append"][id] then
-        apply_newline = false
-      end
-      if not q["format.cancel-append"][id] then
-        if q["format.append-newline"][id] then
-          apply_newline = true
-        elseif q["format.append-space"][id] then
-          lines[#lines] = lines[#lines] .. " "
-        end
-      end
-    until true
+    end
+    if q["format.cancel-append"][id] then
+      apply_newline = false
+    elseif q["format.append-newline"][id] then
+      apply_newline = true
+    elseif q["format.append-space"][id] then
+      lines[#lines] = lines[#lines] .. " "
+    end
   end
 end
 
@@ -426,7 +400,6 @@ local function format(bufnr, queries)
   local map = {
     ['format.ignore'] = {},           -- Ignore the node and its children
     ['format.indent.begin'] = {},     -- +1 shiftwidth for all nodes after this
-    ['format.indent.end'] = {},       -- -1 shiftwidth for all nodes after this
     ['format.indent.dedent'] = {},    -- -1 shiftwidth for this line only
     ['format.prepend-space'] = {},    -- Prepend a space before inserting the node
     ['format.prepend-newline'] = {},  -- Prepend a \n before inserting the node
@@ -434,7 +407,6 @@ local function format(bufnr, queries)
     ['format.append-newline'] = {},   -- Append a newline after inserting the node
     ['format.cancel-append'] = {},    -- Cancel any `@format.append-*` applied to the node
     ['format.cancel-prepend'] = {},   -- Cancel any `@format.prepend-*` applied to the node
-    ['format.keep'] = {},             -- String content is not exposed as a syntax node. This is a workaround for it
     ['format.replace'] = {},          -- Dedicated capture used to store results of `(#gsub!)`
     ['format.remove'] = {},           -- Do not add the syntax node to the result, i.e. brackets [], parens ()
   }

@@ -23,6 +23,8 @@
 
 (field_identifier) @variable.member
 
+(shorthand_field_identifier) @variable.member
+
 (shorthand_field_initializer
   (identifier) @variable.member)
 
@@ -30,6 +32,8 @@
   name: (identifier) @module)
 
 (self) @variable.builtin
+
+"_" @character.special
 
 (label
   [
@@ -45,7 +49,18 @@
   (identifier) @function)
 
 (parameter
-  (identifier) @variable.parameter)
+  [
+    (identifier)
+    "_"
+  ] @variable.parameter)
+
+(parameter
+  (ref_pattern
+    [
+      (mut_pattern
+        (identifier) @variable.parameter)
+      (identifier) @variable.parameter
+    ]))
 
 (closure_parameters
   (_) @variable.parameter)
@@ -55,27 +70,23 @@
   function: (identifier) @function.call)
 
 (call_expression
-  function:
-    (scoped_identifier
-      (identifier) @function.call .))
+  function: (scoped_identifier
+    (identifier) @function.call .))
 
 (call_expression
-  function:
-    (field_expression
-      field: (field_identifier) @function.call))
+  function: (field_expression
+    field: (field_identifier) @function.call))
 
 (generic_function
   function: (identifier) @function.call)
 
 (generic_function
-  function:
-    (scoped_identifier
-      name: (identifier) @function.call))
+  function: (scoped_identifier
+    name: (identifier) @function.call))
 
 (generic_function
-  function:
-    (field_expression
-      field: (field_identifier) @function.call))
+  function: (field_expression
+    field: (field_identifier) @function.call))
 
 ; Assume other uppercase names are enum constructors
 ((field_identifier) @constant
@@ -136,9 +147,8 @@
   path: (identifier) @module)
 
 (scoped_use_list
-  path:
-    (scoped_identifier
-      (identifier) @module))
+  path: (scoped_identifier
+    (identifier) @module))
 
 (use_list
   (scoped_identifier
@@ -156,24 +166,21 @@
 
 ; Correct enum constructors
 (call_expression
-  function:
-    (scoped_identifier
-      "::"
-      name: (identifier) @constant)
+  function: (scoped_identifier
+    "::"
+    name: (identifier) @constant)
   (#lua-match? @constant "^[A-Z]"))
 
 ; Assume uppercase names in a match arm are constants.
 ((match_arm
-  pattern:
-    (match_pattern
-      (identifier) @constant))
+  pattern: (match_pattern
+    (identifier) @constant))
   (#lua-match? @constant "^[A-Z]"))
 
 ((match_arm
-  pattern:
-    (match_pattern
-      (scoped_identifier
-        name: (identifier) @constant)))
+  pattern: (match_pattern
+    (scoped_identifier
+      name: (identifier) @constant)))
   (#lua-match? @constant "^[A-Z]"))
 
 ((identifier) @constant.builtin
@@ -210,22 +217,10 @@
   macro: (identifier) @function.macro)
 
 (macro_invocation
-  macro:
-    (scoped_identifier
-      (identifier) @function.macro .))
+  macro: (scoped_identifier
+    (identifier) @function.macro .))
 
 ; Literals
-[
-  (line_comment)
-  (block_comment)
-] @comment @spell
-
-(line_comment
-  (doc_comment)) @comment.documentation
-
-(block_comment
-  (doc_comment)) @comment.documentation
-
 (boolean_literal) @boolean
 
 (integer_literal) @number
@@ -252,43 +247,49 @@
 
 [
   "default"
-  "enum"
   "impl"
   "let"
   "move"
-  "pub"
-  "struct"
-  "trait"
-  "type"
-  "union"
   "unsafe"
   "where"
 ] @keyword
 
 [
+  "enum"
+  "struct"
+  "union"
+  "trait"
+  "type"
+] @keyword.type
+
+[
   "async"
   "await"
+  "gen"
 ] @keyword.coroutine
 
 "try" @keyword.exception
 
 [
   "ref"
+  "pub"
+  "raw"
   (mutable_specifier)
-] @type.qualifier
-
-[
   "const"
   "static"
   "dyn"
   "extern"
-] @keyword.storage
+] @keyword.modifier
 
 (lifetime
-  [
-    "'"
-    (identifier)
-  ] @keyword.storage)
+  "'" @keyword.modifier)
+
+(lifetime
+  (identifier) @attribute)
+
+(lifetime
+  (identifier) @attribute.builtin
+  (#any-of? @attribute.builtin "static" "_"))
 
 "fn" @keyword.function
 
@@ -381,6 +382,19 @@
   "||"
 ] @operator
 
+(use_wildcard
+  "*" @character.special)
+
+(remaining_field_pattern
+  ".." @character.special)
+
+(range_pattern
+  [
+    ".."
+    "..="
+    "..."
+  ] @character.special)
+
 ; Punctuation
 [
   "("
@@ -440,7 +454,7 @@
 (macro_invocation
   "!" @function.macro)
 
-(empty_type
+(never_type
   "!" @type.builtin)
 
 (macro_invocation
@@ -457,3 +471,61 @@
   macro: (identifier) @keyword.debug
   "!" @keyword.debug
   (#eq? @keyword.debug "dbg"))
+
+; Comments
+[
+  (line_comment)
+  (block_comment)
+  (outer_doc_comment_marker)
+  (inner_doc_comment_marker)
+] @comment @spell
+
+(line_comment
+  (doc_comment)) @comment.documentation
+
+(block_comment
+  (doc_comment)) @comment.documentation
+
+(call_expression
+  function: (scoped_identifier
+    path: (identifier) @_regex
+    (#any-of? @_regex "Regex" "ByteRegexBuilder")
+    name: (identifier) @_new
+    (#eq? @_new "new"))
+  arguments: (arguments
+    (raw_string_literal
+      (string_content) @string.regexp)))
+
+(call_expression
+  function: (scoped_identifier
+    path: (scoped_identifier
+      (identifier) @_regex
+      (#any-of? @_regex "Regex" "ByteRegexBuilder") .)
+    name: (identifier) @_new
+    (#eq? @_new "new"))
+  arguments: (arguments
+    (raw_string_literal
+      (string_content) @string.regexp)))
+
+(call_expression
+  function: (scoped_identifier
+    path: (identifier) @_regex
+    (#any-of? @_regex "RegexSet" "RegexSetBuilder")
+    name: (identifier) @_new
+    (#eq? @_new "new"))
+  arguments: (arguments
+    (array_expression
+      (raw_string_literal
+        (string_content) @string.regexp))))
+
+(call_expression
+  function: (scoped_identifier
+    path: (scoped_identifier
+      (identifier) @_regex
+      (#any-of? @_regex "RegexSet" "RegexSetBuilder") .)
+    name: (identifier) @_new
+    (#eq? @_new "new"))
+  arguments: (arguments
+    (array_expression
+      (raw_string_literal
+        (string_content) @string.regexp))))

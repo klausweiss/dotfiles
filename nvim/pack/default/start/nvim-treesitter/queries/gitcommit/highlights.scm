@@ -9,13 +9,11 @@
 
 (change) @keyword
 
-(filepath) @string.special.url
+(filepath) @string.special.path
 
 (arrow) @punctuation.delimiter
 
 (subject) @markup.heading @spell
-
-(overflow) @comment.warning @spell
 
 (subject
   (subject_prefix) @function @nospell)

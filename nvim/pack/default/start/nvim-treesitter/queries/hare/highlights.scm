@@ -20,7 +20,10 @@
   (#lua-match? @constant "^[A-Z_]+$"))
 
 ; Includes
-"use" @keyword.import
+[
+  "use"
+  "export"
+] @keyword.import
 
 (use_statement
   (scoped_type_identifier
@@ -36,18 +39,20 @@
 
 ((scoped_type_identifier
   path: (_) @module)
-  (#set! "priority" 105))
+  (#set! priority 105))
 
 ; Keywords
 [
   "def"
-  "enum"
-  "export"
   "let"
-  "struct"
-  "type"
-  "union"
 ] @keyword
+
+[
+  "enum"
+  "struct"
+  "union"
+  "type"
+] @keyword.type
 
 "fn" @keyword.function
 
@@ -74,7 +79,7 @@
   "const"
   "static"
   "nullable"
-] @type.qualifier
+] @keyword.modifier
 
 ; Attributes
 [
@@ -88,7 +93,7 @@
 
 ; Labels
 ((label) @label
-  (#set! "priority" 105))
+  (#set! priority 105))
 
 ; Functions
 (function_declaration
@@ -139,7 +144,7 @@
 ((member_expression
   "."
   (_) @variable.member)
-  (#set! "priority" 105))
+  (#set! priority 105))
 
 (field
   .

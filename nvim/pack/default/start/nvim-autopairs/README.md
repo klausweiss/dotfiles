@@ -16,7 +16,7 @@ Install the plugin with your preferred package manager:
     event = "InsertEnter",
     config = true
     -- use opts = {} for passing setup options
-    -- this is equalent to setup({}) function
+    -- this is equivalent to setup({}) function
 }
 ```
 
@@ -357,6 +357,7 @@ Before        Input         After
 ``` lua
   require('nvim-autopairs').disable()
   require('nvim-autopairs').enable()
+  require('nvim-autopairs').toggle()
   require('nvim-autopairs').remove_rule('(') -- remove rule (
   require('nvim-autopairs').clear_rules() -- clear all rules
   require('nvim-autopairs').get_rules('"')
@@ -419,4 +420,5 @@ npairs.setup({
 ## Sponsors
 
 Thanks to everyone who sponsors my projects and makes continued development maintenance possible!
-<!-- patreon --><a href="https://github.com/t4t5"><img src="https://github.com/t4t5.png" width="60px" alt="" /></a><!-- patreon-->
+
+<!-- sponsors --><a href="https://github.com/looshch"><img src="https:&#x2F;&#x2F;avatars.githubusercontent.com&#x2F;u&#x2F;45432373?u&#x3D;56759fa0249df8316ca41b3485c3aa28fee1af12&amp;v&#x3D;4" width="60px" alt="george looshch" /></a><!-- sponsors -->

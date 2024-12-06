@@ -1,7 +1,7 @@
-local core = require "nvim-tree.core"
-local lib = require "nvim-tree.lib"
-local view = require "nvim-tree.view"
-local finders_find_file = require "nvim-tree.actions.finders.find-file"
+local core = require("nvim-tree.core")
+local lib = require("nvim-tree.lib")
+local view = require("nvim-tree.view")
+local finders_find_file = require("nvim-tree.actions.finders.find-file")
 
 local M = {}
 
@@ -24,18 +24,19 @@ function M.fn(opts)
   local bufnr, path
 
   -- (optional) buffer number and path
-  if type(opts.buf) == "nil" then
+  local opts_buf = opts.buf
+  if type(opts_buf) == "nil" then
     bufnr = vim.api.nvim_get_current_buf()
     path = vim.api.nvim_buf_get_name(bufnr)
-  elseif type(opts.buf) == "number" then
-    if not vim.api.nvim_buf_is_valid(opts.buf) then
+  elseif type(opts_buf) == "number" then
+    if not vim.api.nvim_buf_is_valid(opts_buf) then
       return
     end
-    bufnr = tonumber(opts.buf)
+    bufnr = opts_buf
     path = vim.api.nvim_buf_get_name(bufnr)
-  elseif type(opts.buf) == "string" then
+  elseif type(opts_buf) == "string" then
     bufnr = nil
-    path = tostring(opts.buf)
+    path = tostring(opts_buf)
   else
     return
   end
@@ -48,14 +49,14 @@ function M.fn(opts)
     end
   elseif opts.open then
     -- open
-    lib.open { current_window = opts.current_window, winid = opts.winid }
+    lib.open({ current_window = opts.current_window, winid = opts.winid })
     if not opts.focus then
-      vim.cmd "noautocmd wincmd p"
+      vim.cmd("noautocmd wincmd p")
     end
   end
 
   -- update root
-  if opts.update_root or M.config.update_focused_file.update_root then
+  if opts.update_root or M.config.update_focused_file.update_root.enable then
     require("nvim-tree").change_root(path, bufnr)
   end
 

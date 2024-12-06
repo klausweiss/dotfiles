@@ -1,242 +1,320 @@
-local config = require("trouble.config")
-local uv = vim.loop
+local Config = require("trouble.config")
+local uv = vim.loop or vim.uv
 
 local M = {}
 
-function M.jump_to_item(win, precmd, item)
-  -- requiring here, as otherwise we run into a circular dependency
-  local View = require("trouble.view")
-
-  -- save position in jump list
-  vim.cmd("normal! m'")
-
-  View.switch_to(win)
-  if precmd then
-    vim.cmd(precmd)
-  end
-  if not vim.bo[item.bufnr].buflisted then
-    vim.bo[item.bufnr].buflisted = true
-  end
-  if not vim.api.nvim_buf_is_loaded(item.bufnr) then
-    vim.fn.bufload(item.bufnr)
-  end
-  vim.api.nvim_set_current_buf(item.bufnr)
-  vim.api.nvim_win_set_cursor(win or 0, { item.start.line + 1, item.start.character })
-  vim.api.nvim_exec_autocmds("User", { pattern = "TroubleJump", modeline = false })
+---@param fn function
+function M.noautocmd(fn)
+  local ei = vim.o.eventignore
+  vim.o.eventignore = "all"
+  fn()
+  vim.o.eventignore = ei
 end
 
-function M.fix_mode(opts)
-  if opts.use_lsp_diagnostic_signs then
-    opts.use_diagnostic_signs = opts.use_lsp_diagnostic_signs
-    M.warn("The Trouble option use_lsp_diagnostic_signs has been renamed to use_diagnostic_signs")
-  end
-  local replace = {
-    lsp_workspace_diagnostics = "workspace_diagnostics",
-    lsp_document_diagnostics = "document_diagnostics",
-    workspace = "workspace_diagnostics",
-    document = "document_diagnostics",
-  }
+function M.is_win()
+  return uv.os_uname().sysname:find("Windows") ~= nil
+end
 
-  for old, new in pairs(replace) do
-    if opts.mode == old then
-      opts.mode = new
-      M.warn("Using " .. old .. " for Trouble is deprecated. Please use " .. new .. " instead.")
+---@param opts? {msg?: string}
+function M.try(fn, opts)
+  local ok, err = pcall(fn)
+  if not ok then
+    local msg = opts and opts.msg or "Something went wrong:"
+    msg = msg .. "\n" .. err
+    M.error(msg)
+  end
+end
+
+M.islist = vim.islist or vim.tbl_islist
+
+---@alias NotifyOpts {level?: number, title?: string, once?: boolean, id?:string}
+
+---@type table<string, any>
+local notif_ids = {}
+
+---@param msg string|string[]
+---@param opts? NotifyOpts
+function M.notify(msg, opts)
+  opts = opts or {}
+  msg = type(msg) == "table" and table.concat(msg, "\n") or msg
+  ---@cast msg string
+  msg = vim.trim(msg)
+  local ret = vim[opts.once and "notify_once" or "notify"](msg, opts.level, {
+    replace = opts.id and notif_ids[opts.id] or nil,
+    title = opts.title or "Trouble",
+    on_open = function(win)
+      vim.wo[win].conceallevel = 3
+      vim.wo[win].concealcursor = "n"
+      vim.wo[win].spell = false
+      vim.treesitter.start(vim.api.nvim_win_get_buf(win), "markdown")
+    end,
+  })
+  if opts.id then
+    notif_ids[opts.id] = ret
+  end
+  return ret
+end
+
+---@param msg string|string[]
+---@param opts? NotifyOpts
+function M.warn(msg, opts)
+  M.notify(msg, vim.tbl_extend("keep", { level = vim.log.levels.WARN }, opts or {}))
+end
+
+---@param msg string|string[]
+---@param opts? NotifyOpts
+function M.info(msg, opts)
+  M.notify(msg, vim.tbl_extend("keep", { level = vim.log.levels.INFO }, opts or {}))
+end
+
+---@param msg string|string[]
+---@param opts? NotifyOpts
+function M.error(msg, opts)
+  M.notify(msg, vim.tbl_extend("keep", { level = vim.log.levels.ERROR }, opts or {}))
+end
+
+---@param msg string|string[]
+function M.debug(msg, ...)
+  if Config.debug then
+    if select("#", ...) > 0 then
+      local obj = select("#", ...) == 1 and ... or { ... }
+      msg = msg .. "\n```lua\n" .. vim.inspect(obj) .. "\n```"
     end
+    M.notify(msg, { title = "Trouble (debug)" })
   end
 end
 
----@return number
-function M.count(tab)
-  local count = 0
-  for _ in pairs(tab) do
-    count = count + 1
-  end
-  return count
-end
-
-function M.warn(msg)
-  vim.notify(msg, vim.log.levels.WARN, { title = "Trouble" })
-end
-
-function M.error(msg)
-  vim.notify(msg, vim.log.levels.ERROR, { title = "Trouble" })
-end
-
-function M.debug(msg)
-  if config.options.debug then
-    vim.notify(msg, vim.log.levels.DEBUG, { title = "Trouble" })
+---@param buf number
+---@param row number
+---@param ns number
+---@param col number
+---@param opts vim.api.keyset.set_extmark
+---@param debug_info? any
+function M.set_extmark(buf, ns, row, col, opts, debug_info)
+  local ok, err = pcall(vim.api.nvim_buf_set_extmark, buf, ns, row, col, opts)
+  if not ok and Config.debug then
+    M.debug("Failed to set extmark for preview", { info = debug_info, row = row, col = col, opts = opts, error = err })
   end
 end
 
-function M.debounce(ms, fn)
-  local timer = vim.loop.new_timer()
-  return function(...)
-    local argv = { ... }
-    timer:start(ms, 0, function()
-      timer:stop()
-      vim.schedule_wrap(fn)(unpack(argv))
+---@param str string
+---@param sep? string
+function M.camel(str, sep)
+  local parts = vim.split(str, "[%.%-%_]")
+  ---@diagnostic disable-next-line: no-unknown
+  return table.concat(
+    vim.tbl_map(function(part)
+      return part:sub(1, 1):upper() .. part:sub(2)
+    end, parts),
+    sep or ""
+  )
+end
+
+---@param opts? {ms?: number, debounce?: boolean}|number
+---@param default Throttle.opts
+---@return Throttle.opts
+function M.throttle_opts(opts, default)
+  opts = opts or {}
+  if type(opts) == "number" then
+    opts = { ms = opts }
+  end
+  return vim.tbl_deep_extend("force", default, opts)
+end
+
+---@alias Throttle.opts {ms:number, debounce?:boolean, is_running?:fun():boolean}
+
+-- throttle with trailing execution
+---@generic T: fun()
+---@param fn T
+---@param opts? Throttle.opts
+---@return T
+function M.throttle(fn, opts)
+  opts = opts or {}
+  opts.ms = opts.ms or 20
+  local last = 0
+  local args = nil ---@type {n?:number}?
+  local timer = assert(uv.new_timer())
+  local pending = false -- from run() till end of fn
+  local running = false -- from run() till end of fn with is_running()
+
+  local t = {}
+
+  function t.run()
+    pending = true
+    running = true
+    timer:stop()
+    last = uv.now()
+    vim.schedule(function()
+      xpcall(function()
+        if not args then
+          return M.debug("Empty args. This should not happen.")
+        end
+        fn(vim.F.unpack_len(args))
+        args = nil
+      end, function(err)
+        vim.schedule(function()
+          M.error(err)
+        end)
+      end)
+      pending = false
+      t.check()
     end)
   end
-end
 
-function M.throttle(ms, fn)
-  local timer = vim.loop.new_timer()
-  local running = false
+  function t.schedule()
+    local now = uv.now()
+    local delay = opts.debounce and opts.ms or (opts.ms - (now - last))
+    timer:stop()
+    timer:start(math.max(0, delay), 0, t.run)
+  end
+
+  function t.check()
+    if running and not pending and not (opts.is_running and opts.is_running()) then
+      running = false
+      if args then -- schedule if there are pending args
+        t.schedule()
+      end
+    end
+  end
+
+  local check = assert(uv.new_check())
+  check:start(t.check)
+
   return function(...)
-    if not running then
-      local argv = { ... }
-      local argc = select("#", ...)
+    args = vim.F.pack_len(...)
 
-      timer:start(ms, 0, function()
-        running = false
-        pcall(vim.schedule_wrap(fn), unpack(argv, 1, argc))
-      end)
-      running = true
+    if timer:is_active() and not opts.debounce then
+      return
+    elseif not running then
+      t.schedule()
     end
   end
 end
 
-M.severity = {
-  [0] = "Other",
-  [1] = "Error",
-  [2] = "Warning",
-  [3] = "Information",
-  [4] = "Hint",
-}
-
--- returns a hl or sign label for the givin severity and type
--- correctly handles new names introduced in vim.diagnostic
-function M.get_severity_label(severity, type)
-  local label = severity
-  local prefix = "LspDiagnostics" .. (type or "Default")
-
-  if vim.diagnostic then
-    prefix = type and ("Diagnostic" .. type) or "Diagnostic"
-    label = ({
-      Warning = "Warn",
-      Information = "Info",
-    })[severity] or severity
-  end
-
-  return prefix .. label
+---@param s string
+function M.lines(s)
+  return M.split(s, "\n")
 end
 
--- based on the Telescope diagnostics code
--- see https://github.com/nvim-telescope/telescope.nvim/blob/0d6cd47990781ea760dd3db578015c140c7b9fa7/lua/telescope/utils.lua#L85
-function M.process_item(item, bufnr)
-  bufnr = bufnr or item.bufnr
-  local filename = vim.api.nvim_buf_get_name(bufnr)
-  local range = item.range or item.targetSelectionRange
+---@param s string
+---@param c? string
+function M.split(s, c)
+  c = c or "\n"
+  local pos = 1
+  local l = 0
+  return function()
+    if pos == -1 then
+      return
+    end
+    l = l + 1
 
-  local start = {
-    line = range and vim.tbl_get(range, "start", "line") or item.lnum,
-    character = range and vim.tbl_get(range, "start", "character") or item.col,
-  }
-  local finish = {
-    line = range and vim.tbl_get(range, "end", "line") or item.end_lnum,
-    character = range and vim.tbl_get(range, "end", "character") or item.end_col,
-  }
+    local nl = s:find(c, pos, true)
+    if not nl then
+      local lastLine = s:sub(pos)
+      pos = -1
+      return l, lastLine
+    end
 
-  if start.character == nil or start.line == nil then
-    M.error("Found an item for Trouble without start range " .. vim.inspect(start))
+    local line = s:sub(pos, nl - 1)
+    pos = nl + 1
+    return l, line
   end
-  if finish.character == nil or finish.line == nil then
-    M.error("Found an item for Trouble without finish range " .. vim.inspect(finish))
-  end
-  local row = start.line ---@type number
-  local col = start.character ---@type number
+end
 
-  if not item.message and filename then
-    -- check if the filename is a uri
-    if string.match(filename, "^%w+://") ~= nil then
-      if not vim.api.nvim_buf_is_loaded(bufnr) then
-        vim.fn.bufload(bufnr)
+--- Gets lines from a file or buffer
+---@param opts {path?:string, buf?: number, rows?: number[]}
+---@return table<number, string>?
+function M.get_lines(opts)
+  if opts.buf then
+    local uri = vim.uri_from_bufnr(opts.buf)
+
+    if uri:sub(1, 4) ~= "file" then
+      vim.fn.bufload(opts.buf)
+    end
+
+    if vim.api.nvim_buf_is_loaded(opts.buf) then
+      local lines = {} ---@type table<number, string>
+      if not opts.rows then
+        return vim.api.nvim_buf_get_lines(opts.buf, 0, -1, false)
       end
-      local lines = vim.api.nvim_buf_get_lines(bufnr, row, row + 1, false)
-      item.message = lines[1] or ""
-    else
-      local fd = assert(uv.fs_open(filename, "r", 438))
-      local stat = assert(uv.fs_fstat(fd))
-      local data = assert(uv.fs_read(fd, stat.size, 0))
-      assert(uv.fs_close(fd))
+      for _, row in ipairs(opts.rows) do
+        lines[row] = vim.api.nvim_buf_get_lines(opts.buf, row - 1, row, false)[1]
+      end
+      return lines
+    end
+    opts.path = vim.uri_to_fname(uri)
+  elseif not opts.path then
+    error("buf or filename is required")
+  end
 
-      item.message = vim.split(data, "\n", { plain = true })[row + 1] or ""
+  local fd = uv.fs_open(opts.path, "r", 438)
+  if not fd then
+    return
+  end
+  local stat = assert(uv.fs_fstat(fd))
+  if not (stat.type == "file" or stat.type == "link") then
+    return
+  end
+  local data = assert(uv.fs_read(fd, stat.size, 0)) --[[@as string]]
+  assert(uv.fs_close(fd))
+
+  local todo = 0
+  local ret = {} ---@type table<number, string|boolean>
+  for _, r in ipairs(opts.rows or {}) do
+    if not ret[r] then
+      todo = todo + 1
+      ret[r] = true
     end
   end
 
-  ---@class Item
-  ---@field is_file boolean
-  ---@field fixed boolean
-  local ret = {
-    bufnr = bufnr,
-    filename = filename,
-    lnum = row + 1,
-    col = col + 1,
-    start = start,
-    finish = finish,
-    sign = item.sign, ---@type string?
-    sign_hl = item.sign_hl, ---@type string?
-    -- remove line break to avoid display issues
-    text = vim.trim(item.message:gsub("[\n]+", "")):sub(0, vim.o.columns),
-    full_text = vim.trim(item.message),
-    type = M.severity[item.severity] or M.severity[0],
-    code = item.code or (item.user_data and item.user_data.lsp and item.user_data.lsp.code), ---@type string?
-    code_href = (item.codeDescription and item.codeDescription.href)
-      or (
-        item.user_data
-        and item.user_data.lsp
-        and item.user_data.lsp.codeDescription
-        and item.user_data.lsp.codeDescription.href
-      ), ---@type string?
-    source = item.source, ---@type string?
-    severity = item.severity or 0,
-  }
-  return ret
-end
-
--- takes either a table indexed by bufnr, or an lsp result with uri
----@return Item[]
-function M.locations_to_items(results, default_severity)
-  default_severity = default_severity or 0
-  local ret = {}
-  for bufnr, locs in pairs(results or {}) do
-    for _, loc in pairs(locs.result or locs) do
-      if not vim.tbl_isempty(loc) then
-        local uri = loc.uri or loc.targetUri
-        local buf = uri and vim.uri_to_bufnr(uri) or bufnr
-        loc.severity = loc.severity or default_severity
-        table.insert(ret, M.process_item(loc, buf))
+  for row, line in M.lines(data) do
+    if not opts.rows or ret[row] then
+      if line:sub(-1) == "\r" then
+        line = line:sub(1, -2)
       end
+      todo = todo - 1
+      ret[row] = line
+      if todo == 0 then
+        break
+      end
+    end
+  end
+  for i, r in pairs(ret) do
+    if r == true then
+      ret[i] = ""
     end
   end
   return ret
 end
 
--- @private
-local function make_position_param(win, buf)
-  local row, col = unpack(vim.api.nvim_win_get_cursor(win))
-  row = row - 1
-  local line = vim.api.nvim_buf_get_lines(buf, row, row + 1, true)[1]
-  if not line then
-    return { line = 0, character = 0 }
+--- Creates a weak reference to an object.
+--- Calling the returned function will return the object if it has not been garbage collected.
+---@generic T: table
+---@param obj T
+---@return T|fun():T?
+function M.weak(obj)
+  local weak = { _obj = obj }
+  ---@return table<any, any>
+  local function get()
+    local ret = rawget(weak, "_obj")
+    return ret == nil and error("Object has been garbage collected", 2) or ret
   end
-  col = vim.str_utfindex(line, col)
-  return { line = row, character = col }
-end
-
-function M.make_text_document_params(buf)
-  return { uri = vim.uri_from_bufnr(buf) }
-end
-
---- Creates a `TextDocumentPositionParams` object for the current buffer and cursor position.
----
--- @returns `TextDocumentPositionParams` object
--- @see https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocumentPositionParams
-function M.make_position_params(win, buf)
-  return {
-    textDocument = M.make_text_document_params(buf),
-    position = make_position_param(win, buf),
+  local mt = {
+    __mode = "v",
+    __call = function(t)
+      return rawget(t, "_obj")
+    end,
+    __index = function(_, k)
+      return get()[k]
+    end,
+    __newindex = function(_, k, v)
+      get()[k] = v
+    end,
+    __pairs = function()
+      return pairs(get())
+    end,
   }
+  return setmetatable(weak, mt)
 end
 
 return M

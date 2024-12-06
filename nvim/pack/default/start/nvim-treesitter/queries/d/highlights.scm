@@ -68,7 +68,7 @@
   (const)
   (override)
   (static)
-] @type.qualifier
+] @keyword.modifier
 
 [
   (assert)
@@ -102,16 +102,16 @@
   (gshared)
   (out)
   (inout)
-] @keyword.storage
+] @keyword.modifier
 
 (parameter_attribute
-  (return) @keyword.storage)
+  (return) @keyword.modifier)
 
 (parameter_attribute
-  (in) @keyword.storage)
+  (in) @keyword.modifier)
 
 (parameter_attribute
-  (out) @keyword.storage)
+  (out) @keyword.modifier)
 
 (debug) @keyword.debug
 

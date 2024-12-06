@@ -22,17 +22,20 @@
 "function" @keyword.function
 
 [
-  "type"
-  "interface"
   "implements"
-  "class"
   "using"
-  "namespace"
   "attribute"
   "const"
   "extends"
   "insteadof"
 ] @keyword
+
+[
+  "class"
+  "type"
+  "interface"
+  "namespace"
+] @keyword.type
 
 [
   "async"
@@ -64,7 +67,7 @@
   (static_modifier)
   (visibility_modifier)
   (xhp_modifier)
-] @type.qualifier
+] @keyword.modifier
 
 [
   "shape"
@@ -195,20 +198,17 @@
   (variable) @variable.parameter)
 
 (call_expression
-  function:
+  function: (qualified_identifier
+    (identifier) @function.call .))
+
+(call_expression
+  function: (scoped_identifier
+    (identifier) @function.call .))
+
+(call_expression
+  function: (selection_expression
     (qualified_identifier
-      (identifier) @function.call .))
-
-(call_expression
-  function:
-    (scoped_identifier
-      (identifier) @function.call .))
-
-(call_expression
-  function:
-    (selection_expression
-      (qualified_identifier
-        (identifier) @function.method.call .)))
+      (identifier) @function.method.call .)))
 
 (qualified_identifier
   (_) @module

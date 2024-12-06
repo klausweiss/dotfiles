@@ -38,13 +38,13 @@
 ] @keyword
 
 ; Qualifiers
-(qualifier) @type.qualifier
+(qualifier) @keyword.modifier
 
 ; Storageclasses
 [
   "input"
   "output"
-] @keyword.storage
+] @keyword.modifier
 
 ; Conditionals
 [
@@ -90,7 +90,7 @@
 ] @variable.member
 
 ((field_id) @variable.member
-  (#set! "priority" 105))
+  (#set! priority 105))
 
 (port
   (identifier) @variable.member)

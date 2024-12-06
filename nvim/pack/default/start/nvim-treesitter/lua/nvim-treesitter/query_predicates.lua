@@ -15,6 +15,9 @@ local non_filetype_match_injection_language_aliases = {
   ts = "typescript",
 }
 
+-- compatibility shim for breaking change on nightly/0.11
+local opts = vim.fn.has "nvim-0.10" == 1 and { force = true, all = false } or true
+
 local function get_parser_from_markdown_info_string(injection_alias)
   local match = vim.filetype.match { filename = "a." .. injection_alias }
   return match or non_filetype_match_injection_language_aliases[injection_alias] or injection_alias
@@ -57,43 +60,7 @@ query.add_predicate("nth?", function(match, _pattern, _bufnr, pred)
   end
 
   return false
-end, true)
-
----@param match (TSNode|nil)[]
----@param _pattern string
----@param _bufnr integer
----@param pred string[]
----@return boolean|nil
-local function has_ancestor(match, _pattern, _bufnr, pred)
-  if not valid_args(pred[1], pred, 2) then
-    return
-  end
-
-  local node = match[pred[2]]
-  local ancestor_types = { unpack(pred, 3) }
-  if not node then
-    return true
-  end
-
-  local just_direct_parent = pred[1]:find("has-parent", 1, true)
-
-  node = node:parent()
-  while node do
-    if vim.tbl_contains(ancestor_types, node:type()) then
-      return true
-    end
-    if just_direct_parent then
-      node = nil
-    else
-      node = node:parent()
-    end
-  end
-  return false
-end
-
-query.add_predicate("has-ancestor?", has_ancestor, true)
-
-query.add_predicate("has-parent?", has_ancestor, true)
+end, opts)
 
 ---@param match (TSNode|nil)[]
 ---@param _pattern string
@@ -117,14 +84,14 @@ query.add_predicate("is?", function(match, _pattern, bufnr, pred)
   local _, _, kind = locals.find_definition(node, bufnr)
 
   return vim.tbl_contains(types, kind)
-end, true)
+end, opts)
 
 ---@param match (TSNode|nil)[]
 ---@param _pattern string
 ---@param _bufnr integer
 ---@param pred string[]
 ---@return boolean|nil
-query.add_predicate("has-type?", function(match, _pattern, _bufnr, pred)
+query.add_predicate("kind-eq?", function(match, _pattern, _bufnr, pred)
   if not valid_args(pred[1], pred, 2) then
     return
   end
@@ -137,7 +104,7 @@ query.add_predicate("has-type?", function(match, _pattern, _bufnr, pred)
   end
 
   return vim.tbl_contains(types, node:type())
-end, true)
+end, opts)
 
 ---@param match (TSNode|nil)[]
 ---@param _ string
@@ -158,7 +125,7 @@ query.add_directive("set-lang-from-mimetype!", function(match, _, bufnr, pred, m
     local parts = vim.split(type_attr_value, "/", {})
     metadata["injection.language"] = parts[#parts]
   end
-end, true)
+end, opts)
 
 ---@param match (TSNode|nil)[]
 ---@param _ string
@@ -171,12 +138,12 @@ query.add_directive("set-lang-from-info-string!", function(match, _, bufnr, pred
   if not node then
     return
   end
-  local injection_alias = vim.treesitter.get_node_text(node, bufnr)
+  local injection_alias = vim.treesitter.get_node_text(node, bufnr):lower()
   metadata["injection.language"] = get_parser_from_markdown_info_string(injection_alias)
-end, true)
+end, opts)
 
 -- Just avoid some annoying warnings for this directive
-query.add_directive("make-range!", function() end, true)
+query.add_directive("make-range!", function() end, opts)
 
 --- transform node text to lower case (e.g., to make @injection.language case insensitive)
 ---
@@ -197,42 +164,4 @@ query.add_directive("downcase!", function(match, _, bufnr, pred, metadata)
     metadata[id] = {}
   end
   metadata[id].text = string.lower(text)
-end, true)
-
--- Trim blank lines from end of the region
--- Arguments are the captures to trim.
----@param match (TSNode|nil)[]
----@param _ string
----@param bufnr integer
----@param pred string[]
----@param metadata table
-query.add_directive("trim!", function(match, _, bufnr, pred, metadata)
-  for _, id in ipairs { select(2, unpack(pred)) } do
-    local node = match[id]
-    local start_row, start_col, end_row, end_col = node:range()
-
-    -- Don't trim if region ends in middle of a line
-    if end_col ~= 0 then
-      return
-    end
-
-    while true do
-      -- As we only care when end_col == 0, always inspect one line above end_row.
-      local end_line = vim.api.nvim_buf_get_lines(bufnr, end_row - 1, end_row, true)[1]
-
-      if end_line ~= "" then
-        break
-      end
-
-      end_row = end_row - 1
-    end
-
-    -- If this produces an invalid range, we just skip it.
-    if start_row < end_row or (start_row == end_row and start_col <= end_col) then
-      if not metadata[id] then
-        metadata[id] = {}
-      end
-      metadata[id].range = { start_row, start_col, end_row, end_col }
-    end
-  end
-end, true)
+end, opts)

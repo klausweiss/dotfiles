@@ -57,13 +57,13 @@ function M._get_line_for_node(node, type_patterns, transform_fn, bufnr)
 end
 
 -- Gets the actual text content of a node
--- @deprecated Use vim.treesitter.query.get_node_text
+-- @deprecated Use vim.treesitter.get_node_text
 -- @param node the node to get the text from
 -- @param bufnr the buffer containing the node
 -- @return list of lines of text of the node
 function M.get_node_text(node, bufnr)
   vim.notify_once(
-    "nvim-treesitter.ts_utils.get_node_text is deprecated: use vim.treesitter.query.get_node_text",
+    "nvim-treesitter.ts_utils.get_node_text is deprecated: use vim.treesitter.get_node_text",
     vim.log.levels.WARN
   )
   return get_node_text(node, bufnr)
@@ -397,6 +397,7 @@ function M.swap_nodes(node_or_range1, node_or_range2, bufnr, cursor_to_second)
 
   local edit1 = { range = range1, newText = table.concat(text2, "\n") }
   local edit2 = { range = range2, newText = table.concat(text1, "\n") }
+  bufnr = bufnr == 0 and vim.api.nvim_get_current_buf() or bufnr
   vim.lsp.util.apply_text_edits({ edit1, edit2 }, bufnr, "utf-8")
 
   if cursor_to_second then

@@ -1,5 +1,6 @@
 local fn = vim.fn
 local utils = require "nvim-treesitter.utils"
+local uv = vim.uv or vim.loop
 
 -- Convert path for cmd.exe on Windows.
 -- This is needed when vim.opt.shellslash is in use.
@@ -91,6 +92,7 @@ function M.select_compiler_args(repo, compiler)
       "/Isrc",
       repo.files,
       "-Os",
+      "/utf-8",
       "/LD",
     }
   elseif string.match(compiler, "zig$") or string.match(compiler, "zig.exe$") then
@@ -151,7 +153,7 @@ function M.select_compile_command(repo, cc, compile_location)
       info = "Compiling...",
       err = "Error during compilation",
       opts = {
-        args = vim.tbl_flatten(M.select_compiler_args(repo, cc)),
+        args = require("nvim-treesitter.compat").flatten(M.select_compiler_args(repo, cc)),
         cwd = compile_location,
       },
     }
@@ -251,6 +253,7 @@ function M.select_download_commands(repo, project_name, cache_folder, revision, 
         opts = {
           args = {
             "--silent",
+            "--show-error",
             "-L", -- follow redirects
             is_github and url .. "/archive/" .. revision .. ".tar.gz"
               or url .. "/-/archive/" .. revision .. "/" .. project_name .. "-" .. revision .. ".tar.gz",
@@ -287,6 +290,32 @@ function M.select_download_commands(repo, project_name, cache_folder, revision, 
     local git_folder = utils.join_path(cache_folder, project_name)
     local clone_error = "Error during download, please verify your internet connection"
 
+    -- Running `git clone` or `git checkout` while running under Git (such as
+    -- editing a `git commit` message) will likely fail to install parsers
+    -- (such as 'gitcommit') and can also corrupt the index file of the current
+    -- Git repository. Check for typical git environment variables and abort if found.
+    for _, k in pairs {
+      "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+      "GIT_CEILING_DIRECTORIES",
+      "GIT_DIR",
+      "GIT_INDEX",
+      "GIT_INDEX_FILE",
+      "GIT_OBJECT_DIRECTORY",
+      "GIT_PREFIX",
+      "GIT_WORK_TREE",
+    } do
+      if uv.os_getenv(k) then
+        vim.api.nvim_err_writeln(
+          string.format(
+            "Cannot install %s with git in an active git session. Exit the session and run ':TSInstall %s' manually",
+            project_name,
+            project_name
+          )
+        )
+        return {}
+      end
+    end
+
     return {
       {
         cmd = "git",
@@ -297,6 +326,7 @@ function M.select_download_commands(repo, project_name, cache_folder, revision, 
             "clone",
             repo.url,
             project_name,
+            "--filter=blob:none",
           },
           cwd = cache_folder,
         },
@@ -328,7 +358,7 @@ function M.make_directory_change_for_command(dir, command)
       return string.format("pushd %s ; %s ; popd", cmdpath(dir), command)
     end
   else
-    return string.format("cd %s;\n %s", dir, command)
+    return string.format("cd %s;\n%s", dir, command)
   end
 end
 

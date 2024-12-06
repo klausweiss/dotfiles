@@ -29,9 +29,8 @@
   function: (identifier) @function.call)
 
 (call_expression
-  function:
-    (selector_expression
-      field: (field_identifier) @function.method.call))
+  function: (selector_expression
+    field: (field_identifier) @function.method.call))
 
 ; Function definitions
 (function_declaration
@@ -40,7 +39,7 @@
 (method_declaration
   name: (field_identifier) @function.method)
 
-(method_spec
+(method_elem
   name: (field_identifier) @function.method)
 
 ; Constructors
@@ -103,14 +102,17 @@
   "default"
   "defer"
   "goto"
-  "interface"
   "range"
   "select"
-  "struct"
-  "type"
   "var"
   "fallthrough"
 ] @keyword
+
+[
+  "type"
+  "struct"
+  "interface"
+] @keyword.type
 
 "func" @keyword.function
 

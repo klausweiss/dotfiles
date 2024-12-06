@@ -9,10 +9,7 @@
   (transition)
 ] @punctuation.special
 
-[
-  "bullet"
-  "adornment"
-] @markup.list
+"bullet" @markup.list
 
 ; Resets for injection
 (doctest_block) @none
@@ -22,9 +19,8 @@
   name: (type) @function)
 
 (directive
-  body:
-    (body
-      (arguments) @variable.parameter))
+  body: (body
+    (arguments) @variable.parameter))
 
 ((directive
   name: (type) @keyword.import)
@@ -134,7 +130,10 @@
 ] @markup.link @nospell
 
 ; Others
-(title) @markup.heading
+[
+  (title)
+  "adornment"
+] @markup.heading
 
 (comment) @comment @spell
 
@@ -143,9 +142,8 @@
 
 (directive
   name: (type) @_directive
-  body:
-    (body
-      (content) @spell
-      (#not-any-of? @_directive "code" "code-block" "sourcecode")))
+  body: (body
+    (content) @spell
+    (#not-any-of? @_directive "code" "code-block" "sourcecode")))
 
 (paragraph) @spell

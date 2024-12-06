@@ -14,9 +14,6 @@
 [
   "foreign"
   "using"
-  "struct"
-  "enum"
-  "union"
   "defer"
   "cast"
   "transmute"
@@ -25,6 +22,13 @@
   "bit_set"
   "matrix"
 ] @keyword
+
+[
+  "struct"
+  "enum"
+  "union"
+  "bit_field"
+] @keyword.type
 
 "proc" @keyword.function
 
@@ -36,7 +40,7 @@
 [
   "distinct"
   "dynamic"
-] @keyword.storage
+] @keyword.modifier
 
 ; Conditionals
 [
@@ -60,7 +64,7 @@
     "else"
     "when"
   ] @keyword.conditional.ternary)
-  (#set! "priority" 105))
+  (#set! priority 105))
 
 ; Repeats
 [
@@ -151,6 +155,10 @@
   (identifier) @type
   "::")
 
+(bit_field_declaration
+  (identifier) @type
+  "::")
+
 (const_declaration
   (identifier) @type
   "::"
@@ -184,8 +192,8 @@
   (identifier) @type)
 
 ((identifier) @type
-  (#lua-match? @type "^[A-Z][a-zA-Z0-9]*$")
-  (#not-has-parent? @type parameter procedure_declaration))
+  (#lua-match? @type "^[_A-Z][_a-zA-Z0-9]*$")
+  (#not-has-parent? @type parameter procedure_declaration call_expression))
 
 ; Fields
 (member_expression

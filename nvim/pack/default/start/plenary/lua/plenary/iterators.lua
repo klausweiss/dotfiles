@@ -7,6 +7,7 @@
 
 local co = coroutine
 local f = require "plenary.functional"
+local compat = require "plenary.compat"
 
 --------------------------------------------------------------------------------
 -- Tools
@@ -107,7 +108,7 @@ local rawiter = function(obj, param, state)
       end
     end
 
-    if vim.tbl_islist(obj) then
+    if compat.islist(obj) then
       return ipairs(obj)
     else
       -- hash

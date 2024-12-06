@@ -31,8 +31,6 @@
   "$"
   "{"
   "}"
-  "<"
-  ">"
 ] @punctuation.special
 
 [
@@ -136,7 +134,7 @@
   (argument_list
     .
     (argument)
-    ((argument) @_cache @keyword.storage
+    ((argument) @_cache @keyword.modifier
       .
       (argument) @_type @type
       (#any-of? @_cache "CACHE")
@@ -148,8 +146,8 @@
   (argument_list
     .
     (argument)
-    (argument) @keyword.storage
-    (#any-of? @keyword.storage "CACHE" "PARENT_SCOPE")))
+    (argument) @keyword.modifier
+    (#any-of? @keyword.modifier "CACHE" "PARENT_SCOPE")))
 
 (normal_command
   (identifier) @_function
@@ -219,5 +217,5 @@
 
 ((source_file
   .
-  (line_comment) @keyword.directive)
+  (line_comment) @keyword.directive @nospell)
   (#lua-match? @keyword.directive "^#!/"))

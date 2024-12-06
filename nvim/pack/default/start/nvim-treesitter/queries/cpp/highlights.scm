@@ -8,9 +8,8 @@
 
 ; function(Foo ...foo)
 (variadic_parameter_declaration
-  declarator:
-    (variadic_declarator
-      (_) @variable.parameter))
+  declarator: (variadic_declarator
+    (_) @variable.parameter))
 
 ; int foo = 0
 (optional_parameter_declaration
@@ -44,9 +43,8 @@
   (#lua-match? @type "^[%u]"))
 
 (case_statement
-  value:
-    (qualified_identifier
-      (identifier) @constant))
+  value: (qualified_identifier
+    (identifier) @constant))
 
 (using_declaration
   .
@@ -167,15 +165,13 @@
   (#lua-match? @constructor "^%u"))
 
 ((call_expression
-  function:
-    (qualified_identifier
-      name: (identifier) @constructor))
+  function: (qualified_identifier
+    name: (identifier) @constructor))
   (#lua-match? @constructor "^%u"))
 
 ((call_expression
-  function:
-    (field_expression
-      field: (field_identifier) @constructor))
+  function: (field_expression
+    field: (field_identifier) @constructor))
   (#lua-match? @constructor "^%u"))
 
 ; constructing a type in an initializer list: Constructor ():  **SuperType (1)**
@@ -206,19 +202,22 @@
 ] @keyword.exception
 
 [
-  "class"
   "decltype"
   "explicit"
   "friend"
-  "namespace"
   "override"
-  "template"
-  "typename"
   "using"
-  "concept"
   "requires"
   "constexpr"
 ] @keyword
+
+[
+  "class"
+  "namespace"
+  "template"
+  "typename"
+  "concept"
+] @keyword.type
 
 [
   "co_await"
@@ -230,9 +229,9 @@
   "public"
   "private"
   "protected"
-  "virtual"
   "final"
-] @type.qualifier
+  "virtual"
+] @keyword.modifier
 
 [
   "new"

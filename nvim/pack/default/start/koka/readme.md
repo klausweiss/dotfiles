@@ -10,7 +10,7 @@
 
 _Koka v3 is a research language that is currently under development and not quite ready for production use_. 
 
-_Latest release_: v3.1.1, 2024-03-04 ([Install]).
+_Latest release_: v3.1.2, 2024-05-30 ([Install]).
 
 <a href="https://koka-lang.github.io/koka/doc/book.html#why-handlers"><img align="right" width="300" src="doc/snippet-yield.png" /></a>
 
@@ -83,6 +83,7 @@ and all previous interns working on earlier versions of Koka: Daniel Hillerströ
 
 ## Recent Releases
 
+* `v3.1.2`, 2024-05-30: Fix vs code installation when not in a workspace.
 * `v3.1.1`, 2024-03-04: Fix crash in language server; fix build on older gcc versions.
 * `v3.1.0`, 2024-02-14: New concurrent build system and improved module dependency tracking -- much faster builds.  Language Server now supports the stdio protocol via the `--language-server --lsstdio` combination of flags
 Clean up evidence vector api, remove cfc support in the C backend. Internal 
@@ -131,7 +132,7 @@ Unix. The following programs are required to build Koka:
 * Optional: [nodejs](http://nodejs.org) if using the Javascript backend.
 * Optional: [emscripten] and [wasmtime] if using the Wasm backend.
 * Optional: On Windows it is recommended to install the [clang][winclang] C compiler (use `LLVM-<version>-win64.exe`), or the [Visual Studio](https://visualstudio.microsoft.com/downloads/) C compiler.
-* On Windows, first set the console codepage to UTF8 to avoid build errors with stack: `$ chcp 65001`.
+* On Windows, first set the console codepage to UTF8 to avoid build errors with stack: **`$ chcp 65001`**.
 
 Now clone the repository and build the compiler as:
 
@@ -139,27 +140,28 @@ Now clone the repository and build the compiler as:
 $ git clone --recursive https://github.com/koka-lang/koka
 $ cd koka
 $ stack update
-$ stack build
+$ stack build --fast
 $ stack exec koka
 ```
 
 (Note: if you forgot to pass `--recursive` on cloning, you will get errors when compiling Koka modules --
 you can correct this by running `git submodule update --init --recursive`).
 
-You can also use `stack build --fast` to build a debug version of the compiler,
-and use `stack test --fast` to run the test-suite.
-
-To run a single test you can run stack test filtering based on paths such as `stack test --test-arguments '-m "lib"'`.
+To run all tests, use `stack test --fast`. To run a single test you can run stack test 
+filtering based on paths such as `stack test --fast --test-arguments="--match /lib"`.
 This will run all tests that are under the `test/lib` directory.
+
+You can also use `stack build` without the `--fast` flag to build an optimized version of the compiler.
 
 (See the [build notes](#build-notes) below if you have issues when running- or installing `stack`).
 
 ## Create an Install Bundle
 
 Koka can generate a binary install bundle that can be installed
-on the local machine:
+on the local machine (use a build without `--fast` in that case):
 
 ```sh
+$ stack build
 $ stack exec koka -- -e util/bundle
 ...
 distribution bundle created.
@@ -191,7 +193,7 @@ on Windows the default prefix is `%LOCALAPPDATA%\koka`.
 
 It is also possible to generate installation packages for
 various Linux platforms (RHEL, Debian, Alpine, etc.). See
-the [readme][util/packaging] for further information.
+the [readme](util/packaging) for further information.
 
 # Benchmarks
 
@@ -274,7 +276,7 @@ More advanced projects:
 * [ ] Expose the "bytes" primitive data together with views..
 * [ ] Improve C code generation by identifying output that could be better; also in effectful code we generate many join-points (see [9]),
       can we increase the sharing/reduce the extra code.
-* [ ] The compiler always analyses module dependencies and builds any needed dependencies. The current code
+* [x] The compiler always analyses module dependencies and builds any needed dependencies. The current code
       (in `src/Compiler/Compile.hs`) is not great and it would be nice to factorize the "make" functionality out
       and also allow for parallel builds.
 
@@ -283,7 +285,7 @@ Master/PhD level:
 * [x] Better language level FBIP support with guaranteed datatype matching, automatic derivative and visitor generation.
 * [x] Float up `open` calls to improve effect handling (worked on by Naoya Furudono)
 * [x] Formalize opening and closing effect row types (worked on by Kazuki Ikemori)
-* [ ] Can we use C++ exceptions to implement "zero-cost" `if yielding() ...` branches and remove the need join points (see [9]).
+* [ ] Can we use C++ exceptions to implement "zero-cost" `if yielding() ...` branches and remove the need for join points (see [9]).
 * [ ] Improve case-of-known simplification with shape information
 
 Currently being worked on:

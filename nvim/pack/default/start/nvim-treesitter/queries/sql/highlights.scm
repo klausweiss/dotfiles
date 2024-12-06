@@ -21,14 +21,16 @@
 (field
   name: (identifier) @variable.member)
 
+(column_definition
+  name: (identifier) @variable.member)
+
 (term
   alias: (identifier) @variable)
 
 (term
-  value:
-    (cast
-      name: (keyword_cast) @function.call
-      parameter: (literal)?))
+  value: (cast
+    name: (keyword_cast) @function.call
+    parameter: (literal)?))
 
 (literal) @string
 
@@ -95,7 +97,7 @@
   (keyword_jsonfile)
   (keyword_sequencefile)
   (keyword_volatile)
-] @keyword.storage
+] @keyword.modifier
 
 [
   (keyword_case)
@@ -150,9 +152,6 @@
   (keyword_for)
   (keyword_if)
   (keyword_exists)
-  (keyword_max)
-  (keyword_min)
-  (keyword_avg)
   (keyword_column)
   (keyword_columns)
   (keyword_cross)
@@ -198,7 +197,6 @@
   (keyword_current)
   (keyword_ties)
   (keyword_others)
-  (keyword_preserve)
   (keyword_zerofill)
   (keyword_format)
   (keyword_fields)
@@ -222,7 +220,6 @@
   (keyword_vacuum)
   (keyword_cache)
   (keyword_language)
-  (keyword_sql)
   (keyword_called)
   (keyword_conflict)
   (keyword_declare)
@@ -232,8 +229,6 @@
   (keyword_name)
   (keyword_oid)
   (keyword_oids)
-  (keyword_options)
-  (keyword_plpgsql)
   (keyword_precision)
   (keyword_regclass)
   (keyword_regnamespace)
@@ -333,7 +328,7 @@
   (keyword_statistics)
   (keyword_maxvalue)
   (keyword_minvalue)
-] @type.qualifier
+] @keyword.modifier
 
 [
   (keyword_int)

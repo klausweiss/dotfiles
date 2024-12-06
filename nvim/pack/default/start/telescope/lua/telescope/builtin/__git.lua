@@ -51,7 +51,7 @@ git.files = function(opts)
       prompt_title = "Git Files",
       __locations_input = true,
       finder = finders.new_oneshot_job(
-        vim.tbl_flatten {
+        utils.flatten {
           opts.git_command,
           show_untracked and "--others" or nil,
           recurse_submodules and "--recurse-submodules" or nil,
@@ -193,7 +193,7 @@ git.bcommits = function(opts)
 
   local title = "Git BCommits"
   local finder = finders.new_oneshot_job(
-    vim.tbl_flatten {
+    utils.flatten {
       opts.git_command,
       opts.current_file,
     },
@@ -234,7 +234,7 @@ git.bcommits_range = function(opts)
 
   local title = "Git BCommits in range"
   local finder = finders.new_oneshot_job(
-    vim.tbl_flatten {
+    utils.flatten {
       opts.git_command,
       line_range,
     },
@@ -393,9 +393,18 @@ git.status = function(opts)
       sorter = conf.file_sorter(opts),
       on_complete = {
         function(self)
-          local lines = self.manager:num_results()
           local prompt = action_state.get_current_line()
-          if lines == 0 and prompt == "" then
+
+          -- HACK: self.manager:num_results() can return 0 despite having results
+          -- due to some async/event loop shenanigans (#3316)
+          local count = 0
+          for _, entry in pairs(self.finder.results) do
+            if entry and entry.valid ~= false then
+              count = count + 1
+            end
+          end
+
+          if count == 0 and prompt == "" then
             utils.notify("builtin.git_status", {
               msg = "No changes found",
               level = "ERROR",
@@ -432,7 +441,7 @@ end
 local try_worktrees = function(opts)
   local worktrees = conf.git_worktrees
 
-  if vim.tbl_islist(worktrees) then
+  if utils.islist(worktrees) then
     for _, wt in ipairs(worktrees) do
       if vim.startswith(opts.cwd, wt.toplevel) then
         opts.toplevel = wt.toplevel
@@ -459,7 +468,7 @@ end
 local set_opts_cwd = function(opts)
   opts.use_git_root = vim.F.if_nil(opts.use_git_root, true)
   if opts.cwd then
-    opts.cwd = vim.fn.expand(opts.cwd)
+    opts.cwd = utils.path_expand(opts.cwd)
   elseif opts.use_file_path then
     opts.cwd = current_path_toplevel()
     if not opts.cwd then

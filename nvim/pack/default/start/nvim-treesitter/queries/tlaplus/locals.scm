@@ -30,34 +30,32 @@
 
 (function_definition
   name: (identifier) @local.definition.function
-  (#set! "definition.function.scope" "parent"))
+  (#set! definition.function.scope "parent"))
 
 (lambda
   (identifier) @local.definition.parameter)
 
 (module_definition
   name: (_) @local.definition.import
-  (#set! "definition.import.scope" "parent"))
+  (#set! definition.import.scope "parent"))
 
 (module_definition
   parameter: (identifier) @local.definition.parameter)
 
 (module_definition
-  parameter:
-    (operator_declaration
-      name: (_) @local.definition.parameter))
+  parameter: (operator_declaration
+    name: (_) @local.definition.parameter))
 
 (operator_definition
   name: (_) @local.definition.macro
-  (#set! "definition.macro.scope" "parent"))
+  (#set! definition.macro.scope "parent"))
 
 (operator_definition
   parameter: (identifier) @local.definition.parameter)
 
 (operator_definition
-  parameter:
-    (operator_declaration
-      name: (_) @local.definition.parameter))
+  parameter: (operator_declaration
+    name: (_) @local.definition.parameter))
 
 (quantifier_bound
   (identifier) @local.definition.parameter)
@@ -99,7 +97,7 @@
 
 (theorem
   name: (identifier) @local.definition.constant
-  (#set! "definition.constant.scope" "parent"))
+  (#set! definition.constant.scope "parent"))
 
 ; PlusCal scopes and definitions
 [

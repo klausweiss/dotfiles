@@ -1,10 +1,10 @@
-local log = require "nvim-tree.log"
-local view = require "nvim-tree.view"
-local utils = require "nvim-tree.utils"
-local renderer = require "nvim-tree.renderer"
-local reload = require "nvim-tree.explorer.reload"
-local core = require "nvim-tree.core"
-local Iterator = require "nvim-tree.iterators.node-iterator"
+local log = require("nvim-tree.log")
+local view = require("nvim-tree.view")
+local utils = require("nvim-tree.utils")
+local core = require("nvim-tree.core")
+
+local DirectoryNode = require("nvim-tree.node.directory")
+local Iterator = require("nvim-tree.iterators.node-iterator")
 
 local M = {}
 
@@ -13,7 +13,8 @@ local running = {}
 ---Find a path in the tree, expand it and focus it
 ---@param path string relative or absolute
 function M.fn(path)
-  if not core.get_explorer() or not view.is_visible() then
+  local explorer = core.get_explorer()
+  if not explorer or not view.is_visible() then
     return
   end
 
@@ -32,7 +33,7 @@ function M.fn(path)
 
   -- refresh the contents of all parents, expanding groups as needed
   if utils.get_node_from_path(path_real) == nil then
-    reload.refresh_parent_nodes_for_path(vim.fn.fnamemodify(path_real, ":h"))
+    explorer:refresh_parent_nodes_for_path(vim.fn.fnamemodify(path_real, ":h"))
   end
 
   local line = core.get_nodes_starting_line()
@@ -59,25 +60,33 @@ function M.fn(path)
       local link_match = node.link_to and vim.startswith(path_real, node.link_to .. utils.path_separator)
 
       if abs_match or link_match then
-        if not node.group_next then
-          node.open = true
-        end
-        if #node.nodes == 0 then
-          core.get_explorer():expand(node)
-          if node.group_next and incremented_line then
-            line = line - 1
+        local dir = node:as(DirectoryNode)
+        if dir then
+          if not dir.group_next then
+            dir.open = true
+          end
+          if #dir.nodes == 0 then
+            core.get_explorer():expand(dir)
+            if dir.group_next and incremented_line then
+              line = line - 1
+            end
           end
         end
       end
     end)
     :recursor(function(node)
-      return node.group_next and { node.group_next } or (node.open and #node.nodes > 0 and node.nodes)
+      node = node and node:as(DirectoryNode)
+      if node then
+        return node.group_next and { node.group_next } or (node.open and #node.nodes > 0 and node.nodes)
+      else
+        return nil
+      end
     end)
     :iterate()
 
   if found and view.is_visible() then
-    renderer.draw()
-    view.set_cursor { line, 0 }
+    explorer.renderer:draw()
+    view.set_cursor({ line, 0 })
   end
 
   running[path_real] = false

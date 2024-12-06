@@ -2,6 +2,8 @@ local a = require("plenary.async")
 local git = require("neogit.lib.git")
 local logger = require("neogit.logger")
 local notification = require("neogit.lib.notification")
+local input = require("neogit.lib.input")
+local util = require("neogit.lib.util")
 
 local FuzzyFinderBuffer = require("neogit.buffers.fuzzy_finder")
 
@@ -10,8 +12,12 @@ local M = {}
 local function push_to(args, remote, branch, opts)
   opts = opts or {}
 
-  if opts.set_upstream then
+  if opts.set_upstream or git.push.auto_setup_remote(branch) then
     table.insert(args, "--set-upstream")
+  end
+
+  if vim.tbl_contains(args, "--force-with-lease") then
+    table.insert(args, "--force-if-includes")
   end
 
   local name
@@ -26,13 +32,34 @@ local function push_to(args, remote, branch, opts)
 
   local res = git.push.push_interactive(remote, branch, args)
 
+  -- Inform the user about missing permissions
+  if res.code == 128 then
+    notification.info(table.concat(res.stdout, "\n"))
+    return
+  end
+
+  local using_force = vim.tbl_contains(args, "--force") or vim.tbl_contains(args, "--force-with-lease")
+  local updates_rejected = string.find(table.concat(res.stdout), "Updates were rejected") ~= nil
+
+  -- Only ask the user whether to force push if not already specified
+  if res and res.code ~= 0 and not using_force and updates_rejected then
+    logger.error("Attempting force push to " .. name)
+
+    local message = "Your branch has diverged from the remote branch. Do you want to force push?"
+    if input.get_permission(message) then
+      table.insert(args, "--force")
+      res = git.push.push_interactive(remote, branch, args)
+    end
+  end
+
   if res and res.code == 0 then
     a.util.scheduler()
     logger.debug("Pushed to " .. name)
     notification.info("Pushed to " .. name, { dismiss = true })
     vim.api.nvim_exec_autocmds("User", { pattern = "NeogitPushComplete", modeline = false })
   else
-    logger.error("Failed to push to " .. name)
+    logger.debug("Failed to push to " .. name)
+    notification.error("Failed to push to " .. name, { dismiss = true })
   end
 end
 
@@ -68,7 +95,7 @@ function M.to_upstream(popup)
 end
 
 function M.to_elsewhere(popup)
-  local target = FuzzyFinderBuffer.new(git.branch.get_remote_branches()):open_async {
+  local target = FuzzyFinderBuffer.new(git.refs.list_remote_branches()):open_async {
     prompt_prefix = "push",
   }
 
@@ -92,7 +119,7 @@ function M.push_other(popup)
     return
   end
 
-  local destinations = git.branch.get_remote_branches()
+  local destinations = git.refs.list_remote_branches()
   for _, remote in ipairs(git.remote.list()) do
     table.insert(destinations, 1, remote .. "/" .. source)
   end
@@ -107,18 +134,62 @@ function M.push_other(popup)
   push_to(popup:get_arguments(), remote, source .. ":" .. destination)
 end
 
-function M.push_tags(popup)
+---@param prompt string
+---@return string|nil
+local function choose_remote(prompt)
   local remotes = git.remote.list()
-
   local remote
   if #remotes == 1 then
     remote = remotes[1]
   else
-    remote = FuzzyFinderBuffer.new(remotes):open_async { prompt_prefix = "push tags to" }
+    remote = FuzzyFinderBuffer.new(remotes):open_async { prompt_prefix = prompt }
   end
 
+  return remote
+end
+
+---@param popup PopupData
+function M.push_a_tag(popup)
+  local tags = git.tag.list()
+
+  local tag = FuzzyFinderBuffer.new(tags):open_async { prompt_prefix = "Push tag" }
+  if not tag then
+    return
+  end
+
+  local remote = choose_remote(("Push %s to remote"):format(tag))
+  if remote then
+    push_to({ tag, unpack(popup:get_arguments()) }, remote)
+  end
+end
+
+---@param popup PopupData
+function M.push_all_tags(popup)
+  local remote = choose_remote("Push tags to remote")
   if remote then
     push_to({ "--tags", unpack(popup:get_arguments()) }, remote)
+  end
+end
+
+---@param popup PopupData
+function M.matching_branches(popup)
+  local remote = choose_remote("Push matching branches to")
+  if remote then
+    push_to({ "-v", unpack(popup:get_arguments()) }, remote, ":")
+  end
+end
+
+---@param popup PopupData
+function M.explicit_refspec(popup)
+  local remote = choose_remote("Push to remote")
+  if not remote then
+    return
+  end
+
+  local options = util.merge({ "HEAD" }, git.refs.list_local_branches())
+  local refspec = FuzzyFinderBuffer.new(options):open_async { prompt_prefix = "Push refspec" }
+  if refspec then
+    push_to({ "-v", unpack(popup:get_arguments()) }, remote, refspec)
   end
 end
 

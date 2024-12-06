@@ -1,20 +1,32 @@
-local HL_POSITION = require("nvim-tree.enum").HL_POSITION
-local ICON_PLACEMENT = require("nvim-tree.enum").ICON_PLACEMENT
+local Class = require("nvim-tree.classic")
 
----@class Decorator
+---@alias DecoratorRange "none" | "icon" | "name" | "all"
+---@alias DecoratorIconPlacement "none" | "before" | "after" | "signcolumn" | "right_align"
+
+---Abstract Decorator
+---Uses the factory pattern to instantiate child instances.
+---@class (exact) Decorator: Class
+---@field protected explorer Explorer
 ---@field protected enabled boolean
----@field protected hl_pos HL_POSITION
----@field protected icon_placement ICON_PLACEMENT
-local Decorator = {}
+---@field protected range DecoratorRange
+---@field protected icon_placement DecoratorIconPlacement
+local Decorator = Class:extend()
 
----@param o Decorator|nil
----@return Decorator
-function Decorator:new(o)
-  o = o or {}
-  setmetatable(o, self)
-  self.__index = self
+---@class (exact) DecoratorArgs
+---@field explorer Explorer
 
-  return o
+---@class (exact) AbstractDecoratorArgs: DecoratorArgs
+---@field enabled boolean
+---@field hl_pos DecoratorRange
+---@field icon_placement DecoratorIconPlacement
+
+---@protected
+---@param args AbstractDecoratorArgs
+function Decorator:new(args)
+  self.explorer       = args.explorer
+  self.enabled        = args.enabled
+  self.range          = args.hl_pos
+  self.icon_placement = args.icon_placement
 end
 
 ---Maybe highlight groups
@@ -24,13 +36,13 @@ end
 function Decorator:groups_icon_name(node)
   local icon_hl, name_hl
 
-  if self.enabled and self.hl_pos ~= HL_POSITION.none then
+  if self.enabled and self.range ~= "none" then
     local hl = self:calculate_highlight(node)
 
-    if self.hl_pos == HL_POSITION.all or self.hl_pos == HL_POSITION.icon then
+    if self.range == "all" or self.range == "icon" then
       icon_hl = hl
     end
-    if self.hl_pos == HL_POSITION.all or self.hl_pos == HL_POSITION.name then
+    if self.range == "all" or self.range == "name" then
       name_hl = hl
     end
   end
@@ -42,7 +54,7 @@ end
 ---@param node Node
 ---@return string|nil name
 function Decorator:sign_name(node)
-  if not self.enabled or self.icon_placement ~= ICON_PLACEMENT.signcolumn then
+  if not self.enabled or self.icon_placement ~= "signcolumn" then
     return
   end
 
@@ -52,22 +64,33 @@ function Decorator:sign_name(node)
   end
 end
 
----Icons when ICON_PLACEMENT.before
+---Icons when "before"
 ---@param node Node
 ---@return HighlightedString[]|nil icons
 function Decorator:icons_before(node)
-  if not self.enabled or self.icon_placement ~= ICON_PLACEMENT.before then
+  if not self.enabled or self.icon_placement ~= "before" then
     return
   end
 
   return self:calculate_icons(node)
 end
 
----Icons when ICON_PLACEMENT.after
+---Icons when "after"
 ---@param node Node
 ---@return HighlightedString[]|nil icons
 function Decorator:icons_after(node)
-  if not self.enabled or self.icon_placement ~= ICON_PLACEMENT.after then
+  if not self.enabled or self.icon_placement ~= "after" then
+    return
+  end
+
+  return self:calculate_icons(node)
+end
+
+---Icons when "right_align"
+---@param node Node
+---@return HighlightedString[]|nil icons
+function Decorator:icons_right_align(node)
+  if not self.enabled or self.icon_placement ~= "right_align" then
     return
   end
 
@@ -103,7 +126,7 @@ function Decorator:define_sign(icon)
 
     -- don't use sign if not defined
     if #icon.str < 1 then
-      self.icon_placement = ICON_PLACEMENT.none
+      self.icon_placement = "none"
       return
     end
 

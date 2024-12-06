@@ -1,6 +1,6 @@
 -- vim: foldnestmax=5 foldminlines=1
 
-local Screen = require('test.screen')
+local Screen = require('nvim-test.screen')
 local helpers = require('test.gs_helpers')
 
 local clear = helpers.clear
@@ -18,7 +18,6 @@ local edit = helpers.edit
 local cleanup = helpers.cleanup
 local test_file = helpers.test_file
 local git = helpers.git
-local gitm = helpers.gitm
 local scratch = helpers.scratch
 local newfile = helpers.newfile
 local match_dag = helpers.match_dag
@@ -45,7 +44,7 @@ describe('gitsigns (with screen)', function()
     local default_attrs = {
       [1] = { foreground = Screen.colors.DarkBlue, background = Screen.colors.WebGray },
       [2] = { foreground = Screen.colors.NvimDarkCyan },
-      [3] = { background = Screen.colors.LightBlue },
+      [3] = { foreground = Screen.colors.NvimDarkGreen },
       [4] = { foreground = Screen.colors.NvimDarkRed },
       [5] = { foreground = Screen.colors.Brown },
       [6] = { foreground = Screen.colors.Blue1, bold = true },
@@ -60,6 +59,7 @@ describe('gitsigns (with screen)', function()
       command('colorscheme vim')
     else
       default_attrs[2] = { background = Screen.colors.LightMagenta }
+      default_attrs[3] = { background = Screen.colors.LightBlue }
       default_attrs[4] =
         { background = Screen.colors.LightCyan1, bold = true, foreground = Screen.colors.Blue1 }
     end
@@ -83,10 +83,8 @@ describe('gitsigns (with screen)', function()
   end)
 
   it('gitdir watcher works on a fresh repo', function()
+    --- @type integer
     local nvim_ver = exec_lua('return vim.version().minor')
-    if nvim_ver == 8 then
-      pending("v0.8.0 has some regression that's fixed it v0.9.0 dev")
-    end
     screen:try_resize(20, 6)
     setup_test_repo({ no_add = true })
     -- Don't set this too low, or else the test will lock up
@@ -105,13 +103,11 @@ describe('gitsigns (with screen)', function()
           .. vim.pesc(test_file)
       ),
       'watch_gitdir(1): Watching git dir',
-      p('run_job: git .* show :0:dummy.txt'),
-      'update(1): updates: 1, jobs: 6',
     })
 
     check({
       status = { head = '', added = 18, changed = 0, removed = 0 },
-      signs = { untracked = nvim_ver == 10 and 7 or 8 },
+      signs = { untracked = nvim_ver == 9 and 8 or 7 },
     })
 
     git({ 'add', test_file })
@@ -129,7 +125,6 @@ describe('gitsigns (with screen)', function()
 
     match_debug_messages({
       'attach(1): Attaching (trigger=BufReadPost)',
-      np('run_job: git .* config user.name'),
       np(
         'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
       ),
@@ -143,7 +138,6 @@ describe('gitsigns (with screen)', function()
 
     match_debug_messages({
       n('attach(1): Attaching (trigger=BufWritePost)'),
-      np('run_job: git .* config user.name'),
       np(
         'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
       ),
@@ -161,7 +155,7 @@ describe('gitsigns (with screen)', function()
     it('can setup mappings', function()
       edit(test_file)
       expectf(function()
-        local res = split(helpers.api.nvim_exec('nmap <buffer>', true), '\n')
+        local res = split(helpers.api.nvim_exec2('nmap <buffer>', { output = true }).output, '\n')
         table.sort(res)
 
         -- Check all keymaps get set
@@ -196,10 +190,10 @@ describe('gitsigns (with screen)', function()
 
       match_debug_messages({
         'attach(1): Attaching (trigger=BufReadPost)',
-        np('run_job: git .* config user.name'),
         np(
           'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
         ),
+        np('run_job: git .* config user.name'),
         np('run_job: git .* ls%-files .*/dummy_ignored.txt'),
         n('attach(1): Cannot resolve file in repo'),
       })
@@ -212,10 +206,10 @@ describe('gitsigns (with screen)', function()
 
       match_debug_messages({
         'attach(1): Attaching (trigger=BufNewFile)',
-        np('run_job: git .* config user.name'),
         np(
           'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
         ),
+        np('run_job: git .* config user.name'),
         np(
           'run_job: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard %-%-eol '
             .. vim.pesc(newfile)
@@ -274,6 +268,7 @@ describe('gitsigns (with screen)', function()
 
     local function blame_line_ui_test(autocrlf, file_ending)
       setup_test_repo()
+      exec_lua([[vim.g.editorconfig = false]])
 
       git({ 'config', 'core.autocrlf', autocrlf })
       if file_ending == 'dos' then
@@ -282,23 +277,16 @@ describe('gitsigns (with screen)', function()
         system("printf 'This\nis\na\nwindows\nfile\n' > " .. newfile)
       end
 
-      gitm({
-        { 'add', newfile },
-        { 'commit', '-m', 'commit on main' },
-      })
+      git({ 'add', newfile })
+      git({ 'commit', '-m', 'commit on main' })
 
       edit(newfile)
       feed('gg')
       check({ signs = {} })
 
-      -- Wait until the virtual blame line appears
-      screen:sleep(1000)
-      -- print(vim.inspect(exec_lua[[return require'gitsigns.cache'.cache[vim.api.nvim_get_current_buf()].compare_text]]))
-      -- print(vim.inspect(exec_lua[[return require'gitsigns.util'.buf_lines(vim.api.nvim_get_current_buf())]]))
-
       screen:expect({
         grid = [[
-        ^{MATCH:This {6: tester, %d seco}}|
+        ^{MATCH:This {6: You, %d second.}}|
         is                  |
         a                   |
         windows             |
@@ -352,11 +340,11 @@ describe('gitsigns (with screen)', function()
       edit(test_file)
       match_debug_messages({
         'attach(1): Attaching (trigger=BufReadPost)',
-        np('run_job: git .* config user.name'),
         np(
           'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
         ),
         np('run_job: git .* rev%-parse %-%-short HEAD'),
+        np('run_job: git .* config user.name'),
         np('run_job: git .* %-%-git%-dir .* %-%-stage %-%-others %-%-exclude%-standard %-%-eol.*'),
         n('attach(1): User on_attach() returned false'),
       })
@@ -371,10 +359,8 @@ describe('gitsigns (with screen)', function()
       feed('oEDIT<esc>')
       command('write')
 
-      gitm({
-        { 'add', test_file },
-        { 'commit', '-m', 'commit on main' },
-      })
+      git({ 'add', test_file })
+      git({ 'commit', '-m', 'commit on main' })
 
       -- Don't setup gitsigns until the repo has two commits
       setup_gitsigns(config)
@@ -469,10 +455,10 @@ describe('gitsigns (with screen)', function()
         edit(newfile)
         match_debug_messages({
           'attach(1): Attaching (trigger=BufNewFile)',
-          np('run_job: git .* config user.name'),
           np(
             'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
           ),
+          np('run_job: git .* config user.name'),
           np('run_job: git .* ls%-files .*'),
           n('attach(1): Not a file'),
         })
@@ -480,21 +466,16 @@ describe('gitsigns (with screen)', function()
 
         local messages = {
           'attach(1): Attaching (trigger=BufWritePost)',
-          np('run_job: git .* config user.name'),
           np(
             'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
           ),
           np('run_job: git .* ls%-files .*'),
           n('watch_gitdir(1): Watching git dir'),
-          np('run_job: git .* show :0:newfile.txt'),
         }
 
         if not internal_diff then
           table.insert(messages, np('run_job: git .* diff .* /tmp/lua_.* /tmp/lua_.*'))
         end
-
-        local jobs = internal_diff and 8 or 9
-        table.insert(messages, n('update(1): updates: 1, jobs: ' .. jobs))
 
         match_debug_messages(messages)
 
@@ -590,25 +571,24 @@ describe('gitsigns (with screen)', function()
         check({ status = { head = 'master', added = 0, changed = 1, removed = 0 } })
         command('write')
         command('bwipe')
-        gitm({
-          { 'add', test_file },
-          { 'commit', '-m', 'commit on main' },
 
-          -- Create a branch, remove last commit, edit file again
-          { 'checkout', '-B', 'abranch' },
-          { 'reset', '--hard', 'HEAD~1' },
-        })
+        git({ 'add', test_file })
+        git({ 'commit', '-m', 'commit on main' })
+
+        -- Create a branch, remove last commit, edit file again
+        git({ 'checkout', '-B', 'abranch' })
+        git({ 'reset', '--hard', 'HEAD~1' })
+
         edit(test_file)
         check({ status = { head = 'abranch', added = 0, changed = 0, removed = 0 } })
         feed('idiff')
         check({ status = { head = 'abranch', added = 0, changed = 1, removed = 0 } })
         command('write')
         command('bwipe')
-        gitm({
-          { 'add', test_file },
-          { 'commit', '-m', 'commit on branch' },
-          { 'rebase', 'master' },
-        })
+
+        git({ 'add', test_file })
+        git({ 'commit', '-m', 'commit on branch' })
+        git({ 'rebase', 'master' })
 
         -- test_file should have a conflict
         edit(test_file)
@@ -680,10 +660,10 @@ describe('gitsigns (with screen)', function()
     })
 
     match_debug_messages({
-      'attach(2): attaching is disabled',
-      n('attach(3): attaching is disabled'),
-      n('attach(4): attaching is disabled'),
-      n('attach(5): attaching is disabled'),
+      'attach_autocmd(2): Attaching is disabled',
+      n('attach_autocmd(3): Attaching is disabled'),
+      n('attach_autocmd(4): Attaching is disabled'),
+      n('attach_autocmd(5): Attaching is disabled'),
     })
   end)
 
@@ -723,10 +703,8 @@ describe('gitsigns (with screen)', function()
 
     write_to_file(uni_filename, { 'Lorem ipsum' })
 
-    gitm({
-      { 'add', uni_filename },
-      { 'commit', '-m', 'another commit' },
-    })
+    git({ 'add', uni_filename })
+    git({ 'commit', '-m', 'another commit' })
 
     edit(uni_filename)
 

@@ -1,5 +1,5 @@
 ; Preprocs
-(preproc_file_line) @keyword.directive
+(preproc_directive) @keyword.directive
 
 ; Namespaces
 (program_statement
@@ -49,28 +49,18 @@
   "attributes"
   "associate"
   "block"
-  "class"
   "classis"
   "contains"
   "default"
   "dimension"
   "endassociate"
-  "endenum"
-  "endinterface"
-  "endmodule"
   "endselect"
-  "endsubmodule"
-  "endtype"
-  "enum"
   "enumerator"
   "equivalence"
   "extends"
   "goto"
-  "interface"
   "intrinsic"
   "non_intrinsic"
-  "module"
-  "submodule"
   "namelist"
   "parameter"
   "quiet"
@@ -82,9 +72,22 @@
   "sequence"
   "stop"
   "target"
-  "type"
   "typeis"
 ] @keyword
+
+[
+  "class"
+  "enum"
+  "endenum"
+  "type"
+  "endtype"
+  "module"
+  "endmodule"
+  "submodule"
+  "endsubmodule"
+  "interface"
+  "endinterface"
+] @keyword.type
 
 (default) @keyword
 
@@ -130,14 +133,14 @@
   "value"
   "volatile"
   (procedure_qualifier)
-] @type.qualifier
+] @keyword.modifier
 
 [
   "common"
   "in"
   "inout"
   "out"
-] @keyword.storage
+] @keyword.modifier
 
 ; Labels
 [

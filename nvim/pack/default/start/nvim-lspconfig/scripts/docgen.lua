@@ -2,9 +2,7 @@ require 'lspconfig'
 local configs = require 'lspconfig.configs'
 local util = require 'lspconfig.util'
 local inspect = vim.inspect
-local uv = vim.loop
 local fn = vim.fn
-local tbl_flatten = vim.tbl_flatten
 
 local function template(s, params)
   return (s:gsub('{{([^{}]+)}}', params))
@@ -14,6 +12,17 @@ local function map_list(t, func)
   local res = {}
   for i, v in ipairs(t) do
     local x = func(v, i)
+    if x ~= nil then
+      table.insert(res, x)
+    end
+  end
+  return res
+end
+
+local function map_sorted(t, func)
+  local res = {}
+  for k, v in vim.spairs(t) do
+    local x = func(k, v)
     if x ~= nil then
       table.insert(res, x)
     end
@@ -40,7 +49,7 @@ local function indent(n, s)
 end
 
 local function make_parts(fns)
-  return tbl_flatten(map_list(fns, function(v)
+  return util.tbl_flatten(map_list(fns, function(v)
     if type(v) == 'function' then
       v = v()
     end
@@ -53,30 +62,21 @@ local function make_section(indentlvl, sep, parts)
 end
 
 local function readfile(path)
-  assert(util.path.is_file(path))
+  assert((vim.loop.fs_stat(path) or {}).type == 'file')
   return io.open(path):read '*a'
 end
 
-local function sorted_map_table(t, func)
-  local keys = vim.tbl_keys(t)
-  table.sort(keys)
-  return map_list(keys, function(k)
-    return func(k, t[k])
-  end)
-end
-
 local lsp_section_template = [[
-## {{template_name}}
+## {{config_name}}
 
 {{preamble}}
 
-**Snippet to enable the language server:**
+Snippet to enable the language server:
 ```lua
-require'lspconfig'.{{template_name}}.setup{}
+require'lspconfig'.{{config_name}}.setup{}
 ```
 {{commands}}
-
-**Default values:**
+Default config:
 {{default_values}}
 
 ]]
@@ -89,9 +89,9 @@ local function require_all_configs()
   vim.env.XDG_CACHE_HOME = '/home/user/.cache'
 
   -- Configs are lazy-loaded, tickle them to populate the `configs` singleton.
-  for _, v in ipairs(vim.fn.glob('lua/lspconfig/server_configurations/*.lua', 1, 1)) do
+  for _, v in ipairs(vim.fn.glob('lua/lspconfig/configs/*.lua', 1, 1)) do
     local module_name = v:gsub('.*/', ''):gsub('%.lua$', '')
-    configs[module_name] = require('lspconfig.server_configurations.' .. module_name)
+    configs[module_name] = require('lspconfig.configs.' .. module_name)
   end
 
   -- Reset the environment variables
@@ -103,55 +103,74 @@ local function make_lsp_sections()
   return make_section(
     0,
     '\n',
-    sorted_map_table(configs, function(template_name, template_object)
-      local template_def = template_object.document_config
+    map_sorted(configs, function(config_name, template_object)
+      local template_def = template_object.config_def
       local docs = template_def.docs
+      -- "lua/lspconfig/configs/xx.lua"
+      local config_file = ('lua/lspconfig/configs/%s.lua'):format(config_name)
 
       local params = {
-        template_name = template_name,
+        config_name = config_name,
         preamble = '',
         commands = '',
         default_values = '',
       }
 
-      params.commands = make_section(0, '\n\n', {
+      params.commands = make_section(0, '\n', {
         function()
           if not template_def.commands or #vim.tbl_keys(template_def.commands) == 0 then
             return
           end
-          return '**Commands:**\n'
-            .. make_section(0, '\n', {
-              sorted_map_table(template_def.commands, function(name, def)
-                if def.description then
-                  return string.format('- %s: %s', name, def.description)
-                end
-                return string.format('- %s', name)
-              end),
-            })
+          return ('\nCommands:\n%s\n'):format(make_section(0, '\n', {
+            map_sorted(template_def.commands, function(name, def)
+              if def.description then
+                return string.format('- %s: %s', name, def.description)
+              end
+              return string.format('- %s', name)
+            end),
+          }))
         end,
       })
 
-      params.default_values = make_section(2, '\n\n', {
+      params.default_values = make_section(0, '\n', {
         function()
           if not template_def.default_config then
             return
           end
           return make_section(0, '\n', {
-            sorted_map_table(template_def.default_config, function(k, v)
-              local description = ((docs or {}).default_config or {})[k]
-              if description and type(description) ~= 'string' then
-                description = inspect(description)
-              elseif not description and type(v) == 'function' then
-                description = 'see source file'
+            map_sorted(template_def.default_config, function(k, v)
+              if type(v) == 'boolean' then
+                return ('- `%s` : `%s`'):format(k, v)
+              elseif type(v) ~= 'function' then
+                return ('- `%s` :\n  ```lua\n%s\n  ```'):format(k, indent(2, inspect(v)))
               end
-              return string.format('- `%s` : \n```lua\n%s\n```', k, description or inspect(v))
+
+              local file = assert(io.open(config_file, 'r'))
+              local linenr = 0
+              -- Find the line where `default_config` is defined.
+              for line in file:lines() do
+                linenr = linenr + 1
+                if line:find('%sdefault_config%s') then
+                  break
+                end
+              end
+              io.close(file)
+
+              -- XXX: "../" because the path is outside of the doc/ dir.
+              return ('- `%s` source (use "gF" to visit): [../%s:%d](../%s#L%d)'):format(
+                k,
+                config_file,
+                linenr,
+                config_file,
+                linenr
+              )
             end),
           })
         end,
       })
 
       if docs then
-        local tempdir = os.getenv 'DOCGEN_TEMPDIR' or uv.fs_mkdtemp '/tmp/nvim-lsp.XXXXXX'
+        local tempdir = os.getenv 'DOCGEN_TEMPDIR' or vim.loop.fs_mkdtemp '/tmp/nvim-lspconfig.XXXXXX'
         local preamble_parts = make_parts {
           function()
             if docs.description and #docs.description > 0 then
@@ -159,13 +178,13 @@ local function make_lsp_sections()
             end
           end,
           function()
-            local package_json_name = util.path.join(tempdir, template_name .. '.package.json')
+            local package_json_name = util.path.join(tempdir, config_name .. '.package.json')
             if docs.package_json then
-              if not util.path.is_file(package_json_name) then
+              if not ((vim.loop.fs_stat(package_json_name) or {}).type == 'file') then
                 os.execute(string.format('curl -v -L -o %q %q', package_json_name, docs.package_json))
               end
-              if not util.path.is_file(package_json_name) then
-                print(string.format('Failed to download package.json for %q at %q', template_name, docs.package_json))
+              if not ((vim.loop.fs_stat(package_json_name) or {}).type == 'file') then
+                print(string.format('Failed to download package.json for %q at %q', config_name, docs.package_json))
                 os.exit(1)
                 return
               end
@@ -187,12 +206,9 @@ local function make_lsp_sections()
                     make_section(
                       0,
                       '\n\n',
-                      sorted_map_table(default_settings.properties, function(k, v)
+                      map_sorted(default_settings.properties, function(k, v)
                         local function tick(s)
                           return string.format('`%s`', s)
-                        end
-                        local function bold(s)
-                          return string.format('**%s**', s)
                         end
 
                         -- https://github.github.com/gfm/#backslash-escapes
@@ -202,20 +218,20 @@ local function make_lsp_sections()
                           return fn.substitute(str, pattern, '\\\\\\0', 'g')
                         end
 
-                        -- local function pre(s) return string.format("<pre>%s</pre>", s) end
-                        -- local function code(s) return string.format("<code>%s</code>", s) end
+                        -- local function pre(s) return string.format('<pre>%s</pre>', s) end
+                        -- local function code(s) return string.format('<code>%s</code>', s) end
                         if not (type(v) == 'table') then
                           return
                         end
                         return make_section(0, '\n', {
                           '- ' .. make_section(0, ': ', {
-                            bold(tick(k)),
+                            tick(k),
                             function()
                               if v.enum then
                                 return tick('enum ' .. inspect(v.enum))
                               end
                               if v.type then
-                                return tick(table.concat(tbl_flatten { v.type }, '|'))
+                                return tick(table.concat(util.tbl_flatten { v.type }, '|'))
                               end
                             end,
                           }),
@@ -243,7 +259,7 @@ local function make_lsp_sections()
         if #preamble_parts > 0 then
           table.insert(preamble_parts, '')
         end
-        params.preamble = table.concat(preamble_parts, '\n')
+        params.preamble = vim.trim(table.concat(preamble_parts, '\n'))
       end
 
       return template(lsp_section_template, params)
@@ -255,7 +271,7 @@ local function make_implemented_servers_list()
   return make_section(
     0,
     '\n',
-    sorted_map_table(configs, function(k)
+    map_sorted(configs, function(k)
       return template('- [{{server}}](#{{server}})', { server = k })
     end)
   )
@@ -269,14 +285,14 @@ local function generate_readme(template_file, params)
   local input_template = readfile(template_file)
   local readme_data = template(input_template, params)
 
-  local writer = io.open('doc/server_configurations.md', 'w')
+  local writer = assert(io.open('doc/configs.md', 'w'))
   writer:write(readme_data)
   writer:close()
-  uv.fs_copyfile('doc/server_configurations.md', 'doc/server_configurations.txt')
+  vim.loop.fs_copyfile('doc/configs.md', 'doc/configs.txt')
 end
 
 require_all_configs()
-generate_readme('scripts/README_template.md', {
+generate_readme('scripts/docs_template.md', {
   implemented_servers_list = make_implemented_servers_list(),
   lsp_server_details = make_lsp_sections(),
 })

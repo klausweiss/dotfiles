@@ -3,7 +3,7 @@ local M = {}
 ---@generic T: any
 ---@generic U: any
 ---@param tbl T[]
----@param f fun(v: T): U
+---@param f Component|fun(v: T): U
 ---@return U[]
 function M.map(tbl, f)
   local t = {}
@@ -113,10 +113,11 @@ end
 ---@param ... table
 ---@return table
 function M.merge(...)
+  local insert = table.insert
   local res = {}
   for _, tbl in ipairs { ... } do
     for _, item in ipairs(tbl) do
-      table.insert(res, item)
+      insert(res, item)
     end
   end
   return res
@@ -388,8 +389,21 @@ function M.lists_equal(l1, l2)
   return true
 end
 
+local special_chars = { "%%", "%(", "%)", "%.", "%+", "%-", "%*", "%?", "%[", "%^", "%$" }
+function M.pattern_escape(str)
+  for _, char in ipairs(special_chars) do
+    str, _ = str:gsub(char, "%" .. char)
+  end
+
+  return str
+end
+
 function M.pad_right(s, len)
   return s .. string.rep(" ", math.max(len - #s, 0))
+end
+
+function M.pad_left(s, len)
+  return string.rep(" ", math.max(len - #s, 0)) .. s
 end
 
 --- http://lua-users.org/wiki/StringInterpolation
@@ -441,7 +455,7 @@ end
 ---@param callback function
 ---@return uv_timer_t
 local function set_timeout(timeout, callback)
-  local timer = vim.loop.new_timer()
+  local timer = vim.uv.new_timer()
 
   timer:start(timeout, 0, function()
     timer:stop()
@@ -467,7 +481,10 @@ function M.memoize(f, opts)
   local timer = {}
 
   return function(...)
-    local key = vim.inspect { ... }
+    local cwd = vim.uv.cwd()
+    assert(cwd, "no cwd")
+
+    local key = vim.inspect { vim.fs.normalize(cwd), ... }
 
     if cache[key] == nil then
       cache[key] = f(...)
@@ -482,6 +499,127 @@ function M.memoize(f, opts)
     end)
 
     return cache[key]
+  end
+end
+
+--- Debounces a function on the trailing edge.
+---
+--- @generic F: function
+--- @param ms number Timeout in ms
+--- @param fn F Function to debounce
+--- @param hash? integer|fun(...): any Function that determines id from arguments to fn
+--- @return F Debounced function.
+function M.debounce_trailing(ms, fn, hash)
+  local running = {} --- @type table<any,uv_timer_t>
+
+  if type(hash) == "number" then
+    local hash_i = hash
+    hash = function(...)
+      return select(hash_i, ...)
+    end
+  end
+
+  return function(...)
+    local id = hash and hash(...) or true
+    if running[id] == nil then
+      running[id] = assert(vim.uv.new_timer())
+    end
+
+    local timer = running[id]
+    local argv = { ... }
+    timer:start(ms, 0, function()
+      timer:stop()
+      running[id] = nil
+      vim.schedule_wrap(fn)(unpack(argv, 1, table.maxn(argv)))
+    end)
+  end
+end
+
+---@param value any
+---@return table
+function M.tbl_wrap(value)
+  return type(value) == "table" and value or { value }
+end
+
+--- Throttles a function using the first argument as an ID
+---
+--- If function is already running then the function will be scheduled to run
+--- again once the running call has finished.
+---
+---   fn#1            _/‾\__/‾\_/‾\_____________________________
+---   throttled#1 _/‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾\/‾‾‾‾‾‾‾‾‾‾\____________
+--
+---   fn#2            ______/‾\___________/‾\___________________
+---   throttled#2 ______/‾‾‾‾‾‾‾‾‾‾\__/‾‾‾‾‾‾‾‾‾‾\__________
+---
+---
+--- @generic F: function
+--- @param fn F Function to throttle
+--- @param schedule? boolean
+--- @return F throttled function.
+function M.throttle_by_id(fn, schedule)
+  local scheduled = {} --- @type table<any,boolean>
+  local running = {} --- @type table<any,boolean>
+
+  return function(id, ...)
+    if scheduled[id] then
+      -- If fn is already scheduled, then drop
+      return
+    end
+
+    if not running[id] or schedule then
+      scheduled[id] = true
+    end
+
+    if running[id] then
+      return
+    end
+
+    while scheduled[id] do
+      scheduled[id] = nil
+      running[id] = true
+      pcall(fn, id, ...)
+      running[id] = nil
+    end
+  end
+end
+
+-- from: https://stackoverflow.com/questions/48948630/lua-ansi-escapes-pattern
+local pattern_1 = "[\27\155][][()#;?%d]*[A-PRZcf-ntqry=><~]"
+local pattern_2 = "[\r\n\04\08]"
+local BLANK = ""
+local gsub = string.gsub
+
+function M.remove_ansi_escape_codes(s)
+  s, _ = gsub(s, pattern_1, BLANK)
+  s, _ = gsub(s, pattern_2, BLANK)
+  return s
+end
+
+--- Safely close a window
+---@param winid integer
+---@param force boolean
+function M.safe_win_close(winid, force)
+  local success = M.try(vim.api.nvim_win_close, winid, force)
+  if not success then
+    pcall(vim.cmd, "b#")
+  end
+end
+
+function M.weak_table(mode)
+  return setmetatable({}, { __mode = mode or "k" })
+end
+
+---@param fn fun(...): any
+---@param ...any
+---@return boolean|any
+function M.try(fn, ...)
+  local ok, result = pcall(fn, ...)
+  if not ok then
+    require("neogit.logger").error(result)
+    return false
+  else
+    return result or true
   end
 end
 

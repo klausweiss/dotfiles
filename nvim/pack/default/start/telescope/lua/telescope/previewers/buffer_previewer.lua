@@ -168,9 +168,8 @@ local handle_file_preview = function(filepath, bufnr, stat, opts)
     end
     if opts.preview.check_mime_type == true and has_file and (opts.ft == nil or opts.ft == "") then
       -- avoid SIGABRT in buffer previewer happening with utils.get_os_command_output
-      local output = capture(string.format([[file --mime-type -b "%s"]], filepath))
-      local mime_type = vim.split(output, "/")
-      if mime_type[1] ~= "text" and mime_type[1] ~= "inode" and mime_type[2] ~= "json" then
+      local mime_type = capture(string.format([[file --mime-type -b "%s"]], filepath))
+      if putils.binary_mime_type(mime_type) then
         if type(opts.preview.mime_hook) == "function" then
           opts.preview.mime_hook(filepath, bufnr, opts)
           return
@@ -262,7 +261,7 @@ previewers.file_maker = function(filepath, bufnr, opts)
   end
   if opts.bufname ~= filepath then
     if not vim.in_fast_event() then
-      filepath = vim.fn.expand(filepath)
+      filepath = utils.path_expand(filepath)
     end
     vim.loop.fs_stat(filepath, function(_, stat)
       if not stat then
@@ -381,7 +380,7 @@ previewers.new_buffer_previewer = function(opts)
   function opts.setup(self)
     local state = {}
     if opt_setup then
-      vim.tbl_deep_extend("force", state, opt_setup(self))
+      state = vim.tbl_deep_extend("force", state, opt_setup(self))
     end
     return state
   end
@@ -427,6 +426,7 @@ previewers.new_buffer_previewer = function(opts)
     else
       local bufnr = vim.api.nvim_create_buf(false, true)
       set_bufnr(self, bufnr)
+      vim.api.nvim_buf_set_option(bufnr, "modifiable", true)
 
       vim.schedule(function()
         if vim.api.nvim_buf_is_valid(bufnr) then
@@ -495,11 +495,11 @@ previewers.cat = defaulter(function(opts)
     end,
 
     get_buffer_by_name = function(_, entry)
-      return from_entry.path(entry, false)
+      return from_entry.path(entry, false, false)
     end,
 
     define_preview = function(self, entry)
-      local p = from_entry.path(entry, true)
+      local p = from_entry.path(entry, true, false)
       if p == nil or p == "" then
         return
       end
@@ -558,7 +558,7 @@ previewers.vimgrep = defaulter(function(opts)
     end,
 
     get_buffer_by_name = function(_, entry)
-      return from_entry.path(entry, false)
+      return from_entry.path(entry, false, false)
     end,
 
     define_preview = function(self, entry)
@@ -569,7 +569,7 @@ previewers.vimgrep = defaulter(function(opts)
         or false
       local p
       if not has_buftype then
-        p = from_entry.path(entry, true)
+        p = from_entry.path(entry, true, false)
         if p == nil or p == "" then
           return
         end
@@ -802,6 +802,7 @@ previewers.git_branch_log = defaulter(function(opts)
         "--no-pager",
         "log",
         "--graph",
+        "--max-count=1000", -- prevent fork bombing with large repos
         "--pretty=format:%h -%d %s (%cr)",
         "--abbrev-commit",
         "--date=relative",
@@ -982,7 +983,7 @@ previewers.git_file_diff = defaulter(function(opts)
 
     define_preview = function(self, entry)
       if entry.status and (entry.status == "??" or entry.status == "A ") then
-        local p = from_entry.path(entry, true)
+        local p = from_entry.path(entry, true, false)
         if p == nil or p == "" then
           return
         end
@@ -1090,7 +1091,7 @@ previewers.highlights = defaulter(function(_)
 
     define_preview = function(self, entry)
       if not self.state.bufname then
-        local output = vim.split(vim.fn.execute "highlight", "\n")
+        local output = utils.split_lines(vim.fn.execute "highlight")
         local hl_groups = {}
         for _, v in ipairs(output) do
           if v ~= "" then
@@ -1115,7 +1116,7 @@ previewers.highlights = defaulter(function(_)
       vim.schedule(function()
         vim.api.nvim_buf_call(self.state.bufnr, function()
           vim.cmd "keepjumps norm! gg"
-          vim.fn.search(entry.value .. " ")
+          vim.fn.search("^" .. entry.value .. " ")
           local lnum = vim.api.nvim_win_get_cursor(self.state.winid)[1]
           -- That one is actually a match but its better to use it like that then matchadd
           pcall(vim.api.nvim_buf_clear_namespace, self.state.bufnr, ns_previewer, 0, -1)

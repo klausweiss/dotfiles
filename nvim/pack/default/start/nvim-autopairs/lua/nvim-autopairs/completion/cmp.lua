@@ -50,7 +50,9 @@ M.filetypes = {
     haskell = false,
     purescript = false,
     sh = false,
-    bash = false
+    bash = false,
+    nix = false,
+    helm = false
 }
 
 M.on_confirm_done = function(opts)

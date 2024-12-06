@@ -1,14 +1,17 @@
 ; Keywords
 [
-  "class"
   "clone"
   "delete"
-  "enum"
   "extends"
   "rawcall"
   "resume"
   "var"
 ] @keyword
+
+[
+  "class"
+  "enum"
+] @keyword.type
 
 "function" @keyword.function
 
@@ -55,13 +58,13 @@
 ] @keyword.exception
 
 ; Storageclasses
-"local" @keyword.storage
+"local" @keyword.modifier
 
 ; Qualifiers
 [
   "static"
   "const"
-] @type.qualifier
+] @keyword.modifier
 
 ; Variables
 [
@@ -101,7 +104,7 @@
     "="
     ":"
   ])
-  (#set! "priority" 105))
+  (#set! priority 105))
 
 ; Types
 ((identifier) @type
@@ -143,11 +146,10 @@
   function: (identifier) @function.call)
 
 (call_expression
-  function:
-    (deref_expression
-      "."
-      .
-      (identifier) @function.call))
+  function: (deref_expression
+    "."
+    .
+    (identifier) @function.call))
 
 (call_expression
   (global_variable
@@ -163,14 +165,12 @@
 (call_expression
   [
     function: (identifier) @function.builtin
-    function:
-      (global_variable
-        "::"
-        (_) @function.builtin)
-    function:
-      (deref_expression
-        "."
-        (_) @function.builtin)
+    function: (global_variable
+      "::"
+      (_) @function.builtin)
+    function: (deref_expression
+      "."
+      (_) @function.builtin)
   ]
   (#any-of? @function.builtin
     ; General Methods

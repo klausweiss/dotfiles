@@ -2,9 +2,8 @@ doc/tags
 
 scratch/dummy_ignored.txt
 
-nvim-test-*
-nvim-runner-*
+luals
 
-.luarocks
+nvim-test
 
 stylua

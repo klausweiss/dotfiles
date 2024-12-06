@@ -1,6 +1,7 @@
-local cli = require("neogit.lib.git.cli")
+local git = require("neogit.lib.git")
 local logger = require("neogit.logger")
 
+---@class NeogitGitConfig
 local M = {}
 
 ---@class ConfigEntry
@@ -67,13 +68,23 @@ function ConfigEntry:update(value)
   end
 end
 
+---@return self
+function ConfigEntry:refresh()
+  if self.scope == "local" then
+    self.value = M.get_local(self.name).value
+  elseif self.scope == "global" then
+    self.value = M.get_global(self.name).value
+  end
+
+  return self
+end
+
 ---@type table<string, ConfigEntry>
 local config_cache = {}
 local cache_key = nil
 
 local function make_cache_key()
-  local repo = require("neogit.lib.git.repository")
-  local stat = vim.loop.fs_stat(repo.git_root .. "/.git/config")
+  local stat = vim.uv.fs_stat(git.repo:git_path("config"):absolute())
   if stat then
     return stat.mtime.sec
   end
@@ -82,8 +93,10 @@ end
 local function build_config()
   local result = {}
 
-  local out =
-    vim.split(table.concat(cli.config.list.null._local.call_sync({ hidden = true }).stdout_raw, "\0"), "\n")
+  local out = vim.split(
+    table.concat(git.cli.config.list.null._local.call({ hidden = true, remove_ansi = false }).stdout, "\0"),
+    "\n"
+  )
   for _, option in ipairs(out) do
     local key, value = unpack(vim.split(option, "\0"))
 
@@ -107,13 +120,24 @@ end
 
 ---@return ConfigEntry
 function M.get(key)
-  return config()[key:lower()] or ConfigEntry.new(key, "", "local")
+  if M.get_local(key):is_set() then
+    return M.get_local(key)
+  elseif M.get_global(key):is_set() then
+    return M.get_global(key)
+  else
+    return ConfigEntry.new(key, "", "local")
+  end
 end
 
 ---@return ConfigEntry
 function M.get_global(key)
-  local result = cli.config.global.get(key).call_sync({ ignore_error = true }).stdout[1]
+  local result = git.cli.config.get(key).call({ ignore_error = true }).stdout[1]
   return ConfigEntry.new(key, result, "global")
+end
+
+---@return ConfigEntry
+function M.get_local(key)
+  return config()[key:lower()] or ConfigEntry.new(key, "", "local")
 end
 
 function M.get_matching(pattern)
@@ -133,7 +157,7 @@ function M.set(key, value)
   if not value or value == "" then
     M.unset(key)
   else
-    cli.config.set(key, value).call_sync()
+    git.cli.config.set(key, value).call()
   end
 end
 
@@ -144,7 +168,7 @@ function M.unset(key)
   end
 
   cache_key = nil
-  cli.config.unset(key).call_sync()
+  git.cli.config.unset(key).call { ignore_error = true }
 end
 
 return M

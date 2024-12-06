@@ -50,14 +50,14 @@ using `vim-plug`
 ```vim
 Plug 'nvim-lua/plenary.nvim'
 Plug 'stevearc/dressing.nvim' " optional for vim.ui.select
-Plug 'akinsho/flutter-tools.nvim'
+Plug 'nvim-flutter/flutter-tools.nvim'
 ```
 
 using `packer.nvim`
 
 ```lua
 use {
-    'akinsho/flutter-tools.nvim',
+    'nvim-flutter/flutter-tools.nvim',
     requires = {
         'nvim-lua/plenary.nvim',
         'stevearc/dressing.nvim', -- optional for vim.ui.select
@@ -69,7 +69,7 @@ using `lazy.nvim`
 
 ```lua
 {
-    'akinsho/flutter-tools.nvim',
+    'nvim-flutter/flutter-tools.nvim',
     lazy = false,
     dependencies = {
         'nvim-lua/plenary.nvim',
@@ -165,6 +165,9 @@ require("flutter-tools").setup {} -- use defaults
 - `FlutterSuper` - Go to super class, method using custom LSP method `dart/textDocument/super`.
 - `FlutterReanalyze` - Forces LSP server reanalyze using custom LSP method `dart/reanalyze`.
 - `FlutterRename` - Renames and updates imports if `lsp.settings.renameFilesWithClasses == "always"`
+- `FlutterLogClear` - Clears the log buffer.
+- `FlutterLogToggle` - Toggles the log buffer.
+
 
 <hr/>
 
@@ -216,14 +219,20 @@ require("flutter-tools").setup {
   },
   debugger = { -- integrate with nvim dap + install dart code debugger
     enabled = false,
-    run_via_dap = false, -- use dap instead of a plenary job to run flutter apps
     -- if empty dap will not stop on any exceptions, otherwise it will stop on those specified
     -- see |:help dap.set_exception_breakpoints()| for more info
-    exception_breakpoints = {}
+    exception_breakpoints = {},
+    -- Whether to call toString() on objects in debug views like hovers and the
+    -- variables list.
+    -- Invoking toString() has a performance cost and may introduce side-effects,
+    -- although users may expected this functionality. null is treated like false.
+    evaluate_to_string_in_debug_views = true,
     register_configurations = function(paths)
       require("dap").configurations.dart = {
-        <put here config that you would find in .vscode/launch.json>
+        --put here config that you would find in .vscode/launch.json
       }
+      -- If you want to load .vscode launch.json automatically run the following:
+	  -- require("dap.ext.vscode").load_launchjs()
     end,
   },
   flutter_path = "<full/path/if/needed>", -- <-- this takes priority over the lookup
@@ -236,12 +245,19 @@ require("flutter-tools").setup {
   closing_tags = {
     highlight = "ErrorMsg", -- highlight for the closing tag
     prefix = ">", -- character to use for close tag e.g. > Widget
+    priority = 10, -- priority of virtual text in current line
+    -- consider to configure this when there is a possibility of multiple virtual text items in one line
+    -- see `priority` option in |:help nvim_buf_set_extmark| for more info
     enabled = true -- set to false to disable
   },
   dev_log = {
     enabled = true,
+    filter = nil, -- optional callback to filter the log
+    -- takes a log_line as string argument; returns a boolean or nil;
+    -- the log_line is only added to the output if the function returns true
     notify_errors = false, -- if there is an error whilst running then notify the user
-    open_cmd = "tabedit", -- command to use to open the log buffer
+    open_cmd = "15split", -- command to use to open the log buffer
+    focus_on_open = true, -- focus on the newly opened log window
   },
   dev_tools = {
     autostart = false, -- autostart devtools server if not detected
@@ -261,7 +277,7 @@ require("flutter-tools").setup {
       virtual_text_str = "■", -- the virtual text character to highlight
     },
     on_attach = my_custom_on_attach,
-    capabilities = my_custom_capabilities -- e.g. lsp_status capabilities
+    capabilities = my_custom_capabilities, -- e.g. lsp_status capabilities
     --- OR you can specify a function to deactivate or change or control how the config is created
     capabilities = function(config)
       config.specificThingIDontWant = false
@@ -309,18 +325,22 @@ require('flutter-tools').setup_project({
     name = 'Development', -- an arbitrary name that you provide so you can recognise this config
     flavor = 'DevFlavor', -- your flavour
     target = 'lib/main_dev.dart', -- your target
+    cwd = 'example',      -- the working directory for the project. Optional, defaults to the LSP root directory.
     device = 'pixel6pro', -- the device ID, which you can get by running `flutter devices`
     dart_define = {
       API_URL = 'https://dev.example.com/api',
       IS_DEV = true,
     },
+    pre_run_callback = nil, -- optional callback to run before the configuration
+    -- exposes a table containing name, target, flavor and device in the arguments
     dart_define_from_file = 'config.json' -- the path to a JSON configuration file
   },
   {
     name = 'Web',
     device = 'chrome',
     flavor = 'WebApp',
-    web_port = 4000
+    web_port = "4000",
+    additional_args = { "--wasm" }
   },
   {
     name = 'Profile',
@@ -423,13 +443,6 @@ use 'mfussenegger/nvim-dap'
 This plugin integrates with [nvim-dap](https://github.com/mfussenegger/nvim-dap) to provide debug capabilities.
 Currently if `debugger.enabled` is set to `true` in the user's config **it will expect `nvim-dap` to be installed**.
 If `dap` is this plugin will use `flutter` or `dart` native debugger to debug your project.
-
-To use the debugger you need to run `:lua require('dap').continue()<CR>`. This will start your app. You should then be able
-to use `dap` commands to begin to debug it. For more information on how to use `nvim-dap` please read the project's README
-or see `:h dap`. Note that running the app this way will prevent commands such as `:FlutterRestart`, `:FlutterReload` from working.
-
-Alternatively, if you prefer always running your app via dap, you can set `debugger.run_via_dap = true` in your config.
-This way you benefit from the debugging abilities of DAP, AND you can still use `:FlutterRestart`, `:FlutterReload`, etc.
 
 You can use the `debugger.register_configurations` to register custom runner configuration (for example for different targets or flavor).
 If your flutter repo contains launch configurations in `.vscode/launch.json` you can use them via this config :

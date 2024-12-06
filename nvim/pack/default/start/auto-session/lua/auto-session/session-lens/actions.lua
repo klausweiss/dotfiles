@@ -1,28 +1,31 @@
+local AutoSession = require "auto-session"
+local Config = require "auto-session.config"
 local Lib = require "auto-session.lib"
+local transform_mod = require("telescope.actions.mt").transform_mod
 
-local M = {
-  conf = {},
-  functions = {},
-}
+local M = {}
 
-function M.setup(config, functions)
-  M.conf = vim.tbl_deep_extend("force", config, M.conf)
-  M.functions = functions
-end
-
+---@private
 local function get_alternate_session()
-  local filepath = M.conf.session_control.control_dir .. M.conf.session_control.control_filename
+  ---@diagnostic disable-next-line: undefined-field
+  local session_control_conf = Config.session_lens.session_control
+
+  if not session_control_conf then
+    Lib.logger.error "No session_control in config!"
+    return
+  end
+
+  local filepath = vim.fn.expand(session_control_conf.control_dir) .. session_control_conf.control_filename
 
   if vim.fn.filereadable(filepath) == 1 then
-    local content = vim.fn.readfile(filepath)[1] or "{}"
-    local json = vim.json.decode(content) or {} -- should never hit the or clause since we're defaulting to a string for content
+    local json = Lib.load_session_control_file(filepath)
 
     local sessions = {
       current = json.current,
       alternate = json.alternate,
     }
 
-    Lib.logger.debug("get_alternate_session", { sessions = sessions, content = content })
+    Lib.logger.debug("get_alternate_session", { sessions = sessions, json = json })
 
     if sessions.current ~= sessions.alternate then
       return sessions.alternate
@@ -32,48 +35,30 @@ local function get_alternate_session()
   end
 end
 
-local function source_session(selection, prompt_bufnr)
+local function source_session(session_name, prompt_bufnr)
   if prompt_bufnr then
     local actions = require "telescope.actions"
     actions.close(prompt_bufnr)
   end
 
   vim.defer_fn(function()
-    if -- type(AutoSession.conf.cwd_change_handling) == "table"
-      -- and not vim.tbl_isempty(AutoSession.conf.cwd_change_handling or {})
-      -- and AutoSession.conf.cwd_change_handling.restore_upcoming_session
-      -- FIXME: Trying to check if cwd_change_handling properties are set, but something is wrong here.
-      false
-    then
-      -- Take advatage of cwd_change_handling behaviour for switching sessions
-      Lib.logger.debug "Triggering vim.fn.chdir since cwd_change_handling feature is enabled"
-      vim.fn.chdir(M.functions.format_file_name(type(selection) == "table" and selection.filename or selection))
-    else
-      Lib.logger.debug "Triggering session-lens behaviour since cwd_change_handling feature is disabled"
-      M.functions.AutoSaveSession()
-
-      local buffers = vim.api.nvim_list_bufs()
-      for _, bufn in pairs(buffers) do
-        if not vim.tbl_contains(M.conf.buftypes_to_ignore, vim.api.nvim_buf_get_option(bufn, "buftype")) then
-          vim.cmd("silent bwipeout!" .. bufn)
-        end
-      end
-
-      vim.cmd "clearjumps"
-      M.functions.RestoreSession(type(selection) == "table" and selection.path or selection)
-    end
+    AutoSession.autosave_and_restore(session_name)
   end, 50)
 end
 
+---@private
 ---Source session action
 ---Source a selected session after doing proper current session saving and cleanup
 ---@param prompt_bufnr number the telescope prompt bufnr
 M.source_session = function(prompt_bufnr)
   local action_state = require "telescope.actions.state"
   local selection = action_state.get_selected_entry()
-  source_session(selection, prompt_bufnr)
+  if selection then
+    source_session(selection.value, prompt_bufnr)
+  end
 end
 
+---@private
 ---Delete session action
 ---Delete a selected session file
 ---@param prompt_bufnr number the telescope prompt bufnr
@@ -81,30 +66,48 @@ M.delete_session = function(prompt_bufnr)
   local action_state = require "telescope.actions.state"
   local current_picker = action_state.get_current_picker(prompt_bufnr)
   current_picker:delete_selection(function(selection)
-    M.functions.DeleteSession(selection.path)
+    if selection then
+      AutoSession.DeleteSessionFile(selection.path, selection.display())
+    end
   end)
 end
 
+---@private
 M.alternate_session = function(prompt_bufnr)
   local alternate_session = get_alternate_session()
 
   if not alternate_session then
-    Lib.logger.info "There is no alternate session to navigate to, aborting operation"
-
-    if prompt_bufnr then
-      actions.close(prompt_bufnr)
-    end
-
+    vim.notify "There is no alternate session"
+    -- Keep the picker open in case they want to select a session to load
     return
   end
 
-  source_session(alternate_session, prompt_bufnr)
+  local file_name = vim.fn.fnamemodify(alternate_session, ":t")
+  local session_name
+  if Lib.is_legacy_file_name(file_name) then
+    session_name = (Lib.legacy_unescape_session_name(file_name):gsub("%.vim$", ""))
+  else
+    session_name = Lib.escaped_session_name_to_session_name(file_name)
+  end
+
+  source_session(session_name, prompt_bufnr)
 end
 
---TODO: figure out the whole file placeholder parsing, expanding, escaping issue!!
----ex:
----"/Users/ronnieandrewmagatti/.local/share/nvim/sessions//%Users%ronnieandrewmagatti%Projects%dotfiles.vim",
----"/Users/ronnieandrewmagatti/.local/share/nvim/sessions/%Users%ronnieandrewmagatti%Projects%auto-session.vim"
----"/Users/ronnieandrewmagatti/.local/share/nvim/sessions/\\%Users\\%ronnieandrewmagatti\\%Projects\\%auto-session.vim"
+---@private
+---Copy session action
+---Ask user for the new name and then copy the session to that name
+M.copy_session = function(_)
+  local action_state = require "telescope.actions.state"
+  local selection = action_state.get_selected_entry()
 
-return M
+  local new_name = vim.fn.input("New session name: ", selection.session_name)
+
+  if not new_name or new_name == "" then
+    return
+  end
+
+  local content = vim.fn.readfile(selection.path)
+  vim.fn.writefile(content, AutoSession.get_root_dir() .. Lib.escape_session_name(new_name) .. ".vim")
+end
+
+return transform_mod(M)

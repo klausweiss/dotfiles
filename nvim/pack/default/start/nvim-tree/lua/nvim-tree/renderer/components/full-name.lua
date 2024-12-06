@@ -1,6 +1,6 @@
 local M = {}
 
-local utils = require "nvim-tree.utils"
+local utils = require("nvim-tree.utils")
 
 local function hide(win)
   if win then
@@ -42,7 +42,7 @@ local function show()
     return
   end
 
-  local line = vim.fn.getline "."
+  local line = vim.fn.getline(".")
   local leftcol = vim.fn.winsaveview().leftcol
   -- hide full name if left column of node in nvim-tree win is not zero
   if leftcol ~= 0 then
@@ -57,24 +57,31 @@ local function show()
   end
 
   M.popup_win = vim.api.nvim_open_win(vim.api.nvim_create_buf(false, false), false, {
-    relative = "win",
-    row = 0,
-    bufpos = { vim.api.nvim_win_get_cursor(0)[1] - 1, 0 },
-    width = math.min(text_width, vim.o.columns - 2),
-    height = 1,
+    relative  = "win",
+    row       = 0,
+    bufpos    = { vim.api.nvim_win_get_cursor(0)[1] - 1, 0 },
+    width     = math.min(text_width, vim.o.columns - 2),
+    height    = 1,
     noautocmd = true,
-    style = "minimal",
+    style     = "minimal",
   })
 
   local ns_id = vim.api.nvim_get_namespaces()["NvimTreeHighlights"]
-  local extmarks = vim.api.nvim_buf_get_extmarks(0, ns_id, { line_nr - 1, 0 }, { line_nr - 1, -1 }, { details = 1 })
+  local extmarks = vim.api.nvim_buf_get_extmarks(0, ns_id, { line_nr - 1, 0 }, { line_nr - 1, -1 }, { details = true })
   vim.api.nvim_win_call(M.popup_win, function()
     vim.api.nvim_buf_set_lines(0, 0, -1, true, { line })
     for _, extmark in ipairs(extmarks) do
-      local hl = extmark[4]
-      vim.api.nvim_buf_add_highlight(0, ns_id, hl.hl_group, 0, extmark[3], hl.end_col)
+      -- nvim 0.10 luadoc is incorrect: vim.api.keyset.get_extmark_item is missing the extmark_id at the start
+
+      ---@cast extmark table
+      ---@type integer
+      local col = extmark[3]
+      ---@type vim.api.keyset.extmark_details
+      local details = extmark[4]
+
+      vim.api.nvim_buf_add_highlight(0, ns_id, details.hl_group, 0, col, details.end_col)
     end
-    vim.cmd [[ setlocal nowrap cursorline noswapfile nobuflisted buftype=nofile bufhidden=hide ]]
+    vim.cmd([[ setlocal nowrap cursorline noswapfile nobuflisted buftype=nofile bufhidden=hide ]])
   end)
 end
 

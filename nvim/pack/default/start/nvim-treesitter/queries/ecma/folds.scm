@@ -13,10 +13,11 @@
   (switch_statement)
   (switch_case)
   (switch_default)
-  (import_statement)
+  (import_statement)+
   (if_statement)
   (try_statement)
   (catch_clause)
+  (array)
   (object)
   (generator_function)
   (generator_function_declaration)

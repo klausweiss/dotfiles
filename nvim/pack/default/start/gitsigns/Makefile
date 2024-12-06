@@ -3,8 +3,8 @@ export PJ_ROOT=$(PWD)
 
 FILTER ?= .*
 
-NVIM_RUNNER_VERSION := v0.9.5
-NVIM_TEST_VERSION ?= v0.9.5
+export NVIM_RUNNER_VERSION := v0.10.0
+export NVIM_TEST_VERSION ?= v0.10.0
 
 ifeq ($(shell uname -s),Darwin)
     UNAME ?= MACOS
@@ -12,69 +12,33 @@ else
     UNAME ?= LINUX
 endif
 
-NVIM_PLATFORM_MACOS := macos
-NVIM_PLATFORM_LINUX := linux64
-NVIM_PLATFORM ?= $(NVIM_PLATFORM_$(UNAME))
-
-NVIM_URL := https://github.com/neovim/neovim/releases/download
-
-NVIM_RUNNER := nvim-runner-$(NVIM_RUNNER_VERSION)
-NVIM_RUNNER_URL := $(NVIM_URL)/$(NVIM_RUNNER_VERSION)/nvim-$(NVIM_PLATFORM).tar.gz
-
-NVIM_TEST := nvim-test-$(NVIM_TEST_VERSION)
-NVIM_TEST_URL := $(NVIM_URL)/$(NVIM_TEST_VERSION)/nvim-$(NVIM_PLATFORM).tar.gz
-
-export NVIM_PRG = $(NVIM_TEST)/bin/nvim
-
 .DEFAULT_GOAL := build
 
-define fetch_nvim
-	rm -rf $@
-	rm -rf nvim-$(NVIM_PLATFORM).tar.gz
-	wget $(1)
-	tar -xf nvim-$(NVIM_PLATFORM).tar.gz
-	rm -rf nvim-$(NVIM_PLATFORM).tar.gz
-	mv nvim-$(NVIM_PLATFORM) $@
-endef
-
-$(NVIM_RUNNER):
-	$(call fetch_nvim,$(NVIM_RUNNER_URL))
-
-$(NVIM_TEST):
-	$(call fetch_nvim,$(NVIM_TEST_URL))
-
-.PHONY: nvim
-nvim: $(NVIM_RUNNER) $(NVIM_TEST)
-
-LUAROCKS := luarocks --lua-version=5.1 --tree .luarocks
-
-.luarocks/bin/busted:
-	$(LUAROCKS) install busted
-
-.PHONY: busted
-busted: .luarocks/bin/busted
+nvim-test:
+	git clone https://github.com/lewis6991/nvim-test
+	nvim-test/bin/nvim-test --init
 
 .PHONY: test
-test: $(NVIM_RUNNER) $(NVIM_TEST) .luarocks/bin/busted
-	eval $$($(LUAROCKS) path) && $(NVIM_RUNNER)/bin/nvim -ll test/busted/runner.lua -v \
-		--lazy \
-		--helper=$(PWD)/test/preload.lua \
-		--output test.busted.output_handler \
+test: nvim-test
+	NVIM_TEST_VERSION=$(NVIM_TEST_VERSION) \
+	nvim-test/bin/nvim-test test \
 		--lpath=$(PWD)/lua/?.lua \
-		--filter="$(FILTER)" \
-		$(PWD)/test
+		--verbose \
+		--filter="$(FILTER)"
 
 	-@stty sane
 
 .PHONY: test-all
 test-all:
-	$(MAKE) test NVIM_TEST_VERSION=v0.8.3
-	$(MAKE) test NVIM_TEST_VERSION=v0.9.2
+	$(MAKE) test NVIM_TEST_VERSION=v0.9.5
+	$(MAKE) test NVIM_TEST_VERSION=v0.10.0
 	$(MAKE) test NVIM_TEST_VERSION=nightly
 
+export XDG_DATA_HOME ?= $(HOME)/.data
+
 .PHONY: gen_help
-gen_help: $(NVIM_RUNNER)
-	@$(NVIM_RUNNER)/bin/nvim -l ./gen_help.lua
+gen_help: nvim-test
+	$(XDG_DATA_HOME)/nvim-test/nvim-runner-$(NVIM_RUNNER_VERSION)/bin/nvim -l ./gen_help.lua
 	@echo Updated help
 
 STYLUA_PLATFORM_MACOS := macos-aarch64
@@ -100,8 +64,9 @@ stylua-check: stylua
 .PHONY: stylua-run
 stylua-run: stylua
 	./stylua \
-		lua/**/*.lua lua/*.lua \
-		test/*.lua test/**/*.lua
+		lua/**/*.lua \
+		lua/*.lua \
+		test/*.lua
 
 .PHONY: build
 build: gen_help stylua-run
@@ -110,3 +75,20 @@ build: gen_help stylua-run
 doc-check: gen_help
 	git diff --exit-code -- doc
 
+LUALS_VERSION := 3.7.4
+LUALS_TARBALL := lua-language-server-$(LUALS_VERSION)-$(shell uname -s)-$(shell uname -m).tar.gz
+LUALS_URL := https://github.com/LuaLS/lua-language-server/releases/download/$(LUALS_VERSION)/$(LUALS_TARBALL)
+
+luals:
+	wget $(LUALS_URL)
+	mkdir luals
+	tar -xf $(LUALS_TARBALL) -C luals
+	rm -rf $(LUALS_TARBALL)
+
+.PHONY: luals-check
+luals-check: luals nvim-test
+	VIMRUNTIME=$(XDG_DATA_HOME)/nvim-test/nvim-test-$(NVIM_TEST_VERSION)/share/nvim/runtime \
+		luals/bin/lua-language-server \
+			--logpath=. \
+			--configpath=../.luarc.json \
+			--check=lua

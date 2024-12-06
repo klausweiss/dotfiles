@@ -24,12 +24,13 @@ function M.create()
     :option("u", "until", "", "Limit to commits until", { key_prefix = "-" })
     :switch("m", "no-merges", "Omit merges", { key_prefix = "=" })
     :switch("p", "first-parent", "First parent", { key_prefix = "=" })
+    :switch("i", "invert-grep", "Invert search messages", { key_prefix = "-" })
     :arg_heading("History Simplification")
     :switch("D", "simplify-by-decoration", "Simplify by decoration")
     :option("-", "", "", "Limit to files", {
       key_prefix = "-",
       separator = "",
-      fn = actions.limit_to_files,
+      fn = actions.limit_to_files(),
       setup = function(popup)
         local state = require("neogit.lib.state").get { "NeogitLogPopup", "" }
         if state then
@@ -61,10 +62,10 @@ function M.create()
       enabled = true,
       internal = true,
       incompatible = { "reverse" },
-      dependant = { "color" },
+      dependent = { "color" },
     })
     :switch_if(
-      config.values.graph_style == "ascii",
+      config.values.graph_style == "ascii" or config.values.graph_style == "kitty",
       "c",
       "color",
       "Show graph in color",
@@ -75,7 +76,7 @@ function M.create()
     :group_heading("Log")
     :action("l", "current", actions.log_current)
     :action("h", "HEAD", actions.log_head)
-    :action("u", "related")
+    :action("u", "related", actions.log_related)
     :action("o", "other", actions.log_other)
     :new_action_group()
     :action("L", "local branches", actions.log_local_branches)

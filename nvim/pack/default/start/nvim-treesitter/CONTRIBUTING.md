@@ -139,9 +139,8 @@ As languages differ quite a lot, here is a set of captures available to you when
 @type             ; type or class definitions and annotations
 @type.builtin     ; built-in types
 @type.definition  ; identifiers in type definitions (e.g. `typedef <type> <identifier>` in C)
-@type.qualifier   ; type qualifiers (e.g. `const`)
 
-@attribute          ; attribute annotations (e.g. Python decorators)
+@attribute          ; attribute annotations (e.g. Python decorators, Rust lifetimes)
 @attribute.builtin  ; builtin annotations (e.g. `@property` in Python)
 @property           ; the key in key/value pairs
 ```
@@ -168,9 +167,9 @@ As languages differ quite a lot, here is a set of captures available to you when
 @keyword.coroutine         ; keywords related to coroutines (e.g. `go` in Go, `async/await` in Python)
 @keyword.function          ; keywords that define a function (e.g. `func` in Go, `def` in Python)
 @keyword.operator          ; operators that are English words (e.g. `and` / `or`)
-@keyword.import            ; keywords for including modules (e.g. `import` / `from` in Python)
-@keyword.storage           ; modifiers that affect storage in memory or life-time
-@keyword.type              ; keywords describing composite types (e.g. `struct`, `enum`)
+@keyword.import            ; keywords for including or exporting modules (e.g. `import` / `from` in Python)
+@keyword.type              ; keywords describing namespaces and composite types (e.g. `struct`, `enum`)
+@keyword.modifier          ; keywords modifying other constructs (e.g. `const`, `static`, `public`)
 @keyword.repeat            ; keywords related to loops (e.g. `for` / `while`)
 @keyword.return            ; keywords like `return` and `yield`
 @keyword.debug             ; keywords related to debugging
@@ -288,7 +287,7 @@ A conceal can be restricted to part of the capture via the [`#offset!` directive
 #### Priority
 
 Captures can be assigned a priority to control precedence of highlights via the
-`#set! "priority" <number>` directive (see `:h treesitter-highlight-priority`).
+`#set! priority <number>` directive (see `:h treesitter-highlight-priority`).
 The default priority for treesitter highlights is `100`; queries should only
 set priorities between `90` and `120`, to avoid conflict with other sources of
 highlighting (such as diagnostics or LSP semantic tokens).
@@ -337,7 +336,7 @@ doSomething(); // Should point to the declaration as the definition
 ```query
 (function_declaration
   ((identifier) @local.definition.var)
-   (#set! "definition.var.scope" "parent"))
+   (#set! definition.var.scope "parent"))
 ```
 
 Possible scope values are:

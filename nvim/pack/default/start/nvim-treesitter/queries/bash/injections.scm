@@ -13,11 +13,16 @@
 ((command
   name: (command_name) @_command
   .
-  argument:
-    [
-      (string)
-      (raw_string)
-    ] @injection.content)
+  argument: [
+    (string
+      (string_content) @injection.content)
+    (concatenation
+      (string
+        (string_content) @injection.content))
+    (raw_string) @injection.content
+    (concatenation
+      (raw_string) @injection.content)
+  ])
   (#eq? @_command "printf")
   (#set! injection.language "printf"))
 
@@ -28,11 +33,16 @@
   .
   (_)
   .
-  argument:
-    [
-      (string)
-      (raw_string)
-    ] @injection.content)
+  argument: [
+    (string
+      (string_content) @injection.content)
+    (concatenation
+      (string
+        (string_content) @injection.content))
+    (raw_string) @injection.content
+    (concatenation
+      (raw_string) @injection.content)
+  ])
   (#eq? @_command "printf")
   (#eq? @_arg "-v")
   (#set! injection.language "printf"))
@@ -42,11 +52,28 @@
   name: (command_name) @_command
   argument: (word) @_arg
   .
-  argument:
-    [
-      (string)
-      (raw_string)
-    ] @injection.content)
+  argument: [
+    (string
+      (string_content) @injection.content)
+    (concatenation
+      (string
+        (string_content) @injection.content))
+    (raw_string) @injection.content
+    (concatenation
+      (raw_string) @injection.content)
+  ])
   (#eq? @_command "printf")
   (#eq? @_arg "--")
   (#set! injection.language "printf"))
+
+((command
+  name: (command_name) @_command
+  .
+  argument: [
+    (string)
+    (raw_string)
+  ] @injection.content)
+  (#eq? @_command "bind")
+  (#offset! @injection.content 0 1 0 -1)
+  (#set! injection.include-children)
+  (#set! injection.language "readline"))

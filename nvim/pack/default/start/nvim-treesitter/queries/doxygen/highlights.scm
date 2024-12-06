@@ -1,5 +1,5 @@
 ((tag_name) @keyword
-  (#set! "priority" 105))
+  (#set! priority 105))
 
 [
   "@code"
@@ -31,7 +31,7 @@
   "in"
   "out"
   "inout"
-] @keyword.storage
+] @keyword.modifier
 
 "~" @operator
 

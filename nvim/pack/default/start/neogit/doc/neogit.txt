@@ -1,66 +1,53 @@
 *neogit.txt* A Magit inspired Git porcelain for Neovim
 *neogit*
-Author: TimUntersberger
-Maintainer: CKolkey
-License: MIT license {{{
 
-  Copyright (c) 2020 Karl Yngve Lervåg
-
-  Permission is hereby granted, free of charge, to any person obtaining a copy
-  of this software and associated documentation files (the "Software"), to
-  deal in the Software without restriction, including without limitation the
-  rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
-  sell copies of the Software, and to permit persons to whom the Software is
-  furnished to do so, subject to the following conditions:
-
-  The above copyright notice and this permission notice shall be included in
-  all copies or substantial portions of the Software.
-
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
-  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-  FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-  IN THE SOFTWARE.
-}}}
+Original Author: TimUntersberger
+Current Author: Cameron Kolkey <cameron.kolkey@gmail.com>
+Homepage: <https://github.com/NeogitOrg/neogit>
+License: MIT license
 
 ==============================================================================
 CONTENTS                                                       *neogit_contents*
 
-    1. Intro                                                     |neogit_intro|
-    2. Commands                                               |neogit_commands|
-    3. Mappings                                               |neogit_mappings|
-    4. Highlights                                           |neogit_highlights|
-    5. API                                                         |neogit_api|
-    6. Popups                                                   |neogit_popups|
-       • Branch                                           |neogit_branch_popup|
-       • Branch Config                             |neogit_branch_config_popup|
-       • Cherry Pick                                 |neogit_cherry_pick_popup|
-       • Commit                                           |neogit_commit_popup|
-       • Diff                                               |neogit_diff_popup|
-       • Fetch                                             |neogit_fetch_popup|
-       • Ignore                                           |neogit_ignore_popup|
-       • Log                                                 |neogit_log_popup|
-       • Merge                                             |neogit_merge_popup|
-       • Pull                                               |neogit_pull_popup|
-       • Push                                               |neogit_push_popup|
-       • Rebase                                           |neogit_rebase_popup|
-       • Remote                                           |neogit_remote_popup|
-       • Remote Config                             |neogit_remote_config_popup|
-       • Reset                                             |neogit_reset_popup|
-       • Revert                                           |neogit_revert_popup|
-       • Stash                                             |neogit_stash_popup|
-       • Tag                                                 |neogit_tag_popup|
-       • Worktree                                       |neogit_worktree_popup|
-
-    7. Buffers                                                 |neogit_buffers|
-       • Status                                          |neogit_status_buffer|
-       • Editor                                          |neogit_editor_buffer|
-       • Log                                                |neogit_log_buffer|
-       • Reflog                                          |neogit_reflog_buffer|
-       • Commit                                          |neogit_commit_buffer|
-       • Rebase Todo                                |neogit_rebase_todo_buffer|
+    1. Intro                                                      |neogit_intro|
+    2. Setup                                                      *neogit_setup*
+       • Plugin Setup                                      |neogit_setup_plugin|
+       • Mappings                                        |neogit_setup_mappings|
+       • GPG Integration                                      |neogit_setup_gpg|
+    3. Commands                                                |neogit_commands|
+    4. Events                                                    |neogit_events|
+    5. Highlights                                            |neogit_highlights|
+    6. API                                                          |neogit_api|
+    7. Usage                                                      |neogit_usage|
+    8. Popups                                                    *neogit_popups*
+       • Bisect                                            |neogit_bisect_popup|
+       • Branch                                            |neogit_branch_popup|
+       • Branch Config                              |neogit_branch_config_popup|
+       • Cherry Pick                                  |neogit_cherry_pick_popup|
+       • Commit                                            |neogit_commit_popup|
+       • Diff                                                |neogit_diff_popup|
+       • Fetch                                              |neogit_fetch_popup|
+       • Ignore                                            |neogit_ignore_popup|
+       • Log                                                  |neogit_log_popup|
+       • Merge                                              |neogit_merge_popup|
+       • Pull                                                |neogit_pull_popup|
+       • Push                                                |neogit_push_popup|
+       • Rebase                                            |neogit_rebase_popup|
+       • Remote                                            |neogit_remote_popup|
+       • Remote Config                              |neogit_remote_config_popup|
+       • Reset                                              |neogit_reset_popup|
+       • Revert                                            |neogit_revert_popup|
+       • Stash                                              |neogit_stash_popup|
+       • Tag                                                  |neogit_tag_popup|
+       • Worktree                                        |neogit_worktree_popup|
+    9. Buffers                                                  *neogit_buffers*
+       • Status                                           |neogit_status_buffer|
+       • Editor                                           |neogit_editor_buffer|
+       • Log                                                 |neogit_log_buffer|
+       • Reflog                                           |neogit_reflog_buffer|
+       • Refs                                               |neogit_refs_buffer|
+       • Commit                                           |neogit_commit_buffer|
+       • Rebase Todo                                 |neogit_rebase_todo_buffer|
 
 ==============================================================================
 1. Intro                                                          *neogit_intro*
@@ -93,7 +80,306 @@ Though not yet feature complete, our goal is to bring the Magit git experience
 to Neovim users.
 
 ==============================================================================
-2. Commands                                                    *neogit_commands*
+2. Plugin Setup                                            *neogit_setup_plugin*
+
+TODO: Detail what these do
+
+    use_default_keymaps = true,
+    disable_hint = false,
+    disable_context_highlighting = false,
+    disable_signs = false,
+    graph_style = "ascii",
+    commit_date_format = nil,
+    log_date_format = nil,
+    filewatcher = {
+      enabled = true,
+    },
+    telescope_sorter = function()
+      return nil
+    end,
+    git_services = {
+      ["github.com"] = "https://github.com/${owner}/${repository}/compare/${branch_name}?expand=1",
+      ["bitbucket.org"] = "https://bitbucket.org/${owner}/${repository}/pull-requests/new?source=${branch_name}&t=1",
+      ["gitlab.com"] = "https://gitlab.com/${owner}/${repository}/merge_requests/new?merge_request[source_branch]=${branch_name}",
+      ["azure.com"] = "https://dev.azure.com/${owner}/_git/${repository}/pullrequestcreate?sourceRef=${branch_name}&targetRef=${target}",
+    },
+    highlight = {
+      italic = true,
+      bold = true,
+      underline = true,
+    },
+    disable_insert_on_commit = "auto",
+    use_per_project_settings = true,
+    show_head_commit_hash = true,
+    remember_settings = true,
+    fetch_after_checkout = false,
+    auto_refresh = true,
+    sort_branches = "-committerdate",
+    initial_branch_name = "",
+    kind = "tab",
+    disable_line_numbers = true,
+    -- The time after which an output console is shown for slow running commands
+    console_timeout = 2000,
+    -- Automatically show console if a command takes more than console_timeout milliseconds
+    auto_show_console = true,
+    -- If `auto_show_console` is enabled, specify "output" (default) to show
+    -- the console always, or "error" to auto-show the console only on error
+    auto_show_console_on = "output",
+    notification_icon = "󰊢",
+    status = {
+      recent_commit_count = 10,
+      HEAD_folded = false,
+    },
+    commit_editor = {
+      kind = "tab",
+    },
+    commit_select_view = {
+      kind = "tab",
+    },
+    commit_view = {
+      kind = "vsplit",
+      verify_commit = vim.fn.executable("gpg") == 1,
+    },
+    log_view = {
+      kind = "tab",
+    },
+    rebase_editor = {
+      kind = "auto",
+    },
+    reflog_view = {
+      kind = "tab",
+    },
+    merge_editor = {
+      kind = "auto",
+    },
+    description_editor = {
+      kind = "auto",
+    },
+    tag_editor = {
+      kind = "auto",
+    },
+    preview_buffer = {
+      kind = "split",
+    },
+    popup = {
+      kind = "split",
+    },
+    refs_view = {
+      kind = "tab",
+    },
+    signs = {
+      hunk = { "", "" },
+      item = { ">", "v" },
+      section = { ">", "v" },
+    },
+    integrations = {
+      telescope = nil,
+      diffview = nil,
+      fzf_lua = nil,
+      mini_pick = nil,
+    },
+    sections = {
+      sequencer = {
+        folded = false,
+        hidden = false,
+      },
+      bisect = {
+        folded = false,
+        hidden = false,
+      },
+      untracked = {
+        folded = false,
+        hidden = false,
+      },
+      unstaged = {
+        folded = false,
+        hidden = false,
+      },
+      staged = {
+        folded = false,
+        hidden = false,
+      },
+      stashes = {
+        folded = true,
+        hidden = false,
+      },
+      unpulled_upstream = {
+        folded = true,
+        hidden = false,
+      },
+      unmerged_upstream = {
+        folded = false,
+        hidden = false,
+      },
+      unpulled_pushRemote = {
+        folded = true,
+        hidden = false,
+      },
+      unmerged_pushRemote = {
+        folded = false,
+        hidden = false,
+      },
+      recent = {
+        folded = true,
+        hidden = false,
+      },
+      rebase = {
+        folded = true,
+        hidden = false,
+      },
+    },
+    ignored_settings = {
+      "NeogitPushPopup--force-with-lease",
+      "NeogitPushPopup--force",
+      "NeogitPullPopup--rebase",
+      "NeogitCommitPopup--allow-empty",
+    }
+
+==============================================================================
+Commit Signing / GPG Integration                              *neogit_setup_gpg*
+
+If you sign commits using gnugpg, there are a few steps that need to be taken
+to properly integrate the password authentication with Neogit:
+  >gpg
+  # ~/.gnupg/gpg-agent.conf
+  pinentry-program /opt/homebrew/bin/pinentry-tty
+  allow-loopback-pinentry
+<
+  >gpg
+  # ~/.gnupg/gpg.conf
+  pinentry-mode loopback
+<
+
+  Note: If you are not using Homebrew you may need to change the path for
+        `pinentry-program
+
+  Note: The location of these config files may not be in "~/.gnupg/" depending
+        on your system configuration. To find where they should be placed run
+        "gpgconf --list-dirs" and place them in the path which follows the
+        line starting "homedir:". For example this could be
+        "$XDG_DATA_HOME/gnupg/"
+
+==============================================================================
+Mappings                                                 *neogit_setup_mappings*
+
+The following mappings can all be customized via the setup function.
+>lua
+      commit_editor = {
+        ["q"]          = "Close",
+        ["<m-p>"]      = "PrevMessage",
+        ["<m-n>"]      = "NextMessage",
+        ["<m-r>"]      = "ResetMessage",
+        ["<c-c><c-c>"] = "Submit",
+        ["<c-c><c-k>"] = "Abort",
+      }
+      commit_editor_I = {
+        ["<c-c><c-c>"] = "Submit",
+        ["<c-c><c-k>"] = "Abort",
+      }
+
+      rebase_editor = {
+        ["p"]          = "Pick",
+        ["r"]          = "Reword",
+        ["e"]          = "Edit",
+        ["s"]          = "Squash",
+        ["f"]          = "Fixup",
+        ["x"]          = "Execute",
+        ["d"]          = "Drop",
+        ["b"]          = "Break",
+        ["q"]          = "Close",
+        ["<cr>"]       = "OpenCommit",
+        ["gk"]         = "MoveUp",
+        ["gj"]         = "MoveDown",
+        ["<c-c><c-c>"] = "Submit",
+        ["<c-c><c-k>"] = "Abort",
+        ["[c"]         = "OpenOrScrollUp",
+        ["]c"]         = "OpenOrScrollDown",
+      }
+      rebase_editor_I = {
+        ["<c-c><c-c>"] = "Submit",
+        ["<c-c><c-k>"] = "Abort",
+      }
+
+      finder = {
+        ["<cr>"]               = "Select",
+        ["<c-c>"]              = "Close",
+        ["<esc>"]              = "Close",
+        ["<c-n>"]              = "Next",
+        ["<c-p>"]              = "Previous",
+        ["<down>"]             = "Next",
+        ["<up>"]               = "Previous",
+        ["<tab>"]              = "InsertCompletion",
+        ["<space>"]            = "MultiselectToggleNext",
+        ["<s-space>"]          = "MultiselectTogglePrevious",
+        ["<c-j>"]              = "NOP",
+        ["<ScrollWheelDown>"]  = "ScrollWheelDown",
+        ["<ScrollWheelUp>"]    = "ScrollWheelUp",
+        ["<ScrollWheelLeft>"]  = "NOP",
+        ["<ScrollWheelRight>"] = "NOP",
+        ["<LeftMouse>"]        = "MouseClick",
+        ["<2-LeftMouse>"]      = "NOP",
+      }
+
+      popup = {
+        ["?"] = "HelpPopup",
+        ["A"] = "CherryPickPopup",
+        ["d"] = "DiffPopup",
+        ["M"] = "RemotePopup",
+        ["P"] = "PushPopup",
+        ["X"] = "ResetPopup",
+        ["Z"] = "StashPopup",
+        ["i"] = "IgnorePopup",
+        ["t"] = "TagPopup",
+        ["b"] = "BranchPopup",
+        ["B"] = "BisectPopup",
+        ["w"] = "WorktreePopup",
+        ["c"] = "CommitPopup",
+        ["f"] = "FetchPopup",
+        ["l"] = "LogPopup",
+        ["m"] = "MergePopup",
+        ["p"] = "PullPopup",
+        ["r"] = "RebasePopup",
+        ["v"] = "RevertPopup",
+      }
+
+      status = {
+        ["j"]      = "MoveDown",
+        ["k"]      = "MoveUp",
+        ["o"]      = "OpenTree",
+        ["q"]      = "Close",
+        ["I"]      = "InitRepo",
+        ["1"]      = "Depth1",
+        ["2"]      = "Depth2",
+        ["3"]      = "Depth3",
+        ["4"]      = "Depth4",
+        ["Q"]      = "Command",
+        ["<tab>"]  = "Toggle",
+        ["x"]      = "Discard",
+        ["s"]      = "Stage",
+        ["S"]      = "StageUnstaged",
+        ["<c-s>"]  = "StageAll",
+        ["u"]      = "Unstage",
+        ["K"]      = "Untrack",
+        ["U"]      = "UnstageStaged",
+        ["y"]      = "ShowRefs",
+        ["$"]      = "CommandHistory",
+        ["Y"]      = "YankSelected",
+        ["<c-r>"]  = "RefreshBuffer",
+        ["<cr>"]   = "GoToFile",
+        ["<s-cr>"] = "PeekFile",
+        ["<c-v>"]  = "VSplitOpen",
+        ["<c-x>"]  = "SplitOpen",
+        ["<c-t>"]  = "TabOpen",
+        ["{"]      = "GoToPreviousHunkHeader",
+        ["}"]      = "GoToNextHunkHeader",
+        ["[c"]     = "OpenOrScrollUp",
+        ["]c"]     = "OpenOrScrollDown",
+        ["<c-k>"]  = "PeekUp",
+        ["<c-j>"]  = "PeekDown",
+      }
+<
+==============================================================================
+3. Commands                                                    *neogit_commands*
 
                                                                        *:Neogit*
 :Neogit                 In a Git repository, opens a new NeogitStatus tab.
@@ -101,102 +387,54 @@ to Neovim users.
                                                              *:NeogitResetState*
 :NeogitResetState       Performs a full reset of saved flags for all popups.
 
-==============================================================================
-3. Mappings                                                    *neogit_mappings*
+                                                                    *:NeogitLog*
+:NeogitLog              Opens log buffer for any changes to the current file,
+                        or a path the user has specified. Optionally, a range
+                        can be specified to further filter the log entries.
 
-                                                            *neogit_status_maps*
-Status Mappings
-
-                                                                      *neogit_s*
-s                       Stage file/hunk/visual-selection
-
-                                                                      *neogit_S*
-S                       Stage unstaged changes
-
-                                                                  *neogit_<C-s>*
-<C-s>                   Stage Everything
-
-                                                                      *neogit_u*
-u                       Unstage file/hunk/visual-selection
-
-                                                                      *neogit_U*
-U                       Unstage staged changes
-
-                                                                      *neogit_x*
-x                       Discard changes for file/hunk/visual-selection
-
-                                                                   *neogit_<cr>*
-<cr>                    Goto item at cursor
-
-                                                                  *neogit_<tab>*
-<tab>                   Toggle diff
-
-                                                                      *neogit_{*
-{                       Goto previous hunk
-
-                                                                      *neogit_}*
-}                       Goto next hunk
-
-                                                                  *neogit_<C-r>*
-<C-r>                   Refresh Buffer
-
-                                                                   *neogit_fold*
-1, 2, 3, 4              Set a foldlevel
-
-
-                                                             *neogit_popup_maps*
-Popup maps ~
-
-                                                                      *neogit_$*
-$                       Command History
-
-                                                                      *neogit_#*
-#                       Console Output
-
-                                                                      *neogit_L*
-l                       Open log popup
-
-                                                                      *neogit_p*
-p                       Open pull popup
-
-                                                                      *neogit_P*
-P                       Open push popup
-
-                                                                      *neogit_f*
-f                       Open fetch popup
-
-                                                                      *neogit_X*
-X                       Open reset popup
-
-                                                                      *neogit_A*
-A                       Open cherry-pick popup
-
-                                                                      *neogit_m*
-m                       Open merge popup
-
-                                                                      *neogit_v*
-v                       Open revert popup
-
-                                                                      *neogit_M*
-M                       Open remotes popup
-
-                                                                      *neogit_?*
-?                       Open help popup
-
-                                                                      *neogit_b*
-b                       Open branch popup
-
-                                                                      *neogit_c*
-c                       Open commit popup
-
-                                                                      *neogit_r*
-r                       Open rebase popup
-
-                                                                      *neogit_Z*
-Z                       Open stash popup
+                                                                 *:NeogitCommit*
+:NeogitCommit           Opens the commit view for the specified SHA, or `HEAD`
+                        if left blank.
 
 ==============================================================================
-4. Highlights                                                *neogit_highlights*
+4. Events                                                        *neogit_events*
+(TODO)
+
+==============================================================================
+5. Highlights                                                *neogit_highlights*
+
+To provide a custom color palette directly to the plugin, you can use the
+`config.highlight` table with the following signature:
+
+---@class HighlightOptions
+---@field italic?     boolean
+---@field bold?       boolean
+---@field underline?  boolean
+---@field bg0?        string  Darkest background color
+---@field bg1?        string  Second darkest background color
+---@field bg2?        string  Second lightest background color
+---@field bg3?        string  Lightest background color
+---@field grey?       string  middle grey shade for foreground
+---@field white?      string  Foreground white (main text)
+---@field red?        string  Foreground red
+---@field bg_red?     string  Background red
+---@field line_red?   string  Cursor line highlight for red regions
+---@field orange?     string  Foreground orange
+---@field bg_orange?  string  background orange
+---@field yellow?     string  Foreground yellow
+---@field bg_yellow?  string  background yellow
+---@field green?      string  Foreground green
+---@field bg_green?   string  Background green
+---@field line_green? string  Cursor line highlight for green regions
+---@field cyan?       string  Foreground cyan
+---@field bg_cyan?    string  Background cyan
+---@field blue?       string  Foreground blue
+---@field bg_blue?    string  Background blue
+---@field purple?     string  Foreground purple
+---@field bg_purple?  string  Background purple
+---@field md_purple?  string  Background medium purple
+
+The following highlight groups will all be derived from this palette.
 
 The following highlight groups are defined by this plugin. If you set any of
 these yourself before the plugin loads, that will be respected. If they do not
@@ -212,17 +450,17 @@ NeogitFold                  Folded text highlight
 NeogitRebaseDone            Current position within rebase
 NeogitTagName               Closest Tag name
 NeogitTagDistance           Number of commits between the tag and HEAD
-
+NeogitStatusHEAD            The left text in the HEAD section
 
 STATUS BUFFER SECTION HEADERS
 NeogitSectionHeader
-
 NeogitUnpushedTo            Linked to NeogitSectionHeader
 NeogitUnmergedInto          ^
 NeogitUnpulledFrom          ^
 NeogitUntrackedfiles        ^
 NeogitUnstagedchanges       ^
 NeogitUnmergedchanges       ^
+NeogitUnpushedchanges       ^
 NeogitUnpulledchanges       ^
 NeogitRecentcommits         ^
 NeogitStagedchanges         ^
@@ -230,9 +468,13 @@ NeogitStashes               ^
 NeogitRebasing              ^
 NeogitReverting             ^
 NeogitPicking               ^
+NeogitMerging               ^
+NeogitBisecting             ^
+NeogitSectionHeaderCount    The number, for sections with a number.
 
 STATUS BUFFER FILE
-Applied to the label on the left of filenames.
+Applied to the label on the left of filenames. These highlight groups are not
+used directly, but linked to by other groups:
 
 NeogitChangeModified
 NeogitChangeAdded
@@ -240,8 +482,37 @@ NeogitChangeDeleted
 NeogitChangeRenamed
 NeogitChangeUpdated
 NeogitChangeCopied
-NeogitChangeBothModified
 NeogitChangeNewFile
+NeogitChangeUnmerged
+
+Styling one of the above groups will apply to all sections, and is generally
+whats recommended. However, if you want to control the style on a per-section
+basis, the _actual_ highlight groups on the labels follow this pattern:
+    `NeogitChange<mode><section>`
+
+Where `<mode>` is one of: (corrospinding to the git mode)
+  M
+  A
+  N
+  D
+  C
+  U
+  R
+  DD
+  UU
+  AA
+  DU
+  UD
+  AU
+  UA
+
+And `<section>` is one of:
+  untracked
+  unstaged
+  staged
+
+So, a modified and staged change would use the `NeogitChangeMstaged` highlight
+group, which is linked to `NeogitChangeModified` by default.
 
 SIGNS FOR LINE HIGHLIGHTING
 Used to highlight different sections of the status buffer or commit buffer.
@@ -251,20 +522,24 @@ NeogitDiffContext
 NeogitDiffAdd
 NeogitDiffDelete
 NeogitDiffHeader
+NeogitActiveItem            Highlight of current commit-ish open
 
 SIGNS FOR LINE HIGHLIGHTING CURRENT CONTEXT
 These are essentially an accented version of the above highlight groups. Only
 applies to the current context the cursor is within.
+
+The "Cursor" suffix applies only to the Cursor line
 
 NeogitHunkHeaderHighlight
 NeogitDiffContextHighlight
 NeogitDiffAddHighlight
 NeogitDiffDeleteHighlight
 NeogitDiffHeaderHighlight
-
-NeogitCursorLine            Applies a "fake" cursorline highlight because
-                            signs will otherwise take precedence over normal
-                            CursorLine HL group
+NeogitHunkHeaderCursor
+NeogitDiffContextCursor
+NeogitDiffAddCursor
+NeogitDiffDeleteCursor
+NeogitDiffHeaderCursor
 
 COMMIT BUFFER
 NeogitFilePath              Applied to filepath
@@ -328,8 +603,11 @@ NeogitCommandTime          Execution time
 NeogitCommandCodeNormal    Applied to a successful command's exit status (0)
 NeogitCommandCodeError     When command exits with non-zero status
 
+COMMIT SELECT BUFFER
+NeogitFloatHeader          Foreground/Background for header text at top of win
+NeogitFloatHeaderHighlight Emphasized text in header
 ==============================================================================
-5. Lua API                                               *neogit_api* *neogit-lua*
+6. Lua API                                               *neogit_api* *neogit-lua*
 
 neogit.open({*opts})                                             *neogit.open()*
     Open Neogit. Alternative to `:Neogit` >lua
@@ -355,6 +633,7 @@ neogit.open({*opts})                                             *neogit.open()*
                     - "split"         like :below split
                     - "split_above"   like :top split
                     - "vsplit"        like :vsplit
+                    - "vsplit_left"   like :vsplit, but open to the left
                     - "floating" not-yet-implemented
 
                 • cwd (string) optional: Path to git repository.
@@ -390,62 +669,14 @@ neogit.action({popup}, {action}, {args})                       *neogit.action()*
       • {args}   (table|nil)
         CLI arguments to pass to git command
 
+
 ==============================================================================
-6. Popups                                                        *neogit_popups*
+7. Usage                                                          *neogit_usage*
+(TODO)
 
-A Neogit popup is a client interface over a git subcommand or other
-git mechanism.
-
-                                                                 *neogit_branch*
-"branch"             see :Man git-branch or |neogit_branch_popup|
-
-                                                          *neogit_branch_config*
-"branch_config"      Common configuration for branch/repo
-
-                                                            *neogit_cherry_pick*
-"cherry_pick"        see :Man git-cherry-pick
-
-                                                                 *neogit_commit*
-"commit"             see :Man git-commit
-
-                                                                   *neogit_diff*
-"diff"               see :Man git-diff
-
-                                                                  *neogit_fetch*
-"fetch"              see :Man git-fetch
-
-                                                                   *neogit_help*
-"help"               Overview of different popups
-
-                                                                    *neogit_log*
-"log"                see :Man git-log
-
-                                                                  *neogit_merge*
-"merge"              see :Man git-merge
-
-                                                                   *neogit_pull*
-"pull"               see :Man git-pull
-
-                                                                   *neogit_push*
-"push"               see :Man git-push
-
-                                                                 *neogit_rebase*
-"rebase"             see :Man git-rebase
-
-                                                                 *neogit_remote*
-"remote"             see :Man git-remote
-
-                                                          *neogit_remote_config*
-"remote_config"      Common configuration for remote
-
-                                                                  *neogit_reset*
-"reset"              see :Man git-reset
-
-                                                                 *neogit_revert*
-"revert"             see :Man git-revert
-
-                                                                  *neogit_stash*
-"stash"              see :Man git-stash
+==============================================================================
+Bisect Popup                                               *neogit_bisect_popup*
+(TODO)
 
 ==============================================================================
 Cherry-Pick Popup                                     *neogit_cherry_pick_popup*
@@ -475,13 +706,27 @@ Actions:                                      *neogit_cherry_pick_popup_actions*
     Otherwise the user is prompted to select one or more commits.
 
   • Harvest                                         *neogit_cherry_pick_harvest*
-    (Not yet implemented)
+    This command moves the selected COMMITS that must be located on another
+    BRANCH onto the current branch instead, removing them from the former.
+    When this command succeeds, then the same branch is current as before.
+
+    Applying the commits on the current branch or removing them from the other
+    branch can lead to conflicts. When that happens, then this command stops
+    and you have to resolve the conflicts and then finish the process manually.
 
   • Squash                                           *neogit_cherry_pick_squash*
-    (Not yet implemented)
+    See: |neogit_merge_squash|
 
   • Donate                                           *neogit_cherry_pick_donate*
-    (Not yet implemented)
+    This command moves the selected COMMITS from the current branch onto
+    another existing BRANCH, removing them from the former. When this command
+    succeeds, then the same branch is current as before.
+
+    HEAD is allowed to be detached initially.
+
+    Applying the commits on the other branch or removing them from the current
+    branch can lead to conflicts. When that happens, then this command stops
+    and you have to resolve the conflicts and then finish the process manually.
 
   • Spinout                                         *neogit_cherry_pick_spinout*
     (Not yet implemented)
@@ -830,6 +1075,16 @@ Actions:                                           *neogit_commit_popup_actions*
     Creates a new commit on the current branch from the currently staged
     changes.
 
+  • Absorb                                                *neogit_commit_absorb*
+    (Requires `https://github.com/tummychow/git-absorb`)
+
+    `git absorb` will automatically identify which commits are safe to modify,
+    and which staged changes belong to each of those commits. It will then
+    write fixup! commits for each of those changes.
+
+    The `--with-rebase` flag is passed, meaning these fixup commits will be
+    automatically integrated into the corresponding ones via rebase.
+
   • Extend                                                *neogit_commit_extend*
     Amends the last commit without editing the commit message.
 
@@ -861,7 +1116,44 @@ Actions:                                           *neogit_commit_popup_actions*
 ==============================================================================
 Diff Popup                                                   *neogit_diff_popup*
 
-(TODO)
+The diff popup actions allow inspection of changes in the index (staged
+changes), the working tree (unstaged changes and untracked files), any
+ref range.
+
+For these actions to become available, Neogit needs to be configured to enable
+`diffview.nvim` integration. See |neogit_setup_plugin| and
+https://github.com/sindrets/diffview.nvim.
+
+  • Diff this                                                 *neogit_diff_this*
+    Show the diff for the file referred to by a hunk under the cursor.
+
+  • Diff range                                               *neogit_diff_range*
+    View a diff between a specified range of commits. Neogit presents a select
+    for an `A` and a `B` ref and allows specifying the type of range.
+
+    A two-dot range `A..B` shows all of the commits that `B` has that `A`
+    doesn't have. A three-dot range `A...B` shows all of the commits that `A`
+    and `B` have independently, excluding the commits shared by both refs.
+
+
+  • Diff paths                                               *neogit_diff_paths*
+    (Not yet implemented)
+
+  • Diff unstaged                                         *neogit_diff_unstaged*
+    Show the diff for the working tree, without untracked files.
+
+  • Diff staged                                             *neogit_diff_staged*
+    Show the diff for the index.
+
+  • Diff worktree                                         *neogit_diff_worktree*
+    Show the full diff of the working tree, including untracked files.
+
+  • Show commit                                             *neogit_show_commit*
+    Display the diff of the commits within a branch.
+
+  • Show stash                                               *neogit_show_stash*
+    Display the diff of a specific stash.
+
 
 ==============================================================================
 Fetch Popup                                                 *neogit_fetch_popup*
@@ -882,6 +1174,12 @@ Arguments:                                             *neogit_fetch_popup_args*
     otherwise be fetched. Using this option alone does not subject tags to
     pruning, even if --prune is used (though tags may be pruned anyway if
     they are also the destination of an explicit refspec; see --prune).
+
+  • --force
+    When git fetch is used with <src>:<dst> refspec, it may refuse to update
+    the local branch. This option overrides that check. See `man git-fetch`
+    for more detail.
+
 
 Actions:                                            *neogit_fetch_popup_actions*
   • Fetch from pushRemote                              *neogit_fetch_pushremote*
@@ -927,7 +1225,37 @@ Log Popup                                                     *neogit_log_popup*
 ==============================================================================
 Merge Popup                                                 *neogit_merge_popup*
 
-(TODO)
+Arguments:                                             *neogit_merge_popup_args*
+  (TODO)
+
+Actions:                                            *neogit_merge_popup_actions*
+  • Merge                                                   *neogit_merge_merge*
+    This command merges another branch or revision into the current branch.
+
+  • Merge and edit message                                *neogit_merge_editmsg*
+    Like `Merge` above, but opens editor to modify commit message.
+
+  • Merge but don't commit                               *neogit_merge_nocommit*
+    This command merges another branch or revision into the current branch,
+    but does not actually create the merge commit, allowing the user to make
+    modifications before committing themselves.
+
+  • Absorb                                                 *neogit_merge_absorb*
+    (Not yet implemented)
+
+  • Preview Merge                                         *neogit_merge_preview*
+    (Not yet implemented)
+
+  • Squash Merge                                           *neogit_merge_squash*
+    This command squashes the changes introduced by another branch or revision
+    into the current branch. This only applies the changes made by the
+    squashed commits. No information is preserved that would allow creating an
+    actual merge commit.
+
+    Instead of this command you should probably use a cherry-pick command.
+
+  • Dissolve                                             *neogit_merge_dissolve*
+    (Not yet implemented)
 
 ==============================================================================
 Remote Popup                                               *neogit_remote_popup*
@@ -982,7 +1310,7 @@ Arguments:                                              *neogit_pull_popup_args*
     upstream branch and the upstream branch was rebased since last fetched,
     the rebase uses that information to avoid rebasing non-local changes.
 
-    See pull.rebase, branch.<name>.rebase and branch.autoSetupRebase if you 
+    See pull.rebase, branch.<name>.rebase and branch.autoSetupRebase if you
     want to make git pull always use --rebase instead of merging.
 
     Note:
@@ -1091,13 +1419,13 @@ Actions:                                             *neogit_push_popup_actions*
     the user.
 
   • Push explicit refspecs                       *neogit_push_explicit_refspecs*
-    (Not yet implemented)
+    Push a refspec to a remote.
 
   • Push matching branches                       *neogit_push_matching_branches*
-    (Not yet implemented)
+    Push all matching branches to another repository.
 
   • Push a tag                                                 *neogit_push_tag*
-    (Not yet implemented)
+    Pushes a single tag to a remote.
 
   • Push all tags                                         *neogit_push_all_tags*
     Pushes all tags to selected remote. If only one remote exists, that will
@@ -1233,16 +1561,16 @@ Actions:                                           *neogit_rebase_popup_actions*
     then a START commit.
 
   • Rebase to modify a commit                      *neogit_rebase_modify_commit*
-    (TODO)
+    Begins an interactive rebase, allowing you to edit a single commit.
 
   • Rebase to reword a commit                      *neogit_rebase_reword_commit*
-    (TODO)
+    Begins an interactive rebase, letting you reword an single older commit.
 
   • Rebase to remove a commit                      *neogit_rebase_remove_commit*
-    (TODO)
+    Uses rebase to remove a single commit from the history.
 
   • Rebase to autosquash                              *neogit_rebase_autosquash*
-    (TODO)
+    Combines `squash!` and `fixup!` commits with their target commits.
 
 When a rebase is in progress, the following actions are available instead:
   • Continue                                            *neogit_rebase_continue*
@@ -1313,6 +1641,17 @@ Reset Popup                                                 *neogit_reset_popup*
 All actions will default to the commit under cursor if there is one, or prompt
 the user to select one if there is not.
 
+Variables:                                        *neogit_reset_popup_variables*
+  • neogit.resetThisTo                                    *neogit_reset_this_to*
+    When "Commit", will pass the commit hash to `git reset` unaltered. This has
+    the effect of resetting "to" the commit.
+
+    When "Parent", will append "^" to the commit hash when calling `git reset`.
+    This has the effect of resetting the commit itself.
+
+    Only applies when a commit is selected before launching the popup. Commits
+    chosen via the finder will be used unmodified, ignoring this setting.
+
 Actions:                                            *neogit_reset_popup_actions*
   • Mixed                                                   *neogit_reset_mixed*
     Resets the index but not the working tree (i.e., the changed files are
@@ -1325,8 +1664,10 @@ Actions:                                            *neogit_reset_popup_actions*
 
   • Hard                                                     *neogit_reset_hard*
     Resets the index and working tree. Any changes to tracked files in the
-    working tree since <commit> are discarded. Any untracked files or
-    directories in the way of writing any tracked files are simply deleted.
+    working tree since <commit> are discarded, however a reflog entry will be
+    created with their current state, so changes can be restored if needed.
+    Any untracked files or directories in the way of writing any tracked files
+    are simply deleted.
 
   • Keep                                                     *neogit_reset_keep*
     Resets index entries and updates files in the working tree that are
@@ -1345,7 +1686,68 @@ Actions:                                            *neogit_reset_popup_actions*
 ==============================================================================
 Stash Popup                                                 *neogit_stash_popup*
 
-(TODO)
+The stash popup actions will affect the current index (staged changes) and the
+working tree (unstaged changes and untracked files). When the cursor is on a
+stash in the stash list, actions under the "Use" column (pop, apply and drop)
+will affect the stash under the cursor.
+
+Actions:                                            *neogit_stash_popup_actions*
+  • Stash both                                               *neogit_stash_both*
+    Stash both the index and the working tree.
+
+  • Stash index                                             *neogit_stash_index*
+    Stash the index only, excluding unstaged changes and untracked files.
+
+  • Stash worktree                                       *neogit_stash_worktree*
+    (Not yet implemented)
+
+  • Stash keeping index                             *neogit_stash_keeping_index*
+    Stash both the index and the working tree, but still leave behind the
+    index.
+
+  • Stash push                                               *neogit_stash_push*
+    Select a changed file to push it to the stash.
+
+  • Snapshot both                                         *neogit_snapshot_both*
+    (Not yet implemented)
+
+  • Snapshot index                                       *neogit_snapshot_index*
+    (Not yet implemented)
+
+  • Snapshot worktree                                 *neogit_snapshot_worktree*
+    (Not yet implemented)
+
+  • Snapshot to wip ref                             *neogit_snapshot_to_wip_ref*
+    (Not yet implemented)
+
+  • Pop                                                       *neogit_stash_pop*
+    Apply a stash to the working tree. If there are conflicts, leave the stash
+    intact. If there aren't any conflicts, remove the stash from the list.
+
+  • Apply                                                   *neogit_stash_apply*
+    Apply a stash to the working tree without removing it from the stash list.
+
+  • Drop                                                     *neogit_stash_drop*
+    Remove a stash from the stash list.
+
+  • List                                                     *neogit_stash_list*
+    Display the list of all stashes, and show a diff if a stash is selected.
+
+  • Show                                                     *neogit_stash_show*
+    (Not yet implemented)
+
+  • Branch                                                 *neogit_stash_branch*
+    (Not yet implemented)
+
+  • Branch here                                       *neogit_stash_branch_here*
+    (Not yet implemented)
+
+  • Rename                                                 *neogit_stash_rename*
+    Rename an existing stash.
+
+  • Format patch                                     *neogit_stash_format_patch*
+    (Not yet implemented)
+
 
 ==============================================================================
 Ignore Popup                                               *neogit_ignore_popup*
@@ -1426,16 +1828,6 @@ Actions:                                         *neogit_worktree_popup_actions*
 
 
 ==============================================================================
-7. Buffers                                                      *neogit_buffers*
-
-• Status                                                  |neogit_status_buffer|
-• Editor                                                  |neogit_editor_buffer|
-• Log                                                        |neogit_log_buffer|
-• Reflog                                                  |neogit_reflog_buffer|
-• Commit                                                  |neogit_commit_buffer|
-• Rebase Todo                                        |neogit_rebase_todo_buffer|
-
-==============================================================================
 Status Buffer                                             *neogit_status_buffer*
 (TODO)
 
@@ -1498,6 +1890,10 @@ Commit Buffer                                             *neogit_commit_buffer*
 (TODO)
 
 ==============================================================================
+Refs Buffer                                                 *neogit_refs_buffer*
+(TODO)
+
+==============================================================================
 Rebase Todo Buffer                                   *neogit_rebase_todo_buffer*
 
 The Rebase editor has some extra commands, beyond being a normal vim buffer.
@@ -1513,4 +1909,72 @@ The following keys, in normal mode, will act on the commit under the cursor:
 • `b`    Insert breakpoint
 • `<cr>` Open current commit in Commit Buffer
 
-vim:tw=78:ts=8:ft=help
+==============================================================================
+Custom Popups                                             *neogit_custom_popups*
+
+You can leverage Neogit's infrastructure to create your own popups and
+actions. For example, you can define actions as a function which will take the
+popup instance as it's argument:
+>lua
+    local function my_action(popup)
+      -- You can access the popup state (enabled flags) like so:
+      local cli_args = popup:get_arguments()
+
+      -- You can use Neogit's git abstraction for many common operations
+      -- local git = require("neogit.lib.git")
+
+      -- The input library provides some helpful interfaces for getting user
+      -- input
+      local input = require("neogit.lib.input")
+      local user_input = input.get_user_input("User-specified free text for the action")
+
+      vim.notify(
+        "Hello from my custom action!\n"
+        .. "CLI args: `" .. table.concat(cli_args, " ") .. "`\n"
+        .. "User input: `" .. user_input .. "`")
+    end
+
+    function create_custom_popup()
+      local popup = require("neogit.lib.popup")
+      local p = popup
+        .builder()
+        :name("NeogitMyCustomPopup")
+        -- A switch is a boolean CLI flag, like `--no-verify`
+        :switch("s", "my-switch", "My switch")
+        -- An "_if" variant exists for builder methods, that takes a boolean
+        -- as it's first argument.
+        :switch_if(true, "S", "conditional-switch", "This switch is conditional")
+        -- Options are CLI flags that have a value, like `--strategy=octopus`
+        :option("o", "my-option", "default_value", "My option", { key_prefix = "-" })
+        :new_action_group("My actions")
+        :action("a", "Some action", my_action)
+        -- Data can be stored on the popup instance via the `env`, accessible
+        -- to the action via `popup.state.env.*`
+        :env({ some_data = { "like this" } })
+        :build()
+
+      p:show()
+
+      return p
+    end
+
+  require("neogit")
+<
+
+Look at the builder APIs in `lua/neogit/lib/popup/builder.lua`, the built-in
+popups/actions in `lua/neogit/popups/*`, and the git APIs in
+`lua/neogit/lib/git` for more information (and inspiration!).
+
+To access your custom popup via a keymapping, you can include a mapping when
+calling the setup function:
+>lua
+    require("neogit").setup({
+      mappings = {
+        status = {
+          ["<leader>A"] = create_custom_popup,
+        },
+      },
+    })
+<
+------------------------------------------------------------------------------
+vim:tw=78:ts=8:ft=help:norl:

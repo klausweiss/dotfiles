@@ -115,6 +115,16 @@ function FixBufferContext:leave()
 	return parser, source
 end
 
+local function capture_to_node(capture)
+	if capture.range then
+		return capture
+	else
+		-- return last capture to mimick previous behaviour.
+		-- Reconsider when there is a good usecase for other behaviour.
+		return capture[#capture]
+	end
+end
+
 -- iterate over all
 local function captures_iter(captures)
 	-- turn string/string[] into map: string -> bool, for querying whether some
@@ -126,20 +136,21 @@ local function captures_iter(captures)
 		local current_match
 		local current_capture_id
 		local iter
+		local pattern
 
 		iter = function()
 			-- if there is no current match to continue,
 			if not current_match then
-				_, current_match, _ = match_iter()
+				pattern, current_match, _ = match_iter()
 
 				-- occurs once there are no more matches.
-				if not current_match then
+				if not pattern then
 					return nil
 				end
 			end
 			while true do
-				local node
-				current_capture_id, node =
+				local capture
+				current_capture_id, capture =
 					next(current_match, current_capture_id)
 				if not current_capture_id then
 					break
@@ -148,7 +159,7 @@ local function captures_iter(captures)
 				local capture_name = query.captures[current_capture_id]
 
 				if capture_map[capture_name] then
-					return current_match, node
+					return current_match, capture_to_node(capture)
 				end
 			end
 
@@ -329,6 +340,7 @@ function TSParser:match_at(match_opts, pos)
 
 	for match, node in match_opts.generator(query, next_ts_match) do
 		-- false: don't include bytes.
+		-- use first node?
 		local _, _, end_row, end_col = node:range(false)
 		if end_row == pos[1] and end_col == pos[2] then
 			if selector.record(match, node) then
@@ -345,8 +357,9 @@ function TSParser:match_at(match_opts, pos)
 
 	-- map captures via capture-name, not id.
 	local named_captures_match = {}
-	for id, capture_node in pairs(best_match) do
-		named_captures_match[query.captures[id]] = capture_node
+	for id, capture in pairs(best_match) do
+		-- just use first here, for now.
+		named_captures_match[query.captures[id]] = capture_to_node(capture)
 	end
 	return named_captures_match, node
 end

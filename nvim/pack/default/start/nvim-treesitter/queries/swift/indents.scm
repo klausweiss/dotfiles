@@ -5,6 +5,8 @@
   (class_body)                  ; class Foo { ... }
   (enum_class_body)             ; enum Foo { ... }
   (function_declaration)        ; func Foo (...) {...}
+  (init_declaration)            ; init(...) {...}
+  (deinit_declaration)          ; deinit {...}
   (computed_property)           ; { ... }
   (subscript_declaration)       ; subscript Foo(...) { ... }
 
@@ -37,6 +39,22 @@
   (didset_clause)
 ] @indent.begin
 
+(init_declaration) @indent.begin
+
+(init_declaration
+  [
+    "init"
+    "("
+  ] @indent.branch)
+
+; indentation for init parameters
+(init_declaration
+  ")" @indent.branch @indent.end)
+
+(init_declaration
+  (parameter) @indent.begin
+  (#set! indent.immediate))
+
 ; @something(...)
 (modifiers
   (attribute) @indent.begin)
@@ -48,7 +66,7 @@
     (_)* @indent.branch)
   .
   _ @indent.branch
-  (#not-has-type? @indent.branch type_parameters parameter))
+  (#not-kind-eq? @indent.branch "type_parameters" "parameter"))
 
 (ERROR
   [

@@ -12,10 +12,21 @@
   (block)
   (call_expression)
   (parameter_list)
-  (struct_type)
+  (field_declaration_list)
+  (interface_type)
 ] @indent.begin
 
-"}" @indent.branch
+(literal_value
+  "}" @indent.branch)
+
+(block
+  "}" @indent.branch)
+
+(field_declaration_list
+  "}" @indent.branch)
+
+(interface_type
+  "}" @indent.branch)
 
 (const_declaration
   ")" @indent.branch)
@@ -23,7 +34,7 @@
 (import_spec_list
   ")" @indent.branch)
 
-(var_declaration
+(var_spec_list
   ")" @indent.branch)
 
 [

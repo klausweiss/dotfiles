@@ -1,11 +1,13 @@
 local async = require('gitsigns.async')
-local cache = require('gitsigns.cache').cache
-local config = require('gitsigns.config').config
+local debounce = require('gitsigns.debounce')
 local util = require('gitsigns.util')
 
-local api = vim.api
+local cache = require('gitsigns.cache').cache
+local config = require('gitsigns.config').config
+local schema = require('gitsigns.config').schema
+local error_once = require('gitsigns.message').error_once
 
-local debounce = require('gitsigns.debounce')
+local api = vim.api
 
 local namespace = api.nvim_create_namespace('gitsigns_blame')
 
@@ -28,7 +30,7 @@ local function expand_blame_format(fmt, name, info)
   if info.author == name then
     info.author = 'You'
   end
-  return util.expand_format(fmt, info, config.current_line_blame_formatter_opts.relative_time)
+  return util.expand_format(fmt, info)
 end
 
 --- @param virt_text {[1]: string, [2]: string}[]
@@ -41,10 +43,9 @@ local function flatten_virt_text(virt_text)
   return table.concat(res)
 end
 
---- @param winid integer
 --- @return integer
-local function win_width(winid)
-  winid = winid or api.nvim_get_current_win()
+local function win_width()
+  local winid = api.nvim_get_current_win()
   local wininfo = vim.fn.getwininfo(winid)[1]
   local textoff = wininfo and wininfo.textoff or 0
   return api.nvim_win_get_width(winid) - textoff
@@ -54,13 +55,14 @@ end
 --- @param lnum integer
 --- @return integer
 local function line_len(bufnr, lnum)
-  return #api.nvim_buf_get_lines(bufnr, lnum - 1, lnum, true)[1]
+  local line = api.nvim_buf_get_lines(bufnr, lnum - 1, lnum, true)[1]
+  return api.nvim_strwidth(line)
 end
 
 --- @param fmt string
 --- @return Gitsigns.CurrentLineBlameFmtFun
 local function default_formatter(fmt)
-  return function(username, blame_info, _opts)
+  return function(username, blame_info)
     return {
       {
         expand_blame_format(fmt, username, blame_info),
@@ -72,19 +74,31 @@ end
 
 ---@param bufnr integer
 ---@param blame_info Gitsigns.BlameInfoPublic
----@return {[1]: string, [2]:string}[]
+---@return [string, string][]
 local function get_blame_virt_text(bufnr, blame_info)
   local git_obj = assert(cache[bufnr]).git_obj
+  local use_nc = blame_info.author == 'Not Committed Yet'
 
-  local clb_formatter = blame_info.author == 'Not Committed Yet'
-      and config.current_line_blame_formatter_nc
+  local clb_formatter = use_nc and config.current_line_blame_formatter_nc
     or config.current_line_blame_formatter
 
-  if type(clb_formatter) == 'string' then
-    clb_formatter = default_formatter(clb_formatter)
+  if type(clb_formatter) == 'function' then
+    local ok, res = pcall(clb_formatter, git_obj.repo.username, blame_info)
+    if ok then
+      return res
+    end
+
+    local nc_sfx = use_nc and '_nc' or ''
+    error_once(
+      'Failed running config.current_line_blame_formatter%s, using default:\n   %s',
+      nc_sfx,
+      res
+    )
+    --- @type string
+    clb_formatter = schema.current_line_blame_formatter.default
   end
 
-  return clb_formatter(git_obj.repo.username, blame_info, config.current_line_blame_formatter_opts)
+  return default_formatter(clb_formatter)(git_obj.repo.username, blame_info)
 end
 
 --- @param bufnr integer
@@ -103,7 +117,7 @@ local function handle_blame_info(bufnr, lnum, blame_info, opts)
   if opts.virt_text then
     local virt_text_pos = opts.virt_text_pos
     if virt_text_pos == 'right_align' then
-      if #virt_text_str > (win_width(0) - line_len(bufnr, lnum)) then
+      if api.nvim_strwidth(virt_text_str) > (win_width() - line_len(bufnr, lnum)) then
         virt_text_pos = 'eol'
       end
     end
@@ -141,7 +155,10 @@ end
 --- Update function, must be called in async context
 --- @param bufnr integer
 local function update0(bufnr)
-  async.scheduler_if_buf_valid(bufnr)
+  async.scheduler()
+  if not api.nvim_buf_is_valid(bufnr) then
+    return
+  end
 
   if insert_mode() then
     return
@@ -169,6 +186,10 @@ local function update0(bufnr)
 
   local blame_info = bcache:get_blame(lnum, opts)
 
+  if not api.nvim_win_is_valid(winid) or bufnr ~= api.nvim_win_get_buf(winid) then
+    return
+  end
+
   if not blame_info then
     return
   end
@@ -182,39 +203,61 @@ local function update0(bufnr)
   handle_blame_info(bufnr, lnum, blame_info, opts)
 end
 
-local update = async.void(debounce.throttle_by_id(update0))
+local update = async.create(1, debounce.throttle_by_id(update0))
 
 --- @type fun(bufnr: integer)
-local update_debounced
+M.update = nil
 
 function M.setup()
-  local group = api.nvim_create_augroup('gitsigns_blame', {})
-
-  local opts = config.current_line_blame_opts
-  update_debounced = debounce.debounce_trailing(opts.delay, update)
-
-  for k, _ in pairs(cache) do
+  for k in pairs(cache) do
     reset(k)
   end
 
-  if config.current_line_blame then
-    api.nvim_create_autocmd({ 'FocusGained', 'BufEnter', 'CursorMoved', 'CursorMovedI' }, {
-      group = group,
-      callback = function(args)
-        reset(args.buf)
-        update_debounced(args.buf)
-      end,
-    })
+  local group = api.nvim_create_augroup('gitsigns_blame', {})
 
-    api.nvim_create_autocmd({ 'InsertEnter', 'FocusLost', 'BufLeave' }, {
-      group = group,
-      callback = function(args)
-        reset(args.buf)
-      end,
-    })
-
-    update_debounced(api.nvim_get_current_buf())
+  if not config.current_line_blame then
+    return
   end
+
+  local opts = config.current_line_blame_opts
+  M.update = debounce.debounce_trailing(opts.delay, update)
+
+  -- show current buffer line blame immediately
+  M.update(api.nvim_get_current_buf())
+
+  local update_events = { 'BufEnter', 'CursorMoved', 'CursorMovedI' }
+  local reset_events = { 'InsertEnter', 'BufLeave' }
+  if vim.fn.exists('#WinResized') == 1 then
+    -- For nvim 0.9+
+    update_events[#update_events + 1] = 'WinResized'
+  end
+  if opts.use_focus then
+    update_events[#update_events + 1] = 'FocusGained'
+    reset_events[#reset_events + 1] = 'FocusLost'
+  end
+
+  api.nvim_create_autocmd(update_events, {
+    group = group,
+    callback = function(args)
+      reset(args.buf)
+      M.update(args.buf)
+    end,
+  })
+
+  api.nvim_create_autocmd(reset_events, {
+    group = group,
+    callback = function(args)
+      reset(args.buf)
+    end,
+  })
+
+  api.nvim_create_autocmd('OptionSet', {
+    group = group,
+    pattern = { 'fileformat', 'bomb', 'eol' },
+    callback = function(args)
+      reset(args.buf)
+    end,
+  })
 end
 
 return M

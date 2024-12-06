@@ -7,8 +7,6 @@
 ; Keywords
 [
   "assert"
-  "class"
-  "multiclass"
   "field"
   "let"
   "def"
@@ -16,6 +14,11 @@
   "defset"
   "defvar"
 ] @keyword
+
+[
+  "multiclass"
+  "class"
+] @keyword.type
 
 "in" @keyword.operator
 
@@ -58,14 +61,12 @@
   name: (identifier) @type)
 
 (def
-  name:
-    (value
-      (_) @type))
+  name: (value
+    (_) @type))
 
 (defm
-  name:
-    (value
-      (_) @type))
+  name: (value
+    (_) @type))
 
 (defset
   name: (identifier) @type)
@@ -97,7 +98,7 @@
   (bang_operator)
   (cond_operator)
 ] @function
-  (#set! "priority" 105))
+  (#set! priority 105))
 
 ; Operators
 [
@@ -154,5 +155,5 @@
   (multiline_comment)
 ] @comment @spell
 
-((comment) @keyword.directive
+((comment) @keyword.directive @nospell
   (#lua-match? @keyword.directive "^.*RUN"))

@@ -13,18 +13,18 @@ local function select_remote()
 end
 
 local function fetch_from(name, remote, branch, args)
-  local message = notification.info("Fetching from " .. name)
+  notification.info("Fetching from " .. name)
   local res = git.fetch.fetch_interactive(remote, branch, args)
-
-  if message then
-    message:delete()
-  end
 
   if res and res.code == 0 then
     a.util.scheduler()
     notification.info("Fetched from " .. name, { dismiss = true })
     logger.debug("Fetched from " .. name)
-    vim.api.nvim_exec_autocmds("User", { pattern = "NeogitFetchComplete", modeline = false })
+    vim.api.nvim_exec_autocmds("User", {
+      pattern = "NeogitFetchComplete",
+      modeline = false,
+      data = { remote = remote, branch = branch },
+    })
   else
     logger.error("Failed to fetch from " .. name)
   end
@@ -85,7 +85,7 @@ function M.fetch_another_branch(popup)
     return
   end
 
-  local branches = util.filter_map(git.branch.get_all_branches(true), function(branch)
+  local branches = util.filter_map(git.refs.list_branches(), function(branch)
     return branch:match("^" .. remote .. "/(.*)")
   end)
 
@@ -106,7 +106,7 @@ function M.fetch_refspec(popup)
   end
 
   notification.info("Determining refspecs...")
-  local refspecs = util.map(git.cli["ls-remote"].remote(remote).call().stdout, function(ref)
+  local refspecs = util.map(git.cli["ls-remote"].remote(remote).call({ hidden = true }).stdout, function(ref)
     return vim.split(ref, "\t")[2]
   end)
   notification.delete_all()
@@ -121,7 +121,7 @@ end
 
 function M.fetch_submodules(_)
   notification.info("Fetching submodules")
-  git.cli.fetch.recurse_submodules().verbose().jobs(4).call()
+  git.cli.fetch.recurse_submodules.verbose.jobs(4).call()
 end
 
 function M.set_variables()

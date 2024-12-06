@@ -5,15 +5,21 @@
 ; Keywords
 [
   "arguments"
-  "classdef"
   "end"
-  "enumeration"
   "events"
   "global"
   "methods"
   "persistent"
   "properties"
 ] @keyword
+
+"enumeration" @keyword.type
+
+(class_definition
+  [
+    "classdef"
+    "end"
+  ] @keyword.type)
 
 ; Conditionals
 (if_statement
@@ -205,3 +211,6 @@
   (comment)
   (line_continuation)
 ] @comment @spell
+
+((comment) @keyword.directive
+  (#lua-match? @keyword.directive "^%%%% "))

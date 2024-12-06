@@ -1,7 +1,3 @@
-(variable_identifier) @variable
-
-(constant_identifier) @constant
-
 [
   "assert"
   "assert_eq"
@@ -12,11 +8,14 @@
   "let"
   "mapping"
   "program"
-  "record"
   "self"
-  "struct"
   "then"
 ] @keyword
+
+[
+  "record"
+  "struct"
+] @keyword.type
 
 "in" @keyword.operator
 
@@ -24,9 +23,13 @@
   "constant"
   "private"
   "public"
-] @type.qualifier
+] @keyword.modifier
 
 "self" @variable.builtin
+
+"network" @variable.builtin
+
+"async" @keyword.coroutine
 
 [
   "finalize"
@@ -110,16 +113,21 @@
 (boolean_literal) @boolean
 
 (constant_declaration
-  (identifier) @constant)
+  (identifier
+    (constant_identifier) @constant))
 
-[
-  (program_id)
-  (this_program_id)
-] @string.special
+(variable
+  (constant_identifier) @constant)
+
+(associated_constant) @constant
+
+(variable) @variable
+
+(program_id) @string.special
 
 ;record declaration
 (record_declaration
-  (identifier) @variable.member)
+  (identifier) @type.definition)
 
 ;struct component
 (struct_component_declaration
@@ -127,17 +135,25 @@
 
 (type) @type
 
-(associated_constant) @constant
-
 [
   (block_height)
+  (self_address)
   (self_caller)
   (self_signer)
+  (network_id)
 ] @constant.builtin
 
 (free_function_call
   (locator
     (identifier) @function))
+
+(associated_function_call
+  (named_type
+    (identifier
+      (constant_identifier) @function)))
+
+(associated_function_call
+  (identifier) @function.call)
 
 (record_type
   (locator
@@ -168,22 +184,23 @@
   (identifier) @variable.parameter)
 
 (struct_declaration
-  name: (identifier) @variable.member)
+  name: (identifier) @type.definition)
 
 (variable_declaration
-  (identifier_or_identifiers
-    (identifier) @variable))
+  (identifier) @variable)
 
 [
   (address_literal)
   (signature_literal)
   ((affine_group_literal)
-    (#set! "priority" 101))
+    (#set! priority 101))
   (field_literal)
   (product_group_literal)
   (scalar_literal)
   (signed_literal)
   (unsigned_literal)
 ] @number
+
+(string_literal) @string
 
 (annotation) @attribute

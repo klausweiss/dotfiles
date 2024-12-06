@@ -1,34 +1,37 @@
-local api = vim.api
-
 local async = require('gitsigns.async')
-local cache = require('gitsigns.cache').cache
-local util = require('gitsigns.util')
 local manager = require('gitsigns.manager')
 local message = require('gitsigns.message')
+local util = require('gitsigns.util')
+local Status = require('gitsigns.status')
 
+local cache = require('gitsigns.cache').cache
+local log = require('gitsigns.debug.log')
 local throttle_by_id = require('gitsigns.debounce').throttle_by_id
 
---- @type fun(opts: table): string
-local input = async.wrap(vim.ui.input, 2)
+local api = vim.api
 
 local M = {}
 
+--- @async
 --- @param bufnr integer
 --- @param dbufnr integer
 --- @param base string?
-local bufread = async.void(function(bufnr, dbufnr, base)
-  local bcache = cache[bufnr]
-  local comp_rev = bcache:get_compare_rev(util.calc_base(base))
+local function bufread(bufnr, dbufnr, base)
+  local bcache = assert(cache[bufnr])
+  base = util.norm_base(base)
   local text --- @type string[]
-  if util.calc_base(base) == util.calc_base(bcache.base) then
+  if base == bcache.git_obj.revision then
     text = assert(bcache.compare_text)
   else
     local err
-    text, err = bcache.git_obj:get_show_text(comp_rev)
+    text, err = bcache.git_obj:get_show_text(base)
     if err then
       error(err, 2)
     end
-    async.scheduler_if_buf_valid(bufnr)
+    async.scheduler()
+    if not api.nvim_buf_is_valid(bufnr) then
+      return
+    end
   end
 
   vim.bo[dbufnr].fileformat = vim.bo[bufnr].fileformat
@@ -37,39 +40,47 @@ local bufread = async.void(function(bufnr, dbufnr, base)
 
   local modifiable = vim.bo[dbufnr].modifiable
   vim.bo[dbufnr].modifiable = true
+  Status:update(dbufnr, { head = base })
 
   util.set_lines(dbufnr, 0, -1, text)
 
   vim.bo[dbufnr].modifiable = modifiable
   vim.bo[dbufnr].modified = false
-end)
+  require('gitsigns.attach').attach(dbufnr, nil, 'BufReadCmd')
+end
 
 --- @param bufnr integer
 --- @param dbufnr integer
 --- @param base string?
-local bufwrite = async.void(function(bufnr, dbufnr, base)
-  local bcache = cache[bufnr]
+--- @param _callback? fun()
+local bufwrite = async.create(3, function(bufnr, dbufnr, base, _callback)
+  local bcache = assert(cache[bufnr])
   local buftext = util.buf_lines(dbufnr)
+  base = util.norm_base(base)
   bcache.git_obj:stage_lines(buftext)
-  async.scheduler_if_buf_valid(bufnr)
+  async.scheduler()
+  if not api.nvim_buf_is_valid(bufnr) then
+    return
+  end
   vim.bo[dbufnr].modified = false
-  -- If diff buffer base matches the bcache base then also update the
+  -- If diff buffer base matches the git_obj revision then also update the
   -- signs.
-  if util.calc_base(base) == util.calc_base(bcache.base) then
+  if base == bcache.git_obj.revision then
     bcache.compare_text = buftext
     manager.update(bufnr)
   end
 end)
 
+--- @async
 --- Create a gitsigns buffer for a certain revision of a file
 --- @param bufnr integer
 --- @param base string?
 --- @return string? buf Buffer name
 local function create_show_buf(bufnr, base)
   local bcache = assert(cache[bufnr])
+  base = util.norm_base(base)
 
-  local revision = bcache:get_compare_rev(util.calc_base(base))
-  local bufname = bcache:get_rev_bufname(revision)
+  local bufname = bcache:get_rev_bufname(base)
 
   if util.bufexists(bufname) then
     return bufname
@@ -87,14 +98,14 @@ local function create_show_buf(bufnr, base)
   end
 
   -- allow editing the index revision
-  if revision == ':0' then
+  if not bcache.git_obj.revision then
     vim.bo[dbuf].buftype = 'acwrite'
 
     api.nvim_create_autocmd('BufReadCmd', {
       group = 'gitsigns',
       buffer = dbuf,
       callback = function()
-        bufread(bufnr, dbuf, base)
+        async.run(bufread, bufnr, dbuf, base)
       end,
     })
 
@@ -117,6 +128,7 @@ end
 --- @field vertical boolean
 --- @field split string
 
+--- @async
 --- @param base string?
 --- @param opts? Gitsigns.DiffthisOpts
 local function diffthis_rev(base, opts)
@@ -140,14 +152,17 @@ end
 
 --- @param base string?
 --- @param opts Gitsigns.DiffthisOpts
-M.diffthis = async.void(function(base, opts)
+--- @param _callback? fun()
+M.diffthis = async.create(2, function(base, opts, _callback)
   if vim.wo.diff then
+    log.dprint('diff is disabled')
     return
   end
 
   local bufnr = api.nvim_get_current_buf()
   local bcache = cache[bufnr]
   if not bcache then
+    log.dprintf('buffer %d is not attached', bufnr)
     return
   end
 
@@ -165,13 +180,24 @@ end)
 
 --- @param bufnr integer
 --- @param base string
-M.show = async.void(function(bufnr, base)
+--- @param _callback? fun()
+M.show = async.create(2, function(bufnr, base, _callback)
+  __FUNC__ = 'show'
   local bufname = create_show_buf(bufnr, base)
   if not bufname then
+    log.dprint('No bufname for revision ' .. base)
     return
   end
 
+  log.dprint('bufname ' .. bufname)
   vim.cmd.edit(bufname)
+
+  -- Wait for the buffer to attach in case the user passes a callback that
+  -- requires the buffer to be attached.
+  local sbufnr = api.nvim_get_current_buf()
+  vim.wait(2000, function()
+    return cache[sbufnr] ~= nil
+  end)
 end)
 
 --- @param bufnr integer
@@ -182,7 +208,7 @@ local function should_reload(bufnr)
   end
   local response --- @type string?
   while not vim.tbl_contains({ 'O', 'L' }, response) do
-    response = input({
+    response = async.wait(2, vim.ui.input, {
       prompt = 'Warning: The git index has changed and the buffer was changed as well. [O]K, (L)oad File:',
     })
   end
@@ -191,16 +217,15 @@ end
 
 -- This function needs to be throttled as there is a call to vim.ui.input
 --- @param bufnr integer
-M.update = throttle_by_id(async.void(function(bufnr)
+--- @param _callback? fun()
+M.update = throttle_by_id(async.create(1, function(bufnr, _callback)
   if not vim.wo.diff then
     return
   end
 
-  local bcache = cache[bufnr]
-
   -- Note this will be the bufname for the currently set base
   -- which are the only ones we want to update
-  local bufname = bcache:get_rev_bufname()
+  local bufname = assert(cache[bufnr]):get_rev_bufname()
 
   for _, w in ipairs(api.nvim_list_wins()) do
     if api.nvim_win_is_valid(w) then

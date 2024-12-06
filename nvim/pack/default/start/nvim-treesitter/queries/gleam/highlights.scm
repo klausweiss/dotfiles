@@ -4,9 +4,10 @@
   "let"
   "panic"
   "todo"
-  "type"
   "use"
 ] @keyword
+
+"type" @keyword.type
 
 ; Function Keywords
 "fn" @keyword.function
@@ -92,8 +93,7 @@
 (module) @module
 
 (import
-  alias:
-    ((identifier) @module)?)
+  alias: ((identifier) @module)?)
 
 (remote_type_identifier
   module: (identifier) @module)
@@ -114,10 +114,9 @@
 
 ; Function Parameter Labels
 (function_call
-  arguments:
-    (arguments
-      (argument
-        label: (label) @label)))
+  arguments: (arguments
+    (argument
+      label: (label) @label)))
 
 (function_parameter
   label: (label)? @label
@@ -125,10 +124,9 @@
 
 ; Records
 (record
-  arguments:
-    (arguments
-      (argument
-        label: (label) @variable.member)?))
+  arguments: (arguments
+    (argument
+      label: (label) @variable.member)?))
 
 (record_pattern_argument
   label: (label) @variable.member)
@@ -150,16 +148,13 @@
   (type_var)
 ] @type
 
-((type_identifier) @type.builtin
-  (#any-of? @type.builtin "Int" "Float" "String" "List"))
-
 ; Type Qualifiers
 [
   "const"
   "external"
   (opacity_modifier)
   (visibility_modifier)
-] @type.qualifier
+] @keyword.modifier
 
 ; Tuples
 (tuple_access
@@ -173,9 +168,8 @@
   function: (identifier) @function.call)
 
 (function_call
-  function:
-    (field_access
-      field: (label) @function.call))
+  function: (field_access
+    field: (label) @function.call))
 
 ; External Functions
 (external_function

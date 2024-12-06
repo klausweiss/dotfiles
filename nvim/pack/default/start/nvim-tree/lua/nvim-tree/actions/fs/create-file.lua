@@ -1,10 +1,12 @@
-local utils = require "nvim-tree.utils"
-local events = require "nvim-tree.events"
-local lib = require "nvim-tree.lib"
-local core = require "nvim-tree.core"
-local notify = require "nvim-tree.notify"
+local utils = require("nvim-tree.utils")
+local events = require("nvim-tree.events")
+local core = require("nvim-tree.core")
+local notify = require("nvim-tree.notify")
 
 local find_file = require("nvim-tree.actions.finders.find-file").fn
+
+local FileNode = require("nvim-tree.node.file")
+local DirectoryNode = require("nvim-tree.node.directory")
 
 local M = {}
 
@@ -12,7 +14,7 @@ local M = {}
 local function create_and_notify(file)
   events._dispatch_will_create_file(file)
   local ok, fd = pcall(vim.loop.fs_open, file, "w", 420)
-  if not ok then
+  if not ok or type(fd) ~= "number" then
     notify.error("Couldn't create file " .. notify.render_path(file))
     return
   end
@@ -30,34 +32,21 @@ local function get_num_nodes(iter)
   return i
 end
 
----@param node Node
----@return string
-local function get_containing_folder(node)
-  if node.nodes ~= nil then
-    return utils.path_add_trailing(node.absolute_path)
-  end
-  local node_name_size = #(node.name or "")
-  return node.absolute_path:sub(0, -node_name_size - 1)
-end
-
----@param node Node|nil
+---@param node Node?
 function M.fn(node)
-  local cwd = core.get_cwd()
-  if cwd == nil then
+  node = node or core.get_explorer()
+  if not node then
     return
   end
 
-  node = node and lib.get_last_group_node(node)
-  if not node or node.name == ".." then
-    node = {
-      absolute_path = cwd,
-      name = "",
-      nodes = core.get_explorer().nodes,
-      open = true,
-    }
+  local dir = node:is(FileNode) and node.parent or node:as(DirectoryNode)
+  if not dir then
+    return
   end
 
-  local containing_folder = get_containing_folder(node)
+  dir = dir:last_group_node()
+
+  local containing_folder = utils.path_add_trailing(dir.absolute_path)
 
   local input_opts = {
     prompt = "Create file ",
@@ -72,7 +61,7 @@ function M.fn(node)
     end
 
     if utils.file_exists(new_file_path) then
-      notify.warn "Cannot create: file already exists"
+      notify.warn("Cannot create: file already exists")
       return
     end
 
@@ -87,10 +76,10 @@ function M.fn(node)
     for path in utils.path_split(new_file_path) do
       idx = idx + 1
       local p = utils.path_remove_trailing(path)
-      if #path_to_create == 0 and vim.fn.has "win32" == 1 then
-        path_to_create = utils.path_join { p, path_to_create }
+      if #path_to_create == 0 and vim.fn.has("win32") == 1 then
+        path_to_create = utils.path_join({ p, path_to_create })
       else
-        path_to_create = utils.path_join { path_to_create, p }
+        path_to_create = utils.path_join({ path_to_create, p })
       end
       if is_last_path_file and idx == num_nodes then
         create_and_notify(path_to_create)

@@ -1,8 +1,7 @@
+local max = math.max
 local rshift = bit.rshift
-local table_insert = table.insert
 
 local buf_call = vim.api.nvim_buf_call --- @type function
-local buf_get_name = vim.api.nvim_buf_get_name --- @type function
 local buf_get_option = vim.api.nvim_buf_get_option --- @type function
 local buf_is_valid = vim.api.nvim_buf_is_valid --- @type function
 local buf_set_var = vim.api.nvim_buf_set_var --- @type function
@@ -13,7 +12,9 @@ local create_namespace = vim.api.nvim_create_namespace
 local defer_fn = vim.defer_fn
 local del_autocmd = vim.api.nvim_del_autocmd --- @type function
 local exec_autocmds = vim.api.nvim_exec_autocmds --- @type function
+local get_current_tabpage = vim.api.nvim_get_current_tabpage
 local get_option = vim.api.nvim_get_option --- @type function
+local islist = vim.islist or vim.tbl_islist --- @type function
 local on_key = vim.on_key
 local replace_termcodes = vim.api.nvim_replace_termcodes
 local schedule_wrap = vim.schedule_wrap
@@ -25,8 +26,7 @@ local win_get_width = vim.api.nvim_win_get_width --- @type function
 local api = require('barbar.api')
 local bdelete = require('barbar.bbye').bdelete
 local config = require('barbar.config')
-local highlight_reset_cache = require('barbar.utils.highlight').reset_cache
-local highlight_setup = require('barbar.highlight').setup
+local highlight = require('barbar.highlight') --- @type barbar.Highlight
 local jump_mode = require('barbar.jump_mode')
 local layout = require('barbar.ui.layout')
 local render = require('barbar.ui.render')
@@ -84,7 +84,7 @@ local function mouse_drag_handler()
   end
 
   local col = pos.screencol
-  local data = layout.calculate()
+  local data = layout.calculate(state)
 
   local buffers_data = data.buffers
   local start_col = data.left.width
@@ -104,7 +104,7 @@ local function mouse_drag_handler()
   if drag_bufnr_start_idx == nil then
     drag_bufnr_start_idx = hovered_bufnr_idx
   elseif drag_bufnr_start_idx ~= hovered_bufnr_idx then
-    local first_hovered_bufnr = layout.buffers[drag_bufnr_start_idx]
+    local first_hovered_bufnr = state.buffers_visible[drag_bufnr_start_idx]
     local steps = hovered_bufnr_idx - drag_bufnr_start_idx
     api.move_buffer(first_hovered_bufnr, steps)
 
@@ -183,10 +183,7 @@ function events.enable()
   })
 
   create_autocmd('ColorScheme', {
-    callback = function()
-      highlight_reset_cache()
-      highlight_setup()
-    end,
+    callback = highlight.resetup,
     group = augroup_misc,
   })
 
@@ -221,15 +218,24 @@ function events.enable()
 
   create_autocmd('DiagnosticChanged', {
     callback = function(event)
-      state.update_diagnostics(event.buf)
-      render.update()
+      if vim.api.nvim_buf_is_loaded(event.buf) then
+        state.update_diagnostics(event.buf)
+        render.update()
+      end
     end,
     group = augroup_render,
   })
 
   create_autocmd('User', {
     callback = vim.schedule_wrap(function(event)
-      state.update_gitsigns(event.buf)
+      local bufnr
+      if event.data == nil or event.data.buffer == nil then
+        bufnr = event.buf
+      else
+        bufnr = event.data.buffer
+      end
+
+      state.update_gitsigns(bufnr)
       render.update()
     end),
     group = augroup_render,
@@ -265,7 +271,10 @@ function events.enable()
 
       -- we want the offset to begin ON the first win separator
       -- WARN: don't use `win_separator` here
-      return offset - 1
+      offset = offset - 1
+
+      -- width cannot be less than zero
+      return max(0, offset)
     end
 
     for ft, option in pairs(config.options.sidebar_filetypes) do
@@ -291,7 +300,7 @@ function events.enable()
               if width ~= widths[ft] then
                 widths[side][ft] = width
                 widths[other_side][ft] = nil
-                api.set_offset(total_widths(side), option.text, nil, side)
+                api.set_offset(total_widths(side), nil, nil, side, option)
               end
             end,
             group = augroup_render,
@@ -306,7 +315,7 @@ function events.enable()
             buffer = tbl.buf,
             callback = function()
               widths[side][ft] = nil
-              api.set_offset(total_widths(side), nil, nil, side)
+              api.set_offset(total_widths(side), nil, nil, side, {})
               pcall(del_autocmd, autocmd)
             end,
             group = augroup_render,
@@ -323,6 +332,12 @@ function events.enable()
     callback = function() render.update() end,
     group = augroup_render,
     pattern = 'buflisted',
+  })
+
+  create_autocmd('OptionSet', {
+    callback = highlight.resetup,
+    group = augroup_misc,
+    pattern = 'background',
   })
 
   create_autocmd('SessionLoadPost', {
@@ -345,20 +360,33 @@ function events.enable()
     group = augroup_render,
   })
 
+  do
+    local buffers_by_tab = {}
+    create_autocmd('User', {
+      callback = function()
+        local tab = get_current_tabpage()
+        buffers_by_tab[tab] = state.export_buffers()
+      end,
+      group = augroup_misc,
+      pattern = 'ScopeTabLeavePre',
+    })
+
+    create_autocmd('User', {
+      callback = function()
+        local tab = get_current_tabpage()
+        local buffers = buffers_by_tab[tab]
+        if buffers then
+          state.restore_buffers(buffers)
+        end
+      end,
+      group = augroup_misc,
+      pattern = 'ScopeTabEnterPost',
+    })
+  end
+
   create_autocmd('User', {
     callback = function()
-      local relative = require('barbar.fs').relative
-
-      --- List of open buffers, along with relevant data
-      local buffers = {}
-
-      for _, bufnr in ipairs(state.buffers) do
-        table_insert(buffers, {
-          name = relative(buf_get_name(bufnr)),
-          pinned = state.is_pinned(bufnr) or nil,
-        })
-      end
-
+      local buffers = state.export_buffers()
       vim.g.Bufferline__session_restore = "lua require('barbar.state').restore_buffers " ..
         vim.inspect(buffers, {newline = ' ', indent = ''})
     end,
@@ -379,7 +407,7 @@ function events.enable()
     ]]
 
     local g_bufferline = vim.g.bufferline
-    if type(g_bufferline) ~= 'table' or vim.tbl_islist(g_bufferline) then
+    if type(g_bufferline) ~= 'table' or islist(g_bufferline) then
       vim.g.bufferline = vim.empty_dict()
     end
 
@@ -418,7 +446,7 @@ end
 --- @return nil
 function events.on_option_changed(user_config)
   config.setup(user_config) -- NOTE: must be first `setup` called here
-  highlight_setup()
+  highlight.setup()
   jump_mode.set_letters(config.options.letters)
 
   if config.options.clickable and vim.tbl_isempty(handlers) then
@@ -458,7 +486,7 @@ do
   --- @param k string
   --- @param v any
   function vim_g_metatable.__newindex(tbl, k, v)
-    if k == 'bufferline' and (type(v) ~= 'table' or vim.tbl_islist(v)) then
+    if k == 'bufferline' and (type(v) ~= 'table' or islist(v)) then
       v = vim.empty_dict()
     end
 

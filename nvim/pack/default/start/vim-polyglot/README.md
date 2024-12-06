@@ -4,8 +4,6 @@ If you work for big corp and seek consulting, please visit following repository:
 
 ![vim-polyglot](https://i.imgur.com/9RxQK6k.png)
 
-[![build](https://github.com/sheerun/vim-polyglot/workflows/Vim%20Polyglot%20CI/badge.svg)](https://github.com/sheerun/vim-polyglot/actions) [![Maintenance](https://img.shields.io/badge/maintained%20since-2013-yes)]()
-
 A collection of language packs for Vim.
 
 > One to rule them all, one to find them, one to bring them all and in the darkness bind them.

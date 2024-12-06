@@ -1,23 +1,33 @@
-(h1) @markup.heading.1
+(h1
+  (delimiter) @markup.heading.1
+  (heading) @markup.heading.1)
 
-(h2) @markup.heading.2
+(h2
+  (delimiter) @markup.heading.2
+  (heading) @markup.heading.2)
 
-(h3) @markup.heading.3
-
-(column_heading) @markup.heading.4
+(h3
+  (heading) @markup.heading.3)
 
 (column_heading
-  "~" @markup.heading.4
+  (heading) @markup.heading.4)
+
+(column_heading
+  (delimiter) @markup.heading.4
   (#set! conceal ""))
 
 (tag
   "*" @label
-  (#set! conceal "")
+  (#set! conceal ""))
+
+(tag
   text: (_) @label)
 
 (taglink
   "|" @markup.link
-  (#set! conceal "")
+  (#set! conceal ""))
+
+(taglink
   text: (_) @markup.link)
 
 (optionlink
@@ -25,11 +35,13 @@
 
 (codespan
   "`" @markup.raw
-  (#set! conceal "")
+  (#set! conceal ""))
+
+(codespan
   text: (_) @markup.raw)
 
 ((codeblock) @markup.raw.block
-  (#set! "priority" 90))
+  (#set! priority 90))
 
 (codeblock
   ">" @markup.raw
@@ -47,7 +59,10 @@
 
 (keycode) @string.special
 
-(url) @string.special.url
+((url) @string.special.url
+  (#set! @string.special.url url @string.special.url))
+
+(modeline) @keyword.directive
 
 ((note) @comment.note
   (#any-of? @comment.note "Note:" "NOTE:" "Notes:"))

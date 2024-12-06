@@ -1,18 +1,19 @@
-local fn = vim.fn
-
+---@class RPC
+---@field address string
+---@field channel_id integer
+---@field mode string Assume TPC if the address ends with a port like '...:XXXX'
+---| 'tcp'
+---| 'pipe'
 local RPC = {}
 
--- @class RPC
--- @field address
--- @field ch
---
---- Creates a new rpc channel
--- @param address
--- @return RPC
+---Creates a new rpc channel
+---@param address string
+---@return RPC
 function RPC.new(address)
   local instance = {
     address = address,
-    ch = nil,
+    channel_id = nil,
+    mode = address:match(":%d+$") and "tcp" or "pipe",
   }
 
   setmetatable(instance, { __index = RPC })
@@ -28,20 +29,20 @@ function RPC.create_connection(address)
 end
 
 function RPC:connect()
-  self.ch = fn.sockconnect("pipe", self.address, { rpc = true })
+  self.channel_id = vim.fn.sockconnect(self.mode, self.address, { rpc = true })
 end
 
 function RPC:disconnect()
-  fn.chanclose(self.ch)
-  self.ch = nil
+  vim.fn.chanclose(self.channel_id)
+  self.channel_id = nil
 end
 
 function RPC:send_cmd(cmd)
-  vim.rpcrequest(self.ch, "nvim_command", cmd)
+  vim.rpcrequest(self.channel_id, "nvim_command", cmd)
 end
 
 function RPC:send_cmd_async(cmd)
-  vim.rpcnotify(self.ch, "nvim_command", cmd)
+  vim.rpcnotify(self.channel_id, "nvim_command", cmd)
 end
 
 return RPC

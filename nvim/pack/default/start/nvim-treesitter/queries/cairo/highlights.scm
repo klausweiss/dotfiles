@@ -10,9 +10,8 @@
     "from"
     "import"
   ] @keyword.import
-  module_name:
-    (dotted_name
-      (identifier) @module .))
+  module_name: (dotted_name
+    (identifier) @module .))
 
 [
   "as"
@@ -74,9 +73,8 @@
   path: (identifier) @module)
 
 (scoped_use_list
-  path:
-    (scoped_identifier
-      (identifier) @module))
+  path: (scoped_identifier
+    (identifier) @module))
 
 (use_list
   (scoped_identifier
@@ -96,8 +94,6 @@
 [
   ; 0.x
   "using"
-  "namespace"
-  "struct"
   "let"
   "const"
   "local"
@@ -111,15 +107,20 @@
   "call"
   "nondet"
   ; 1.0
-  "type"
   "impl"
   "implicits"
   "of"
   "ref"
   "mut"
-  "trait"
-  "enum"
 ] @keyword
+
+[
+  "struct"
+  "enum"
+  "namespace"
+  "type"
+  "trait"
+] @keyword.type
 
 [
   "func"
@@ -138,7 +139,7 @@
 [
   "tempvar"
   "extern"
-] @keyword.storage
+] @keyword.modifier
 
 [
   "if"
@@ -228,14 +229,12 @@
   function: (identifier) @function.call)
 
 (call_expression
-  function:
-    (scoped_identifier
-      (identifier) @function.call .))
+  function: (scoped_identifier
+    (identifier) @function.call .))
 
 (call_expression
-  function:
-    (field_expression
-      field: (field_identifier) @function.call))
+  function: (field_expression
+    field: (field_identifier) @function.call))
 
 "jmp" @function.builtin
 
@@ -267,23 +266,20 @@
   name: (identifier) @constant)
 
 (call_expression
-  function:
+  function: (scoped_identifier
+    "::"
+    name: (identifier) @constant)
+  (#lua-match? @constant "^[A-Z]"))
+
+((match_arm
+  pattern: (match_pattern
+    (identifier) @constant))
+  (#lua-match? @constant "^[A-Z]"))
+
+((match_arm
+  pattern: (match_pattern
     (scoped_identifier
-      "::"
-      name: (identifier) @constant)
-  (#lua-match? @constant "^[A-Z]"))
-
-((match_arm
-  pattern:
-    (match_pattern
-      (identifier) @constant))
-  (#lua-match? @constant "^[A-Z]"))
-
-((match_arm
-  pattern:
-    (match_pattern
-      (scoped_identifier
-        name: (identifier) @constant)))
+      name: (identifier) @constant)))
   (#lua-match? @constant "^[A-Z]"))
 
 ((identifier) @constant.builtin

@@ -4,6 +4,8 @@
   "&&"
   "||"
   "|"
+  "&|"
+  "2>|"
   "&"
   ".."
   "!"
@@ -98,11 +100,10 @@
 
 ; Commands
 (command
-  argument:
-    [
-      (word) @variable.parameter
-      (#lua-match? @variable.parameter "^[-]")
-    ])
+  argument: [
+    (word) @variable.parameter
+    (#lua-match? @variable.parameter "^[-]")
+  ])
 
 (command_substitution
   "$" @punctuation.bracket)
@@ -113,15 +114,14 @@
 
 ; derived from builtin -n (fish 3.2.2)
 (command
-  name:
-    [
-      (word) @function.builtin
-      (#any-of? @function.builtin
-        "." ":" "_" "alias" "argparse" "bg" "bind" "block" "breakpoint" "builtin" "cd" "command"
-        "commandline" "complete" "contains" "count" "disown" "echo" "emit" "eval" "exec" "exit" "fg"
-        "functions" "history" "isatty" "jobs" "math" "printf" "pwd" "random" "read" "realpath" "set"
-        "set_color" "source" "status" "string" "test" "time" "type" "ulimit" "wait")
-    ])
+  name: [
+    (word) @function.builtin
+    (#any-of? @function.builtin
+      "." ":" "_" "alias" "argparse" "bg" "bind" "block" "breakpoint" "builtin" "cd" "command"
+      "commandline" "complete" "contains" "count" "disown" "echo" "emit" "eval" "exec" "exit" "fg"
+      "functions" "history" "isatty" "jobs" "math" "printf" "pwd" "random" "read" "realpath" "set"
+      "set_color" "source" "status" "string" "test" "time" "type" "ulimit" "wait")
+  ])
 
 ; Functions
 (function_definition
@@ -131,19 +131,17 @@
   ] @keyword.function)
 
 (function_definition
-  name:
-    [
-      (word)
-      (concatenation)
-    ] @function)
+  name: [
+    (word)
+    (concatenation)
+  ] @function)
 
 (function_definition
-  option:
-    [
-      (word)
-      (concatenation
-        (word))
-    ] @variable.parameter
+  option: [
+    (word)
+    (concatenation
+      (word))
+  ] @variable.parameter
   (#lua-match? @variable.parameter "^[-]"))
 
 ; Strings
@@ -174,5 +172,5 @@
 
 ((program
   .
-  (comment) @keyword.directive)
+  (comment) @keyword.directive @nospell)
   (#lua-match? @keyword.directive "^#!/"))

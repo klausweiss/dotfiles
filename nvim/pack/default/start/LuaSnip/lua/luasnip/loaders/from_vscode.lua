@@ -11,6 +11,19 @@ local refresh_notify =
 local clean_invalidated =
 	require("luasnip.session.enqueueable_operations").clean_invalidated
 
+-- create snippetProxy which does not trim lines and dedent text.
+-- It's fair to use passed test as-is, if it's from json.
+local parse = require("luasnip.util.parser").parse_snippet
+local sp = require("luasnip.util.extend_decorator").apply(
+	require("luasnip.nodes.snippetProxy"),
+	{},
+	{
+		parse_fn = function(ctx, body)
+			return parse(ctx, body, { trim_empty = false, dedent = false })
+		end,
+	}
+)
+
 local json_decoders = {
 	json = util.json_decode,
 	jsonc = require("luasnip.util.jsonc").decode,
@@ -47,7 +60,6 @@ end
 --- @param file string Path to file
 ---@return LuaSnip.Loaders.SnippetFileData
 local function get_file_snippets(file)
-	local sp = require("luasnip.nodes.snippetProxy")
 	local source = require("luasnip.session.snippet_collection.source")
 	local multisnippet = require("luasnip.nodes.multiSnippet")
 
@@ -90,7 +102,8 @@ local function get_file_snippets(file)
 
 		-- vscode documents `,`, but `.` also works.
 		-- an entry `false` in this list will cause a `ft=nil` for the snippet.
-		local filetypes = parts.scope and vim.split(parts.scope, "[.,]")
+		local filetypes = parts.scope
+				and loader_util.scopestring_to_filetypes(parts.scope)
 			or { false }
 
 		local contexts = {}
@@ -313,16 +326,16 @@ function Collection.new(
 		end
 	end
 
-	local watcher_ok, err = pcall(path_watcher, manifest_path, {
+	local ok, watcher_or_err = pcall(path_watcher, manifest_path, {
 		-- don't handle removals for now.
 		add = update_manifest,
 		change = update_manifest,
 	}, { lazy = lazy_watcher, fs_event_providers = fs_event_providers })
 
-	if not watcher_ok then
-		error(("Could not create watcher: %s"):format(err))
+	if not ok then
+		error(("Could not create watcher: %s"):format(watcher_or_err))
 	end
-	o.manifest_watcher = watcher_ok
+	o.manifest_watcher = watcher_or_err
 
 	log.info("Initialized snippet-collection with manifest %s", manifest_path)
 
@@ -422,14 +435,13 @@ local function get_manifests(paths)
 		-- Get path to package.json/package.jsonc, or continue if it does not exist.
 		for _, dir in ipairs(paths) do
 			local tentative_manifest_path =
-				Path.expand(Path.join(dir, "package.json"))
-			-- expand returns nil for paths that don't exist.
-			if tentative_manifest_path then
+				Path.expand_keep_symlink(Path.join(dir, "package.json"))
+			if Path.exists(tentative_manifest_path) then
 				table.insert(manifest_paths, tentative_manifest_path)
 			else
 				tentative_manifest_path =
-					Path.expand(Path.join(dir, "package.jsonc"))
-				if tentative_manifest_path then
+					Path.expand_keep_symlink(Path.join(dir, "package.jsonc"))
+				if Path.exists(tentative_manifest_path) then
 					table.insert(manifest_paths, tentative_manifest_path)
 				else
 					log.warn(

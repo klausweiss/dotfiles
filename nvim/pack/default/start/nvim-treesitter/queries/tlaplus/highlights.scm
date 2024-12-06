@@ -13,9 +13,7 @@
   "DEF"
   "DEFINE"
   "DEFS"
-  "DOMAIN"
   "ELSE"
-  "ENABLED"
   "EXCEPT"
   "EXTENDS"
   "HAVE"
@@ -41,14 +39,11 @@
   "RECURSIVE"
   "SF_"
   "STATE"
-  "SUBSET"
   "SUFFICES"
   "TAKE"
   "TEMPORAL"
   "THEN"
   "THEOREM"
-  "UNCHANGED"
-  "UNION"
   "USE"
   "VARIABLE"
   "VARIABLES"
@@ -86,7 +81,7 @@
   "or"
   "procedure"
   "process"
-  "skip"
+  (pcal_skip)
   "variable"
   "variables"
   "when"
@@ -119,7 +114,7 @@
   (pcal_end_with)
 ] @keyword.repeat
 
-"return" @keyword.return
+(pcal_return) @keyword.return
 
 "print" @function.macro
 

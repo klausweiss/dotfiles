@@ -1,4 +1,5 @@
-local keymap = require "nvim-tree.keymap"
+local keymap = require("nvim-tree.keymap")
+local api = {} -- circular dependency
 
 local PAT_MOUSE = "^<.*Mouse"
 local PAT_CTRL = "^<C%-"
@@ -26,12 +27,12 @@ local function tidy_lhs(lhs)
   lhs = lhs:gsub("^<lt>", "<")
 
   -- shorten ctrls
-  if lhs:lower():match "^<ctrl%-" then
+  if lhs:lower():match("^<ctrl%-") then
     lhs = lhs:lower():gsub("^<ctrl%-", "<C%-")
   end
 
   -- uppercase ctrls
-  if lhs:lower():match "^<c%-" then
+  if lhs:lower():match("^<c%-") then
     lhs = lhs:upper()
   end
 
@@ -52,6 +53,7 @@ end
 --- sort vim command lhs roughly as per :help index
 ---@param a string
 ---@param b string
+---@return boolean
 local function sort_lhs(a, b)
   -- mouse first
   if a:match(PAT_MOUSE) and not b:match(PAT_MOUSE) then
@@ -79,18 +81,19 @@ local function sort_lhs(a, b)
 end
 
 --- Compute all lines for the buffer
+---@param map table keymap.get_keymap
 ---@return table strings of text
 ---@return table arrays of arguments 3-6 for nvim_buf_add_highlight()
 ---@return number maximum length of text
-local function compute()
+local function compute(map)
   local head_lhs = "nvim-tree mappings"
   local head_rhs1 = "exit: q"
   local head_rhs2 = string.format("sort by %s: s", M.config.sort_by == "key" and "description" or "keymap")
 
   -- formatted lhs and desc from active keymap
-  local mappings = vim.tbl_map(function(map)
-    return { lhs = tidy_lhs(map.lhs), desc = tidy_desc(map.desc) }
-  end, keymap.get_keymap())
+  local mappings = vim.tbl_map(function(m)
+    return { lhs = tidy_lhs(m.lhs), desc = tidy_desc(m.desc) }
+  end, map)
 
   -- sorter function for mappings
   local sort_fn
@@ -128,7 +131,7 @@ local function compute()
 
   -- header highlight, assume one character keys
   local hl = {
-    { "NvimTreeFolderName", 0, 0, #head_lhs },
+    { "NvimTreeFolderName", 0, 0,         #head_lhs },
     { "NvimTreeFolderName", 0, width - 1, width },
     { "NvimTreeFolderName", 1, width - 1, width },
   }
@@ -165,15 +168,23 @@ local function open()
   -- close existing, shouldn't be necessary
   close()
 
+  -- fetch all mappings
+  local map = keymap.get_keymap()
+
   -- text and highlight
-  local lines, hl, width = compute()
+  local lines, hl, width = compute(map)
 
   -- create the buffer
   M.bufnr = vim.api.nvim_create_buf(false, true)
 
   -- populate it
   vim.api.nvim_buf_set_lines(M.bufnr, 0, -1, false, lines)
-  vim.api.nvim_buf_set_option(M.bufnr, "modifiable", false)
+
+  if vim.fn.has("nvim-0.10") == 1 then
+    vim.api.nvim_set_option_value("modifiable", false, { buf = M.bufnr })
+  else
+    vim.api.nvim_buf_set_option(M.bufnr, "modifiable", false) ---@diagnostic disable-line: deprecated
+  end
 
   -- highlight it
   for _, h in ipairs(hl) do
@@ -201,12 +212,21 @@ local function open()
     open()
   end
 
-  local keymaps = {
+  -- hardcoded
+  local help_keymaps = {
     q = { fn = close, desc = "nvim-tree: exit help" },
+    ["<Esc>"] = { fn = close, desc = "nvim-tree: exit help" }, -- hidden
     s = { fn = toggle_sort, desc = "nvim-tree: toggle sorting method" },
   }
 
-  for k, v in pairs(keymaps) do
+  -- api help binding closes
+  for _, m in ipairs(map) do
+    if m.callback == api.tree.toggle_help then
+      help_keymaps[m.lhs] = { fn = close, desc = "nvim-tree: exit help" }
+    end
+  end
+
+  for k, v in pairs(help_keymaps) do
     vim.keymap.set("n", k, v.fn, {
       desc = v.desc,
       buffer = M.bufnr,
@@ -235,6 +255,8 @@ end
 function M.setup(opts)
   M.config.cursorline = opts.view.cursorline
   M.config.sort_by = opts.help.sort_by
+
+  api = require("nvim-tree.api")
 end
 
 return M

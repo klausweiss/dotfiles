@@ -25,11 +25,11 @@
   "noperspective"
   "invariant"
   "precise"
-] @type.qualifier
+] @keyword.modifier
 
 "subroutine" @keyword.function
 
-(extension_storage_class) @keyword.storage
+(extension_storage_class) @keyword.modifier
 
 ((identifier) @variable.builtin
   (#lua-match? @variable.builtin "^gl_"))

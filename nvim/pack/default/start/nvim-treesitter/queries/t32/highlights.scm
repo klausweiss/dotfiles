@@ -61,14 +61,14 @@
   "enum"
   "struct"
   "union"
-] @keyword
+] @keyword.type
 
 "sizeof" @keyword.operator
 
 [
   "const"
   "volatile"
-] @type.qualifier
+] @keyword.modifier
 
 ; Operators in comma and conditional HLL expressions
 (hll_comma_expression
@@ -120,7 +120,7 @@
   (hll_type_descriptor)
 ] @type
 
-(hll_type_qualifier) @type.qualifier
+(hll_type_qualifier) @keyword.modifier
 
 (hll_primitive_type) @type.builtin
 
@@ -129,9 +129,8 @@
   function: (identifier) @function.call)
 
 (hll_call_expression
-  function:
-    (hll_field_expression
-      field: (hll_field_identifier) @function.call))
+  function: (hll_field_expression
+    field: (hll_field_identifier) @function.call))
 
 ; HLL variables
 (identifier) @variable
@@ -176,10 +175,9 @@
 
 ((command_expression
   command: (identifier) @keyword
-  arguments:
-    (argument_list
-      .
-      (identifier) @label))
+  arguments: (argument_list
+    .
+    (identifier) @label))
   (#lua-match? @keyword "^[gG][oO][tT][oO]$"))
 
 (labeled_expression
@@ -208,6 +206,9 @@
 
 ; Control flow
 (if_block
+  command: (identifier) @keyword.conditional)
+
+(elif_block
   command: (identifier) @keyword.conditional)
 
 (else_block

@@ -5,6 +5,7 @@ local utils = require('nvim-autopairs.utils')
 local function quote_creator(opt)
     local quote = function(...)
         local move_func = opt.enable_moveright and cond.move_right or cond.none
+        ---@type Rule
         local rule = Rule(...)
             :with_move(move_func())
             :with_pair(cond.not_add_quote_inside_quote())
@@ -39,12 +40,12 @@ local function setup(opt)
     local quote = quote_creator(opt)
     local bracket = bracket_creator(opt)
     local rules = {
-        Rule("<!--", "-->", "html"):with_cr(cond.none()),
+        Rule("<!--", "-->", { "html", "markdown" }):with_cr(cond.none()),
         Rule("```", "```", { "markdown", "vimwiki", "rmarkdown", "rmd", "pandoc" }),
         Rule("```.*$", "```", { "markdown", "vimwiki", "rmarkdown", "rmd", "pandoc" }):only_cr():use_regex(true),
         Rule('"""', '"""', { "python", "elixir", "julia", "kotlin" }):with_pair(cond.not_before_char('"', 3)),
         Rule("'''", "'''", { "python" }):with_pair(cond.not_before_char('"', 3)),
-        quote("'", "'", "-rust")
+        quote("'", "'", { "-rust", "-nix" })
             :with_pair(function(opts)
                 -- python literals string
                 local str = utils.text_sub_char(opts.line, opts.col - 1, 1)
@@ -54,6 +55,7 @@ local function setup(opt)
             end)
             :with_pair(cond.not_before_regex("%w")),
         quote("'", "'", "rust"):with_pair(cond.not_before_regex("[%w<&]")):with_pair(cond.not_after_text(">")),
+        Rule("''", "''", 'nix'):with_move(cond.after_text("'")),
         quote("`", "`"),
         quote('"', '"', "-vim"),
         quote('"', '"', "vim"):with_pair(cond.not_before_regex("^%s*$", -1)),
@@ -65,8 +67,11 @@ local function setup(opt)
             "^%s*</",
             {
                 "html",
+                "htmlangular",
                 "htmldjango",
+                "eruby",
                 "php",
+                "blade",
                 "typescript",
                 "typescriptreact",
                 "javascript",
@@ -75,6 +80,7 @@ local function setup(opt)
                 "vue",
                 "xml",
                 "rescript",
+                "astro",
             }
         ):only_cr():use_regex(true),
     }

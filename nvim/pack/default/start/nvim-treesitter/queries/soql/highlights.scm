@@ -32,7 +32,7 @@
 (alias_expression
   (identifier) @label)
 
-(storage_identifier) @keyword.storage
+(storage_identifier) @keyword.modifier
 
 (_
   function_name: (identifier) @function)
@@ -43,7 +43,6 @@
   ","
   "."
   ":"
-  "?"
   "("
   ")"
 ] @punctuation.delimiter
@@ -97,7 +96,6 @@
 [
   "ABOVE"
   "ABOVE_OR_BELOW"
-  "ALL_ROWS"
   "ALL"
   "AS"
   "ASC"
