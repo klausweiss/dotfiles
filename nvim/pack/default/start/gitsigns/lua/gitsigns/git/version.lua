@@ -8,7 +8,7 @@ local system = require('gitsigns.system').system
 local M = {}
 
 --- @type fun(cmd: string[], opts?: vim.SystemOpts): vim.SystemCompleted
-local asystem = async.wrap(3, system)
+local asystem = async.awrap(3, system)
 
 --- @class (exact) Gitsigns.Version
 --- @field major integer
@@ -49,7 +49,7 @@ local function set_version()
 
   --- @type vim.SystemCompleted
   local obj = asystem({ 'git', '--version' })
-  async.scheduler()
+  async.schedule()
 
   local line = vim.split(obj.stdout or '', '\n')[1]
   if not line then
@@ -73,28 +73,24 @@ end
 
 --- @async
 --- Usage: check_version{2,3}
---- @param version {[1]: integer, [2]:integer, [3]:integer}?
+--- @param major? integer
+--- @param minor? integer
+--- @param patch? integer
 --- @return boolean
-function M.check(version)
+function M.check(major, minor, patch)
   if not M.version then
     set_version()
   end
 
   if not M.version then
     return false
-  end
-
-  if not version then
+  elseif not major or not minor then
     return false
-  end
-
-  if M.version.major < version[1] then
+  elseif M.version.major < major then
     return false
-  end
-  if version[2] and M.version.minor < version[2] then
+  elseif minor and M.version.minor < minor then
     return false
-  end
-  if version[3] and M.version.patch < version[3] then
+  elseif patch and M.version.patch < patch then
     return false
   end
   return true

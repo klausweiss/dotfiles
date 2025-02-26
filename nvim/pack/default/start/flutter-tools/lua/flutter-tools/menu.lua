@@ -238,13 +238,13 @@ function M.commands(opts)
       {
         id = "flutter-tools-copy-profiler-url",
         label = "Copy Profiler Url",
-        hint = "Run the app and the DevTools first",
+        hint = "Copy the profiler url to the clipboard",
         command = commands.copy_profiler_url,
       },
       {
         id = "flutter-tools-open-dev-tools",
         label = "Open Dev Tools",
-        hint = "Run the app and the Dev Tools first",
+        hint = "Open flutter dev tools in the browser",
         command = commands.open_dev_tools,
       },
     })
@@ -287,7 +287,7 @@ function M.fvm(opts)
       table.insert(sdk_entries, {
         id = sdk.name,
         label = sdk.name,
-        hint = sdk.status and "(" .. sdk.status .. ")" or "",
+        hint = sdk.dart_sdk_version and "(Dart SDK " .. sdk.dart_sdk_version .. ")" or "",
         command = commands.fvm_use,
       })
     end

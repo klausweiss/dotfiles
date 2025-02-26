@@ -190,7 +190,7 @@ local function setup_autocommands(opts)
   end
 
   if opts.hijack_directories.enable then
-    create_nvim_tree_autocmd({ "BufEnter", "BufNewFile" }, { callback = M.open_on_directory })
+    create_nvim_tree_autocmd({ "BufEnter", "BufNewFile" }, { callback = M.open_on_directory, nested = true })
   end
 
   if opts.view.centralize_selection then
@@ -199,6 +199,10 @@ local function setup_autocommands(opts)
       callback = function()
         vim.schedule(function()
           vim.api.nvim_buf_call(0, function()
+            local is_term_mode = vim.api.nvim_get_mode().mode == "t"
+            if is_term_mode then
+              return
+            end
             vim.cmd([[norm! zz]])
           end)
         end)
@@ -284,6 +288,7 @@ local DEFAULT_OPTS = { -- BEGIN_DEFAULT_OPTS
     special_files = { "Cargo.toml", "Makefile", "README.md", "readme.md" },
     hidden_display = "none",
     symlink_destination = true,
+    decorators = { "Git", "Open", "Hidden", "Modified", "Bookmark", "Diagnostics", "Copied", "Cut", },
     highlight_git = "none",
     highlight_diagnostics = "none",
     highlight_opened_files = "none",

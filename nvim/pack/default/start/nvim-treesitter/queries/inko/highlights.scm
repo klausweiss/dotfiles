@@ -56,6 +56,7 @@
   "copy"
   "for"
   "impl"
+  "in"
   "inline"
   "let"
   "move"
@@ -75,8 +76,8 @@
 ] @keyword.operator
 
 [
-  "class"
   "trait"
+  "type"
 ] @keyword.type
 
 [

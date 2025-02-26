@@ -10,7 +10,7 @@
 let s:configuration = sonokai#get_configuration()
 let s:palette = sonokai#get_palette(s:configuration.style, s:configuration.colors_override)
 let s:path = expand('<sfile>:p') " the path of this script
-let s:last_modified = 'Mon Sep 30 10:09:56 UTC 2024'
+let s:last_modified = 'Mon Feb 24 13:02:03 UTC 2025'
 let g:sonokai_loaded_file_types = []
 
 if !(exists('g:colors_name') && g:colors_name ==# 'sonokai' && s:configuration.better_performance)
@@ -176,8 +176,8 @@ else
   call sonokai#highlight('VertSplit', s:palette.black, s:palette.none)
 endif
 highlight! link WinSeparator VertSplit
-call sonokai#highlight('Visual', s:palette.none, s:palette.bg3)
-call sonokai#highlight('VisualNOS', s:palette.none, s:palette.bg3, 'underline')
+call sonokai#highlight('Visual', s:palette.none, s:palette.bg4)
+call sonokai#highlight('VisualNOS', s:palette.none, s:palette.bg4, 'underline')
 call sonokai#highlight('QuickFixLine', s:palette.blue, s:palette.none, 'bold')
 call sonokai#highlight('Debug', s:palette.yellow, s:palette.none)
 call sonokai#highlight('debugPC', s:palette.bg0, s:palette.green)
@@ -329,6 +329,9 @@ call sonokai#highlight('YellowSign', s:palette.yellow, s:palette.none)
 call sonokai#highlight('GreenSign', s:palette.green, s:palette.none)
 call sonokai#highlight('BlueSign', s:palette.blue, s:palette.none)
 call sonokai#highlight('PurpleSign', s:palette.purple, s:palette.none)
+highlight! link Added Green
+highlight! link Removed Red
+highlight! link Changed Blue
 if s:configuration.diagnostic_text_highlight
   call sonokai#highlight('ErrorText', s:palette.none, s:palette.diff_red, 'undercurl', s:palette.red)
   call sonokai#highlight('WarningText', s:palette.none, s:palette.diff_yellow, 'undercurl', s:palette.yellow)
@@ -762,10 +765,10 @@ highlight! link CocGitRemovedSign RedSign
 highlight! link CocGitTopRemovedSign RedSign
 " }}}
 " prabirshrestha/vim-lsp {{{
-highlight! link LspErrorVirtual VirtualTextError
-highlight! link LspWarningVirtual VirtualTextWarning
-highlight! link LspInformationVirtual VirtualTextInfo
-highlight! link LspHintVirtual VirtualTextHint
+highlight! link LspErrorVirtualText VirtualTextError
+highlight! link LspWarningVirtualText VirtualTextWarning
+highlight! link LspInformationVirtualText VirtualTextInfo
+highlight! link LspHintVirtualText VirtualTextHint
 highlight! link LspErrorHighlight ErrorText
 highlight! link LspWarningHighlight WarningText
 highlight! link LspInformationHighlight InfoText
@@ -793,6 +796,22 @@ highlight! link LspSemanticString TSString
 highlight! link LspSemanticNumber TSNumber
 highlight! link LspSemanticRegexp TSStringRegex
 highlight! link LspSemanticOperator TSOperator
+" }}}
+" yegappan/lsp {{{
+highlight! link LspDiagInlineError ErrorText
+highlight! link LspDiagInlineWarning WarningText
+highlight! link LspDiagInlineInfo InfoText
+highlight! link LspDiagInlineHint HintText
+highlight! link LspDiagSignErrorText RedSign
+highlight! link LspDiagSignWarningText YellowSign
+highlight! link LspDiagSignInfoText BlueSign
+highlight! link LspDiagSignHintText GreenSign
+highlight! link LspDiagVirtualTextError VirtualTextError
+highlight! link LspDiagVirtualTextWarning VirtualTextWarning
+highlight! link LspDiagVirtualTextInfo VirtualTextInfo
+highlight! link LspDiagVirtualTextHint VirtualTextHint
+highlight! link LspInlayHintsParam InlayHints
+highlight! link LspSigActiveParameter DiffAdd
 " }}}
 " ycm-core/YouCompleteMe {{{
 highlight! link YcmErrorSign RedSign
@@ -1116,6 +1135,13 @@ for kind in g:sonokai_lsp_kind_color
   execute "highlight! link CmpItemKind" . kind[0] . " " . kind[1]
 endfor
 " }}}
+" Saghen/blink.cmp {{{
+call sonokai#highlight('BlinkCmpLabelMatch', s:palette.green, s:palette.none, 'bold')
+highlight! link BlinkCmpGhostText Conceal
+for kind in g:sonokai_lsp_kind_color
+  execute "highlight! link BlinkCmpKind" . kind[0] . " " . kind[1]
+endfor
+" }}}
 " SmiteshP/nvim-navic {{{
 highlight! link NavicText Fg
 highlight! link NavicSeparator Grey
@@ -1132,6 +1158,34 @@ call sonokai#highlight('TelescopeMatching', s:palette.green, s:palette.none, 'bo
 highlight! link TelescopeBorder Grey
 highlight! link TelescopePromptPrefix Blue
 highlight! link TelescopeSelection DiffAdd
+" }}}
+" ibhagwan/fzf-lua {{{
+highlight! link FzfLuaBorder Grey
+highlight! link FzfLuaTitle Title
+highlight! link FzfLuaTitleFlags Yellow
+" }}}
+" folke/snacks.nvim {{{
+highlight! link SnacksDashboardDesc Yellow
+highlight! link SnacksDashboardDir Grey
+highlight! link SnacksDashboardFile Blue
+highlight! link SnacksDashboardHeader Blue
+highlight! link SnacksDashboardIcon Blue
+highlight! link SnacksDashboardKey Green
+highlight! link SnacksDashboardTitle RedItalic
+highlight! link SnacksPicker Normal
+highlight! link SnacksPickerBorder Grey
+highlight! link SnacksPickerTitle Title
+highlight! link SnacksPickerFooter SnacksPickerTitle
+highlight! link SnacksPickerTotals Grey
+highlight! link SnacksPickerSelected Blue
+highlight! link SnacksPickerInputCursorLine Normal
+highlight! link SnacksPickerListCursorLine CursorLine
+call sonokai#highlight('SnacksPickerMatch', s:palette.green, s:palette.none, 'bold')
+highlight! link SnacksPickerToggle Yellow
+highlight! link SnacksPickerDir Comment
+highlight! link SnacksPickerBufFlags Blue
+highlight! link SnacksPickerGitStatus Special
+highlight! link SnacksPickerKeymapRhs Normal
 " }}}
 " lewis6991/gitsigns.nvim {{{
 highlight! link GitSignsAdd GreenSign
@@ -1159,14 +1213,14 @@ highlight! link IndentBlanklineChar IblIndent
 highlight! link IndentBlanklineSpaceChar IndentBlanklineChar
 highlight! link IndentBlanklineSpaceCharBlankline IndentBlanklineChar
 " }}}
-" p00f/nvim-ts-rainbow {{{
-highlight! link rainbowcol1 Red
-highlight! link rainbowcol2 Orange
-highlight! link rainbowcol3 Yellow
-highlight! link rainbowcol4 Green
-highlight! link rainbowcol5 Blue
-highlight! link rainbowcol6 Purple
-highlight! link rainbowcol7 Green
+" HiPhish/rainbow-delimiters.nvim {{{
+highlight! link RainbowDelimiterRed Red
+highlight! link RainbowDelimiterOrange Orange
+highlight! link RainbowDelimiterYellow Yellow
+highlight! link RainbowDelimiterGreen Green
+highlight! link RainbowDelimiterCyan Blue
+highlight! link RainbowDelimiterBlue Blue
+highlight! link RainbowDelimiterViolet Purple
 " }}}
 " romgrk/barbar.nvim {{{
 call sonokai#highlight('BufferCurrent', s:palette.fg, s:palette.bg0)
@@ -1324,8 +1378,8 @@ highlight! link MiniClueTitle FloatTitle
 highlight! link MiniCompletionActiveParameter LspSignatureActiveParameter
 highlight! link MiniCursorword CurrentWord
 highlight! link MiniCursorwordCurrent CurrentWord
-highlight! link MiniDepsChangeAdded diffAdded
-highlight! link MiniDepsChangeRemoved diffRemoved
+highlight! link MiniDepsChangeAdded Added
+highlight! link MiniDepsChangeRemoved Removed
 highlight! link MiniDepsHint DiagnosticHint
 highlight! link MiniDepsInfo DiagnosticInfo
 highlight! link MiniDepsMsgBreaking DiagnosticWarn
@@ -1395,9 +1449,9 @@ endif
 " Extended File Types: {{{
 " Whitelist: {{{ File type optimizations that will always be loaded.
 " diff {{{
-highlight! link diffAdded Green
-highlight! link diffRemoved Red
-highlight! link diffChanged Blue
+highlight! link diffAdded Added
+highlight! link diffRemoved Removed
+highlight! link diffChanged Changed
 highlight! link diffOldFile Yellow
 highlight! link diffNewFile Orange
 highlight! link diffFile Purple
@@ -2592,6 +2646,11 @@ highlight! link rubyAccess Red
 highlight! link rubyMacro Red
 highlight! link rubySymbol Fg
 " }}}
+" nvim-treesitter/nvim-treesitter {{{
+if has('nvim-0.8')
+  highlight! link @string.special.symbol.ruby TSField
+endif
+" }}}
 " syn_end }}}
 " syn_begin: haskell {{{
 " haskell-vim: https://github.com/neovimhaskell/haskell-vim{{{
@@ -2678,6 +2737,11 @@ highlight! link elixirExceptionDefine Red
 highlight! link elixirCallbackDefine Red
 highlight! link elixirStructDefine Red
 highlight! link elixirExUnitMacro Red
+" }}}
+" nvim-treesitter/nvim-treesitter {{{
+if has('nvim-0.8')
+  highlight! link @string.special.symbol.elixir TSField
+endif
 " }}}
 " syn_end }}}
 " syn_begin: lisp {{{

@@ -294,15 +294,36 @@ below returns a function that takes as its argument the current buffer path.
   filesystem. Parent directories are traversed once per pattern, in the order
   the patterns are specified. >
    root_dir = util.root_pattern('pyproject.toml', 'requirements.txt')
-- `util.find_git_ancestor`: a function that locates the first parent directory
-  containing a `.git` directory. >
-   root_dir = util.find_git_ancestor
-- `util.find_node_modules_ancestor`: a function that locates the first parent
-  directory containing a `node_modules` directory. >
-   root_dir = util.find_node_modules_ancestor
-- `util.find_package_json_ancestor`: a function that locates the first parent
-  directory containing a `package.json`. >
-   root_dir = util.find_package_json_ancestor
+
+- Locate the first parent dir containing a ".git" file or directory: >lua
+  vim.fs.dirname(vim.fs.find('.git', { path = root_dir, upward = true })[1])
+<
+  If you have Nvim 0.10 or newer then >lua
+  vim.fs.root(root_dir, ".git")
+<
+  can be used instead.
+  - Note: The old `util.find_git_ancestor` API is deprecated and will
+    be removed.
+<
+- Locate the first parent dir containing a "node_modules" dir: >lua
+  vim.fs.dirname(vim.fs.find('node_modules', { path = root_dir, upward = true })[1])
+<
+  If you have Nvim 0.10 or newer then >lua
+  vim.fs.root(root_dir, "node_modules")
+<
+  can be used instead.
+  - Note: The old `util.find_node_modules_ancestor` API is deprecated and will
+    be removed.
+
+- Locate the first parent dir containing a "package.json" dir: >lua
+  vim.fs.dirname(vim.fs.find('package.json', { path = root_dir, upward = true })[1])
+<
+  If you have Nvim 0.10 or newer then >lua
+  vim.fs.root(root_dir, "package.json")
+<
+  can be used instead.
+  - Note: The old `util.find_package_json_ancestor` API is deprecated and will
+    be removed.
 <
 Note: On Windows, `lspconfig` always assumes forward slash normalized paths with
 capitalized drive letters.
@@ -466,9 +487,7 @@ When debugging language servers, it is helpful to enable additional logging in
 the built-in client, specifically considering the RPC logs. Example: >lua
 
   vim.lsp.set_log_level 'trace'
-  if vim.fn.has 'nvim-0.5.1' == 1 then
-    require('vim.lsp.log').set_format_func(vim.inspect)
-  end
+  require('vim.lsp.log').set_format_func(vim.inspect)
 <
 Attempt to run the language server, and open the log with:
 

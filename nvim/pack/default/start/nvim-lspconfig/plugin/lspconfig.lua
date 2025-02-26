@@ -6,17 +6,6 @@ vim.g.lspconfig = 1
 local api, lsp = vim.api, vim.lsp
 local util = require('lspconfig.util')
 
-if vim.fn.has 'nvim-0.8' ~= 1 then
-  local version_info = vim.version()
-  local warning_str = string.format(
-    '[lspconfig] requires neovim 0.8 or later. Detected neovim version: 0.%s.%s',
-    version_info.minor,
-    version_info.patch
-  )
-  vim.notify_once(warning_str)
-  return
-end
-
 local completion_sort = function(items)
   table.sort(items)
   return items
@@ -56,7 +45,7 @@ local get_clients_from_cmd_args = function(arg)
     return ''
   end)
   for id in (arg or ''):gmatch '(%d+)' do
-    local client = lsp.get_client_by_id(tonumber(id))
+    local client = lsp.get_client_by_id(assert(tonumber(id)))
     if client == nil then
       err_msg = err_msg .. ('client id "%s" not found\n'):format(id)
     end
@@ -101,6 +90,8 @@ end, {
 api.nvim_create_user_command('LspRestart', function(info)
   local detach_clients = {}
   for _, client in ipairs(get_clients_from_cmd_args(info.args)) do
+    -- Can remove diagnostic disabling when changing to client:stop() in nvim 0.11+
+    --- @diagnostic disable: missing-parameter
     client.stop()
     if vim.tbl_count(client.attached_buffers) > 0 then
       detach_clients[client.name] = { client, lsp.get_buffers_by_client_id(client.id) }
@@ -153,6 +144,8 @@ api.nvim_create_user_command('LspStop', function(info)
   end
 
   for _, client in ipairs(clients) do
+    -- Can remove diagnostic disabling when changing to client:stop(force) in nvim 0.11+
+    --- @diagnostic disable: param-type-mismatch
     client.stop(force)
   end
 end, {

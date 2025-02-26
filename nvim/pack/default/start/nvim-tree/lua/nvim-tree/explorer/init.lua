@@ -389,9 +389,9 @@ function Explorer:populate_children(handle, cwd, node, project, parent)
           nodes_by_path[child.absolute_path] = true
           child:update_git_status(node_ignored, project)
         end
-      else
+      elseif node.hidden_stats then
         for reason, value in pairs(FILTER_REASON) do
-          if filter_reason == value then
+          if filter_reason == value and type(node.hidden_stats[reason]) == "number" then
             node.hidden_stats[reason] = node.hidden_stats[reason] + 1
           end
         end
@@ -530,7 +530,7 @@ function Explorer:place_cursor_on_node()
 end
 
 ---Api.tree.get_nodes
----@return Node
+---@return nvim_tree.api.Node
 function Explorer:get_nodes()
   return self:clone()
 end

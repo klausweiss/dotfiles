@@ -76,6 +76,13 @@ function Buffer:clear()
   api.nvim_buf_set_lines(self.handle, 0, -1, false, {})
 end
 
+---@param fn fun()
+function Buffer:with_locked_viewport(fn)
+  local view = self:save_view()
+  self:call(fn)
+  self:restore_view(view)
+end
+
 ---@return table
 function Buffer:save_view()
   local view = fn.winsaveview()
@@ -179,7 +186,7 @@ function Buffer:move_top_line(line)
     return
   end
 
-  if vim.o.lines < vim.fn.line("$") then
+  if vim.o.lines < fn.line("$") then
     return
   end
 
@@ -207,6 +214,11 @@ function Buffer:close(force)
   end
 
   if self.kind == "replace" then
+    if self.old_cwd then
+      api.nvim_set_current_dir(self.old_cwd)
+      self.old_cwd = nil
+    end
+
     api.nvim_buf_delete(self.handle, { force = force })
     return
   end
@@ -242,6 +254,11 @@ function Buffer:hide()
     vim.cmd("silent! 1only")
     vim.cmd("try | tabn # | catch /.*/ | tabp | endtry")
   elseif self.kind == "replace" then
+    if self.old_cwd then
+      api.nvim_set_current_dir(self.old_cwd)
+      self.old_cwd = nil
+    end
+
     if self.old_buf and api.nvim_buf_is_loaded(self.old_buf) then
       api.nvim_set_current_buf(self.old_buf)
       self.old_buf = nil
@@ -281,6 +298,7 @@ function Buffer:show()
     local win
     if self.kind == "replace" then
       self.old_buf = api.nvim_get_current_buf()
+      self.old_cwd = vim.uv.cwd()
       api.nvim_set_current_buf(self.handle)
       win = api.nvim_get_current_win()
     elseif self.kind == "tab" then
@@ -328,7 +346,8 @@ function Buffer:show()
         width = vim.o.columns,
         height = math.floor(vim.o.lines * 0.3),
         col = 0,
-        row = vim.o.lines - 2,
+        -- buffer_height - cmdline - statusline
+        row = vim.o.lines - vim.o.cmdheight - (vim.o.laststatus > 0 and 1 or 0),
         style = "minimal",
         focusable = true,
         border = { "─", "─", "─", "", "", "", "", "" },
@@ -346,7 +365,8 @@ function Buffer:show()
         width = vim.o.columns,
         height = math.floor(vim.o.lines * 0.3),
         col = 0,
-        row = vim.o.lines - 2,
+        -- buffer_height - cmdline - statusline
+        row = vim.o.lines - vim.o.cmdheight - (vim.o.laststatus > 0 and 1 or 0),
         style = "minimal",
         border = { "─", "─", "─", "", "", "", "", "" },
         -- title = (" %s Actions "):format(title),
@@ -565,6 +585,14 @@ function Buffer:line_count()
   return api.nvim_buf_line_count(self.handle)
 end
 
+function Buffer:resize_header()
+  if not self.header_win_handle then
+    return
+  end
+
+  api.nvim_win_set_width(self.header_win_handle, fn.winwidth(self.win_handle))
+end
+
 ---@param text string
 ---@param scroll boolean
 function Buffer:set_header(text, scroll)
@@ -585,7 +613,8 @@ function Buffer:set_header(text, scroll)
   -- Display the buffer in a floating window
   local winid = api.nvim_open_win(buf, false, {
     relative = "win",
-    width = vim.o.columns,
+    win = self.win_handle,
+    width = fn.winwidth(self.win_handle),
     height = 1,
     row = 0,
     col = 0,
@@ -606,6 +635,15 @@ function Buffer:set_header(text, scroll)
       vim.api.nvim_feedkeys(keys, "n", false)
     end)
   end
+
+  -- Ensure the header only covers the intended window.
+  api.nvim_create_autocmd("WinResized", {
+    callback = function()
+      self:resize_header()
+    end,
+    buffer = self.handle,
+    group = self.autocmd_group,
+  })
 end
 
 ---@class BufferConfig

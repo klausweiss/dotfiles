@@ -90,6 +90,7 @@ local format_queries = [[
     (grouping)
     (named_node)
     (anonymous_node)
+    (missing_node)
     (field_definition)
   ] @format.prepend-newline)
 
@@ -101,6 +102,7 @@ local format_queries = [[
     (grouping)
     (named_node)
     (anonymous_node)
+    (missing_node)
     (field_definition)
     (comment)
   ] @format.cancel-prepend
@@ -114,6 +116,9 @@ local format_queries = [[
   ":"
   "."
 ] @format.append-space
+(predicate
+  "." @format.cancel-append @format.replace
+  (#gsub! @format.replace "%." "#"))
 (
   "." @format.prepend-space @format.cancel-append
   .
@@ -153,6 +158,7 @@ local format_queries = [[
     (named_node)        ; (foo (bar))
     (predicate)         ; (named_node (#set!))
     (anonymous_node)
+    (missing_node)
     "."
   ])
 ;; Honoring comment's position within a node
@@ -185,6 +191,7 @@ local format_queries = [[
     (named_node)
     (predicate)
     (anonymous_node)
+    (missing_node)
     "."
   ] @format.append-newline)
 
@@ -210,6 +217,7 @@ local format_queries = [[
     (named_node)                  ; ((foo))
     (list)                        ; ([foo] (...))
     (anonymous_node)              ; ("foo")
+    (missing_node)
     (grouping . (_))
   ] @format.indent.begin
   .
@@ -223,6 +231,7 @@ local format_queries = [[
   "("
   [
     (anonymous_node)
+    (missing_node)
     (named_node)
     (list)
     (predicate)
@@ -237,6 +246,8 @@ local format_queries = [[
   (#not-kind-eq? @format.cancel-append "comment"))
 (grouping
   (capture) @format.prepend-space)
+(missing_node
+  name: (_) @format.prepend-space)
 ;; Remove unnecessary parens
 (grouping
   "(" @format.remove
@@ -251,6 +262,8 @@ local format_queries = [[
     (grouping)
     (anonymous_node
       name: (string) .)
+    (missing_node
+      name: (_) .)
     (named_node
       [
         "_"
@@ -297,6 +310,7 @@ local format_queries = [[
     (grouping)
     (named_node)
     (anonymous_node)
+    (missing_node)
     (negated_field)
   ] @format.cancel-append
   .

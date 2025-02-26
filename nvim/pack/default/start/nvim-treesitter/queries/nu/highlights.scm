@@ -9,7 +9,6 @@
   "source"
   "source-env"
   "overlay"
-  "register"
 ] @keyword
 
 [
@@ -169,6 +168,20 @@ file_path: (val_string) @variable.parameter
   "err+out>"
   "o+e>"
   "out+err>"
+  "o>>"
+  "out>>"
+  "e>>"
+  "err>>"
+  "e+o>>"
+  "err+out>>"
+  "o+e>>"
+  "out+err>>"
+  "e>|"
+  "err>|"
+  "e+o>|"
+  "err+out>|"
+  "o+e>|"
+  "out+err>|"
 ] @operator
 
 [
@@ -183,6 +196,8 @@ file_path: (val_string) @variable.parameter
   "bit-shr"
   "in"
   "not-in"
+  "has"
+  "not-has"
   "starts-with"
   "ends-with"
   "not"
@@ -260,16 +275,15 @@ key: (identifier) @property
 (param_cmd
   (cmd_identifier) @string)
 
-(param_long_flag
-  (long_flag_identifier) @attribute)
+(attribute
+  "@" @attribute)
 
-(param_short_flag
-  (param_short_flag_identifier) @attribute)
-
-(short_flag
-  (short_flag_identifier) @attribute)
-
-(long_flag_identifier) @attribute
+[
+  (attribute_identifier)
+  (long_flag_identifier)
+  (param_short_flag_identifier)
+  (short_flag_identifier)
+] @attribute
 
 (scope_pattern
   (wild_card) @function)
@@ -355,8 +369,9 @@ key: (identifier) @property
 
 (comment) @comment @spell
 
-((comment) @comment.documentation @spell
+((comment)+ @comment.documentation @spell
+  .
   (decl_def))
 
-((parameter)
+(parameter
   (comment) @comment.documentation @spell)

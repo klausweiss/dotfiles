@@ -208,6 +208,10 @@ end
 ---| "YankSelected"
 ---| "OpenOrScrollUp"
 ---| "OpenOrScrollDown"
+---| "PeekUp"
+---| "PeekDown"
+---| "NextSection"
+---| "PreviousSection"
 ---| false
 ---| fun()
 
@@ -355,7 +359,7 @@ function M.get_default_values()
     graph_style = "ascii",
     commit_date_format = nil,
     log_date_format = nil,
-    process_spinner = true,
+    process_spinner = false,
     filewatcher = {
       enabled = true,
     },
@@ -616,6 +620,7 @@ function M.get_default_values()
         ["<c-s>"] = "StageAll",
         ["u"] = "Unstage",
         ["K"] = "Untrack",
+        ["R"] = "Rename",
         ["U"] = "UnstageStaged",
         ["y"] = "ShowRefs",
         ["$"] = "CommandHistory",
@@ -632,6 +637,8 @@ function M.get_default_values()
         ["]c"] = "OpenOrScrollDown",
         ["<c-k>"] = "PeekUp",
         ["<c-j>"] = "PeekDown",
+        ["<c-n>"] = "NextSection",
+        ["<c-p>"] = "PreviousSection",
       },
     },
   }

@@ -51,7 +51,7 @@ local function try_get_cmd_output(cmd)
     on_stdout = on_data,
     on_stderr = on_data,
   })
-  local rv = vim.fn.jobwait({ chanid }, 300)
+  local rv = vim.fn.jobwait({ chanid }, 500)
   vim.fn.jobstop(chanid)
   return rv[1] == 0 and out or nil
 end
@@ -189,7 +189,7 @@ end
 local function make_client_info(client, fname)
   local client_info, info_lines = make_info(client)
 
-  local workspace_folders = fn.has 'nvim-0.9' == 1 and client.workspace_folders or client.workspaceFolders
+  local workspace_folders = client.workspace_folders
   fname = vim.fs.normalize(vim.loop.fs_realpath(fname) or fn.fnamemodify(fn.resolve(fname), ':p'))
 
   if workspace_folders then

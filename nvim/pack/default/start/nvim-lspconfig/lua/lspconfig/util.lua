@@ -5,7 +5,7 @@ local nvim_eleven = vim.fn.has 'nvim-0.11' == 1
 
 local iswin = vim.loop.os_uname().version:match 'Windows'
 
-local M = {}
+local M = { path = {} }
 
 M.default_config = {
   log_level = lsp.protocol.MessageType.Warning,
@@ -28,9 +28,9 @@ function M.bufname_valid(bufname)
 end
 
 function M.validate_bufnr(bufnr)
-  validate {
-    bufnr = { bufnr, 'n' },
-  }
+  if nvim_eleven then
+    validate('bufnr', bufnr, 'number')
+  end
   return bufnr == 0 and api.nvim_get_current_buf() or bufnr
 end
 
@@ -95,107 +95,15 @@ function M.create_module_commands(module_name, commands)
   end
 end
 
--- Some path utilities
-M.path = (function()
-  local function escape_wildcards(path)
-    return path:gsub('([%[%]%?%*])', '\\%1')
-  end
-
-  --- @param path string
-  --- @return boolean
-  local function is_fs_root(path)
-    if iswin then
-      return path:match '^%a:$'
-    else
-      return path == '/'
-    end
-  end
-
-  --- @param filename string
-  --- @return boolean
-  local function is_absolute(filename)
-    if iswin then
-      return filename:match '^%a:' or filename:match '^\\\\'
-    else
-      return filename:match '^/'
-    end
-  end
-
-  local function path_join(...)
-    return table.concat(M.tbl_flatten { ... }, '/')
-  end
-
-  -- Traverse the path calling cb along the way.
-  local function traverse_parents(path, cb)
-    path = vim.loop.fs_realpath(path)
-    local dir = path
-    -- Just in case our algo is buggy, don't infinite loop.
-    for _ = 1, 100 do
-      dir = vim.fs.dirname(dir)
-      if not dir then
-        return
-      end
-      -- If we can't ascend further, then stop looking.
-      if cb(dir, path) then
-        return dir, path
-      end
-      if is_fs_root(dir) then
-        break
-      end
-    end
-  end
-
-  -- Iterate the path until we find the rootdir.
-  local function iterate_parents(path)
-    local function it(_, v)
-      if v and not is_fs_root(v) then
-        v = vim.fs.dirname(v)
-      else
-        return
-      end
-      if v and vim.loop.fs_realpath(v) then
-        return v, path
-      else
-        return
-      end
-    end
-    return it, path, path
-  end
-
-  local function is_descendant(root, path)
-    if not path then
-      return false
-    end
-
-    local function cb(dir, _)
-      return dir == root
-    end
-
-    local dir, _ = traverse_parents(path, cb)
-
-    return dir == root
-  end
-
-  local path_separator = iswin and ';' or ':'
-
-  return {
-    escape_wildcards = escape_wildcards,
-    is_absolute = is_absolute,
-    join = path_join,
-    traverse_parents = traverse_parents,
-    iterate_parents = iterate_parents,
-    is_descendant = is_descendant,
-    path_separator = path_separator,
-  }
-end)()
-
 function M.search_ancestors(startpath, func)
-  validate { func = { func, 'f' } }
+  if nvim_eleven then
+    validate('func', func, 'function')
+  end
   if func(startpath) then
     return startpath
   end
   local guard = 100
-  for path in M.path.iterate_parents(startpath) do
+  for path in vim.fs.parents(startpath) do
     -- Prevent infinite recursion if our algorithm breaks
     guard = guard - 1
     if guard == 0 then
@@ -208,12 +116,8 @@ function M.search_ancestors(startpath, func)
   end
 end
 
-function M.tbl_flatten(t)
-  return nvim_eleven and vim.iter(t):flatten(math.huge):totable() or vim.tbl_flatten(t)
-end
-
-function M.get_lsp_clients(filter)
-  return nvim_eleven and lsp.get_clients(filter) or lsp.get_active_clients(filter)
+local function escape_wildcards(path)
+  return path:gsub('([%[%]%?%*])', '\\%1')
 end
 
 function M.root_pattern(...)
@@ -222,7 +126,7 @@ function M.root_pattern(...)
     startpath = M.strip_archive_subpath(startpath)
     for _, pattern in ipairs(patterns) do
       local match = M.search_ancestors(startpath, function(path)
-        for _, p in ipairs(vim.fn.glob(M.path.join(M.path.escape_wildcards(path), pattern), true, true)) do
+        for _, p in ipairs(vim.fn.glob(table.concat({ escape_wildcards(path), pattern }, '/'), true, true)) do
           if vim.loop.fs_stat(p) then
             return path
           end
@@ -236,36 +140,9 @@ function M.root_pattern(...)
   end
 end
 
-function M.find_git_ancestor(startpath)
-  return M.search_ancestors(startpath, function(path)
-    -- Support git directories and git files (worktrees)
-    local gitpath = M.path.join(path, '.git')
-    if vim.fn.isdirectory(gitpath) == 1 or (vim.loop.fs_stat(gitpath) or {}).type == 'file' then
-      return path
-    end
-  end)
-end
-
-function M.find_node_modules_ancestor(startpath)
-  return M.search_ancestors(startpath, function(path)
-    if vim.fn.isdirectory(M.path.join(path, 'node_modules')) == 1 then
-      return path
-    end
-  end)
-end
-
-function M.find_package_json_ancestor(startpath)
-  return M.search_ancestors(startpath, function(path)
-    local jsonpath = M.path.join(path, 'package.json')
-    if (vim.loop.fs_stat(jsonpath) or {}).type == 'file' then
-      return path
-    end
-  end)
-end
-
 function M.insert_package_json(config_files, field, fname)
   local path = vim.fn.fnamemodify(fname, ':h')
-  local root_with_package = M.find_package_json_ancestor(path)
+  local root_with_package = vim.fs.dirname(vim.fs.find('package.json', { path = path, upward = true })[1])
 
   if root_with_package then
     -- only add package.json if it contains field parameter
@@ -284,6 +161,7 @@ function M.get_active_clients_list_by_ft(filetype)
   local clients = M.get_lsp_clients()
   local clients_list = {}
   for _, client in pairs(clients) do
+    --- @diagnostic disable-next-line:undefined-field
     local filetypes = client.config.filetypes or {}
     for _, ft in pairs(filetypes) do
       if ft == filetype then
@@ -345,6 +223,7 @@ function M.get_managed_clients()
   return clients
 end
 
+--- @deprecated use `vim.lsp.config` in Nvim 0.11+ instead.
 function M.available_servers()
   local servers = {}
   local configs = require 'lspconfig.configs'
@@ -363,6 +242,63 @@ function M.strip_archive_subpath(path)
   path = vim.fn.substitute(path, 'zipfile://\\(.\\{-}\\)::[^\\\\].*$', '\\1', '')
   path = vim.fn.substitute(path, 'tarfile:\\(.\\{-}\\)::.*$', '\\1', '')
   return path
+end
+
+--- Public functions that can be deprecated once minimum required neovim version is high enough
+
+local function is_fs_root(path)
+  if iswin then
+    return path:match '^%a:$'
+  else
+    return path == '/'
+  end
+end
+
+-- Traverse the path calling cb along the way.
+local function traverse_parents(path, cb)
+  path = vim.loop.fs_realpath(path)
+  local dir = path
+  -- Just in case our algo is buggy, don't infinite loop.
+  for _ = 1, 100 do
+    dir = vim.fs.dirname(dir)
+    if not dir then
+      return
+    end
+    -- If we can't ascend further, then stop looking.
+    if cb(dir, path) then
+      return dir, path
+    end
+    if is_fs_root(dir) then
+      break
+    end
+  end
+end
+
+--- This can be replaced with `vim.fs.relpath` once minimum neovim version is at least 0.11.
+function M.path.is_descendant(root, path)
+  if not path then
+    return false
+  end
+
+  local function cb(dir, _)
+    return dir == root
+  end
+
+  local dir, _ = traverse_parents(path, cb)
+
+  return dir == root
+end
+
+--- Helper functions that can be removed once minimum required neovim version is high enough
+
+function M.tbl_flatten(t)
+  --- @diagnostic disable-next-line:deprecated
+  return nvim_eleven and vim.iter(t):flatten(math.huge):totable() or vim.tbl_flatten(t)
+end
+
+function M.get_lsp_clients(filter)
+  --- @diagnostic disable-next-line:deprecated
+  return nvim_eleven and lsp.get_clients(filter) or lsp.get_active_clients(filter)
 end
 
 --- Deprecated functions
@@ -395,9 +331,35 @@ function M.path.exists(filename)
   return stat and stat.type or false
 end
 
---- @deprecated use `vim.fs.find('.hg', { path = startpath, upward = true })[1]` instead
+--- @deprecated use `table.concat({"path1", "path2"})` or regular string concatenation instead
+function M.path.join(...)
+  return table.concat({ ... }, '/')
+end
+
+--- @deprecated use `vim.fn.has('win32') == 1 and ';' or ':'` instead
+M.path.path_separator = vim.fn.has('win32') == 1 and ';' or ':'
+
+--- @deprecated use `vim.fs.parents(path)` instead
+M.path.iterate_parents = vim.fs.parents
+
+--- @deprecated use `vim.fs.dirname(vim.fs.find('.hg', { path = startpath, upward = true })[1])` instead
 function M.find_mercurial_ancestor(startpath)
-  return vim.fs.find('.hg', { path = startpath, upward = true })[1]
+  return vim.fs.dirname(vim.fs.find('.hg', { path = startpath, upward = true })[1])
+end
+
+--- @deprecated use `vim.fs.dirname(vim.fs.find('node_modules', { path = startpath, upward = true })[1])` instead
+function M.find_node_modules_ancestor(startpath)
+  return vim.fs.dirname(vim.fs.find('node_modules', { path = startpath, upward = true })[1])
+end
+
+--- @deprecated use `vim.fs.dirname(vim.fs.find('package.json', { path = startpath, upward = true })[1])` instead
+function M.find_package_json_ancestor(startpath)
+  return vim.fs.dirname(vim.fs.find('package.json', { path = startpath, upward = true })[1])
+end
+
+--- @deprecated use `vim.fs.dirname(vim.fs.find('.git', { path = startpath, upward = true })[1])` instead
+function M.find_git_ancestor(startpath)
+  return vim.fs.dirname(vim.fs.find('.git', { path = startpath, upward = true })[1])
 end
 
 return M

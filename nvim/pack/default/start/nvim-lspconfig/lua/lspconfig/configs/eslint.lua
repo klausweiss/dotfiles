@@ -123,24 +123,16 @@ return {
       end
 
       -- Support Yarn2 (PnP) projects
-      local pnp_cjs = util.path.join(new_root_dir, '.pnp.cjs')
-      local pnp_js = util.path.join(new_root_dir, '.pnp.js')
+      local pnp_cjs = new_root_dir .. '/.pnp.cjs'
+      local pnp_js = new_root_dir .. '/.pnp.js'
       if vim.loop.fs_stat(pnp_cjs) or vim.loop.fs_stat(pnp_js) then
         config.cmd = vim.list_extend({ 'yarn', 'exec' }, config.cmd)
       end
     end,
     handlers = {
       ['eslint/openDoc'] = function(_, result)
-        if not result then
-          return
-        end
-        local sysname = vim.loop.os_uname().sysname
-        if sysname:match 'Windows' then
-          os.execute(string.format('start %q', result.url))
-        elseif sysname:match 'Linux' then
-          os.execute(string.format('xdg-open %q', result.url))
-        else
-          os.execute(string.format('open %q', result.url))
+        if result then
+          vim.ui.open(result.url)
         end
         return {}
       end,

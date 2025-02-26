@@ -1,5 +1,54 @@
 # Changelog
 
+## [1.11.0](https://github.com/nvim-tree/nvim-tree.lua/compare/nvim-tree-v1.10.0...nvim-tree-v1.11.0) (2025-02-22)
+
+
+### Features
+
+* **#1984:** add quit_on_open and focus opts to various api.node.open functions ([#3054](https://github.com/nvim-tree/nvim-tree.lua/issues/3054)) ([3281f33](https://github.com/nvim-tree/nvim-tree.lua/commit/3281f331f7f0bef13eb00fb2d5a9d28b2f6155a2))
+* **#3037:** add API node.buffer.delete, node.buffer.wipe ([#3040](https://github.com/nvim-tree/nvim-tree.lua/issues/3040)) ([fee1da8](https://github.com/nvim-tree/nvim-tree.lua/commit/fee1da88972f5972a8296813f6c00d7598325ebd))
+
+
+### Bug Fixes
+
+* **#3045:** wipe scratch buffers for full name and show info popups ([#3050](https://github.com/nvim-tree/nvim-tree.lua/issues/3050)) ([fca0b67](https://github.com/nvim-tree/nvim-tree.lua/commit/fca0b67c0b5a31727fb33addc4d9c100736a2894))
+* **#3059:** test for presence of new 0.11 API vim.hl.range ([#3060](https://github.com/nvim-tree/nvim-tree.lua/issues/3060)) ([70825f2](https://github.com/nvim-tree/nvim-tree.lua/commit/70825f23db61ecd900c4cfea169bffe931926a9d))
+* arithmetic on nil value error on first git project open ([#3064](https://github.com/nvim-tree/nvim-tree.lua/issues/3064)) ([8052310](https://github.com/nvim-tree/nvim-tree.lua/commit/80523101f0ae48b7f1990e907b685a3d79776c01))
+* stl and stlnc fillchars are hidden in window picker ([b699143](https://github.com/nvim-tree/nvim-tree.lua/commit/b69914325a945ee5157f0d21047210b42af5776e))
+* window picker: hide fillchars: stl and stlnc ([#3066](https://github.com/nvim-tree/nvim-tree.lua/issues/3066)) ([b699143](https://github.com/nvim-tree/nvim-tree.lua/commit/b69914325a945ee5157f0d21047210b42af5776e))
+
+## [1.10.0](https://github.com/nvim-tree/nvim-tree.lua/compare/nvim-tree-v1.9.0...nvim-tree-v1.10.0) (2025-01-13)
+
+
+### Features
+
+* **api:** add node.open.vertical_no_picker, node.open.horizontal_no_picker ([#3031](https://github.com/nvim-tree/nvim-tree.lua/issues/3031)) ([68fc4c2](https://github.com/nvim-tree/nvim-tree.lua/commit/68fc4c20f5803444277022c681785c5edd11916d))
+
+
+### Bug Fixes
+
+* **#3015:** dynamic width no longer truncates on right_align icons ([#3022](https://github.com/nvim-tree/nvim-tree.lua/issues/3022)) ([f7b76cd](https://github.com/nvim-tree/nvim-tree.lua/commit/f7b76cd1a75615c8d6254fc58bedd2a7304eb7d8))
+* **#3018:** error when focusing nvim-tree when in terminal mode ([#3019](https://github.com/nvim-tree/nvim-tree.lua/issues/3019)) ([db8d7ac](https://github.com/nvim-tree/nvim-tree.lua/commit/db8d7ac1f524fc6f808764b29fa695c51e014aa6))
+* **#3041:** use vim.diagnostic.get for updating diagnostics ([#3042](https://github.com/nvim-tree/nvim-tree.lua/issues/3042)) ([aae0185](https://github.com/nvim-tree/nvim-tree.lua/commit/aae01853ddbd790d1efd6ff04ff96cf38c02c95f))
+* Can't re-enter normal mode from terminal mode ([db8d7ac](https://github.com/nvim-tree/nvim-tree.lua/commit/db8d7ac1f524fc6f808764b29fa695c51e014aa6))
+* hijack directory "BufEnter", "BufNewFile" events are nested ([#3044](https://github.com/nvim-tree/nvim-tree.lua/issues/3044)) ([39bc630](https://github.com/nvim-tree/nvim-tree.lua/commit/39bc63081605c1d4b974131ebecaea11e8a8595f))
+* view.width functions may return strings ([#3020](https://github.com/nvim-tree/nvim-tree.lua/issues/3020)) ([6b4be1d](https://github.com/nvim-tree/nvim-tree.lua/commit/6b4be1dc0cd4d5d5b8e8b56b510a75016e99746f))
+
+## [1.9.0](https://github.com/nvim-tree/nvim-tree.lua/compare/nvim-tree-v1.8.0...nvim-tree-v1.9.0) (2024-12-07)
+
+
+### Features
+
+* **#2948:** add custom decorators, :help nvim-tree-decorators ([#2996](https://github.com/nvim-tree/nvim-tree.lua/issues/2996)) ([7a4ff1a](https://github.com/nvim-tree/nvim-tree.lua/commit/7a4ff1a516fe92a5ed6b79d7ce31ea4d8f341a72))
+
+
+### Bug Fixes
+
+* **#2954:** more efficient LSP updates, increase diagnostics.debounce_delay from 50ms to 500ms ([#3007](https://github.com/nvim-tree/nvim-tree.lua/issues/3007)) ([1f3ffd6](https://github.com/nvim-tree/nvim-tree.lua/commit/1f3ffd6af145af2a4930a61c50f763264922c3fe))
+* **#2990:** Do not check if buffer is buflisted in diagnostics.update() ([#2998](https://github.com/nvim-tree/nvim-tree.lua/issues/2998)) ([28eac28](https://github.com/nvim-tree/nvim-tree.lua/commit/28eac2801b201f301449e976d7a9e8cfde053ba3))
+* **#3009:** nvim &lt; 0.10 apply view options locally ([#3010](https://github.com/nvim-tree/nvim-tree.lua/issues/3010)) ([ca7c4c3](https://github.com/nvim-tree/nvim-tree.lua/commit/ca7c4c33cac2ad66ec69d45e465379716ef0cc97))
+* **api:** correct argument types in `wrap_node` and `wrap_node_or_nil` ([#3006](https://github.com/nvim-tree/nvim-tree.lua/issues/3006)) ([f7c65e1](https://github.com/nvim-tree/nvim-tree.lua/commit/f7c65e11d695a084ca10b93df659bb7e68b71f9f))
+
 ## [1.8.0](https://github.com/nvim-tree/nvim-tree.lua/compare/nvim-tree-v1.7.1...nvim-tree-v1.8.0) (2024-11-09)
 
 

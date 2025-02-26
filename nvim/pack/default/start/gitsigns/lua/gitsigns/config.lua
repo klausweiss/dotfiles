@@ -84,10 +84,10 @@
 --- -- Undocumented
 --- @field _refresh_staged_on_update boolean
 --- @field _threaded_diff boolean
---- @field _inline2 boolean
 --- @field _git_version string
 --- @field _verbose boolean
 --- @field _test_mode boolean
+--- @field _new_sign_calc boolean
 
 local M = {
   Config = {
@@ -493,6 +493,7 @@ M.schema = {
 
   show_deleted = {
     type = 'boolean',
+    deprecated = true,
     default = false,
     description = [[
       Show the old version of hunks inline in the buffer (via virtual lines).
@@ -874,11 +875,11 @@ M.schema = {
     ]],
   },
 
-  _inline2 = {
+  _new_sign_calc = {
     type = 'boolean',
-    default = true,
+    default = false,
     description = [[
-      Enable enhanced version of preview_hunk_inline()
+      Use new sign calculation method
     ]],
   },
 
@@ -892,6 +893,15 @@ M.schema = {
   },
 }
 
+local function validate(k, v, ty)
+  if vim.fn.has('nvim-0.11') == 1 then
+    --- @diagnostic disable-next-line: redundant-parameter,param-type-mismatch
+    vim.validate(k, v, ty)
+  else
+    vim.validate({ [k] = { v, ty } })
+  end
+end
+
 --- @param config Gitsigns.Config
 local function validate_config(config)
   for k, v in
@@ -903,7 +913,7 @@ local function validate_config(config)
     else
       local ty = kschema.type
       if type(ty) == 'string' or type(ty) == 'function' then
-        vim.validate({ [k] = { v, ty } })
+        validate(k, v, ty)
       end
     end
   end

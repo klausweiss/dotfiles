@@ -148,12 +148,14 @@ require("flutter-tools").setup {} -- use defaults
 
 # Usage
 
-- `FlutterRun` - Run the current project. This needs to be run from within a flutter project.
+- `FlutterRun` - Run the current project. Respects `config.debugger.enabled` setting.
+- `FlutterDebug` - Force run current project in debug mode.
 - `FlutterDevices` - Brings up a list of connected devices to select from.
 - `FlutterEmulators` - Similar to devices but shows a list of emulators to choose from.
 - `FlutterReload` - Reload the running project.
 - `FlutterRestart` - Restart the current project.
 - `FlutterQuit` - Ends a running session.
+- `FlutterAttach` - Attach to a running app.
 - `FlutterDetach` - Ends a running session locally but keeps the process running on the device.
 - `FlutterOutlineToggle` - Toggle the outline window showing the widget tree for the given file.
 - `FlutterOutlineOpen` - Opens an outline window showing the widget tree for the given file.

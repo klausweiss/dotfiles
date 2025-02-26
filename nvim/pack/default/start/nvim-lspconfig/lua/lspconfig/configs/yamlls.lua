@@ -1,10 +1,10 @@
-local util = require 'lspconfig.util'
-
 return {
   default_config = {
     cmd = { 'yaml-language-server', '--stdio' },
     filetypes = { 'yaml', 'yaml.docker-compose', 'yaml.gitlab' },
-    root_dir = util.find_git_ancestor,
+    root_dir = function(fname)
+      return vim.fs.dirname(vim.fs.find('.git', { path = fname, upward = true })[1])
+    end,
     single_file_support = true,
     settings = {
       -- https://github.com/redhat-developer/vscode-redhat-telemetry#how-to-disable-telemetry-reporting
@@ -64,7 +64,7 @@ require('lspconfig').yamlls.setup {
     yaml = {
       ... -- other settings. note this overrides the lspconfig defaults.
       schemas = {
-        ["https://raw.githubusercontent.com/instrumenta/kubernetes-json-schema/master/v1.18.0-standalone-strict/all.json"] = "/*.k8s.yaml",
+        ["https://raw.githubusercontent.com/yannh/kubernetes-json-schema/refs/heads/master/v1.32.1-standalone-strict/all.json"] = "/*.k8s.yaml",
         ... -- other schemas
       },
     },

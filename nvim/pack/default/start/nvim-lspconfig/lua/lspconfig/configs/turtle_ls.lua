@@ -1,5 +1,3 @@
-local util = require 'lspconfig.util'
-
 local bin_name = 'turtle-language-server'
 local bin_path = os.getenv 'NVM_BIN'
 local full_path
@@ -16,14 +14,14 @@ if bin_path == nil then
     end
   end
   for _, p in ipairs(paths) do
-    local candidate = util.path.join(p, bin_name)
+    local candidate = table.concat({ p, bin_name }, '/')
     if (vim.loop.fs_stat(candidate) or {}).type == 'file' then
       full_path = candidate
       break
     end
   end
 else
-  full_path = util.path.join(bin_path, bin_name)
+  full_path = table.concat({ bin_path, bin_name }, '/')
 end
 
 return {
@@ -31,7 +29,7 @@ return {
     cmd = { 'node', full_path, '--stdio' },
     filetypes = { 'turtle', 'ttl' },
     root_dir = function(fname)
-      return util.find_git_ancestor(fname)
+      return vim.fs.dirname(vim.fs.find('.git', { path = fname, upward = true })[1])
     end,
   },
   docs = {

@@ -11,7 +11,7 @@ generating direct C code without needing a runtime system. To learn more:
 
 * Read the [Koka book][kokabook] for a tour of the Koka language and its specification.
 
-### v3.1.4, 2024
+### v3.1.3, 2025-01-22
 
 - Fix optimized compilation from VS Code (which defaulted to lower optimization before)
 

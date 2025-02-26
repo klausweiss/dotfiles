@@ -4,12 +4,20 @@ local util = require("neogit.lib.util")
 ---@class NeogitGitRevert
 local M = {}
 
+---@param commits string[]
+---@param args string[]
+---@return boolean, string|nil
 function M.commits(commits, args)
-  return git.cli.revert.no_commit.arg_list(util.merge(args, commits)).call({ pty = true }).code == 0
+  local result = git.cli.revert.no_commit.arg_list(util.merge(args, commits)).call { pty = true }
+  if result.code == 0 then
+    return true, ""
+  else
+    return false, result.stdout[1]
+  end
 end
 
 function M.continue()
-  git.cli.revert.continue.call()
+  git.cli.revert.continue.no_edit.call { pty = true }
 end
 
 function M.skip()

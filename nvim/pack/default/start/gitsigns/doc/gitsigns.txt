@@ -2,7 +2,7 @@
 *gitsigns.nvim*
 
 Author:   Lewis Russell <lewis6991@gmail.com>
-Version:  v0.9.0
+Version:  v1.0.1
 Homepage: <https://github.com/lewis6991/gitsigns.nvim>
 License:  MIT license
 
@@ -141,7 +141,7 @@ detach({bufnr})                                            *gitsigns.detach()*
 detach_all()                                           *gitsigns.detach_all()*
                 Detach Gitsigns from all buffers it is attached to.
 
-refresh()                                                 *gitsigns.refresh()*
+refresh({callback?})                                      *gitsigns.refresh()*
                 Refresh all buffers.
 
                 Attributes: ~
@@ -348,10 +348,16 @@ get_hunks({bufnr})                                      *gitsigns.get_hunks()*
                           • `"start"`: Line number (1-based)
                           • `"count"`: Line count
 
-select_hunk()                                         *gitsigns.select_hunk()*
+select_hunk({opts})                                   *gitsigns.select_hunk()*
                 Select the hunk under the cursor.
 
-preview_hunk_inline()                         *gitsigns.preview_hunk_inline()*
+                Parameters: ~
+                    {opts} (table|nil): Additional options:
+                           • {greedy}: (boolean)
+                             Select all contiguous hunks. Only useful if 'diff_opts'
+                             contains `linematch`. Defaults to `true`.
+
+preview_hunk_inline({callback?})              *gitsigns.preview_hunk_inline()*
                 Preview the hunk at the cursor position inline in the buffer.
 
 preview_hunk()                                       *gitsigns.preview_hunk()*
@@ -417,7 +423,7 @@ nav_hunk({direction}, {opts}, {callback?})                 *gitsigns.nav_hunk()*
                                 • {count}: (integer)
                                   Number of times to advance. Defaults to |v:count1|.
 
-reset_buffer_index()                           *gitsigns.reset_buffer_index()*
+reset_buffer_index({callback?})                *gitsigns.reset_buffer_index()*
                 Unstage all hunks for current buffer in the index. Note:
                 Unlike |gitsigns.undo_stage_hunk()| this doesn't simply undo
                 stages, this runs an `git reset` on current buffers file.
@@ -425,13 +431,15 @@ reset_buffer_index()                           *gitsigns.reset_buffer_index()*
                 Attributes: ~
                     {async}
 
-stage_buffer()                                       *gitsigns.stage_buffer()*
+stage_buffer({callback?})                            *gitsigns.stage_buffer()*
                 Stage all hunks in current buffer.
 
                 Attributes: ~
                     {async}
 
-undo_stage_hunk()                                 *gitsigns.undo_stage_hunk()*
+undo_stage_hunk({callback?})                      *gitsigns.undo_stage_hunk()*
+                DEPRECATED: use |gitsigns.stage_hunk()| on staged signs
+
                 Undo the last call of stage_hunk().
 
                 Note: only the calls to stage_hunk() performed in the current
@@ -481,6 +489,8 @@ stage_hunk({range}, {opts}, {callback?})               *gitsigns.stage_hunk()*
                               contains `linematch`. Defaults to `true`.
 
 toggle_deleted({value})                            *gitsigns.toggle_deleted()*
+                DEPRECATED: Use |gitsigns.preview_hunk_inline()|
+
                 Toggle |gitsigns-config-show_deleted|
 
                 Parameters: ~
@@ -699,6 +709,8 @@ culhl                                                  *gitsigns-config-culhl*
       and linked to the corresponding highlight group in `signs.*.hl`.
 
 show_deleted                                    *gitsigns-config-show_deleted*
+      DEPRECATED
+
       Type: `boolean`, Default: `false`
 
       Show the old version of hunks inline in the buffer (via virtual lines).
@@ -1051,6 +1063,11 @@ GitSignsChangedeleteLn
         Used for buffer line (when `config.linehl == true`) of 'changedelete' signs.
 
         Fallbacks: `GitSignsChangeLn`
+                                                        *hl-GitSignsTopdeleteLn*
+GitSignsTopdeleteLn
+        Used for buffer line (when `config.linehl == true`) of 'topdelete' signs.
+
+        Fallbacks: `GitSignsDeleteLn`
                                                         *hl-GitSignsUntrackedLn*
 GitSignsUntrackedLn
         Used for buffer line (when `config.linehl == true`) of 'untracked' signs.
@@ -1058,34 +1075,149 @@ GitSignsUntrackedLn
         Fallbacks: `GitSignsAddLn`
                                                         *hl-GitSignsAddCul*
 GitSignsAddCul
-        Used for the text of 'add' signs when the cursor is on the same line as the sign.
+        Used for the text (when the cursor is on the same line as the sign) of 'add' signs.
 
         Fallbacks: `GitSignsAdd`
                                                         *hl-GitSignsChangeCul*
 GitSignsChangeCul
-        Used for the text of 'change' signs when the cursor is on the same line as the sign.
+        Used for the text (when the cursor is on the same line as the sign) of 'change' signs.
 
         Fallbacks: `GitSignsChange`
                                                         *hl-GitSignsDeleteCul*
 GitSignsDeleteCul
-        Used for the text of 'delete' signs when the cursor is on the same line as the sign.
+        Used for the text (when the cursor is on the same line as the sign) of 'delete' signs.
 
         Fallbacks: `GitSignsDelete`
                                                         *hl-GitSignsChangedeleteCul*
 GitSignsChangedeleteCul
-        Used for the text of 'changedelete' signs when the cursor is on the same line as the sign.
+        Used for the text (when the cursor is on the same line as the sign) of 'changedelete' signs.
 
         Fallbacks: `GitSignsChangeCul`
                                                         *hl-GitSignsTopdeleteCul*
 GitSignsTopdeleteCul
-        Used for the text of 'topdelete' signs when the cursor is on the same line as the sign.
+        Used for the text (when the cursor is on the same line as the sign) of 'topdelete' signs.
 
         Fallbacks: `GitSignsDeleteCul`
                                                         *hl-GitSignsUntrackedCul*
 GitSignsUntrackedCul
-        Used for the text of 'untracked' signs when the cursor is on the same line as the sign.
+        Used for the text (when the cursor is on the same line as the sign) of 'untracked' signs.
 
         Fallbacks: `GitSignsAddCul`
+                                                        *hl-GitSignsStagedAdd*
+GitSignsStagedAdd
+        Used for the text of 'add' staged signs.
+
+        Fallbacks: `GitSignsAdd` (fg=50%)
+                                                        *hl-GitSignsStagedChange*
+GitSignsStagedChange
+        Used for the text of 'change' staged signs.
+
+        Fallbacks: `GitSignsChange` (fg=50%)
+                                                        *hl-GitSignsStagedDelete*
+GitSignsStagedDelete
+        Used for the text of 'delete' staged signs.
+
+        Fallbacks: `GitSignsDelete` (fg=50%)
+                                                        *hl-GitSignsStagedChangedelete*
+GitSignsStagedChangedelete
+        Used for the text of 'changedelete' staged signs.
+
+        Fallbacks: `GitSignsChangedelete` (fg=50%)
+                                                        *hl-GitSignsStagedTopdelete*
+GitSignsStagedTopdelete
+        Used for the text of 'topdelete' staged signs.
+
+        Fallbacks: `GitSignsTopdelete` (fg=50%)
+                                                        *hl-GitSignsStagedUntracked*
+GitSignsStagedUntracked
+        Used for the text of 'untracked' staged signs.
+
+        Fallbacks: `GitSignsUntracked` (fg=50%)
+                                                        *hl-GitSignsStagedAddNr*
+GitSignsStagedAddNr
+        Used for number column (when `config.numhl == true`) of 'add' staged signs.
+
+        Fallbacks: `GitSignsAddNr` (fg=50%)
+                                                        *hl-GitSignsStagedChangeNr*
+GitSignsStagedChangeNr
+        Used for number column (when `config.numhl == true`) of 'change' staged signs.
+
+        Fallbacks: `GitSignsChangeNr` (fg=50%)
+                                                        *hl-GitSignsStagedDeleteNr*
+GitSignsStagedDeleteNr
+        Used for number column (when `config.numhl == true`) of 'delete' staged signs.
+
+        Fallbacks: `GitSignsDeleteNr` (fg=50%)
+                                                        *hl-GitSignsStagedChangedeleteNr*
+GitSignsStagedChangedeleteNr
+        Used for number column (when `config.numhl == true`) of 'changedelete' staged signs.
+
+        Fallbacks: `GitSignsChangedeleteNr` (fg=50%)
+                                                        *hl-GitSignsStagedTopdeleteNr*
+GitSignsStagedTopdeleteNr
+        Used for number column (when `config.numhl == true`) of 'topdelete' staged signs.
+
+        Fallbacks: `GitSignsTopdeleteNr` (fg=50%)
+                                                        *hl-GitSignsStagedUntrackedNr*
+GitSignsStagedUntrackedNr
+        Used for number column (when `config.numhl == true`) of 'untracked' staged signs.
+
+        Fallbacks: `GitSignsUntrackedNr` (fg=50%)
+                                                        *hl-GitSignsStagedAddLn*
+GitSignsStagedAddLn
+        Used for buffer line (when `config.linehl == true`) of 'add' staged signs.
+
+        Fallbacks: `GitSignsAddLn` (fg=50%)
+                                                        *hl-GitSignsStagedChangeLn*
+GitSignsStagedChangeLn
+        Used for buffer line (when `config.linehl == true`) of 'change' staged signs.
+
+        Fallbacks: `GitSignsChangeLn` (fg=50%)
+                                                        *hl-GitSignsStagedChangedeleteLn*
+GitSignsStagedChangedeleteLn
+        Used for buffer line (when `config.linehl == true`) of 'changedelete' staged signs.
+
+        Fallbacks: `GitSignsChangedeleteLn` (fg=50%)
+                                                        *hl-GitSignsStagedTopdeleteLn*
+GitSignsStagedTopdeleteLn
+        Used for buffer line (when `config.linehl == true`) of 'topdelete' staged signs.
+
+        Fallbacks: `GitSignsTopdeleteLn` (fg=50%)
+                                                        *hl-GitSignsStagedUntrackedLn*
+GitSignsStagedUntrackedLn
+        Used for buffer line (when `config.linehl == true`) of 'untracked' staged signs.
+
+        Fallbacks: `GitSignsUntrackedLn` (fg=50%)
+                                                        *hl-GitSignsStagedAddCul*
+GitSignsStagedAddCul
+        Used for the text (when the cursor is on the same line as the sign) of 'add' staged signs.
+
+        Fallbacks: `GitSignsAddCul` (fg=50%)
+                                                        *hl-GitSignsStagedChangeCul*
+GitSignsStagedChangeCul
+        Used for the text (when the cursor is on the same line as the sign) of 'change' staged signs.
+
+        Fallbacks: `GitSignsChangeCul` (fg=50%)
+                                                        *hl-GitSignsStagedDeleteCul*
+GitSignsStagedDeleteCul
+        Used for the text (when the cursor is on the same line as the sign) of 'delete' staged signs.
+
+        Fallbacks: `GitSignsDeleteCul` (fg=50%)
+                                                        *hl-GitSignsStagedChangedeleteCul*
+GitSignsStagedChangedeleteCul
+        Used for the text (when the cursor is on the same line as the sign) of 'changedelete' staged signs.
+
+        Fallbacks: `GitSignsChangedeleteCul` (fg=50%)
+                                                        *hl-GitSignsStagedTopdeleteCul*
+GitSignsStagedTopdeleteCul
+        Used for the text (when the cursor is on the same line as the sign) of 'topdelete' staged signs.
+
+        Fallbacks: `GitSignsTopdeleteCul` (fg=50%)
+                                                        *hl-GitSignsStagedUntrackedCul*
+GitSignsStagedUntrackedCul
+        Used for the text (when the cursor is on the same line as the sign) of 'untracked' staged signs.
+
+        Fallbacks: `GitSignsUntrackedCul` (fg=50%)
                                                         *hl-GitSignsAddPreview*
 GitSignsAddPreview
         Used for added lines in previews.

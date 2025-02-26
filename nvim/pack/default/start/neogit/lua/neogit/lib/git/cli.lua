@@ -67,6 +67,8 @@ local runner = require("neogit.runner")
 ---@class GitCommandRm: GitCommandBuilder
 ---@field cached self
 
+---@class GitCommandMove: GitCommandBuilder
+
 ---@class GitCommandStatus: GitCommandBuilder
 ---@field short self
 ---@field branch self
@@ -176,6 +178,7 @@ local runner = require("neogit.runner")
 
 ---@class GitCommandRevert: GitCommandBuilder
 ---@field no_commit self
+---@field no_edit self
 ---@field continue self
 ---@field skip self
 ---@field abort self
@@ -368,6 +371,7 @@ local runner = require("neogit.runner")
 ---@field verify-commit  GitCommandVerifyCommit
 ---@field worktree       GitCommandWorktree
 ---@field write-tree     GitCommandWriteTree
+---@field mv             GitCommandMove
 ---@field worktree_root fun(dir: string):string
 ---@field git_dir fun(dir: string):string
 ---@field worktree_git_dir fun(dir: string):string
@@ -600,10 +604,13 @@ local configurations = {
     flags = {
       no_commit = "--no-commit",
       continue = "--continue",
+      no_edit = "--no-edit",
       skip = "--skip",
       abort = "--abort",
     },
   },
+
+  mv = config {},
 
   checkout = config {
     short_opts = {
@@ -974,7 +981,7 @@ local configurations = {
 ---@param dir string
 ---@return string Absolute path of current worktree
 local function worktree_root(dir)
-  local cmd = { "git", "-C", dir, "rev-parse", "--show-toplevel", "--path-format=absolute" }
+  local cmd = { "git", "-C", dir, "rev-parse", "--show-toplevel" }
   local result = vim.system(cmd, { text = true }):wait()
 
   return Path:new(vim.trim(result.stdout)):absolute()
@@ -983,7 +990,7 @@ end
 ---@param dir string
 ---@return string Absolute path of `.git/` directory
 local function git_dir(dir)
-  local cmd = { "git", "-C", dir, "rev-parse", "--git-common-dir", "--path-format=absolute" }
+  local cmd = { "git", "-C", dir, "rev-parse", "--git-common-dir" }
   local result = vim.system(cmd, { text = true }):wait()
 
   return Path:new(vim.trim(result.stdout)):absolute()
@@ -992,7 +999,7 @@ end
 ---@param dir string
 ---@return string Absolute path of `.git/` directory
 local function worktree_git_dir(dir)
-  local cmd = { "git", "-C", dir, "rev-parse", "--git-dir", "--path-format=absolute" }
+  local cmd = { "git", "-C", dir, "rev-parse", "--git-dir" }
   local result = vim.system(cmd, { text = true }):wait()
 
   return Path:new(vim.trim(result.stdout)):absolute()

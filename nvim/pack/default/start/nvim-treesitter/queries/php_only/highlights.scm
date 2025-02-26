@@ -194,6 +194,8 @@
     (name) @type
     (qualified_name
       (name) @type)
+    (relative_name
+      (name) @type)
   ])
 
 (named_type
@@ -207,6 +209,8 @@
   [
     (name) @type
     (qualified_name
+      (name) @type)
+    (relative_name
       (name) @type)
   ])
 
@@ -233,6 +237,17 @@
     alias: (name) @function
   ])
 
+(namespace_use_declaration
+  type: "function"
+  body: (namespace_use_group
+    (namespace_use_clause
+      [
+        (name) @function
+        (qualified_name
+          (name) @function)
+        alias: (name) @function
+      ])))
+
 (namespace_use_clause
   type: "const"
   [
@@ -242,10 +257,23 @@
     alias: (name) @constant
   ])
 
+(namespace_use_declaration
+  type: "const"
+  body: (namespace_use_group
+    (namespace_use_clause
+      [
+        (name) @constant
+        (qualified_name
+          (name) @constant)
+        alias: (name) @constant
+      ])))
+
 (class_interface_clause
   [
     (name) @type
     (qualified_name
+      (name) @type)
+    (relative_name
       (name) @type)
   ])
 
@@ -253,6 +281,8 @@
   scope: [
     (name) @type
     (qualified_name
+      (name) @type)
+    (relative_name
       (name) @type)
   ])
 
@@ -262,6 +292,8 @@
     (name) @type
     (qualified_name
       (name) @type)
+    (relative_name
+      (name) @type)
   ]
   (name) @constant)
 
@@ -269,6 +301,8 @@
   scope: [
     (name) @type
     (qualified_name
+      (name) @type)
+    (relative_name
       (name) @type)
   ])
 
@@ -287,6 +321,8 @@
     (name) @type
     (qualified_name
       (name) @type)
+    (relative_name
+      (name) @type)
   ])
 
 ; Functions, methods, constructors
@@ -304,11 +340,13 @@
   name: (name) @function.method)
 
 (function_call_expression
-  function: (qualified_name
-    (name) @function.call))
-
-(function_call_expression
-  (name) @function.call)
+  function: [
+    (name) @function.call
+    (qualified_name
+      (name) @function.call)
+    (relative_name
+      (name) @function.call)
+  ])
 
 (scoped_call_expression
   name: (name) @function.call)
@@ -342,6 +380,8 @@
   [
     (name) @constructor
     (qualified_name
+      (name) @constructor)
+    (relative_name
       (name) @constructor)
   ])
 
@@ -387,6 +427,9 @@
 
 (namespace_name
   (name) @module)
+
+(relative_name
+  "namespace" @module.builtin)
 
 ; Attributes
 (attribute_list) @attribute

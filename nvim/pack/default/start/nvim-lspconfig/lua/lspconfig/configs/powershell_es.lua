@@ -1,6 +1,5 @@
-local util = require 'lspconfig.util'
-
 local temp_path = vim.fn.stdpath 'cache'
+local util = require 'lspconfig.util'
 
 local function make_cmd(new_config)
   if new_config.bundle_path ~= nil then
@@ -22,7 +21,7 @@ return {
     end,
 
     filetypes = { 'ps1' },
-    root_dir = util.find_git_ancestor,
+    root_dir = util.root_pattern('PSScriptAnalyzerSettings.psd1', '.git'),
     single_file_support = true,
   },
   docs = {

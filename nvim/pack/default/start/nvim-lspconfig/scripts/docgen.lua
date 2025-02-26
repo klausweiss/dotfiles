@@ -1,3 +1,7 @@
+#!/usr/bin/env -S nvim -l
+local root = vim.trim(vim.system({ 'git', 'rev-parse', '--show-toplevel' }):wait().stdout)
+vim.opt.rtp:append(root)
+
 require 'lspconfig'
 local configs = require 'lspconfig.configs'
 local util = require 'lspconfig.util'
@@ -41,7 +45,7 @@ local function indent(n, s)
     assert(type(n) == 'string', 'n must be number or string')
     prefix = n
   end
-  local lines = vim.split(s, '\n', true)
+  local lines = vim.split(s, '\n')
   for i, line in ipairs(lines) do
     lines[i] = prefix .. line
   end
@@ -89,7 +93,7 @@ local function require_all_configs()
   vim.env.XDG_CACHE_HOME = '/home/user/.cache'
 
   -- Configs are lazy-loaded, tickle them to populate the `configs` singleton.
-  for _, v in ipairs(vim.fn.glob('lua/lspconfig/configs/*.lua', 1, 1)) do
+  for _, v in ipairs(vim.fn.glob(vim.fs.joinpath(root, 'lua/lspconfig/configs/*.lua'), true, true)) do
     local module_name = v:gsub('.*/', ''):gsub('%.lua$', '')
     configs[module_name] = require('lspconfig.configs.' .. module_name)
   end
@@ -107,7 +111,7 @@ local function make_lsp_sections()
       local template_def = template_object.config_def
       local docs = template_def.docs
       -- "lua/lspconfig/configs/xx.lua"
-      local config_file = ('lua/lspconfig/configs/%s.lua'):format(config_name)
+      local config_file = (vim.fs.joinpath(root, 'lua/lspconfig/configs/%s.lua')):format(config_name)
 
       local params = {
         config_name = config_name,
@@ -155,13 +159,14 @@ local function make_lsp_sections()
                 end
               end
               io.close(file)
+              local config_relpath = vim.fs.relpath(root, config_file)
 
               -- XXX: "../" because the path is outside of the doc/ dir.
               return ('- `%s` source (use "gF" to visit): [../%s:%d](../%s#L%d)'):format(
                 k,
-                config_file,
+                config_relpath,
                 linenr,
-                config_file,
+                config_relpath,
                 linenr
               )
             end),
@@ -178,7 +183,7 @@ local function make_lsp_sections()
             end
           end,
           function()
-            local package_json_name = util.path.join(tempdir, config_name .. '.package.json')
+            local package_json_name = table.concat({ tempdir, config_name .. '.package.json' }, '/')
             if docs.package_json then
               if not ((vim.loop.fs_stat(package_json_name) or {}).type == 'file') then
                 os.execute(string.format('curl -v -L -o %q %q', package_json_name, docs.package_json))
@@ -278,21 +283,23 @@ local function make_implemented_servers_list()
 end
 
 local function generate_readme(template_file, params)
-  vim.validate {
-    lsp_server_details = { params.lsp_server_details, 's' },
-    implemented_servers_list = { params.implemented_servers_list, 's' },
-  }
+  vim.validate('lsp_server_details', params.lsp_server_details, 'string')
+  vim.validate('implemented_servers_list', params.implemented_servers_list, 'string')
+
   local input_template = readfile(template_file)
   local readme_data = template(input_template, params)
 
-  local writer = assert(io.open('doc/configs.md', 'w'))
+  local conf_md = vim.fs.joinpath(root, 'doc/configs.md')
+  local conf_txt = vim.fs.joinpath(root, 'doc/configs.txt')
+
+  local writer = assert(io.open(conf_md, 'w'))
   writer:write(readme_data)
   writer:close()
-  vim.loop.fs_copyfile('doc/configs.md', 'doc/configs.txt')
+  vim.loop.fs_copyfile(conf_md, conf_txt)
 end
 
 require_all_configs()
-generate_readme('scripts/docs_template.md', {
+generate_readme(vim.fs.joinpath(root, 'scripts/docs_template.md'), {
   implemented_servers_list = make_implemented_servers_list(),
   lsp_server_details = make_lsp_sections(),
 })

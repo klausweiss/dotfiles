@@ -42,7 +42,7 @@ local function cleanup_items(...)
       api.nvim_buf_delete(bufnr, { force = false })
     end
 
-    fn.delete(item.name)
+    fn.delete(fn.fnameescape(item.name))
   end
 end
 
@@ -786,12 +786,6 @@ M.n_discard = function(self)
       if section == "untracked" then
         message = "Discard hunk?"
         action = function()
-          local hunks =
-            self.buffer.ui:item_hunks(selection.item, selection.first_line, selection.last_line, false)
-
-          local patch = git.index.generate_patch(selection.item, hunks[1], hunks[1].from, hunks[1].to, true)
-
-          git.index.apply(patch, { reverse = true })
           git.index.apply(patch, { reverse = true })
         end
         refresh = { update_diffs = { "untracked:" .. selection.item.name } }
@@ -961,6 +955,41 @@ M.n_init_repo = function(_self)
   return function()
     git.init.init_repo()
   end
+end
+
+---@param self StatusBuffer
+M.n_rename = function(self)
+  return a.void(function()
+    local selection = self.buffer.ui:get_selection()
+    local paths = git.files.all_tree()
+
+    if
+      selection.item
+      and selection.item.escaped_path
+      and git.files.is_tracked(selection.item.escaped_path)
+    then
+      paths = util.deduplicate(util.merge({ selection.item.escaped_path }, paths))
+    end
+
+    local selected = FuzzyFinderBuffer.new(paths):open_async { prompt_prefix = "Rename file" }
+    if (selected or "") == "" then
+      return
+    end
+
+    local destination = input.get_user_input("Move to", { completion = "dir", prepend = selected })
+    if (destination or "") == "" then
+      return
+    end
+
+    assert(destination, "must have a destination")
+    local success = git.files.move(selected, destination)
+
+    if not success then
+      notification.warn("Renaming failed")
+    end
+
+    self:dispatch_refresh({ update_diffs = { "*:*" } }, "n_rename")
+  end)
 end
 
 ---@param self StatusBuffer
@@ -1439,4 +1468,34 @@ M.n_command = function(self)
     })
   end)
 end
+
+---@param self StatusBuffer
+M.n_next_section = function(self)
+  return function()
+    local section = self.buffer.ui:get_current_section()
+    if section then
+      local position = section.position.row_end + 2
+      self.buffer:move_cursor(position)
+    else
+      self.buffer:move_cursor(self.buffer.ui:first_section().first + 1)
+    end
+  end
+end
+
+---@param self StatusBuffer
+M.n_prev_section = function(self)
+  return function()
+    local section = self.buffer.ui:get_current_section()
+    if section then
+      local prev_section = self.buffer.ui:get_current_section(section.position.row_start - 1)
+      if prev_section then
+        self.buffer:move_cursor(prev_section.position.row_start + 1)
+        return
+      end
+    end
+
+    self.buffer:win_exec("norm! gg")
+  end
+end
+
 return M

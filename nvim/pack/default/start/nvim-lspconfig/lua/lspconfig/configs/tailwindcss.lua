@@ -109,9 +109,9 @@ return {
         'postcss.config.cjs',
         'postcss.config.mjs',
         'postcss.config.ts'
-      )(fname) or util.find_package_json_ancestor(fname) or util.find_node_modules_ancestor(fname) or util.find_git_ancestor(
-        fname
-      )
+      )(fname) or vim.fs.dirname(vim.fs.find('package.json', { path = fname, upward = true })[1]) or vim.fs.dirname(
+        vim.fs.find('node_modules', { path = fname, upward = true })[1]
+      ) or vim.fs.dirname(vim.fs.find('.git', { path = fname, upward = true })[1])
     end,
   },
   docs = {

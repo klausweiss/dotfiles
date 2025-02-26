@@ -75,20 +75,6 @@ function M.to_selection_entries(result, device_type)
   end, devices)
 end
 
-function M.select_device(device, args)
-  if not device then return ui.notify("Sorry there is no device on this line") end
-  if device.type == EMULATOR then
-    M.launch_emulator(device)
-  else
-    if args then
-      vim.list_extend(args, { "-d", device.id })
-      commands.run({ cli_args = args })
-    else
-      commands.run({ device = device })
-    end
-  end
-end
-
 -----------------------------------------------------------------------------//
 -- Emulators
 -----------------------------------------------------------------------------//
@@ -119,7 +105,7 @@ local function show_emulators(result)
     ui.select({
       title = "Flutter emulators",
       lines = lines,
-      on_select = M.select_device,
+      on_select = function(emulator) M.launch_emulator(emulator) end,
     })
   end
 end
@@ -147,7 +133,7 @@ local function show_devices(job)
     ui.select({
       title = "Flutter devices",
       lines = lines,
-      on_select = M.select_device,
+      on_select = function(device) commands.run({ device = device }) end,
     })
   end
 end

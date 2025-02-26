@@ -10,7 +10,7 @@
 let s:configuration = gruvbox_material#get_configuration()
 let s:palette = gruvbox_material#get_palette(s:configuration.background, s:configuration.foreground, s:configuration.colors_override)
 let s:path = expand('<sfile>:p') " the path of this script
-let s:last_modified = 'Mon Sep 30 10:06:08 UTC 2024'
+let s:last_modified = 'Mon Feb 24 13:14:51 UTC 2025'
 let g:gruvbox_material_loaded_file_types = []
 
 if !(exists('g:colors_name') && g:colors_name ==# 'gruvbox-material' && s:configuration.better_performance)
@@ -480,6 +480,9 @@ else
   call gruvbox_material#highlight('BlueSign', s:palette.blue, s:palette.bg2)
   call gruvbox_material#highlight('PurpleSign', s:palette.purple, s:palette.bg2)
 endif
+highlight! link Added Green
+highlight! link Removed Red
+highlight! link Changed Blue
 if s:configuration.diagnostic_text_highlight
   call gruvbox_material#highlight('ErrorText', s:palette.none, s:palette.bg_visual_red, 'undercurl', s:palette.red)
   call gruvbox_material#highlight('WarningText', s:palette.none, s:palette.bg_visual_yellow, 'undercurl', s:palette.yellow)
@@ -916,10 +919,10 @@ highlight! link CocGitRemovedSign RedSign
 highlight! link CocGitTopRemovedSign RedSign
 " }}}
 " prabirshrestha/vim-lsp {{{
-highlight! link LspErrorVirtual VirtualTextError
-highlight! link LspWarningVirtual VirtualTextWarning
-highlight! link LspInformationVirtual VirtualTextInfo
-highlight! link LspHintVirtual VirtualTextHint
+highlight! link LspErrorVirtualText VirtualTextError
+highlight! link LspWarningVirtualText VirtualTextWarning
+highlight! link LspInformationVirtualText VirtualTextInfo
+highlight! link LspHintVirtualText VirtualTextHint
 highlight! link LspErrorHighlight ErrorText
 highlight! link LspWarningHighlight WarningText
 highlight! link LspInformationHighlight InfoText
@@ -947,6 +950,22 @@ highlight! link LspSemanticString TSString
 highlight! link LspSemanticNumber TSNumber
 highlight! link LspSemanticRegexp TSStringRegex
 highlight! link LspSemanticOperator TSOperator
+" }}}
+" yegappan/lsp {{{
+highlight! link LspDiagInlineError ErrorText
+highlight! link LspDiagInlineWarning WarningText
+highlight! link LspDiagInlineInfo InfoText
+highlight! link LspDiagInlineHint HintText
+highlight! link LspDiagSignErrorText RedSign
+highlight! link LspDiagSignWarningText YellowSign
+highlight! link LspDiagSignInfoText BlueSign
+highlight! link LspDiagSignHintText GreenSign
+highlight! link LspDiagVirtualTextError VirtualTextError
+highlight! link LspDiagVirtualTextWarning VirtualTextWarning
+highlight! link LspDiagVirtualTextInfo VirtualTextInfo
+highlight! link LspDiagVirtualTextHint VirtualTextHint
+highlight! link LspInlayHintsParam InlayHints
+highlight! link LspSigActiveParameter DiffAdd
 " }}}
 " ycm-core/YouCompleteMe {{{
 highlight! link YcmErrorSign RedSign
@@ -1309,6 +1328,12 @@ for kind in g:gruvbox_material_lsp_kind_color
   execute "highlight! link CmpItemKind" . kind[0] . " " . kind[1]
 endfor
 " }}}
+" Saghen/blink.cmp {{{
+call gruvbox_material#highlight('BlinkCmpLabelMatch', s:palette.green, s:palette.none, 'bold')
+for kind in g:gruvbox_material_lsp_kind_color
+  execute "highlight! link BlinkCmpKind" . kind[0] . " " . kind[1]
+endfor
+" }}}
 " SmiteshP/nvim-navic {{{
 highlight! link NavicText Fg
 highlight! link NavicSeparator Grey
@@ -1326,6 +1351,25 @@ call gruvbox_material#highlight('TelescopeMatching', s:palette.green, s:palette.
 highlight! link TelescopeBorder Grey
 highlight! link TelescopePromptPrefix Orange
 highlight! link TelescopeSelection DiffAdd
+" }}}
+" ibhagwan/fzf-lua {{{
+highlight! link FzfLuaBorder Grey
+highlight! link FzfLuaTitle Title
+" }}}
+" folke/snacks.nvim {{{
+highlight! link SnacksPicker Normal
+highlight! link SnacksPickerBorder Grey
+highlight! link SnacksPickerTitle Title
+highlight! link SnacksPickerFooter SnacksPickerTitle
+highlight! link SnacksPickerPrompt Orange
+highlight! link SnacksPickerTotals Grey
+highlight! link SnacksPickerInputCursorLine Normal
+highlight! link SnacksPickerListCursorLine DiffAdd
+call gruvbox_material#highlight('SnacksPickerMatch', s:palette.green, s:palette.none, 'bold')
+highlight! link SnacksPickerToggle CursorLine
+highlight! link SnacksPickerDir Comment
+highlight! link SnacksPickerBufFlags Blue
+highlight! link SnacksPickerKeymapRhs Normal
 " }}}
 " lewis6991/gitsigns.nvim {{{
 highlight! link GitSignsAdd GreenSign
@@ -1353,14 +1397,14 @@ highlight! link IndentBlanklineChar IblIndent
 highlight! link IndentBlanklineSpaceChar IndentBlanklineChar
 highlight! link IndentBlanklineSpaceCharBlankline IndentBlanklineChar
 " }}}
-" p00f/nvim-ts-rainbow {{{
-highlight! link rainbowcol1 Red
-highlight! link rainbowcol2 Orange
-highlight! link rainbowcol3 Yellow
-highlight! link rainbowcol4 Green
-highlight! link rainbowcol5 Aqua
-highlight! link rainbowcol6 Blue
-highlight! link rainbowcol7 Purple
+" HiPhish/rainbow-delimiters.nvim {{{
+highlight! link RainbowDelimiterRed Red
+highlight! link RainbowDelimiterOrange Orange
+highlight! link RainbowDelimiterYellow Yellow
+highlight! link RainbowDelimiterGreen Green
+highlight! link RainbowDelimiterCyan Aqua
+highlight! link RainbowDelimiterBlue Blue
+highlight! link RainbowDelimiterViolet Purple
 " }}}
 " romgrk/barbar.nvim {{{
 call gruvbox_material#highlight('BufferCurrent', s:palette.fg1, s:palette.bg0)
@@ -1518,8 +1562,8 @@ highlight! link MiniClueTitle FloatTitle
 highlight! link MiniCompletionActiveParameter LspSignatureActiveParameter
 highlight! link MiniCursorword CurrentWord
 highlight! link MiniCursorwordCurrent CurrentWord
-highlight! link MiniDepsChangeAdded diffAdded
-highlight! link MiniDepsChangeRemoved diffRemoved
+highlight! link MiniDepsChangeAdded Added
+highlight! link MiniDepsChangeRemoved Removed
 highlight! link MiniDepsHint DiagnosticHint
 highlight! link MiniDepsInfo DiagnosticInfo
 highlight! link MiniDepsMsgBreaking DiagnosticWarn
@@ -1595,9 +1639,9 @@ endif
 " Extended File Types: {{{
 " Whitelist: {{{ File type optimizations that will always be loaded.
 " diff {{{
-highlight! link diffAdded Green
-highlight! link diffRemoved Red
-highlight! link diffChanged Blue
+highlight! link diffAdded Added
+highlight! link diffRemoved Removed
+highlight! link diffChanged Changed
 highlight! link diffOldFile Yellow
 highlight! link diffNewFile Orange
 highlight! link diffFile Aqua

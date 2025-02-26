@@ -1,9 +1,7 @@
-local util = require 'lspconfig.util'
-
 local function get_java_bin(config)
   local java_bin = vim.tbl_get(config, 'drools', 'java', 'bin')
   if not java_bin then
-    java_bin = vim.env.JAVA_HOME and util.path.join(vim.env.JAVA_HOME, 'bin', 'java') or 'java'
+    java_bin = vim.env.JAVA_HOME and (vim.env.JAVA_HOME .. '/bin/java') or 'java'
     if vim.fn.has 'win32' == 1 then
       java_bin = java_bin .. '.exe'
     end
@@ -37,7 +35,9 @@ end
 return {
   default_config = {
     filetypes = { 'drools' },
-    root_dir = util.find_git_ancestor,
+    root_dir = function(fname)
+      return vim.fs.dirname(vim.fs.find('.git', { path = fname, upward = true })[1])
+    end,
     single_file_support = true,
     on_new_config = function(new_config)
       new_config.cmd = get_cmd(new_config)

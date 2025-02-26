@@ -263,6 +263,7 @@
   (integer_vector_type)
   (time_unit)
   (integer_atom_type)
+  (non_integer_type)
 ] @type.builtin
 
 (data_type
@@ -576,6 +577,7 @@ c_name: (c_identifier) @function
   "directive_undef"
   "directive_undefineall"
   "directive_ifdef"
+  "directive_ifndef"
   "directive_elsif"
   "directive_endif"
   "directive_else"

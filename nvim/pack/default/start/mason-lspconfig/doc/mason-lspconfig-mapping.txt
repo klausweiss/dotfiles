@@ -22,7 +22,7 @@ bicep-lsp                                 bicep
 biome                                     biome
 brighterscript                            bright_script
 bsl-language-server                       bsl_ls
-buf-language-server                       bufls
+buf                                       buf_ls
 bzl                                       bzl
 cairo-language-server                     cairo_ls
 clangd                                    clangd
@@ -68,6 +68,7 @@ flux-lsp                                  flux_lsp
 foam-language-server                      foam_ls
 fortls                                    fortls
 fsautocomplete                            fsautocomplete
+ginko_ls                                  ginko_ls
 gitlab-ci-ls                              gitlab_ci_ls
 glint                                     glint
 glsl_analyzer                             glsl_analyzer
@@ -97,6 +98,7 @@ jq-lsp                                    jqls
 json-lsp                                  jsonls
 jsonnet-language-server                   jsonnet_ls
 julia-lsp                                 julials
+kcl                                       kcl
 kotlin-language-server                    kotlin_language_server
 lelwel                                    lelwel_ls
 lemminx                                   lemminx
@@ -157,7 +159,6 @@ rome                                      rome
 rubocop                                   rubocop
 ruby-lsp                                  ruby_lsp
 ruff                                      ruff
-ruff-lsp                                  ruff_lsp
 rust-analyzer                             rust_analyzer
 salt-lsp                                  salt_ls
 serve-d                                   serve_d
@@ -184,6 +185,7 @@ starpls                                   starpls
 steep                                     steep
 stimulus-language-server                  stimulus_ls
 stylelint-lsp                             stylelint_lsp
+superhtml                                 superhtml
 svelte-language-server                    svelte
 svlangserver                              svlangserver
 svls                                      svls
@@ -203,7 +205,6 @@ typescript-language-server                ts_ls
 tsp-server                                tsp_server
 twiggy-language-server                    twiggy_language_server
 typos-lsp                                 typos_lsp
-typst-lsp                                 typst_lsp
 unocss-language-server                    unocss
 v-analyzer                                v_analyzer
 vacuum                                    vacuum

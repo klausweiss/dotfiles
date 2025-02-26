@@ -102,29 +102,15 @@ local function register_default_configurations(paths, is_flutter_project, projec
   end
 end
 
-function DebuggerRunner:run(
-  paths,
-  args,
-  cwd,
-  on_run_data,
-  on_run_exit,
-  is_flutter_project,
-  project_config
-)
+local function register_dap_listeners(on_run_data, on_run_exit)
   local started = false
   local before_start_logs = {}
-  vm_service_extensions.reset()
   dap.listeners.after["event_output"][plugin_identifier] = function(_, body)
-    if body and body.output then
-      for line in body.output:gmatch("[^\r\n]+") do
-        if not started then table.insert(before_start_logs, line) end
-        on_run_data(body.category == "sterr", line)
-      end
-    end
+    on_run_data(started, before_start_logs, body)
   end
 
   local handle_termination = function()
-    if next(before_start_logs) ~= nil then on_run_exit(before_start_logs, args) end
+    if next(before_start_logs) ~= nil then on_run_exit(before_start_logs) end
   end
 
   dap.listeners.before["event_exited"][plugin_identifier] = function(_, _) handle_termination() end
@@ -154,11 +140,103 @@ function DebuggerRunner:run(
       vm_service_extensions.set_service_extensions_state(body.extension, body.value)
     end
   end
+end
+
+function DebuggerRunner:run(
+  opts,
+  paths,
+  args,
+  cwd,
+  on_run_data,
+  on_run_exit,
+  is_flutter_project,
+  project_config,
+  last_launch_config
+)
+  vm_service_extensions.reset()
+  ---@type dap.Configuration
+  local selected_launch_config = nil
+
+  register_dap_listeners(
+    function(started, before_start_logs, body)
+      if body and body.output then
+        for line in body.output:gmatch("[^\r\n]+") do
+          if not started then table.insert(before_start_logs, line) end
+          on_run_data(body.category == "sterr", line)
+        end
+      end
+    end,
+    function(before_start_logs)
+      on_run_exit(before_start_logs, args, opts, project_config, selected_launch_config)
+    end
+  )
 
   register_debug_adapter(paths, is_flutter_project)
   local launch_configurations = {}
   local launch_configuration_count = 0
-  register_default_configurations(paths, is_flutter_project, project_config)
+  if last_launch_config then
+    dap.run(last_launch_config)
+    return
+  else
+    register_default_configurations(paths, is_flutter_project, project_config)
+    if config.debugger.register_configurations then
+      config.debugger.register_configurations(paths)
+    end
+    local all_configurations = require("dap").configurations.dart
+    if not all_configurations then
+      ui.notify("No launch configuration for DAP found", ui.ERROR)
+      return
+    end
+    for _, c in ipairs(all_configurations) do
+      if c.request == "launch" then
+        table.insert(launch_configurations, c)
+        launch_configuration_count = launch_configuration_count + 1
+      end
+    end
+  end
+
+  if launch_configuration_count == 0 then
+    ui.notify("No launch configuration for DAP found", ui.ERROR)
+    return
+  else
+    require("dap.ui").pick_if_many(
+      launch_configurations,
+      "Select launch configuration",
+      function(item)
+        return fmt("%s : %s | %s", item.name, item.program or item.cwd, vim.inspect(item.args))
+      end,
+      function(launch_config)
+        if not launch_config then return end
+        launch_config = vim.deepcopy(launch_config)
+        if not launch_config.cwd then launch_config.cwd = cwd end
+        launch_config.args = vim.list_extend(launch_config.args or {}, args or {})
+        launch_config.dartSdkPath = paths.dart_sdk
+        launch_config.flutterSdkPath = paths.flutter_sdk
+        if config.debugger.evaluate_to_string_in_debug_views then
+          launch_config.evaluateToStringInDebugViews = true
+        end
+        selected_launch_config = launch_config
+        dap.run(launch_config)
+      end
+    )
+  end
+end
+
+function DebuggerRunner:attach(paths, args, cwd, on_run_data, on_run_exit)
+  vm_service_extensions.reset()
+  register_dap_listeners(function(started, before_start_logs, body)
+    if body and body.output then
+      for line in body.output:gmatch("[^\r\n]+") do
+        if not started then table.insert(before_start_logs, line) end
+        on_run_data(body.category == "sterr", line)
+      end
+    end
+  end, function(before_start_logs) on_run_exit(before_start_logs, args) end)
+
+  register_debug_adapter(paths, true)
+  local launch_configurations = {}
+  local launch_configuration_count = 0
+  register_default_configurations(paths, true)
   if config.debugger.register_configurations then config.debugger.register_configurations(paths) end
   local all_configurations = require("dap").configurations.dart
   if not all_configurations then
@@ -166,7 +244,7 @@ function DebuggerRunner:run(
     return
   end
   for _, c in ipairs(all_configurations) do
-    if c.request == "launch" then
+    if c.request == "attach" then
       table.insert(launch_configurations, c)
       launch_configuration_count = launch_configuration_count + 1
     end
@@ -199,9 +277,13 @@ function DebuggerRunner:run(
 end
 
 function DebuggerRunner:send(cmd, quiet)
+  if cmd == "open_dev_tools" then
+    dev_tools.open_dev_tools()
+    return
+  end
   local request = command_requests[cmd]
   if request ~= nil then
-    dap.session():request(request)
+    dap.session():request(request, nil, function() end)
     return
   end
   local service_activation_params = vm_service_extensions.get_request_params(cmd)

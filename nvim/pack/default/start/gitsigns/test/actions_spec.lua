@@ -4,7 +4,6 @@ local setup_gitsigns = helpers.setup_gitsigns
 local feed = helpers.feed
 local test_file = helpers.test_file
 local edit = helpers.edit
-local command = helpers.api.nvim_command
 local check = helpers.check
 local exec_lua = helpers.exec_lua
 local fn = helpers.fn
@@ -50,16 +49,51 @@ local function expect_hunks(exp_hunks)
   end)
 end
 
+local delay = 10
+
+local function command(cmd)
+  helpers.sleep(delay)
+  helpers.api.nvim_command(cmd)
+
+  -- Flaky tests, add a large delay between commands.
+  -- Flakiness is due to actions being async and problems occur when an action
+  -- is run while another action or update is running.
+  -- Must wait for actions and updates to finish.
+  helpers.sleep(delay)
+end
+
+local function retry(f)
+  local orig_delay = delay
+  local ok, err --- @type boolean, string?
+
+  for _ = 1, 20 do
+    --- @type boolean, string?
+    ok, err = pcall(f)
+    if ok then
+      return
+    end
+    delay = delay * 1.6
+    print('failed, retrying with delay', delay)
+  end
+
+  if err then
+    delay = orig_delay
+    error(err)
+  end
+end
+
 describe('actions', function()
-  local config --- @type Gitsigns.Config
+  local orig_it = it
+  local function it(desc, f)
+    orig_it(desc, function()
+      retry(f)
+    end)
+  end
 
   before_each(function()
     clear()
-    -- Make gitisigns available
-    exec_lua('package.path = ...', package.path)
-    config = vim.deepcopy(test_config)
     command('cd ' .. system({ 'dirname', os.tmpname() }))
-    setup_gitsigns(config)
+    setup_gitsigns(test_config)
   end)
 
   it('works with commands', function()
@@ -68,19 +102,19 @@ describe('actions', function()
 
     feed('jjjccEDIT<esc>')
     check({
-      status = { head = 'master', added = 0, changed = 1, removed = 0 },
+      status = { head = 'main', added = 0, changed = 1, removed = 0 },
       signs = { changed = 1 },
     })
 
     command('Gitsigns stage_hunk')
     check({
-      status = { head = 'master', added = 0, changed = 0, removed = 0 },
+      status = { head = 'main', added = 0, changed = 0, removed = 0 },
       signs = {},
     })
 
     command('Gitsigns undo_stage_hunk')
     check({
-      status = { head = 'master', added = 0, changed = 1, removed = 0 },
+      status = { head = 'main', added = 0, changed = 1, removed = 0 },
       signs = { changed = 1 },
     })
 
@@ -88,25 +122,25 @@ describe('actions', function()
     feed('ggccThat<esc>')
 
     check({
-      status = { head = 'master', added = 0, changed = 2, removed = 0 },
+      status = { head = 'main', added = 0, changed = 2, removed = 0 },
       signs = { changed = 2 },
     })
 
     command('Gitsigns stage_buffer')
     check({
-      status = { head = 'master', added = 0, changed = 0, removed = 0 },
+      status = { head = 'main', added = 0, changed = 0, removed = 0 },
       signs = {},
     })
 
     command('Gitsigns reset_buffer_index')
     check({
-      status = { head = 'master', added = 0, changed = 2, removed = 0 },
+      status = { head = 'main', added = 0, changed = 2, removed = 0 },
       signs = { changed = 2 },
     })
 
     command('Gitsigns reset_hunk')
     check({
-      status = { head = 'master', added = 0, changed = 1, removed = 0 },
+      status = { head = 'main', added = 0, changed = 1, removed = 0 },
       signs = { changed = 1 },
     })
   end)
@@ -118,7 +152,7 @@ describe('actions', function()
     end)
 
     before_each(function()
-      helpers.git({ 'reset', '--hard' })
+      helpers.git('reset', '--hard')
       edit(test_file)
     end)
 
@@ -308,14 +342,14 @@ describe('actions', function()
     local newfile = helpers.newfile
     exec_lua([[vim.g.editorconfig = false]])
     system("printf 'This is a file with no nl at eof' > " .. newfile)
-    helpers.git({ 'add', newfile })
-    helpers.git({ 'commit', '-m', 'commit on main' })
+    helpers.git('add', newfile)
+    helpers.git('commit', '-m', 'commit on main')
 
     edit(newfile)
-    check({ status = { head = 'master', added = 0, changed = 0, removed = 0 } })
+    check({ status = { head = 'main', added = 0, changed = 0, removed = 0 } })
     feed('x')
-    check({ status = { head = 'master', added = 0, changed = 1, removed = 0 } })
+    check({ status = { head = 'main', added = 0, changed = 1, removed = 0 } })
     command('Gitsigns stage_hunk')
-    check({ status = { head = 'master', added = 0, changed = 0, removed = 0 } })
+    check({ status = { head = 'main', added = 0, changed = 0, removed = 0 } })
   end)
 end)

@@ -8,24 +8,14 @@ local root_files = {
   'stylua.toml',
   'selene.toml',
   'selene.yml',
+  '.git',
 }
 
 return {
   default_config = {
     cmd = { 'lua-language-server' },
     filetypes = { 'lua' },
-    root_dir = function(fname)
-      local root = util.root_pattern(unpack(root_files))(fname)
-      if root and root ~= vim.env.HOME then
-        return root
-      end
-      local root_lua = util.root_pattern 'lua/'(fname) or ''
-      local root_git = util.find_git_ancestor(fname) or ''
-      if root_lua == '' and root_git == '' then
-        return
-      end
-      return #root_lua >= #root_git and root_lua or root_git
-    end,
+    root_dir = util.root_pattern(root_files),
     single_file_support = true,
     log_level = vim.lsp.protocol.MessageType.Warning,
   },
@@ -48,7 +38,7 @@ require'lspconfig'.lua_ls.setup {
   on_init = function(client)
     if client.workspace_folders then
       local path = client.workspace_folders[1].name
-      if vim.loop.fs_stat(path..'/.luarc.json') or vim.loop.fs_stat(path..'/.luarc.jsonc') then
+      if path ~= vim.fn.stdpath('config') and (vim.loop.fs_stat(path..'/.luarc.json') or vim.loop.fs_stat(path..'/.luarc.jsonc')) then
         return
       end
     end

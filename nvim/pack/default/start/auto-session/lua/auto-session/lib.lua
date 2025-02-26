@@ -520,7 +520,7 @@ function Lib.find_matching_directory(dirToFind, dirs)
     ---@diagnostic disable-next-line: param-type-mismatch
     for path in string.gmatch(dir, "[^\r\n]+") do
       local simplified_path = vim.fn.simplify(path)
-      local path_without_trailing_slashes = string.gsub(simplified_path, "/+$", "")
+      local path_without_trailing_slashes = string.gsub(simplified_path, "([/~].*)/+$", "%1")
 
       -- Lib.logger.debug("find_matching_directory simplified: " .. simplified_path)
 
@@ -679,6 +679,40 @@ function Lib.get_session_list(sessions_dir)
       path = sessions_dir .. file_name,
     }
   end, entries)
+end
+
+---Get the name of the altnernate session stored in the session control file
+---@return string|nil name of the alternate session, suitable for calls to LoadSession
+function Lib.get_alternate_session_name(session_control_conf)
+  if not session_control_conf then
+    Lib.logger.error "No session_control in config!"
+    return nil
+  end
+
+  local filepath = vim.fn.expand(session_control_conf.control_dir) .. session_control_conf.control_filename
+
+  if vim.fn.filereadable(filepath) == 0 then
+    return nil
+  end
+
+  local json = Lib.load_session_control_file(filepath)
+
+  local sessions = {
+    current = json.current,
+    alternate = json.alternate,
+  }
+
+  Lib.logger.debug("get_alternate_session_name", { sessions = sessions, json = json })
+
+  if sessions.current == sessions.alternate then
+    Lib.logger.info "Current session is the same as alternate, returning nil"
+    return nil
+  end
+  local file_name = vim.fn.fnamemodify(sessions.alternate, ":t")
+  if Lib.is_legacy_file_name(file_name) then
+    return (Lib.legacy_unescape_session_name(file_name):gsub("%.vim$", ""))
+  end
+  return Lib.escaped_session_name_to_session_name(file_name)
 end
 
 return Lib

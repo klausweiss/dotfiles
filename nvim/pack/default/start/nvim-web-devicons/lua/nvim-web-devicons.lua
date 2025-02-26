@@ -1,9 +1,20 @@
 local M = {}
 
+---@alias iconName string Name of the icon
+
+---@class Icon
+---@field icon string Nerd-font glyph
+---@field color string Hex color code
+---@field cterm_color string cterm color code
+---@field name iconName
+
 -- NOTE: When adding new icons, remember to add an entry to the `filetypes` table, if applicable.
 local icons, icons_by_filename, icons_by_file_extension, icons_by_operating_system
 local icons_by_desktop_environment, icons_by_window_manager
 
+local filetypes = require "nvim-web-devicons.filetypes"
+
+---@type Icon
 local default_icon = {
   icon = "",
   color = "#6d8086",
@@ -43,6 +54,27 @@ local global_opts = {
   variant = nil,
 }
 
+---Change all keys in a table to lowercase
+---Remove entry when lowercase entry already exists
+---@param t table
+local function lowercase_keys(t)
+  if not t then
+    return
+  end
+
+  for k, v in pairs(t) do
+    if type(k) == "string" then
+      local lower_k = k:lower()
+      if lower_k ~= k then
+        if not t[lower_k] then
+          t[lower_k] = v
+        end
+        t[k] = nil
+      end
+    end
+  end
+end
+
 -- Set the current icons tables, depending on variant option, then &background
 local function refresh_icons()
   local theme
@@ -63,6 +95,10 @@ local function refresh_icons()
   icons_by_operating_system = theme.icons_by_operating_system
   icons_by_desktop_environment = theme.icons_by_desktop_environment
   icons_by_window_manager = theme.icons_by_window_manager
+
+  -- filename matches are case insensitive
+  lowercase_keys(icons_by_filename)
+
   icons = vim.tbl_extend(
     "keep",
     {},
@@ -75,218 +111,6 @@ local function refresh_icons()
   icons = vim.tbl_extend("force", icons, global_opts.override)
   icons[1] = default_icon
 end
-
--- Map of filetypes -> icon names
-local filetypes = {
-  ["apl"] = "apl",
-  ["avif"] = "avif",
-  ["bash"] = "bash",
-  ["bib"] = "bib",
-  ["bicep"] = "bicep",
-  ["bicepparam"] = "bicepparam",
-  ["bqn"] = "bqn",
-  ["bzl"] = "bzl",
-  ["brewfile"] = "brewfile",
-  ["blueprint"] = "blp",
-  ["checkhealth"] = "checkhealth",
-  ["commit"] = "commit_editmsg",
-  ["copying"] = "copying",
-  ["gemfile"] = "gemfile$",
-  ["lesser"] = "copying.lesser",
-  ["vagrantfile"] = "vagrantfile$",
-  ["awk"] = "awk",
-  ["bmp"] = "bmp",
-  ["c"] = "c",
-  ["cfg"] = "cfg",
-  ["clojure"] = "clj",
-  ["cmake"] = "cmake",
-  ["cobol"] = "cobol",
-  ["coffee"] = "coffee",
-  ["conf"] = "conf",
-  ["cp"] = "cp",
-  ["cpp"] = "cpp",
-  ["cr"] = "cr",
-  ["cs"] = "cs",
-  ["csh"] = "csh",
-  ["cson"] = "cson",
-  ["css"] = "css",
-  ["csv"] = "csv",
-  ["cuda"] = "cu",
-  ["d"] = "d",
-  ["dart"] = "dart",
-  ["desktop"] = "desktop",
-  ["diff"] = "diff",
-  ["doc"] = "doc",
-  ["docx"] = "docx",
-  ["dockerfile"] = "dockerfile",
-  ["dosbatch"] = "bat",
-  ["dosini"] = "ini",
-  ["dot"] = "dot",
-  ["drools"] = "drl",
-  ["dropbox"] = "dropbox",
-  ["dump"] = "dump",
-  ["eex"] = "eex",
-  ["ejs"] = "ejs",
-  ["elixir"] = "ex",
-  ["elm"] = "elm",
-  ["epuppet"] = "epp",
-  ["erlang"] = "erl",
-  ["eruby"] = "erb",
-  ["fennel"] = "fnl",
-  ["fish"] = "fish",
-  ["forth"] = "fs",
-  ["fortran"] = "f90",
-  ["fsharp"] = "f#",
-  ["fsi"] = "fsi",
-  ["fsscript"] = "fsscript",
-  ["fsx"] = "fsx",
-  ["gd"] = "gd",
-  ["gif"] = "gif",
-  ["git"] = "git",
-  ["gitconfig"] = ".gitconfig",
-  ["gitcommit"] = "commit_editmsg",
-  ["gitignore"] = ".gitignore",
-  ["gitattributes"] = ".gitattributes",
-  ["glb"] = "glb",
-  ["go"] = "go",
-  ["godot"] = "godot",
-  ["graphql"] = "graphql",
-  ["groovy"] = "groovy",
-  ["gql"] = "gql",
-  ["gruntfile"] = "gruntfile",
-  ["gtkrc"] = "gtkrc",
-  ["gulpfile"] = "gulpfile",
-  ["haml"] = "haml",
-  ["haxe"] = "hx",
-  ["haskell"] = "hs",
-  ["hbs"] = "hbs",
-  ["heex"] = "heex",
-  ["hex"] = "hex",
-  ["html"] = "html",
-  ["ico"] = "ico",
-  ["idlang"] = "pro",
-  ["ino"] = "ino",
-  ["import"] = "import",
-  ["ipynb"] = "ipynb",
-  ["java"] = "java",
-  ["javascript"] = "js",
-  ["javascript.jsx"] = "jsx",
-  ["javascriptreact"] = "jsx",
-  ["jpeg"] = "jpeg",
-  ["jpg"] = "jpg",
-  ["json"] = "json",
-  ["jsonc"] = "jsonc",
-  ["json5"] = "json5",
-  ["julia"] = "jl",
-  ["kotlin"] = "kt",
-  ["leex"] = "leex",
-  ["less"] = "less",
-  ["liquid"] = "liquid",
-  ["lhaskell"] = "lhs",
-  ["license"] = "license",
-  ["unlicense"] = "unlicense",
-  ["log"] = "log",
-  ["lock"] = "lock",
-  ["lprolog"] = "sig",
-  ["lua"] = "lua",
-  ["make"] = "makefile",
-  ["markdown"] = "markdown",
-  ["material"] = "material",
-  ["mdx"] = "mdx",
-  ["mint"] = "mint",
-  ["motoko"] = "mo",
-  ["mustache"] = "mustache",
-  ["nim"] = "nim",
-  ["nix"] = "nix",
-  ["nu"] = "nu",
-  ["node"] = "node_modules",
-  ["obj"] = "obj",
-  ["ocaml"] = "ml",
-  ["openscad"] = "scad",
-  ["opus"] = "opus",
-  ["otf"] = "otf",
-  ["pck"] = "pck",
-  ["pdf"] = "pdf",
-  ["perl"] = "pl",
-  ["php"] = "php",
-  ["plaintex"] = "tex",
-  ["png"] = "png",
-  ["po"] = "po",
-  ["postscr"] = "ai",
-  ["ppt"] = "ppt",
-  ["prisma"] = "prisma",
-  ["procfile"] = "procfile",
-  ["prolog"] = "pro",
-  ["ps1"] = "ps1",
-  ["psd1"] = "psd1",
-  ["psm1"] = "psm1",
-  ["psb"] = "psb",
-  ["psd"] = "psd",
-  ["puppet"] = "pp",
-  ["pyc"] = "pyc",
-  ["pyd"] = "pyd",
-  ["pyo"] = "pyo",
-  ["python"] = "py",
-  ["query"] = "query",
-  ["r"] = "r",
-  ["res"] = "rescript",
-  ["resi"] = "rescript",
-  ["rlib"] = "rlib",
-  ["rmd"] = "rmd",
-  ["rproj"] = "rproj",
-  ["ruby"] = "rb",
-  ["rust"] = "rs",
-  ["sass"] = "sass",
-  ["sbt"] = "sbt",
-  ["scala"] = "scala",
-  ["scheme"] = "scm",
-  ["scss"] = "scss",
-  ["sh"] = "sh",
-  ["slim"] = "slim",
-  ["sln"] = "sln",
-  ["sml"] = "sml",
-  ["solidity"] = "sol",
-  ["sql"] = "sql",
-  ["sqlite"] = "sqlite",
-  ["sqlite3"] = "sqlite3",
-  ["srt"] = "srt",
-  ["ssa"] = "ssa",
-  ["styl"] = "styl",
-  ["sublime"] = "sublime",
-  ["suo"] = "suo",
-  ["svelte"] = "svelte",
-  ["svg"] = "svg",
-  ["swift"] = "swift",
-  ["systemverilog"] = "sv",
-  ["tads"] = "t",
-  ["tcl"] = "tcl",
-  ["templ"] = "templ",
-  ["terminal"] = "terminal",
-  ["tex"] = "tex",
-  ["toml"] = "toml",
-  ["tres"] = "tres",
-  ["tscn"] = "tscn",
-  ["twig"] = "twig",
-  ["txt"] = "txt",
-  ["typescript"] = "ts",
-  ["typescriptreact"] = "tsx",
-  ["vala"] = "vala",
-  ["verilog"] = "v",
-  ["vhdl"] = "vhd",
-  ["vim"] = "vim",
-  ["vue"] = "vue",
-  ["wasm"] = "wasm",
-  ["webm"] = "webm",
-  ["webp"] = "webp",
-  ["webpack"] = "webpack",
-  ["xcplayground"] = "xcplayground",
-  ["xls"] = "xls",
-  ["xlsx"] = "xlsx",
-  ["xml"] = "xml",
-  ["yaml"] = "yaml",
-  ["zig"] = "zig",
-  ["zsh"] = "zsh",
-}
 
 local function get_highlight_name(data)
   if not global_opts.color_icons then
@@ -311,14 +135,18 @@ local function set_up_highlight(icon_data)
   end
 end
 
-local nvim_get_hl_by_name = vim.api.nvim_get_hl_by_name
 local function highlight_exists(group)
   if not group then
     return
   end
 
-  local ok, hl = pcall(nvim_get_hl_by_name, group, true)
-  return ok and not (hl or {})[true]
+  if vim.fn.has "nvim-0.9" == 1 then
+    local hl = vim.api.nvim_get_hl(0, { name = group, link = false })
+    return not vim.tbl_isempty(hl)
+  else
+    local ok, hl = pcall(vim.api.nvim_get_hl_by_name, group, true) ---@diagnostic disable-line: deprecated
+    return ok and not (hl or {})[true]
+  end
 end
 
 function M.set_up_highlights(allow_override)
@@ -342,7 +170,16 @@ local function get_highlight_foreground(icon_data)
     icon_data = default_icon
   end
 
-  return string.format("#%06x", nvim_get_hl_by_name(get_highlight_name(icon_data), true).foreground)
+  local higroup = get_highlight_name(icon_data)
+
+  local fg
+  if vim.fn.has "nvim-0.9" == 1 then
+    fg = vim.api.nvim_get_hl(0, { name = higroup, link = false }).fg
+  else
+    fg = vim.api.nvim_get_hl_by_name(higroup, true).foreground ---@diagnostic disable-line: deprecated
+  end
+
+  return string.format("#%06x", fg)
 end
 
 local function get_highlight_ctermfg(icon_data)
@@ -350,27 +187,13 @@ local function get_highlight_ctermfg(icon_data)
     icon_data = default_icon
   end
 
-  return nvim_get_hl_by_name(get_highlight_name(icon_data), false).foreground
-end
+  local higroup = get_highlight_name(icon_data)
 
----Change all keys in a table to lowercase
----Remove entry when lowercase entry already exists
----@param t table
-local function lowercase_keys(t)
-  if not t then
-    return
-  end
-
-  for k, v in pairs(t) do
-    if type(k) == "string" then
-      local lower_k = k:lower()
-      if lower_k ~= k then
-        if not t[lower_k] then
-          t[lower_k] = v
-        end
-        t[k] = nil
-      end
-    end
+  if vim.fn.has "nvim-0.9" == 1 then
+    --- @diagnostic disable-next-line: undefined-field  vim.api.keyset.hl_info specifies cterm, not ctermfg
+    return vim.api.nvim_get_hl(0, { name = higroup, link = false }).ctermfg
+  else
+    return vim.api.nvim_get_hl_by_name(higroup, false).foreground ---@diagnostic disable-line: deprecated
   end
 end
 

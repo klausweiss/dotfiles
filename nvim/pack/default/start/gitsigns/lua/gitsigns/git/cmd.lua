@@ -4,27 +4,43 @@ local log = require('gitsigns.debug.log')
 local system = require('gitsigns.system').system
 
 --- @type fun(cmd: string[], opts?: vim.SystemOpts): vim.SystemCompleted
-local asystem = async.wrap(3, system)
+local asystem = async.awrap(3, system)
 
 --- @class Gitsigns.Git.JobSpec : vim.SystemOpts
 --- @field ignore_error? boolean
 
+--- @param x table<any,any>
+--- @return string[]
+local function flatten(x)
+  local ret = {} --- @type string[]
+  for k, v in pairs(x) do
+    if type(k) == 'number' then
+      if type(v) == 'table' then
+        vim.list_extend(ret, flatten(v))
+      elseif type(v) == 'string' then
+        ret[#ret + 1] = v
+      end
+    end
+  end
+  return ret
+end
+
 --- @async
---- @param args string[]
+--- @param args table<any,any>
 --- @param spec? Gitsigns.Git.JobSpec
 --- @return string[] stdout, string? stderr, integer code
 local function git_command(args, spec)
   spec = spec or {}
 
-  local cmd = {
+  local cmd = flatten({
     'git',
     '--no-pager',
     '--no-optional-locks',
     '--literal-pathspecs',
     '-c',
     'gc.auto=0', -- Disable auto-packing which emits messages to stderr
-    unpack(args),
-  }
+    args,
+  })
 
   if spec.text == nil then
     spec.text = true

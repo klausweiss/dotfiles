@@ -790,6 +790,26 @@ function helper.check_lsp_cap(clients, line_to_cursor)
   return signature_cap, triggered, trigger_position, triggered_chars
 end
 
+---@param extra_params table extends the position parameters
+---@return table|(fun(client: vim.lsp.Client, bufnr: integer): table) final parameters
+helper.make_position_params = function(extra_params)
+  if vim.fn.has('nvim-0.11') == 0 then
+    local params = vim.lsp.util.make_position_params()
+    if extra_params then
+      params = vim.tbl_deep_extend('force', params, extra_params)
+    end
+    return params
+  end
+  ---@param client vim.lsp.Client
+  return function(client, _)
+    local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
+    if extra_params then
+      params = vim.tbl_deep_extend('force', params, extra_params)
+    end
+    return params
+  end
+end
+
 helper.highlight_parameter = function(s, l)
   _LSP_SIG_CFG.ns = api.nvim_create_namespace('lsp_signature_hi_parameter')
   local hi = _LSP_SIG_CFG.hi_parameter
@@ -880,7 +900,7 @@ helper.completion_visible = function()
   local hascmp, cmp = pcall(require, 'cmp')
   if hascmp then
     -- reduce timeout from cmp's hardcoded 1000ms:
-    -- https://github.com/ray-x/lsp_signature.nvim/issues/288
+    -- issues #288
     cmp.core.filter:sync(42)
     return cmp.core.view:visible() or fn.pumvisible() == 1
   end
@@ -1038,4 +1058,9 @@ function helper.get_clients(opts)
   end
 end
 
+function helper.lsp_with(handler, override_config)
+  return function(err, result, ctx, config)
+    return handler(err, result, ctx, vim.tbl_deep_extend('force', config or {}, override_config))
+  end
+end
 return helper

@@ -26,26 +26,29 @@ local M = {}
 --- @param bot integer
 --- @param clear? boolean
 --- @param untracked boolean
-local function apply_win_signs0(bufnr, signs, hunks, top, bot, clear, untracked)
+--- @param filter? fun(line: integer):boolean
+local function apply_win_signs0(bufnr, signs, hunks, top, bot, clear, untracked, filter)
   if clear then
     signs:remove(bufnr) -- Remove all signs
   end
 
   for i, hunk in ipairs(hunks or {}) do
-    --- @type Gitsigns.Hunk.Hunk?
-    local next = hunks[i + 1]
+    --- @type Gitsigns.Hunk.Hunk?, Gitsigns.Hunk.Hunk?
+    local prev_hunk, next_hunk = hunks[i - 1], hunks[i + 1]
 
     -- To stop the sign column width changing too much, if there are signs to be
     -- added but none of them are visible in the window, then make sure to add at
     -- least one sign. Only do this on the first call after an update when we all
     -- the signs have been cleared.
     if clear and i == 1 then
-      signs:add(bufnr, Hunks.calc_signs(hunk, next, hunk.added.start, hunk.added.start, untracked))
+      signs:add(
+        bufnr,
+        Hunks.calc_signs(prev_hunk, hunk, next_hunk, hunk.added.start, hunk.added.start, untracked),
+        filter
+      )
     end
 
-    if top <= hunk.vend and bot >= hunk.added.start then
-      signs:add(bufnr, Hunks.calc_signs(hunk, next, top, bot, untracked))
-    end
+    signs:add(bufnr, Hunks.calc_signs(prev_hunk, hunk, next_hunk, top, bot, untracked), filter)
     if hunk.added.start > bot then
       break
     end
@@ -61,7 +64,18 @@ local function apply_win_signs(bufnr, top, bot, clear)
   local untracked = bcache.git_obj.object_name == nil
   apply_win_signs0(bufnr, signs_normal, bcache.hunks, top, bot, clear, untracked)
   if signs_staged then
-    apply_win_signs0(bufnr, signs_staged, bcache.hunks_staged, top, bot, clear, false)
+    apply_win_signs0(
+      bufnr,
+      signs_staged,
+      bcache.hunks_staged,
+      top,
+      bot,
+      clear,
+      false,
+      function(lnum)
+        return not signs_normal:contains(bufnr, lnum)
+      end
+    )
   end
 end
 
@@ -422,7 +436,7 @@ end
 --- @param check_compare_text? boolean
 --- @return boolean
 function M.schedule(bufnr, check_compare_text)
-  async.scheduler()
+  async.schedule()
   if not api.nvim_buf_is_valid(bufnr) then
     log.dprint('Buffer not valid, aborting')
     return false
@@ -438,6 +452,7 @@ function M.schedule(bufnr, check_compare_text)
   return true
 end
 
+--- @async
 --- Ensure updates cannot be interleaved.
 --- Since updates are asynchronous we need to make sure an update isn't performed
 --- whilst another one is in progress. If this happens then schedule another
@@ -474,9 +489,24 @@ M.update = throttle_by_id(function(bufnr)
     return
   end
 
-  if config.signs_staged_enable and not file_mode then
+  local bufname = api.nvim_buf_get_name(bufnr)
+  local rev_is_index = not git_obj:from_tree()
+
+  if
+    config.signs_staged_enable
+    and not file_mode
+    and (rev_is_index or bufname:match('^fugitive://') or bufname:match('^gitsigns://'))
+  then
     if not bcache.compare_text_head or config._refresh_staged_on_update then
-      local staged_rev = git_obj:from_tree() and git_obj.revision .. '^' or 'HEAD'
+      -- When the revision is from the index, we compare against HEAD to
+      -- show the staged changes.
+      --
+      -- When showing a revision buffer (a buffer that represents the revision
+      -- of a specific file and does not have a corresponding file on disk), we
+      -- utilize the staged signs to represent the changes introduced in that
+      -- revision. Therefore we compare against the previous commit. Note there
+      -- should not be any normal signs for these buffers.
+      local staged_rev = rev_is_index and 'HEAD' or git_obj.revision .. '^'
       bcache.compare_text_head = git_obj:get_show_text(staged_rev)
       if not M.schedule(bufnr, true) then
         return
