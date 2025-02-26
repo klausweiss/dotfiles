@@ -219,26 +219,22 @@ require 'nvim-tree'.setup {
 
 -- session
 local auto_session_config = {
-  log_level = 'info',
-  auto_session_enable_last_session = false,
-  auto_session_root_dir = vim.fn.stdpath('data') .. "/sessions/",
-  auto_session_enabled = true,
-  auto_save_enabled = true,
-  auto_restore_enabled = true,
-  auto_session_suppress_dirs = {
-    '~',
-  },
-  auto_session_use_git_branch = true,
+  auto_restore = true,
+  auto_restore_last_session = false,
+  auto_save = true,
+  enabled = true,
+  log_level = "info",
+  root_dir = vim.fn.stdpath('data') .. "/sessions/",
+  suppressed_dirs = { "~" },
+  use_git_branch = true,
+  lazy_support = false,
   -- fix for nvimtree
   pre_save_cmds = { "NvimTreeClose" },
-  save_extra_cmds = {
-    "NvimTreeOpen"
-  },
-  post_restore_cmds = {
-    "NvimTreeOpen"
-  }
+  save_extra_cmds = { "NvimTreeOpen" },
+  post_restore_cmds = { "NvimTreeOpen" },
 }
 
+vim.o.sessionoptions = "blank,buffers,curdir,folds,help,tabpages,winsize,winpos,terminal,localoptions"
 require('auto-session').setup(auto_session_config)
 
 -- neogit
