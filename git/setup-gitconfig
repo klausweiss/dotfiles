@@ -1,0 +1,39 @@
+#!/bin/bash
+
+# Locate the script directory
+DOTFILES_DIR=$(realpath "$(dirname "$0")/../")
+TEMPLATE_FILE=$DOTFILES_DIR/git/gitconfig
+DESIRED_PATH=$HOME/.gitconfig
+
+get_name_from_git() {
+    git config --global user.name 2>/dev/null || echo ""
+}
+
+get_email_from_git() {
+    git config --global user.email 2>/dev/null || echo ""
+}
+
+setup-git() {
+    local USER_FULLNAME=$(get_name_from_git)
+    local USER_EMAIL=$(get_email_from_git)
+
+    if [ -z "$USER_FULLNAME" ]; then
+        echo "Enter your full name (for git identification):"
+        read USER_FULLNAME
+    fi
+
+    if [ -z "$USER_EMAIL" ]; then
+        echo "Enter your email address (for git identification):"
+        read USER_EMAIL
+    fi
+
+    # Process the template and write to .gitconfig
+    cat $TEMPLATE_FILE |
+        sed "/name =\W*$/  s/name.*$/name = $USER_FULLNAME/" |
+        sed "/email =\W*$/ s/email.*$/email = $USER_EMAIL/" > $DESIRED_PATH
+
+    echo "Git configuration updated."
+}
+
+echo "Setting up git."
+setup-git;
