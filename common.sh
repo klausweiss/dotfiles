@@ -8,12 +8,19 @@ YELLOW="\e[33m"
 RESET="\e[0m"
 
 # Function to get the absolute path of the script directory
+# Only to be called outside common.sh
 get_script_dir() {
   cd "$( dirname "${BASH_SOURCE[1]}" )" &> /dev/null && pwd
 }
 
-# Function to safely create a symlink
-ensure_symlink() {
+# Function to get the absolute path of the script directory
+# Only to be called within common.sh
+__common_sh_get_script_dir() {
+  cd "$( dirname "${BASH_SOURCE[2]}" )" &> /dev/null && pwd
+}
+
+# Function to safely create a symlink (absolute version)
+ensure_symlink_absolute() {
   local target_file="$1"
   local target_link="$2"
 
@@ -35,5 +42,23 @@ ensure_symlink() {
   # Create the correct symlink
   ln -s "$target_file" "$target_link"
   echo -e "${GREEN}Symlink created: $target_link → $target_file${RESET}"
+}
+
+# Wrapper function for ensure_symlink_absolute
+ensure_symlink() {
+  local target_file="$1"
+  local target_link="$2"
+
+  # Check if target_file is already an absolute path
+  if [[ "$target_file" != /* ]]; then
+    # If not, prepend the script directory
+    local absolute_target_file=$(__common_sh_get_script_dir)/"$target_file"
+  else
+    # If it's already absolute, use it as-is
+    local absolute_target_file="$target_file"
+  fi
+
+  # Call ensure_symlink_absolute with the absolute path of the target file
+  ensure_symlink_absolute "$absolute_target_file" "$target_link"
 }
 

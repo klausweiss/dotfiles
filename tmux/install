@@ -1,9 +1,8 @@
 #!/bin/bash
 
 source ~/.dotfiles/common.sh
-SCRIPT_DIR="$(get_script_dir)"
 
 #-----------------------------
 
-ensure_symlink "$SCRIPT_DIR/tmux.conf" "$HOME/.tmux.conf"
+ensure_symlink tmux.conf ~/.tmux.conf
 
