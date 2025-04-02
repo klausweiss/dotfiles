@@ -4,9 +4,10 @@ source ~/.dotfiles/common.sh
 
 #-----------------------------
 
-# Creating gpg directory
+info "Creating gpg directory"
 mkdir -p ~/.gnupg
 chmod 700 ~/.gnupg
 
+info "Creating gpg symlinks"
 ensure_symlink gpg-agent.conf ~/.gnupg/gpg-agent.conf
 ensure_symlink scdaemon.conf  ~/.gnupg/scdaemon.conf

@@ -5,7 +5,26 @@
 # Define colors
 GREEN="\e[32m"
 YELLOW="\e[33m"
+RED="\e[31m"
 RESET="\e[0m"
+
+# Info log function
+info() {
+  local message="$@"
+  echo -e "${GREEN}${message}${RESET}"
+}
+
+# Warn log function
+warn() {
+  local message="$@"
+  echo -e "${YELLOW}${message}${RESET}"
+}
+
+# Error log function
+error() {
+  local message="$@"
+  echo -e "${RED}${message}${RESET}"
+}
 
 # Function to get the absolute path of the script directory
 # Only to be called outside common.sh
@@ -29,19 +48,19 @@ ensure_symlink_absolute() {
 
   # Check if the symlink already exists and points to the correct target
   if [ -L "$target_link" ] && [ "$(readlink -f "$target_link")" == "$target_file" ]; then
-    echo -e "${GREEN}Symlink for $target_link is already correctly set. Exiting.${RESET}"
+    info "Symlink for $target_link is already correctly set. Exiting."
     return 0
   fi
 
   # Backup the existing file or incorrect symlink if it exists
   if [ -e "$target_link" ] || [ -L "$target_link" ]; then
     mv "$target_link" "$target_link.bak.$datetime"
-    echo -e "${YELLOW}Existing file/symlink $target_link moved to $target_link.bak.$datetime${RESET}"
+    warn "Existing file/symlink $target_link moved to $target_link.bak.$datetime"
   fi
 
   # Create the correct symlink
   ln -s "$target_file" "$target_link"
-  echo -e "${GREEN}Symlink created: $target_link → $target_file${RESET}"
+  info "Symlink created: $target_link → $target_file"
 }
 
 # Wrapper function for ensure_symlink_absolute
