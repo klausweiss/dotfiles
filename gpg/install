@@ -1,0 +1,12 @@
+#!/bin/bash
+
+source ~/.dotfiles/common.sh
+
+#-----------------------------
+
+# Creating gpg directory
+mkdir -p ~/.gnupg
+chmod 700 ~/.gnupg
+
+ensure_symlink gpg-agent.conf ~/.gnupg/gpg-agent.conf
+ensure_symlink scdaemon.conf  ~/.gnupg/scdaemon.conf
