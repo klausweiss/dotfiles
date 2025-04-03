@@ -1,0 +1,3 @@
+[0] Downloading 'https://raw.githubusercontent.com/JetBrains/JetBrainsMono/refs/heads/master/OFL.txt' ...
+Saving 'OFL.txt'
+HTTP response 200  [https://raw.githubusercontent.com/JetBrains/JetBrainsMono/refs/heads/master/OFL.txt]

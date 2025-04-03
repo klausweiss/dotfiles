@@ -1,0 +1,11 @@
+#!/bin/bash
+
+source ~/.dotfiles/common.sh
+
+#-----------------------------
+
+ensure_symlink . ~/.local/share/fonts
+
+# some systems might prefer ~/.fonts, consider adding another symlink if this is ever an issue
+
+fc-cache -v
