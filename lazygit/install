@@ -1,0 +1,9 @@
+#!/bin/bash
+
+source ~/.dotfiles/common.sh
+
+#-----------------------------
+
+mkdir -p ~/.config/lazygit/
+ensure_symlink config.yml ~/.config/lazygit/config.yml
+
