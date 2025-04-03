@@ -76,6 +76,7 @@ ensure_symlink() {
     # If it's already absolute, use it as-is
     local absolute_target_file="$target_file"
   fi
+  absolute_target_file=$(realpath $absolute_target_file)
 
   # Call ensure_symlink_absolute with the absolute path of the target file
   ensure_symlink_absolute "$absolute_target_file" "$target_link"
