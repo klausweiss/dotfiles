@@ -1,0 +1,10 @@
+#!/bin/bash
+
+source ~/.dotfiles/common.sh
+
+#-----------------------------
+
+ensure_symlink . ~/.config/fish
+
+info "Disabling fish motd"
+fish -c 'set -U fish_greeting'
