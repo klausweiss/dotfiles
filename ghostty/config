@@ -1,2 +1,2 @@
-command = fish
+command = fish --init-command "export SHELL=$(which fish);"
 
