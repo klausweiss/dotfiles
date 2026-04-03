@@ -1,5 +1,5 @@
 command = fish --init-command "export SHELL=$(which fish);"
 
-# ctrl+m to axt as return
+# ctrl+m to act as return
 keybind = ctrl+m=text:\n
 
