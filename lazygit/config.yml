@@ -1,10 +1,9 @@
 git:
-  paging:
-    colorArg: always
-    pager: delta --dark --paging=never
+  pagers:
+    - colorArg: always
+      pager: delta --dark --paging=never
   overrideGpg: true
   localBranchSortOrder: recency
-
 customCommands:
   - key: '<c-P>'
     description: "Push to a specific remote repository"
