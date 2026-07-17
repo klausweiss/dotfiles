@@ -5,7 +5,7 @@ git:
   overrideGpg: true
   localBranchSortOrder: recency
 customCommands:
-  - key: '<c-P>'
+  - key: '<c+s+p>'
     description: "Push to a specific remote repository"
     context: 'global'
     loadingText: 'Pushing ...'
