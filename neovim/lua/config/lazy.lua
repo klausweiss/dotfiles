@@ -60,6 +60,17 @@ require("lazy").setup({
 				vim.cmd.colorscheme("monokai-pro")
 			end,
 		},
+		{
+			"simonmclean/triptych.nvim",
+			dependencies = {
+				"nvim-tree/nvim-web-devicons", -- optional for icons
+				"antosha417/nvim-lsp-file-operations", -- optional LSP integration
+			},
+			opts = {}, -- config options here
+			keys = {
+				{ "<leader>-", ":Triptych<CR>" },
+			},
+		},
 	},
 	-- Configure any other settings here. See the documentation for more details.
 	-- colorscheme that will be used when installing plugins.
