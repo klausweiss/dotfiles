@@ -32,7 +32,9 @@ require("lazy").setup({
 			ft = { "markdown", "rmd" }, -- Add custom filetypes here if configured
 			config = function()
 				require("mkdnflow").setup({
-					-- Your config
+					mappings = {
+						MkdnFoldSection = false,
+					},
 				})
 			end,
 		},
@@ -45,7 +47,7 @@ require("lazy").setup({
 				{ "nvim-telescope/telescope-fzf-native.nvim", build = "make" },
 			},
 			keys = {
-				{ "<leader>gf", "<cmd>Telescope find_files<cr>", desc = "Find files" },
+				{ "<leader>ff", "<cmd>Telescope find_files<cr>", desc = "Find files" },
 			},
 		},
 		{
