@@ -63,14 +63,13 @@ require("lazy").setup({
 			end,
 		},
 		{
-			"simonmclean/triptych.nvim",
+			"nvim-tree/nvim-tree.lua",
 			dependencies = {
-				"nvim-tree/nvim-web-devicons", -- optional for icons
-				"antosha417/nvim-lsp-file-operations", -- optional LSP integration
+				"nvim-tree/nvim-web-devicons",
 			},
-			opts = {}, -- config options here
+			opts = {},
 			keys = {
-				{ "<leader>-", ":Triptych<CR>" },
+				{ "<F1>", ":NvimTreeFindFileToggle<CR>" },
 			},
 		},
 	},
