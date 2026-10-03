@@ -1,13 +1,4 @@
--- Filetypes of side panels, which aren't editor panes
-local side_panels = { NvimTree = true, minimap = true }
-
--- Editor panes in the current tab: no side panels or floating windows
-local function editor_panes()
-	return vim.tbl_filter(function(w)
-		return vim.api.nvim_win_get_config(w).relative == ""
-			and not side_panels[vim.bo[vim.api.nvim_win_get_buf(w)].filetype]
-	end, vim.api.nvim_tabpage_list_wins(0))
-end
+local editor_panes = require("config.panes").editor_panes
 
 -- Zoomed pane (see <leader>wz): { win = floating window, origin = zoomed pane }
 local zoom
@@ -32,8 +23,9 @@ local function confirm_save(buf)
 end
 
 -- Close the current pane. If no other pane shows its file, close the file too
--- (asking to save unsaved changes). The last editor pane stays open with
--- another file (or an empty buffer) in it.
+-- (asking to save unsaved changes). Closing a tab's last editor pane closes
+-- the tab, unless it's the only one: then the pane stays open with another
+-- file (or an empty buffer) in it.
 local function close_pane()
 	local win = vim.api.nvim_get_current_win()
 	local buf = vim.api.nvim_win_get_buf(win)
@@ -47,6 +39,9 @@ local function close_pane()
 	local panes = editor_panes()
 	if #panes > 1 or not vim.list_contains(panes, win) then
 		vim.api.nvim_win_close(win, true)
+	elseif #vim.api.nvim_list_tabpages() > 1 then
+		-- Last pane in this tab: close the tab (with its side panels)
+		vim.cmd.tabclose()
 	else
 		local alt = vim.fn.bufnr("#")
 		if alt ~= -1 and alt ~= buf and vim.bo[alt].buflisted then
