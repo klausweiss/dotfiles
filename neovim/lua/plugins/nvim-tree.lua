@@ -70,7 +70,8 @@ return {
 							return vim.bo[vim.api.nvim_win_get_buf(win)].filetype ~= "minimap"
 						end, vim.api.nvim_list_wins())
 						if #wins == 1 and vim.bo[vim.api.nvim_win_get_buf(wins[1])].filetype == "NvimTree" then
-							vim.cmd("qall")
+							-- confirm: ask about unsaved hidden buffers instead of failing with E37
+							vim.cmd("confirm qall")
 						end
 					end)
 				end,
