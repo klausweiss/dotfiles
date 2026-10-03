@@ -9,6 +9,9 @@ local function editor_panes()
 	end, vim.api.nvim_tabpage_list_wins(0))
 end
 
+-- Zoomed pane (see <leader>wz): { win = floating window, origin = zoomed pane }
+local zoom
+
 vim.keymap.set("n", "<leader>wv", "<cmd>vsplit<cr>", { desc = "Split window vertically" })
 vim.keymap.set("n", "<leader>wh", "<cmd>split<cr>", { desc = "Split window horizontally" })
 
@@ -65,7 +68,80 @@ vim.keymap.set("n", "<leader>wo", function()
 	if #panes == 0 then
 		return
 	end
+	-- When zoomed, continue from the zoomed pane (moving to it unzooms, like tmux).
 	-- From a side panel, index() is -1, so this goes to the first pane
-	local i = vim.fn.index(panes, vim.api.nvim_get_current_win()) + 1
+	local current = zoom and zoom.origin or vim.api.nvim_get_current_win()
+	local i = vim.fn.index(panes, current) + 1
 	vim.api.nvim_set_current_win(panes[i % #panes + 1])
 end, { desc = "Next pane" })
+
+-- Zoom the current pane, like tmux's `prefix z`: show it in a floating window
+-- covering the editor, leaving the layout underneath untouched. Unzooming
+-- carries the cursor position back to the original pane
+local function unzoom()
+	local z = zoom
+	zoom = nil
+	if not z or not vim.api.nvim_win_is_valid(z.win) then
+		return
+	end
+	local buf = vim.api.nvim_win_get_buf(z.win)
+	local view = vim.api.nvim_win_call(z.win, vim.fn.winsaveview)
+	local was_current = vim.api.nvim_get_current_win() == z.win
+	vim.api.nvim_win_close(z.win, false)
+	if vim.api.nvim_win_is_valid(z.origin) then
+		if vim.api.nvim_win_get_buf(z.origin) == buf then
+			vim.api.nvim_win_call(z.origin, function()
+				vim.fn.winrestview(view)
+			end)
+		end
+		if was_current then
+			vim.api.nvim_set_current_win(z.origin)
+		end
+	end
+end
+
+local function zoom_size()
+	local tabline = vim.o.showtabline == 2 or (vim.o.showtabline == 1 and #vim.api.nvim_list_tabpages() > 1)
+	local row = tabline and 1 or 0
+	return { row = row, col = 0, width = vim.o.columns, height = vim.o.lines - vim.o.cmdheight - row }
+end
+
+vim.keymap.set("n", "<leader>wz", function()
+	if zoom then
+		unzoom()
+		return
+	end
+	local origin = vim.api.nvim_get_current_win()
+	if not vim.list_contains(editor_panes(), origin) then
+		return -- side panel or floating window
+	end
+	local view = vim.fn.winsaveview()
+	-- Not "minimal": the float inherits the pane's options (line numbers etc.)
+	local win = vim.api.nvim_open_win(0, true, vim.tbl_extend("force", zoom_size(), { relative = "editor" }))
+	vim.wo[win].winhighlight = "NormalFloat:Normal"
+	vim.fn.winrestview(view)
+	zoom = { win = win, origin = origin }
+end, { desc = "Toggle pane zoom" })
+
+vim.api.nvim_create_autocmd("WinEnter", {
+	desc = "Unzoom when moving to another pane (popups like Telescope are floats, so they don't count)",
+	callback = function()
+		if zoom and vim.api.nvim_win_get_config(0).relative == "" then
+			unzoom()
+		end
+	end,
+})
+vim.api.nvim_create_autocmd("WinClosed", {
+	callback = function(args)
+		if zoom and tonumber(args.match) == zoom.win then
+			zoom = nil
+		end
+	end,
+})
+vim.api.nvim_create_autocmd("VimResized", {
+	callback = function()
+		if zoom and vim.api.nvim_win_is_valid(zoom.win) then
+			vim.api.nvim_win_set_config(zoom.win, vim.tbl_extend("force", zoom_size(), { relative = "editor" }))
+		end
+	end,
+})
