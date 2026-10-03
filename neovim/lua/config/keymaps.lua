@@ -1,3 +1,14 @@
+-- Filetypes of side panels, which aren't editor panes
+local side_panels = { NvimTree = true, minimap = true }
+
+-- Editor panes in the current tab: no side panels or floating windows
+local function editor_panes()
+	return vim.tbl_filter(function(w)
+		return vim.api.nvim_win_get_config(w).relative == ""
+			and not side_panels[vim.bo[vim.api.nvim_win_get_buf(w)].filetype]
+	end, vim.api.nvim_tabpage_list_wins(0))
+end
+
 vim.keymap.set("n", "<leader>wv", "<cmd>vsplit<cr>", { desc = "Split window vertically" })
 vim.keymap.set("n", "<leader>wh", "<cmd>split<cr>", { desc = "Split window horizontally" })
 
@@ -7,11 +18,8 @@ local function confirm_save(buf)
 		return true
 	end
 	local name = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(buf), ":~:.")
-	local choice = vim.fn.confirm(
-		('Save changes to "%s"?'):format(name ~= "" and name or "[No Name]"),
-		"&Yes\n&No\n&Cancel",
-		1
-	)
+	local choice =
+		vim.fn.confirm(('Save changes to "%s"?'):format(name ~= "" and name or "[No Name]"), "&Yes\n&No\n&Cancel", 1)
 	if choice == 1 then
 		-- confirm: asks for a file name if the buffer doesn't have one
 		vim.cmd("confirm write")
@@ -32,11 +40,8 @@ local function close_pane()
 		return
 	end
 
-	-- Neither counts: the minimap closes itself once alone, and nvim-tree alone quits nvim
-	local panes = vim.tbl_filter(function(w)
-		local ft = vim.bo[vim.api.nvim_win_get_buf(w)].filetype
-		return vim.api.nvim_win_get_config(w).relative == "" and ft ~= "minimap" and ft ~= "NvimTree"
-	end, vim.api.nvim_tabpage_list_wins(0))
+	-- Side panels don't count: the minimap closes itself once alone, and nvim-tree alone quits nvim
+	local panes = editor_panes()
 	if #panes > 1 or not vim.list_contains(panes, win) then
 		vim.api.nvim_win_close(win, true)
 	else
@@ -53,3 +58,14 @@ local function close_pane()
 	end
 end
 vim.keymap.set("n", "<leader>wc", close_pane, { desc = "Close pane" })
+
+-- Cycle through editor panes, like tmux's `prefix o`
+vim.keymap.set("n", "<leader>wo", function()
+	local panes = editor_panes()
+	if #panes == 0 then
+		return
+	end
+	-- From a side panel, index() is -1, so this goes to the first pane
+	local i = vim.fn.index(panes, vim.api.nvim_get_current_win()) + 1
+	vim.api.nvim_set_current_win(panes[i % #panes + 1])
+end, { desc = "Next pane" })
