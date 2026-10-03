@@ -65,8 +65,12 @@ return {
 					-- Deferred so that commands that briefly leave the tree alone
 					-- (e.g. Telescope closing its popup before `:edit`) can finish first
 					vim.schedule(function()
-						if #vim.api.nvim_list_wins() == 1 and vim.bo.filetype == "NvimTree" then
-							vim.cmd("quit")
+						-- Ignore the minimap, which can also be left over (and focused)
+						local wins = vim.tbl_filter(function(win)
+							return vim.bo[vim.api.nvim_win_get_buf(win)].filetype ~= "minimap"
+						end, vim.api.nvim_list_wins())
+						if #wins == 1 and vim.bo[vim.api.nvim_win_get_buf(wins[1])].filetype == "NvimTree" then
+							vim.cmd("qall")
 						end
 					end)
 				end,
