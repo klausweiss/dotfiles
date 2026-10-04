@@ -6,6 +6,10 @@ local zoom
 vim.keymap.set("n", "<leader>wv", "<cmd>vsplit<cr>", { desc = "Split window vertically" })
 vim.keymap.set("n", "<leader>wh", "<cmd>split<cr>", { desc = "Split window horizontally" })
 
+vim.keymap.set("n", "<leader>tn", "<cmd>tabnext<cr>", { desc = "Next tab" })
+vim.keymap.set("n", "<leader>tp", "<cmd>tabprevious<cr>", { desc = "Previous tab" })
+vim.keymap.set("n", "<leader>tc", "<cmd>tab split<cr>", { desc = "Open current buffer in a new tab" })
+
 -- Asks to save `buf` if it has unsaved changes. Returns false if cancelled
 local function confirm_save(buf)
 	if not vim.bo[buf].modified then

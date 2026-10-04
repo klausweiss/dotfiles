@@ -26,6 +26,17 @@ local function file_references()
 	})
 end
 
+-- Find files, opening the selection in a new tab
+local function find_files_in_tab()
+	require("telescope.builtin").find_files({
+		attach_mappings = function()
+			local actions = require("telescope.actions")
+			actions.select_default:replace(actions.select_tab)
+			return true
+		end,
+	})
+end
+
 return {
 	{
 		"nvim-telescope/telescope.nvim",
@@ -38,6 +49,7 @@ return {
 		keys = {
 			{ "<leader>p", "<cmd>Telescope commands<cr>", desc = "Command palette" },
 			{ "<leader>fo", "<cmd>Telescope find_files<cr>", desc = "Find files" },
+			{ "<leader>to", find_files_in_tab, desc = "Find files, open in new tab" },
 			{ "<leader>gd", "<cmd>Telescope lsp_definitions<cr>", desc = "LSP definition" },
 			{ "<leader>gb", "<cmd>Telescope lsp_references<cr>", desc = "LSP references" },
 			{ "<leader>gr", file_references, desc = "LSP references in file" },
