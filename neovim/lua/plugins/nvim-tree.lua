@@ -1,4 +1,5 @@
-local last_win
+-- Where <F1> came from, to return to it (and to insert mode, e.g. in the Agentic prompt)
+local last_win, last_mode
 
 return {
 	{
@@ -17,15 +18,28 @@ return {
 						-- Tree is focused: jump back to where we came from
 						if last_win and vim.api.nvim_win_is_valid(last_win) then
 							vim.api.nvim_set_current_win(last_win)
+							if last_mode == "i" then
+								vim.cmd("startinsert")
+							end
 						else
 							vim.cmd("wincmd p")
 						end
 					else
-						-- Tree is closed or unfocused: open/focus it on the current file
+						-- Tree is closed or unfocused: open/focus it on the current file, or
+						-- the file in the first editor pane when in a side panel (e.g. Agentic)
 						last_win = vim.api.nvim_get_current_win()
-						api.tree.find_file({ open = true, focus = true })
+						last_mode = vim.api.nvim_get_mode().mode
+						vim.cmd("stopinsert")
+						local panes = require("config.panes")
+						local editor_pane = panes.is_editor_pane(last_win) and last_win or panes.editor_panes()[1]
+						api.tree.find_file({
+							buf = editor_pane and vim.api.nvim_win_get_buf(editor_pane),
+							open = true,
+							focus = true,
+						})
 					end
 				end,
+				mode = { "n", "i" },
 				desc = "Focus nvim-tree / return to code",
 			},
 			{
@@ -33,6 +47,7 @@ return {
 				function()
 					require("nvim-tree.api").tree.close()
 				end,
+				mode = { "n", "i" },
 				desc = "Close nvim-tree",
 			},
 			-- Many terminals send Shift-F1 as F13
@@ -41,6 +56,7 @@ return {
 				function()
 					require("nvim-tree.api").tree.close()
 				end,
+				mode = { "n", "i" },
 				desc = "Close nvim-tree",
 			},
 		},

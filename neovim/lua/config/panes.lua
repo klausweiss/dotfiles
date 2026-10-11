@@ -1,7 +1,10 @@
 local M = {}
 
 -- Filetypes of side panels, which aren't editor panes
-M.side_panels = { NvimTree = true, minimap = true }
+M.side_panels = {
+	NvimTree = true,
+	minimap = true,
+}
 
 -- Whether `win` is an editor pane: not a side panel or floating window
 function M.is_editor_pane(win)
