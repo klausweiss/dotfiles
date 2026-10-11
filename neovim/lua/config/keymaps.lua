@@ -1,4 +1,5 @@
-local editor_panes = require("config.panes").editor_panes
+local panes = require("config.panes")
+local editor_panes = panes.editor_panes
 
 -- Zoomed pane (see <leader>wz): { win = floating window, origin = zoomed pane }
 local zoom
@@ -8,7 +9,20 @@ vim.keymap.set("n", "<leader>wh", "<cmd>split<cr>", { desc = "Split window horiz
 
 vim.keymap.set("n", "<leader>tn", "<cmd>tabnext<cr>", { desc = "Next tab" })
 vim.keymap.set("n", "<leader>tp", "<cmd>tabprevious<cr>", { desc = "Previous tab" })
-vim.keymap.set("n", "<leader>tc", "<cmd>tab split<cr>", { desc = "Open current buffer in a new tab" })
+-- From a side panel, duplicating the current window would open a new tab showing
+-- just that panel, which leaves e.g. nvim-tree broken (its window is tracked per
+-- tab). Duplicate the first editor pane instead
+vim.keymap.set("n", "<leader>tc", function()
+	local win = vim.api.nvim_get_current_win()
+	if not panes.is_editor_pane(win) then
+		win = editor_panes()[1]
+		if not win then
+			return
+		end
+		vim.api.nvim_set_current_win(win)
+	end
+	vim.cmd("tab split")
+end, { desc = "Open current buffer in a new tab" })
 
 -- Asks to save `buf` if it has unsaved changes. Returns false if cancelled
 local function confirm_save(buf)
