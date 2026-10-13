@@ -5,21 +5,26 @@ git:
   overrideGpg: true
   localBranchSortOrder: recency
 customCommands:
-  - key: '<c+s+p>'
-    description: "Push to a specific remote repository"
-    context: 'global'
-    loadingText: 'Pushing ...'
-    prompts:
-      - type: 'menuFromCommand'
-        title: 'Which remote repository to push to?'
-        command: bash -c "git remote --verbose | grep '/.* (push)'"
-        filter: '(?P<remote>.*)\s+(?P<url>.*) \(push\)'
-        valueFormat: '{{ .remote }}'
-        labelFormat: '{{ .remote | bold | cyan }} {{ .url }}'
-      - type: 'menu'
-        title: 'How to push?'
-        options:
-          - value: 'push'
-          - value: 'push --force-with-lease'
-          - value: 'push --force'
-    command: 'git {{index .PromptResponses 1}} {{index .PromptResponses 0}}'
+  # Leader-style menu: <ctrl+x> opens it, then the second key picks the command.
+  # (Single-key bindings like <ctrl+shift+p> don't survive tmux.)
+  - key: '<ctrl+x>'
+    description: 'User commands'
+    commandMenu:
+    - key: 'p'
+      description: "Push to a specific remote repository"
+      context: 'global'
+      loadingText: 'Pushing ...'
+      prompts:
+        - type: 'menuFromCommand'
+          title: 'Which remote repository to push to?'
+          command: bash -c "git remote --verbose | grep '/.* (push)'"
+          filter: '(?P<remote>.*)\s+(?P<url>.*) \(push\)'
+          valueFormat: '{{ .remote }}'
+          labelFormat: '{{ .remote | bold | cyan }} {{ .url }}'
+        - type: 'menu'
+          title: 'How to push?'
+          options:
+            - value: 'push'
+            - value: 'push --force-with-lease'
+            - value: 'push --force'
+      command: 'git {{index .PromptResponses 1}} {{index .PromptResponses 0}}'
