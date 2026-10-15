@@ -24,6 +24,9 @@ vim.keymap.set("n", "<leader>tc", function()
 	vim.cmd("tab split")
 end, { desc = "Open current buffer in a new tab" })
 
+vim.keymap.set("n", "<leader>cc", '"+yy', { desc = "Copy line to system clipboard" })
+vim.keymap.set("x", "<leader>cc", '"+y', { desc = "Copy selection to system clipboard" })
+
 -- Asks to save `buf` if it has unsaved changes. Returns false if cancelled
 local function confirm_save(buf)
 	if not vim.bo[buf].modified then
