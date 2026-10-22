@@ -24,6 +24,18 @@ vim.keymap.set("n", "<leader>tc", function()
 	vim.cmd("tab split")
 end, { desc = "Open current buffer in a new tab" })
 
+-- Re-run init.lua. The config modules are cached by require(), so drop them
+-- first, except config.lazy: lazy.nvim doesn't support re-running its setup
+vim.keymap.set("n", "<leader>,r", function()
+	for name in pairs(package.loaded) do
+		if name:match("^config%.") and name ~= "config.lazy" then
+			package.loaded[name] = nil
+		end
+	end
+	dofile(vim.env.MYVIMRC)
+	vim.notify("Config reloaded")
+end, { desc = "Reload config" })
+
 vim.keymap.set("n", "<leader>cc", '"+yy', { desc = "Copy line to system clipboard" })
 vim.keymap.set("x", "<leader>cc", '"+y', { desc = "Copy selection to system clipboard" })
 
@@ -76,7 +88,7 @@ local function close_pane()
 		vim.api.nvim_buf_delete(buf, { force = true })
 	end
 end
-vim.keymap.set("n", "<leader>wc", close_pane, { desc = "Close pane" })
+vim.keymap.set("n", "<leader>wd", close_pane, { desc = "Close pane" })
 
 -- Cycle through editor panes, like tmux's `prefix o`
 vim.keymap.set("n", "<leader>wo", function()
