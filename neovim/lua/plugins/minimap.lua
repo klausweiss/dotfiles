@@ -5,12 +5,12 @@ return {
 		lazy = false,
 		build = require("config.nix").bin("code-minimap"),
 		keys = {
-			{ "<leader>mm", "<cmd>MinimapToggle<cr>", desc = "Toggle minimap" },
+			{ "<F2>", "<cmd>MinimapToggle<cr>", mode = { "n", "i" }, desc = "Toggle minimap" },
 		},
 		init = function()
 			-- Instead of minimap_auto_start, which opens it on VimEnter even for a bare
 			-- `nvim` (the extra window clears the intro screen): open it once, with the
-			-- first real file. After that it's up to <leader>mm
+			-- first real file. After that it's up to <F2>
 			vim.api.nvim_create_autocmd("BufWinEnter", {
 				callback = function(args)
 					if vim.bo[args.buf].buftype ~= "" or args.file == "" then
