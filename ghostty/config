@@ -3,3 +3,8 @@ command = fish --init-command "export SHELL=$(which fish);"
 # ctrl+m to act as return
 keybind = ctrl+m=text:\n
 
+
+# ctrl+[ / ctrl+] send private sequences that tmux maps to prev/next window
+# (ctrl+[ would otherwise be indistinguishable from Escape)
+keybind = ctrl+left_bracket=text:\x1b[9001~
+keybind = ctrl+right_bracket=text:\x1b[9002~
