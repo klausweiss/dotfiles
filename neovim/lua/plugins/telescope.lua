@@ -53,6 +53,7 @@ return {
 			{ "<leader>gd", "<cmd>Telescope lsp_definitions<cr>", desc = "LSP definition" },
 			{ "<leader>gb", "<cmd>Telescope lsp_references<cr>", desc = "LSP references" },
 			{ "<leader>gr", file_references, desc = "LSP references in file" },
+			{ "<leader>gg", "<cmd>Telescope live_grep<cr>", desc = "Live grep (ripgrep)" },
 			{ "<leader>gB", "<cmd>Telescope lsp_implementations<cr>", desc = "LSP implementations" },
 			-- Dynamic: re-queries the server as you type (most servers return nothing for an empty query)
 			{ "<leader>gn", "<cmd>Telescope lsp_dynamic_workspace_symbols<cr>", desc = "LSP workspace symbols" },
