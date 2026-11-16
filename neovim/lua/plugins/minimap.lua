@@ -13,7 +13,8 @@ return {
 			-- first real file. After that it's up to <F2>
 			vim.api.nvim_create_autocmd("BufWinEnter", {
 				callback = function(args)
-					if vim.bo[args.buf].buftype ~= "" or args.file == "" then
+					-- Directories (`nvim <dir>`) show up as normal buffers until nvim-tree hijacks them
+					if vim.bo[args.buf].buftype ~= "" or args.file == "" or vim.fn.isdirectory(args.file) == 1 then
 						return
 					end
 					-- Deferred so the window layout is settled (e.g. during startup)
